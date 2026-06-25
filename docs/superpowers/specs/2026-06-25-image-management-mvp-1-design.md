@@ -18,8 +18,8 @@ MVP 1 must support real Supabase data, admin-only access, paginated house browsi
 - Authorize admin access from `public.users.role_id`.
 - Allowed roles:
   - `1`: Administrator
+- Denied roles:
   - `2`: Operator
-- Denied role:
   - `3`: Member
 - Admin user lookup:
   - primary: `auth.user.id` -> `public.users.uid`
@@ -64,7 +64,7 @@ Admin authorization:
 1. Get Supabase Auth user server-side.
 2. Lookup `public.users` by `uid = auth.user.id`.
 3. If not found, fallback to `email = auth.user.email`.
-4. Allow only `role_id in (1, 2)`.
+4. Allow only `role_id = 1`.
 5. Redirect unauthenticated users to `/login`.
 6. Show unauthorized state for authenticated users without access.
 
@@ -153,7 +153,7 @@ MVP 5 Provider/File CRUD:
 
 Minimum tests for MVP 1:
 
-- role authorization allows roles 1 and 2 and denies role 3
+- role authorization allows role 1 and denies roles 2 and 3
 - admin lookup prefers `uid` and falls back to email
 - house pagination uses 8 records per page
 - active houses sort before inactive houses
@@ -163,8 +163,8 @@ Minimum tests for MVP 1:
 Manual verification:
 
 - login required before admin pages
-- Administrator and Operator can access
-- Member cannot access
+- Administrator can access
+- Operator and Member cannot access
 - numbered pagination works
 - image page shows grouped read-only images
 - no mutation controls are visible

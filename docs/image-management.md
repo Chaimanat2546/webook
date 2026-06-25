@@ -5,7 +5,8 @@
 ผู้ใช้ที่มีสิทธิ์:
 
 - Administrator
-- Operator
+
+MVP 1 อนุญาตเฉพาะ Administrator ก่อน หากต้องการเปิดให้ Operator ใช้ภายหลังต้องมี requirement ใหม่ชัดเจน
 
 ไม่รวม public gallery, SEO, booking, pricing หรือระบบจัดการข้อมูลบ้านพักแบบเต็มรูปแบบ
 
@@ -31,8 +32,9 @@
 - ห้ามเดา external provider endpoint เอง
 - ถ้าต้องเพิ่ม env, dependency, schema หรือ provider config ใหม่ ต้องอธิบายเหตุผลก่อน
 
-## Open Questions
+## Role Decisions
 
-- role ของ Administrator/Operator อ่านจาก Supabase Auth metadata, profile table, custom claims หรือ RLS
+- MVP 1 อนุญาตเฉพาะ `role_id = 1` (Administrator)
+- `role_id = 2` (Operator) และ `role_id = 3` (Member) เข้าไม่ได้ใน MVP 1
 - route `/admin/houses/[houseId]/images` ใช้ `listings.id` หรือ `property_id` เป็น identity หลัก
 - cover ควรเก็บผ่าน `image_zone = cover` ต่อไป หรือควรมี field แยกใน phase หลัง
