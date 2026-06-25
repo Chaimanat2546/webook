@@ -85,6 +85,7 @@ Allowed verification commands:
 - Make implementation decisions with maintainability, reuse, security, and performance in mind.
 - Before implementing or changing UI flow/structure, ask whether the user already has a design or flow. Confirm the flow step by step before building it.
 - Do not build an entire UI flow in one pass unless the user has already approved the structure.
+- UI must be designed mobile-first and verified across mobile, tablet, laptop, and desktop layouts.
 
 ## Coding conventions
 
