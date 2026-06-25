@@ -23,6 +23,9 @@
 - ถ้า dependency ใหม่ช่วยให้ maintain ง่ายขึ้น reuse ได้ดีขึ้น secure ขึ้น performance ดีขึ้น หรือ implementation ชัดขึ้น ให้เสนอพร้อมเหตุผลและคำสั่งติดตั้งก่อน
 - ก่อนทำ UI flow หรือ screen structure ต้องถามก่อนว่ามี design/flow อยู่แล้วหรือไม่ และคุยทีละขั้นก่อน implement
 - UI ต้องออกแบบแบบ mobile-first และรองรับ mobile, tablet, laptop, desktop
+- UI ต้องออกแบบให้ implement ด้วย Tailwind และ shadcn/ui ได้ง่าย ไม่ใช้ custom widget ซับซ้อนถ้าไม่จำเป็น
+- Admin navigation ต้องรองรับเมนูที่เพิ่มในอนาคต: desktop ใช้ sidebar, mobile ใช้ top bar พร้อม hamburger/sheet menu
+- หน้า `/admin/houses` เป็น house selector สำหรับเข้าหน้าจัดการรูปเท่านั้น และไม่แสดง cover image, thumbnail หรือ gallery preview
 - ห้าม expose Bearer token หรือ credential ไป client
 - ห้ามสร้าง open image proxy
 - ห้ามเดา external provider endpoint เอง
