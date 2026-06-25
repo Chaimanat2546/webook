@@ -1,8 +1,9 @@
-import { ImagesIcon, LogOutIcon, MenuIcon } from "lucide-react";
+import { HouseIcon, LogOutIcon, MenuIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { signOut } from "../../app/login/actions";
+import { AdminDesktopSidebar } from "./admin-desktop-sidebar";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import {
@@ -17,7 +18,7 @@ function HouseLink() {
   return (
     <Button asChild className="justify-start" variant="secondary">
       <Link href="/admin/houses">
-        <ImagesIcon data-icon="inline-start" />
+        <HouseIcon data-icon="inline-start" />
         บ้านพัก
       </Link>
     </Button>
@@ -68,15 +69,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </header>
 
       <div className="mx-auto flex min-h-screen w-full max-w-7xl">
-        <aside className="hidden w-56 shrink-0 border-r bg-background p-4 md:block">
-          <p className="mb-6 text-sm font-semibold">VillaAdmin</p>
-          <nav className="flex flex-col gap-1">
-            <HouseLink />
-          </nav>
-          <div className="mt-6">
-            <SignOutButton />
-          </div>
-        </aside>
+        <AdminDesktopSidebar signOutAction={signOut} />
         <main className="min-w-0 flex-1 px-4 py-5 md:px-6">{children}</main>
       </div>
     </div>
