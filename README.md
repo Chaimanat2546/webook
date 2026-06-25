@@ -1,10 +1,12 @@
-# Project Name
+# VillaAdmin
 
 Admin-only web app for managing pool villa images.
 
 ## Current focus
 
-The current development focus is the house image management feature.
+MVP 1: read-only admin image management.
+
+Access is limited to Administrator users (`public.users.role_id = 1`).
 
 ## Tech stack
 

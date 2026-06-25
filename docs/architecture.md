@@ -10,7 +10,15 @@
 
 ## Data flow
 
-Admin UI → Route Handler → Server Service → Repository / Storage Adapter → Supabase / External API
+Admin UI -> Server Component / Server Action -> Server Service -> Repository / Storage Adapter -> Supabase / External API
+
+## MVP 1 Admin Image Flow
+
+Supabase Auth session is checked server-side in admin routes.
+The app looks up `public.users` by `uid = auth.user.id`, then falls back to `email = auth.user.email` while legacy rows are backfilled.
+Only `role_id = 1` can access MVP 1 admin image management.
+Listings and images are read through server repositories; client components do not access Supabase directly.
+Image display URLs are built from `image_name` using the approved Lambda host, without an image proxy or client-side credential.
 
 ## Rules
 
