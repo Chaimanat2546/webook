@@ -12,10 +12,13 @@ import { groupImagesByZone } from "../../../../../server/services/images";
 
 export default async function HouseImagesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ propertyId: string }>;
+  searchParams: Promise<{ zone?: string }>;
 }) {
   const { propertyId } = await params;
+  const { zone } = await searchParams;
   const { supabase } = await requireAdmin();
   const house = await getListingByPropertyId(supabase, propertyId);
 
@@ -27,25 +30,31 @@ export default async function HouseImagesPage({
   const groups = groupImagesByZone(images);
 
   return (
-    <div>
-      <Button asChild size="sm" variant="ghost">
-        <Link href="/admin/houses">
-          <ArrowLeftIcon data-icon="inline-start" />
-          กลับไปบ้านพัก
-        </Link>
-      </Button>
-
-      <div className="mb-4 mt-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="font-mono text-xs text-muted-foreground">{house.property_id}</p>
-          <h1 className="text-xl font-semibold">{house.title || "ไม่พบชื่อบ้านพัก"}</h1>
+    <div className="flex flex-col gap-4">
+      <header className="flex flex-col gap-3 border-b pb-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2">
+          <Button asChild className="w-fit px-0" size="sm" variant="ghost">
+            <Link href="/admin/houses">
+              <ArrowLeftIcon data-icon="inline-start" />
+              กลับไปบ้านพัก
+            </Link>
+          </Button>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold">{house.title || "ไม่พบชื่อบ้านพัก"}</h1>
+              <Badge variant="secondary">DV-{house.property_id}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              จัดการรูปภาพบ้านพัก · {images.length} รูป
+            </p>
+          </div>
         </div>
-        <Badge className="w-fit" variant="secondary">
+        <Button className="w-fit" size="sm" variant="outline">
           ดูอย่างเดียว
-        </Badge>
-      </div>
+        </Button>
+      </header>
 
-      <ImageZoneViewer groups={groups} />
+      <ImageZoneViewer groups={groups} propertyId={propertyId} selectedZone={zone} />
     </div>
   );
 }
