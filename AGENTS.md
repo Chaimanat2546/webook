@@ -9,7 +9,6 @@ Critical flows:
 - Protected admin access
 - House image listing
 - House image upload/import
-- House image ordering
 - House image deletion
 - External image URL validation
 - Storage/API error handling
