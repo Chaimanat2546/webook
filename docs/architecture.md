@@ -17,3 +17,6 @@ Admin UI → Route Handler → Server Service → Repository / Storage Adapter �
 - Client components should not access private credentials.
 - Route handlers should validate input before calling services.
 - Storage provider details should stay behind adapter modules.
+- Implementation choices should favor maintainability, reuse, security, and performance over the shortest local patch.
+- New dependencies are acceptable when they make the implementation safer, simpler, or easier to maintain. Agents must explain the reason and ask before installing them.
+- UI flow and screen structure must be confirmed with the user step by step before implementation, unless an approved design already exists.

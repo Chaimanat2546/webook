@@ -50,12 +50,12 @@ Agents must NOT run commands that install, remove, upgrade, or modify dependenci
 - `npx shadcn@latest add ...`
 - any command that modifies `package.json` or lockfiles without explicit user approval
 
-If a task appears to require a new dependency:
+If a new dependency is required, or if adding one would clearly improve maintainability, reuse, security, performance, correctness, or developer experience:
 
-1. First try to solve it using existing project dependencies.
-2. If a new dependency is truly needed, explain why.
-3. Provide the exact install command for the user to run.
-4. Do not run the install command yourself.
+1. First check whether existing project dependencies already cover the need.
+2. If a new dependency is the better path, explain why and what tradeoff it avoids.
+3. Provide the exact install command for the user to run, or request explicit approval before running it.
+4. Do not run the install command yourself without explicit approval.
 
 Allowed verification commands:
 
@@ -82,6 +82,9 @@ Allowed verification commands:
 - Route handlers in `app/api/` should validate input and call server services.
 - Keep storage/image provider logic behind adapter modules.
 - Prefer existing patterns before creating new abstractions.
+- Make implementation decisions with maintainability, reuse, security, and performance in mind.
+- Before implementing or changing UI flow/structure, ask whether the user already has a design or flow. Confirm the flow step by step before building it.
+- Do not build an entire UI flow in one pass unless the user has already approved the structure.
 
 ## Coding conventions
 
