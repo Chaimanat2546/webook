@@ -23,6 +23,9 @@ Access is limited to Administrator users (`public.users.role_id = 1`).
 2. Fill required environment variables
 3. Run dev server
 
+For local UI testing without a login session, set `ADMIN_AUTH_BYPASS=true` in `.env.local`.
+The bypass is ignored when `NODE_ENV=production`.
+
 ## Scripts
 
 - `npm run dev`

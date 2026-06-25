@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   ADMIN_ROLE_ID,
   canAccessAdmin,
+  isAdminAuthBypassEnabled,
   pickAdminUser,
 } from "../server/auth/admin.ts";
 
@@ -33,5 +34,29 @@ describe("admin authorization", () => {
     });
 
     assert.deepEqual(user, { id: 2, role_id: 1 });
+  });
+
+  it("allows auth bypass only outside production", () => {
+    assert.equal(
+      isAdminAuthBypassEnabled({
+        ADMIN_AUTH_BYPASS: "true",
+        NODE_ENV: "development",
+      }),
+      true,
+    );
+    assert.equal(
+      isAdminAuthBypassEnabled({
+        ADMIN_AUTH_BYPASS: "true",
+        NODE_ENV: "production",
+      }),
+      false,
+    );
+    assert.equal(
+      isAdminAuthBypassEnabled({
+        ADMIN_AUTH_BYPASS: "false",
+        NODE_ENV: "development",
+      }),
+      false,
+    );
   });
 });
