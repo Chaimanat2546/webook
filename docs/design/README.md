@@ -4,6 +4,7 @@ Design guidelines for the admin-only pool villa image management app.
 
 ## Documents
 
+- [Global Design System](DESIGN.md)
 - [Style Reference](style-reference.md)
 - [Admin Shell](admin-shell.md)
 - [MVP 1 Screens](mvp-1.md)
