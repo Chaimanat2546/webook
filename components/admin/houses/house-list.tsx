@@ -61,22 +61,23 @@ export function HouseList({ houses }: { houses: HouseListItem[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>บ้านพัก</TableHead>
-              <TableHead>property_id</TableHead>
-              <TableHead>รายละเอียด</TableHead>
+              <TableHead>ชื่อบ้านพัก</TableHead>
+              <TableHead>ID</TableHead>
+              <TableHead>ห้องนอน</TableHead>
+              <TableHead>ห้องน้ำ</TableHead>
+              <TableHead>ทำเล(zone)</TableHead>
               <TableHead>สถานะ</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="text-right">การจัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {houses.map((house) => (
               <TableRow className={house.is_active ? "" : "opacity-70"} key={house.property_id}>
                 <TableCell className="font-medium">{house.title || "-"}</TableCell>
-                <TableCell className="font-mono text-xs">{house.property_id}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {house.bedrooms ?? "-"} ห้องนอน / {house.bathrooms ?? "-"} ห้องน้ำ /{" "}
-                  {house.location_zone || "-"}
-                </TableCell>
+                <TableCell className="font-mono text-xs">DV-{house.property_id}</TableCell>
+                <TableCell className="text-muted-foreground">{house.bedrooms ?? "-"}</TableCell>
+                <TableCell className="text-muted-foreground">{house.bathrooms ?? "-"}</TableCell>
+                <TableCell className="text-muted-foreground">{house.location_zone || "-"}</TableCell>
                 <TableCell>
                   <StatusBadge active={house.is_active} />
                 </TableCell>

@@ -30,8 +30,8 @@ export default async function HousesPage({
   return (
     <div>
       <div className="mb-4">
-        <p className="text-sm font-medium text-muted-foreground">Image management</p>
         <h1 className="text-xl font-semibold">บ้านพัก</h1>
+        <p className="text-sm font-medium text-muted-foreground">จัดการข้อมูลบ้านพัก</p>
       </div>
 
       <form className="mb-4">

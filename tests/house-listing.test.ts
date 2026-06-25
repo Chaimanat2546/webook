@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   HOUSE_PAGE_SIZE,
+  getPaginationItems,
   getPageRange,
   normalizeHouseSearch,
   sortActiveFirst,
@@ -43,5 +44,12 @@ describe("house listing rules", () => {
       "B",
       "C",
     ]);
+  });
+
+  it("collapses long pagination with ellipsis around the current page", () => {
+    assert.deepEqual(getPaginationItems(1, 5), [1, 2, 3, 4, 5]);
+    assert.deepEqual(getPaginationItems(8, 20), [1, "ellipsis", 7, 8, 9, "ellipsis", 20]);
+    assert.deepEqual(getPaginationItems(2, 20), [1, 2, 3, 4, 5, "ellipsis", 20]);
+    assert.deepEqual(getPaginationItems(19, 20), [1, "ellipsis", 16, 17, 18, 19, 20]);
   });
 });
