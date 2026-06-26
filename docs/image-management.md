@@ -1,0 +1,40 @@
+# Pool Villa Image Management
+
+ระบบจัดการรูปภาพบ้านพักพูลวิลล่าสำหรับผู้ใช้ฝั่ง admin เท่านั้น
+
+ผู้ใช้ที่มีสิทธิ์:
+
+- Administrator
+
+MVP 1 อนุญาตเฉพาะ Administrator ก่อน หากต้องการเปิดให้ Operator ใช้ภายหลังต้องมี requirement ใหม่ชัดเจน
+
+ไม่รวม public gallery, SEO, booking, pricing หรือระบบจัดการข้อมูลบ้านพักแบบเต็มรูปแบบ
+
+## MVP Documents
+
+- [MVP 1: Read-only Image Display](image-management/mvp-1-read-only-image-display.md)
+- [MVP 2: Draft UI Interaction](image-management/mvp-2-draft-ui-interaction.md)
+- [MVP 3: Save Image Metadata](image-management/mvp-3-save-image-metadata.md)
+- [MVP 4: Add and Delete Image Records](image-management/mvp-4-add-delete-image-records.md)
+- [MVP 5: External Provider and Physical File CRUD](image-management/mvp-5-external-provider-file-crud.md)
+
+## Project Constraints
+
+- อ่านและใช้ pattern ที่มีอยู่ในโปรเจกต์ก่อนเพิ่ม abstraction ใหม่
+- ถ้า dependency ใหม่ช่วยให้ maintain ง่ายขึ้น reuse ได้ดีขึ้น secure ขึ้น performance ดีขึ้น หรือ implementation ชัดขึ้น ให้เสนอพร้อมเหตุผลและคำสั่งติดตั้งก่อน
+- ก่อนทำ UI flow หรือ screen structure ต้องถามก่อนว่ามี design/flow อยู่แล้วหรือไม่ และคุยทีละขั้นก่อน implement
+- UI ต้องออกแบบแบบ mobile-first และรองรับ mobile, tablet, laptop, desktop
+- UI ต้องออกแบบให้ implement ด้วย Tailwind และ shadcn/ui ได้ง่าย ไม่ใช้ custom widget ซับซ้อนถ้าไม่จำเป็น
+- Admin navigation ต้องรองรับเมนูที่เพิ่มในอนาคต: desktop ใช้ sidebar, mobile ใช้ top bar พร้อม hamburger/sheet menu
+- หน้า `/admin/houses` เป็น house selector สำหรับเข้าหน้าจัดการรูปเท่านั้น และไม่แสดง cover image, thumbnail หรือ gallery preview
+- ห้าม expose Bearer token หรือ credential ไป client
+- ห้ามสร้าง open image proxy
+- ห้ามเดา external provider endpoint เอง
+- ถ้าต้องเพิ่ม env, dependency, schema หรือ provider config ใหม่ ต้องอธิบายเหตุผลก่อน
+
+## Role Decisions
+
+- MVP 1 อนุญาตเฉพาะ `role_id = 1` (Administrator)
+- `role_id = 2` (Operator) และ `role_id = 3` (Member) เข้าไม่ได้ใน MVP 1
+- route `/admin/houses/[houseId]/images` ใช้ `listings.id` หรือ `property_id` เป็น identity หลัก
+- cover ควรเก็บผ่าน `image_zone = cover` ต่อไป หรือควรมี field แยกใน phase หลัง

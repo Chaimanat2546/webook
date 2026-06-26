@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VillaAdmin
 
-## Getting Started
+Admin-only web app for managing pool villa images.
 
-First, run the development server:
+## Current focus
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+MVP 1: read-only admin image management.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Access is limited to Administrator users (`public.users.role_id = 1`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Supabase
+- Cloudflare Workers
 
-## Learn More
+## Getting started
 
-To learn more about Next.js, take a look at the following resources:
+1. Copy `.env.example` to `.env.local`
+2. Fill required environment variables
+3. Run dev server
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For local UI testing without a login session, set `ADMIN_AUTH_BYPASS=true` in `.env.local`.
+The bypass is ignored when `NODE_ENV=production`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+Runtime Next.js scripts (`dev` and `start`) run through `node --use-system-ca` so server-side Supabase fetches trust the Windows system certificate store.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev`
+- `npm run typecheck`
+- `npm run lint`
+- `npm test`
+- `npm run build`
