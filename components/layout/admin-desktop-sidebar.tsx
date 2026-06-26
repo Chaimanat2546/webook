@@ -1,7 +1,8 @@
 "use client";
 
-import { HouseIcon, LogOutIcon } from "lucide-react";
+import { HouseIcon, LogOutIcon, MegaphoneIcon } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import {
   Sidebar,
@@ -22,6 +23,8 @@ export function AdminDesktopSidebar({
 }: {
   signOutAction: () => Promise<void>;
 }) {
+  const pathname = usePathname();
+
   return (
     <TooltipProvider>
       <Sidebar collapsible="icon" variant="inset">
@@ -55,6 +58,18 @@ export function AdminDesktopSidebar({
                     <Link href="/admin/houses">
                       <HouseIcon data-icon="inline-start" />
                       <span>บ้านพัก</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/admin/advertisements")}
+                    tooltip="โฆษณา"
+                  >
+                    <Link href="/admin/advertisements">
+                      <MegaphoneIcon data-icon="inline-start" />
+                      <span>โฆษณา</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

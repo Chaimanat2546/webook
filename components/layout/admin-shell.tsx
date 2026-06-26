@@ -8,6 +8,7 @@ import {
   SidebarTrigger,
 } from "../ui/sidebar";
 import { Separator } from "../ui/separator";
+import { Toaster } from "../ui/sonner";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
         <div className="min-w-0 flex-1 px-4 py-5 md:px-6">{children}</div>
       </SidebarInset>
+      <Toaster />
     </SidebarProvider>
   );
 }
