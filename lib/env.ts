@@ -8,3 +8,14 @@ export function getSupabaseEnv() {
 
   return { anonKey, url };
 }
+
+export function getAdvertisementImageEnv() {
+  const workerSecret = process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET;
+  const workerUrl = process.env.ADVERTISEMENT_IMAGE_WORKER_URL;
+
+  if (!workerSecret || !workerUrl) {
+    throw new Error("Missing advertisement image environment variables");
+  }
+
+  return { workerSecret, workerUrl };
+}
