@@ -23,6 +23,13 @@ Image display URLs are built from `image_name` using the approved Lambda host, w
 The image page uses the `zone` query parameter to select one image category at a time; missing or unknown zones fall back to the first grouped zone.
 Known image zones are mapped to Thai display labels and Lucide icon names in `server/services/images.ts`; unknown zones keep their raw label and use the fallback image icon.
 
+## Advertisement Media Flow
+
+Admin pages write advertisement metadata through server actions and Supabase repositories.
+Advertisement files are uploaded/deleted through the server-only Worker adapter.
+Supabase stores `image_name` keys only.
+External systems read active advertisements through Supabase API and build image URLs from `{ADVERTISEMENT_IMAGE_WORKER_URL}/{image_name}`.
+
 ## Rules
 
 - Client components should not access private credentials.

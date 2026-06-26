@@ -18,8 +18,8 @@ MVP นี้ให้ admin สร้าง แก้ไข เปิด/ปิ
 - แก้ไข title
 - เปิด/ปิด `is_active`
 - เพิ่มรูปใหม่เป็น draft และยังไม่ upload จนกดบันทึก
-- ลบรูปเดิมทันทีหลัง confirm
-- ป้องกันการลบรูปสุดท้าย
+- ลบรูปเดิมเป็น draft delete และยังไม่ลบจริงจนกดบันทึก
+- validate จำนวนรูปสุดท้ายตอนกดบันทึก
 - preview รูปเดิมและรูป draft ได้
 - ระบบกำหนด `image_order` เองเป็น 1, 2
 - Public/Supabase API อ่านได้เฉพาะ active advertisements
@@ -91,9 +91,9 @@ Rules:
 
 - เพิ่มรูปใหม่เป็น draft ก่อน
 - กดบันทึกแล้วค่อย upload รูปใหม่และ update metadata
-- ลบรูปเดิมต้องกดปุ่มลบและ confirm ก่อน
-- เมื่อลบหลัง confirm ให้ลบจริงทันที
-- ถ้าลบแล้วจะเหลือ 0 รูป ต้องบล็อก
+- ลบรูปเดิมด้วยปุ่มถังขยะแล้วซ่อนจากหน้าเป็น draft delete
+- ยังไม่ลบจริงจนกดบันทึก
+- ถ้าจำนวนรูปสุดท้ายจะเหลือ 0 หรือเกิน 2 รูป ต้องแสดง alert และไม่ save
 - ถ้ารูป preview/load ไม่ได้ ไม่บล็อกการ save title/status
 - user ไม่สามารถจัด order เอง
 
@@ -181,6 +181,9 @@ advertisements/{advertisement_id}/2.webp
 Rules:
 
 - ห้ามเก็บ binary รูปใน Supabase
+- Max upload size is 10 MB per image.
+- Before submit, newly selected images are resized in the browser so the longest side is at most 1080px while preserving aspect ratio.
+- Images that need resizing are encoded from canvas as WebP when supported; images already within 1080px are uploaded unchanged.
 - ห้ามเก็บ full image URL เป็น source of truth
 - ห้าม expose R2 credential ไป client
 - ห้ามสร้าง open image proxy
@@ -210,21 +213,21 @@ Create:
 Update:
 
 1. Validate title
-2. Validate final image count 1-2
-3. Upload newly added draft images on save
-4. Update `advertisements`
-5. Insert new `advertisement_images`
-6. Normalize `image_order` to 1, 2
+2. Read pending `deleted_image_ids`
+3. Validate final image count 1-2 after pending deletes and new uploads
+4. Upload newly added draft images on save
+5. Update `advertisements`
+6. Delete pending `advertisement_images` rows
+7. Insert new `advertisement_images`
+8. Normalize `image_order` to 1, 2
+9. Best-effort delete unreferenced R2 objects for images removed from the form
 
-Delete image:
+Delete image in edit form:
 
-1. Confirm with user
-2. Check image is not the last image
-3. Delete R2 object
-4. Delete `advertisement_images` row
-5. Normalize remaining `image_order`
-
-If R2 delete fails, do not delete the database row.
+1. Click the trash icon to hide the image from the form
+2. Keep the delete as a draft until save
+3. Enable cancel once there is a draft change
+4. On save, block the form if the final image count would be 0 or more than 2
 
 ## RLS
 
@@ -242,7 +245,7 @@ Loading:
 - กำลังโหลดรายการโฆษณา
 - กำลังโหลด detail
 - กำลังบันทึก
-- กำลังลบรูป
+- กำลังบันทึกการลบรูป
 
 Empty:
 
@@ -256,13 +259,14 @@ Error:
 - title ว่าง
 - ไม่มีรูป
 - รูปเกิน 2 รูป
-- ลบรูปสุดท้ายไม่ได้
+- จำนวนรูปสุดท้ายไม่อยู่ระหว่าง 1-2 รูป
 - upload รูปไม่สำเร็จ
 - ลบ R2 object ไม่สำเร็จ
 - รูป preview/load ไม่ได้
 
 ## Testing Checklist
 
+- newly selected advertisement images are resized to max 1080px before upload
 - Administrator เข้าใช้งานได้
 - non-admin เข้าใช้งานไม่ได้
 - list แสดง active ก่อน inactive
@@ -273,9 +277,9 @@ Error:
 - เพิ่มรูปยังไม่ upload จนกดบันทึก
 - preview รูป draft ได้
 - preview รูปเดิมได้
-- delete image ต้อง confirm
-- delete image ลบทันทีหลัง confirm
-- delete image บล็อกเมื่อเป็นรูปสุดท้าย
+- delete image เป็น draft delete จนกดบันทึก
+- ปุ่มยกเลิก enabled เมื่อมี draft change
+- save บล็อกเมื่อจำนวนรูปสุดท้ายไม่อยู่ระหว่าง 1-2 รูป
 - ระบบ normalize `image_order` เป็น 1, 2
 - public Supabase API เห็นเฉพาะ active advertisements
 - public Supabase API ไม่เห็น inactive advertisement images
