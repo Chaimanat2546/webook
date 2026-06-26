@@ -26,6 +26,10 @@ export default async function HousesPage({
   const { supabase } = await requireAdmin();
   const { count, houses } = await getPaginatedListings(supabase, { page, search });
   const totalPages = Math.max(1, Math.ceil(count / HOUSE_PAGE_SIZE));
+  const returnToParams = new URLSearchParams();
+  returnToParams.set("page", String(page));
+  if (search) returnToParams.set("q", search);
+  const returnTo = `/admin/houses?${returnToParams}`;
 
   return (
     <div>
@@ -53,7 +57,7 @@ export default async function HousesPage({
         </Empty>
       ) : (
         <>
-          <HouseList houses={houses} />
+          <HouseList houses={houses} returnTo={returnTo} />
           <Pagination currentPage={page} search={search} totalPages={totalPages} />
         </>
       )}

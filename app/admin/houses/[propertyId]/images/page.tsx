@@ -10,15 +10,25 @@ import { getImagesByPropertyId } from "../../../../../server/repositories/images
 import { getListingByPropertyId } from "../../../../../server/repositories/listings";
 import { groupImagesByZone } from "../../../../../server/services/images";
 
+function getSafeReturnTo(value?: string): string | null {
+  if (value === "/admin/houses" || value?.startsWith("/admin/houses?")) {
+    return value;
+  }
+
+  return null;
+}
+
 export default async function HouseImagesPage({
   params,
   searchParams,
 }: {
   params: Promise<{ propertyId: string }>;
-  searchParams: Promise<{ zone?: string }>;
+  searchParams: Promise<{ zone?: string; returnTo?: string }>;
 }) {
   const { propertyId } = await params;
-  const { zone } = await searchParams;
+  const { returnTo, zone } = await searchParams;
+  const safeReturnTo = getSafeReturnTo(returnTo);
+  const backHref = safeReturnTo ?? "/admin/houses";
   const { supabase } = await requireAdmin();
   const house = await getListingByPropertyId(supabase, propertyId);
 
@@ -34,7 +44,7 @@ export default async function HouseImagesPage({
       <header className="flex flex-col gap-3 border-b pb-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-2">
           <Button asChild className="w-fit px-0" size="sm" variant="ghost">
-            <Link href="/admin/houses">
+            <Link href={backHref}>
               <ArrowLeftIcon data-icon="inline-start" />
               กลับไปบ้านพัก
             </Link>
@@ -54,7 +64,12 @@ export default async function HouseImagesPage({
         </Button>
       </header>
 
-      <ImageZoneViewer groups={groups} propertyId={propertyId} selectedZone={zone} />
+      <ImageZoneViewer
+        groups={groups}
+        propertyId={propertyId}
+        returnTo={safeReturnTo ?? undefined}
+        selectedZone={zone}
+      />
     </div>
   );
 }

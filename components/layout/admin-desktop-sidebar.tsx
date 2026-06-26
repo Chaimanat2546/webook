@@ -1,75 +1,84 @@
 "use client";
 
-import {
-  HouseIcon,
-  LogOutIcon,
-  PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
-} from "lucide-react";
+import { HouseIcon, LogOutIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 
-import { cn } from "../../lib/utils";
-import { Button } from "../ui/button";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "../ui/sidebar";
+import { TooltipProvider } from "../ui/tooltip";
 
 export function AdminDesktopSidebar({
   signOutAction,
 }: {
   signOutAction: () => Promise<void>;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
-
   return (
-    <aside
-      className={cn(
-        "hidden shrink-0 border-r bg-background p-3 transition-[width] md:flex md:flex-col",
-        collapsed ? "w-16" : "w-44",
-      )}
-    >
-      <div
-        className={cn(
-          "mb-6 flex items-center gap-2",
-          collapsed ? "justify-center" : "justify-between",
-        )}
-      >
-        {!collapsed && <p className="text-sm font-semibold">VillaAdmin</p>}
-        <Button
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? "ขยายเมนูด้านข้าง" : "ย่อเมนูด้านข้าง"}
-          onClick={() => setCollapsed((value) => !value)}
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-        >
-          {collapsed ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />}
-        </Button>
-      </div>
+    <TooltipProvider>
+      <Sidebar collapsible="icon" variant="inset">
+        <SidebarHeader>
+          <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild size="lg">
+                  <div>
+                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                      <HouseIcon />
+                    </div>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-semibold">VillaAdmin</span>
+                      <span className="truncate text-xs">จัดการรูปบ้านพัก</span>
+                    </div>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </div>
+        </SidebarHeader>
 
-      <nav className="flex flex-col gap-1">
-        <Button
-          asChild
-          className={cn("w-full", collapsed ? "justify-center px-0" : "justify-start")}
-          title="บ้านพัก"
-          variant="secondary"
-        >
-          <Link href="/admin/houses">
-            <HouseIcon data-icon="inline-start" />
-            <span className={cn(collapsed && "sr-only")}>บ้านพัก</span>
-          </Link>
-        </Button>
-      </nav>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive tooltip="บ้านพัก">
+                    <Link href="/admin/houses">
+                      <HouseIcon data-icon="inline-start" />
+                      <span>บ้านพัก</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-      <form action={signOutAction} className="mt-6">
-        <Button
-          className={cn("w-full", collapsed ? "px-0" : "justify-start")}
-          title="ออกจากระบบ"
-          type="submit"
-          variant="outline"
-        >
-          <LogOutIcon data-icon="inline-start" />
-          <span className={cn(collapsed && "sr-only")}>ออกจากระบบ</span>
-        </Button>
-      </form>
-    </aside>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <form action={signOutAction}>
+                <SidebarMenuButton asChild tooltip="ออกจากระบบ">
+                  <button type="submit">
+                    <LogOutIcon data-icon="inline-start" />
+                    <span>ออกจากระบบ</span>
+                  </button>
+                </SidebarMenuButton>
+              </form>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+
+      </Sidebar>
+    </TooltipProvider>
   );
 }

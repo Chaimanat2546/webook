@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { buildAwsImageUrl } from "../../../lib/aws-image-url";
 import { cn } from "../../../lib/utils";
@@ -32,6 +33,7 @@ import {
   EmptyTitle,
 } from "../../ui/empty";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
+import { ImagePreviewDialog } from "./image-preview-dialog";
 
 const zoneIconByName = {
   armchair: ArmchairIcon,
@@ -56,8 +58,9 @@ function displayUrl(imageName: string | null): string | null {
   }
 }
 
-function imageZoneHref(propertyId: string, zone: string): string {
+function imageZoneHref(propertyId: string, zone: string, returnTo?: string): string {
   const params = new URLSearchParams({ zone });
+  if (returnTo) params.set("returnTo", returnTo);
   return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
 }
 
@@ -84,7 +87,7 @@ function ImageCard({
   const zoneMeta = getImageZoneMeta(zone);
 
   return (
-    <Card className="gap-0 overflow-hidden p-0" size="sm">
+    <Card className="relative w-full max-w-36 cursor-zoom-in gap-0 overflow-hidden p-0 sm:max-w-40" size="sm">
       <div className="relative">
         <AspectRatio ratio={4 / 3} className="bg-muted">
           {src ? (
@@ -93,7 +96,7 @@ function ImageCard({
               className="object-cover"
               fill
               priority={priority}
-              sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 50vw"
+              sizes="(min-width: 640px) 160px, 144px"
               src={src}
             />
           ) : (
@@ -102,27 +105,34 @@ function ImageCard({
             </div>
           )}
         </AspectRatio>
-        <Badge className="absolute left-2 top-2 rounded-md font-mono text-sm" variant="secondary">
+        <Badge className="absolute left-1 top-1 rounded-md px-1.5 py-0 font-mono text-[10px]" variant="secondary">
           {formatImageMoveLabel(image.image_move)}
         </Badge>
         <Badge
-          className="absolute right-2 top-2 max-w-[calc(100%-4.5rem)] truncate rounded-md text-xs"
+          className="absolute right-1 top-1 max-w-[calc(100%-3.5rem)] truncate rounded-md px-1.5 py-0 text-[10px]"
           title={zone}
         >
           {zoneMeta.label}
         </Badge>
       </div>
-      <CardContent className="flex flex-col gap-2 p-3">
-        <p className="truncate font-mono text-xs font-medium" title={image.image_name ?? undefined}>
+      <CardContent className="flex flex-col gap-1 p-2">
+        <p className="truncate font-mono text-[11px] font-medium leading-tight" title={image.image_name ?? undefined}>
           {image.image_name ?? "-"}
         </p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <dt>สร้างเมื่อ</dt>
-          <dd className="text-foreground">{formatThaiImageDateTime(image.created_at)}</dd>
-          <dt>อัปเดตเมื่อ</dt>
-          <dd className="text-foreground">{formatThaiImageDateTime(image.updated_at)}</dd>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-1 gap-y-0.5 text-[10px] leading-tight text-muted-foreground">
+          <dt>สร้าง</dt>
+          <dd className="truncate text-foreground">{formatThaiImageDateTime(image.created_at)}</dd>
+          <dt>อัปเดต</dt>
+          <dd className="truncate text-foreground">{formatThaiImageDateTime(image.updated_at)}</dd>
         </dl>
       </CardContent>
+      {src ? (
+        <ImagePreviewDialog
+          alt={image.image_name ?? "house image"}
+          imageName={image.image_name ?? "-"}
+          src={src}
+        />
+      ) : null}
     </Card>
   );
 }
@@ -130,10 +140,12 @@ function ImageCard({
 export function ImageZoneViewer({
   groups,
   propertyId,
+  returnTo,
   selectedZone,
 }: {
   groups: ImageZoneGroup[];
   propertyId: string;
+  returnTo?: string;
   selectedZone?: string;
 }) {
   const selectedGroup = getSelectedImageZoneGroup(groups, selectedZone);
@@ -167,13 +179,13 @@ export function ImageZoneViewer({
               const meta = getImageZoneMeta(group.zone);
 
               return (
-                <a
+                <Link
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "flex min-w-36 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted lg:min-w-0",
                     isActive && "bg-primary text-primary-foreground hover:bg-primary",
                   )}
-                  href={imageZoneHref(propertyId, group.zone)}
+                  href={imageZoneHref(propertyId, group.zone, returnTo)}
                   key={group.zone}
                   title={group.zone}
                 >
@@ -194,7 +206,7 @@ export function ImageZoneViewer({
                     </span>
                   </span>
                   <Badge variant={isActive ? "secondary" : "outline"}>{group.images.length}</Badge>
-                </a>
+                </Link>
               );
             })}
           </nav>
@@ -220,7 +232,7 @@ export function ImageZoneViewer({
           <Badge variant="secondary">{selectedGroup.images.length} รูป</Badge>
         </header>
 
-        <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-start gap-2 p-2 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
           {selectedGroup.images.map((image, index) => (
             <ImageCard
               image={image}

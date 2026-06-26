@@ -1,77 +1,30 @@
-import { HouseIcon, LogOutIcon, MenuIcon } from "lucide-react";
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { signOut } from "../../app/login/actions";
 import { AdminDesktopSidebar } from "./admin-desktop-sidebar";
-import { Button } from "../ui/button";
-import { Separator } from "../ui/separator";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "../ui/sheet";
-
-function HouseLink() {
-  return (
-    <Button asChild className="justify-start" variant="secondary">
-      <Link href="/admin/houses">
-        <HouseIcon data-icon="inline-start" />
-        บ้านพัก
-      </Link>
-    </Button>
-  );
-}
-
-function SignOutButton({ full = false }: { full?: boolean }) {
-  return (
-    <form action={signOut}>
-      <Button className={full ? "w-full" : ""} type="submit" variant="outline">
-        <LogOutIcon data-icon="inline-start" />
-        ออกจากระบบ
-      </Button>
-    </form>
-  );
-}
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "../ui/sidebar";
+import { Separator } from "../ui/separator";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 border-b bg-background px-4 py-3 md:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold">VillaAdmin</p>
+    <SidebarProvider>
+      <AdminDesktopSidebar signOutAction={signOut} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+          <SidebarTrigger aria-label="เปิด/ปิดเมนู" />
+          <Separator className="h-4" orientation="vertical" />
+          <div className="flex flex-col">
+            <p className="text-sm font-medium">VillaAdmin</p>
             <p className="text-xs text-muted-foreground">จัดการรูปบ้านพัก</p>
           </div>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button size="sm" variant="outline">
-                <MenuIcon data-icon="inline-start" />
-                เมนู
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <SheetHeader>
-                <SheetTitle>VillaAdmin</SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-col gap-2 px-4">
-                <HouseLink />
-              </nav>
-              <Separator className="mx-4" />
-              <div className="px-4">
-                <SignOutButton full />
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </header>
+        </header>
 
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl">
-        <AdminDesktopSidebar signOutAction={signOut} />
-        <main className="min-w-0 flex-1 px-4 py-5 md:px-6">{children}</main>
-      </div>
-    </div>
+        <div className="min-w-0 flex-1 px-4 py-5 md:px-6">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

@@ -28,6 +28,8 @@ The bypass is ignored when `NODE_ENV=production`.
 
 ## Scripts
 
+Runtime Next.js scripts (`dev` and `start`) run through `node --use-system-ca` so server-side Supabase fetches trust the Windows system certificate store.
+
 - `npm run dev`
 - `npm run typecheck`
 - `npm run lint`

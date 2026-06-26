@@ -69,6 +69,10 @@ Rules:
 - หน้านี้ทำหน้าที่เป็นทางเข้าไปยังหน้ารูปภาพเท่านั้น
 - ห้ามมีปุ่มเพิ่มบ้านพัก แก้ไขบ้านพัก ลบบ้านพัก upload image หรือ import image ใน MVP นี้
 
+Navigation:
+
+- The "manage images" action preserves the current list URL (`page` and `q`) with a `returnTo` query parameter.
+
 Responsive layout:
 
 - Mobile: compact stacked cards แบบไม่มีรูป
@@ -91,6 +95,7 @@ Admin shell:
 - `property_id`
 - รายการรูปทั้งหมด
 - preview รูป
+- คลิก card รูปเพื่อเปิด preview รูปขนาดใหญ่ขึ้นแบบ read-only
 - `image_name`
 - `image_zone`
 - `image_move`
@@ -102,11 +107,17 @@ Rules:
 - ดึงรูปจาก `images` ด้วย `property_id`
 - เรียงรูปตาม `image_move` จากน้อยไปมาก
 - `image_move` เป็นเลขลำดับ 1, 2, 3, 4, ...
+- รูปที่แสดงได้ต้องเปิด preview ขนาดใหญ่ขึ้นได้เมื่อคลิกที่ card โดยไม่แก้ไขข้อมูล
 - ยังไม่อนุญาตให้แก้ไขข้อมูล
 - ยังไม่อนุญาตให้ลบรูป
 - ยังไม่อนุญาตให้ reorder
 - ยังไม่อนุญาตให้เปลี่ยน zone
 - ยังไม่อนุญาตให้ตั้ง cover
+
+Navigation:
+
+- The back link uses a validated `returnTo` value and falls back to `/admin/houses`.
+- Zone navigation preserves `returnTo` so returning to the house list keeps the previous page/search state.
 
 ## Data Source
 
@@ -196,6 +207,7 @@ Error:
 - โหลดรูปตาม `property_id` ได้
 - รูปเรียงตาม `image_move`
 - แสดง `image_zone` ได้
+- คลิก card รูปเพื่อเปิด preview รูปขนาดใหญ่ขึ้นได้
 - แสดง empty state เมื่อบ้านไม่มีรูป
 - แสดง error state เมื่อโหลดข้อมูลล้มเหลว
 - ไม่มี token หรือ credential หลุดไป client

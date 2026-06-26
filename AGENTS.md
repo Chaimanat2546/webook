@@ -47,7 +47,7 @@ Agents must NOT run commands that install, remove, upgrade, or modify dependenci
 - `npm add <package>`
 - `npm remove <package>`
 - `npm uninstall <package>`
-- `npx shadcn@latest add ...`
+- `npx shadcn@latest add ...` when it would install or modify npm dependencies
 - any command that modifies `package.json` or lockfiles without explicit user approval
 
 If a new dependency is required, or if adding one would clearly improve maintainability, reuse, security, performance, correctness, or developer experience:
@@ -56,6 +56,14 @@ If a new dependency is required, or if adding one would clearly improve maintain
 2. If a new dependency is the better path, explain why and what tradeoff it avoids.
 3. Provide the exact install command for the user to run, or request explicit approval before running it.
 4. Do not run the install command yourself without explicit approval.
+
+ShadcnUI components are treated as approved reusable source components, not new product scope.
+
+- Prefer importing existing `components/ui/*` shadcn components before writing custom UI primitives.
+- If a needed shadcn component is missing, agents may add it with `npx shadcn@latest add <component>` after checking existing components first.
+- Do not run broad shadcn commands such as `add --all`, `init`, preset changes, reinstall, or overwrite without explicit user approval.
+- If shadcn would add or change npm dependencies, `package.json`, or lockfiles, ask first and explain why.
+- After adding a shadcn component, read the generated files and fix imports/composition to match this project.
 
 Allowed verification commands:
 
@@ -95,6 +103,7 @@ Allowed verification commands:
 - Keep components small and focused.
 - Prefer named exports for shared modules.
 - Do not introduce new dependencies without explaining why.
+- Prefer shadcn/ui primitives over hand-written common UI controls when an existing or addable shadcn component fits.
 - Follow existing naming and folder conventions.
 
 ## Testing expectations

@@ -14,4 +14,10 @@ describe("house list table UI", () => {
     assert.match(source, /<TableHead>ทำเล\(zone\)<\/TableHead>/);
     assert.doesNotMatch(source, /<TableHead>รายละเอียด<\/TableHead>/);
   });
+  it("passes the current list URL to image management links", () => {
+    assert.match(source, /function imageHref\(propertyId: string, returnTo: string\)/);
+    assert.match(source, /params\.set\("returnTo", returnTo\)/);
+    assert.match(source, /export function HouseList\(\{ houses, returnTo \}/);
+    assert.match(source, /href=\{imageHref\(house\.property_id, returnTo\)\}/);
+  });
 });

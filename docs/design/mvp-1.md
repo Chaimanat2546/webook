@@ -74,6 +74,8 @@ The only per-house action is:
 
 `จัดการรูป`
 
+Image management links preserve the current house list URL (`page` and `q`) with a `returnTo` query parameter.
+
 Do not include add, edit, delete, upload, import, booking, pricing, SEO, or save controls.
 
 ### States
@@ -114,9 +116,12 @@ Approved mobile direction:
 
 - Top app bar with VillaAdmin label, current section, hamburger menu, and compact account affordance
 - Back link, house title, `property_id`, total image count, and read-only badge stay near the top
+- Back link uses validated `returnTo` when present and falls back to `/admin/houses`
 - Horizontal zone chips act as folder navigation and keep the selected zone obvious
+- Zone navigation preserves `returnTo`
 - Show only the selected zone images
 - Image cards stack vertically with preview, global order badge, zone badge, `image_name`, `created_at`, and `updated_at`
+- Clicking a valid image card opens a larger read-only preview dialog
 
 Approved desktop direction:
 
@@ -133,6 +138,7 @@ Show:
 - house title
 - `property_id`
 - image preview
+- click image card to open a larger preview
 - `image_name`
 - `image_zone`
 - `image_move`
@@ -157,6 +163,8 @@ Missing or empty `image_zone` goes under:
 Show a small read-only badge:
 
 `ดูอย่างเดียว`
+
+Image cards may be clickable for opening a larger preview dialog. This is still read-only and must not expose mutation controls.
 
 Do not include upload, import, delete, edit, save, reorder, drag handle, set cover, checkbox selection, or bulk actions.
 

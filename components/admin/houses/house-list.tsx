@@ -17,11 +17,13 @@ function StatusBadge({ active }: { active: boolean | null }) {
   return <Badge variant={active ? "default" : "secondary"}>{active ? "Active" : "Inactive"}</Badge>;
 }
 
-function imageHref(propertyId: string) {
-  return `/admin/houses/${encodeURIComponent(propertyId)}/images`;
+function imageHref(propertyId: string, returnTo: string) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnTo);
+  return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
 }
 
-export function HouseList({ houses }: { houses: HouseListItem[] }) {
+export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; returnTo: string }) {
   return (
     <>
       <div className="flex flex-col gap-3 md:hidden">
@@ -50,7 +52,7 @@ export function HouseList({ houses }: { houses: HouseListItem[] }) {
                 </div>
               </dl>
               <Button asChild className="w-full">
-                <Link href={imageHref(house.property_id)}>จัดการรูป</Link>
+                <Link href={imageHref(house.property_id, returnTo)}>จัดการรูป</Link>
               </Button>
             </CardContent>
           </Card>
@@ -83,7 +85,7 @@ export function HouseList({ houses }: { houses: HouseListItem[] }) {
                 </TableCell>
                 <TableCell className="text-right">
                   <Button asChild size="sm" variant="outline">
-                    <Link href={imageHref(house.property_id)}>จัดการรูป</Link>
+                    <Link href={imageHref(house.property_id, returnTo)}>จัดการรูป</Link>
                   </Button>
                 </TableCell>
               </TableRow>
