@@ -8,6 +8,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "../../../components/ui/empty";
+import { Input } from "../../../components/ui/input";
 import { requireAdmin } from "../../../server/auth/admin";
 import { getAdvertisements } from "../../../server/repositories/advertisements";
 
@@ -32,23 +33,37 @@ export default async function AdvertisementsPage({
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold">โฆษณา</h1>
-        <p className="text-sm font-medium text-muted-foreground">จัดการรูปภาพและสถานะโฆษณา</p>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">โฆษณา</h1>
+          <p className="text-sm font-medium text-muted-foreground">จัดการรูปภาพและสถานะโฆษณา</p>
+        </div>
+        <Button asChild className="w-full sm:w-auto">
+          <Link href="/admin/advertisements/new">สร้างโฆษณา</Link>
+        </Button>
       </div>
 
-      {advertisements.length === 0 && !search ? (
+      <form className="mb-4">
+        <Input
+          className="md:max-w-sm"
+          defaultValue={search}
+          name="q"
+          placeholder="ค้นหาโฆษณา, ID..."
+          type="search"
+        />
+      </form>
+
+      {visibleAdvertisements.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyTitle>ยังไม่มีโฆษณา</EmptyTitle>
-            <EmptyDescription>สร้างโฆษณาเพื่ออัปโหลดรูปภาพ</EmptyDescription>
+            <EmptyTitle>{search ? "ไม่พบโฆษณาที่ค้นหา" : "ยังไม่มีโฆษณา"}</EmptyTitle>
+            <EmptyDescription>
+              {search ? "ลองเปลี่ยนคำค้นหา" : "สร้างโฆษณาเพื่ออัปโหลดรูปภาพ"}
+            </EmptyDescription>
           </EmptyHeader>
-          <Button asChild>
-            <Link href="/admin/advertisements/new">สร้างโฆษณา</Link>
-          </Button>
         </Empty>
       ) : (
-        <AdvertisementList advertisements={visibleAdvertisements} search={search} />
+        <AdvertisementList advertisements={visibleAdvertisements} />
       )}
     </div>
   );

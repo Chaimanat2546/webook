@@ -142,12 +142,12 @@ function ImageSlotCard({
         </Badge>
         {action ? <div className="absolute right-2 top-2 z-20">{action}</div> : null}
       </div>
-      <CardContent className="flex items-center justify-between gap-2 p-2">
+      <CardContent className="flex min-h-10 items-start justify-between gap-2 p-2">
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[11px] font-medium leading-tight" title={imageName}>
             {imageName}
           </p>
-          {meta ? <p className="text-[10px] leading-tight text-muted-foreground">{meta}</p> : null}
+          <p className="min-h-[1lh] text-[10px] leading-tight text-muted-foreground">{meta}</p>
         </div>
       </CardContent>
       {src ? (
@@ -159,10 +159,15 @@ function ImageSlotCard({
 
 function EmptySlot({ imageOrder }: { imageOrder: number }) {
   return (
-    <div className="flex aspect-[4/3] w-full max-w-36 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 text-xs text-muted-foreground sm:max-w-40">
-      <ImageIcon className="mb-2 size-6 opacity-50" />
-      <span>สล๊อตที่ {imageOrder} (ว่าง)</span>
-    </div>
+    <Card className="relative w-full max-w-36 gap-0 overflow-hidden border-dashed p-0 sm:max-w-40" size="sm">
+      <AspectRatio className="bg-muted/20" ratio={4 / 3}>
+        <div className="flex h-full flex-col items-center justify-center text-xs text-muted-foreground">
+          <ImageIcon className="mb-2 size-6 opacity-50" />
+          <span>สล๊อตที่ {imageOrder} (ว่าง)</span>
+        </div>
+      </AspectRatio>
+      <CardContent className="min-h-10 p-2" />
+    </Card>
   );
 }
 

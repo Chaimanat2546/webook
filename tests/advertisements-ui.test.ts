@@ -18,15 +18,21 @@ describe("advertisement admin UI", () => {
       new URL("../components/admin/advertisements/advertisement-list.tsx", import.meta.url),
       "utf8",
     );
-    assert.match(source, /SearchIcon/);
-    assert.match(source, /SlidersHorizontalIcon/);
+    const pageSource = readFileSync(new URL("../app/admin/advertisements/page.tsx", import.meta.url), "utf8");
+
+    assert.doesNotMatch(source, /SearchIcon/);
+    assert.doesNotMatch(source, /SlidersHorizontalIcon/);
+    assert.doesNotMatch(source, /name="q"/);
+    assert.match(pageSource, /<form className="mb-4"/);
+    assert.match(pageSource, /name="q"/);
     assert.match(source, /is_active/);
     assert.match(source, /advertisement_images/);
-    assert.match(source, /\/admin\/advertisements\/new/);
+    assert.match(pageSource, /\/admin\/advertisements\/new/);
     assert.match(source, /ใช้งานอยู่/);
     assert.match(source, /ปิดใช้งาน/);
     assert.match(source, /md:hidden/);
     assert.match(source, /md:block/);
+    assert.match(source, /<TableHead>ID<\/TableHead>/);
   });
 
   it("adds create and detail forms with draft previews and delete confirmation", () => {
@@ -62,6 +68,9 @@ describe("advertisement admin UI", () => {
     assert.match(formSource, /className="grid min-w-0 gap-5/);
     assert.match(formSource, /lg:grid-cols-\[minmax\(18rem,26rem\)_minmax\(0,1fr\)\]/);
     assert.match(formSource, /<div className="min-w-0 flex-1">/);
+    assert.match(formSource, /CardContent className="flex min-h-10 items-start justify-between gap-2 p-2"/);
+    assert.match(formSource, /<p className="min-h-\[1lh\] text-\[10px\] leading-tight text-muted-foreground">/);
+    assert.match(formSource, /<Card className="relative w-full max-w-36 gap-0 overflow-hidden border-dashed p-0 sm:max-w-40" size="sm">/);
     assert.match(formSource, /cursor-pointer/);
     assert.doesNotMatch(formSource, /cursor-zoom-in/);
     assert.match(formSource, /<CardContent className="grid min-w-0 gap-4 p-4"/);
