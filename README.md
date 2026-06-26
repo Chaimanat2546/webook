@@ -18,182 +18,209 @@ Access is limited to Administrator users (`public.users.role_id = 1`).
 - Supabase
 - Cloudflare Workers / R2 for advertisement image files
 
-## Local Supabase To Production Workflow
+## Supabase Feature Workflow
 
-Use Supabase local for schema, migrations, RLS, PostgREST behavior, and admin UI testing before touching production.
+Use this flow for every new feature that touches Supabase.
 
-All commands below are for Windows PowerShell from the repo root.
+```text
+local -> staging -> production
+```
+
+- `local`: fast development, TDD, migrations, RLS checks
+- `staging`: QA with a cloud database and app-like credentials
+- `production`: reviewed migration release only
+
+Never test new SQL directly on production first.
+
+## PowerShell Setup
+
+Run commands from the repo root.
 
 ```powershell
 $env:USERPROFILE="C:\tmp"
 $SUPABASE=".\node_modules\.bin\supabase.cmd"
 ```
 
-Set `USERPROFILE` to `C:\tmp` when the CLI cannot write telemetry under `C:\Users\Poolvilla\.supabase`.
+`USERPROFILE=C:\tmp` avoids Supabase CLI telemetry/profile write errors under `C:\Users\Poolvilla\.supabase`.
 
-## First-Time Local Setup
+## Local Setup
 
-1. Start Docker Desktop.
-2. Copy `.env.example` to `.env.local`.
-3. Initialize Supabase config if missing:
+Start Docker Desktop, then:
 
 ```powershell
-Test-Path supabase\config.toml
-& $SUPABASE init
+& $SUPABASE start
+& $SUPABASE status
 ```
 
-4. Link this repo to the hosted Supabase project:
+Copy `.env.example` to `.env.local` and point the app at local Supabase:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=PASTE_LOCAL_ANON_KEY
+ADVERTISEMENT_IMAGE_WORKER_URL=
+ADVERTISEMENT_IMAGE_WORKER_SECRET=
+```
+
+Restart Next.js after changing `.env.local`:
 
 ```powershell
-& $SUPABASE link --project-ref YOUR_PROJECT_REF
+npm.cmd run dev
 ```
 
-The command may ask for the remote database password.
+## Local Baseline
 
-## Bring Production Schema Local
+This repo contains a production-schema baseline migration for local and fresh staging setup:
 
-Prefer normal migrations. If production already has schema but no matching local baseline migration, create a baseline first.
+```text
+20260626050000_remote_public_schema.sql
+```
+
+Rules:
+
+- Keep it before feature migrations by timestamp.
+- Use it to build local or a fresh staging project.
+- Do not push it to production. Production already has that schema.
+
+If the baseline is missing and production schema must be pulled again:
 
 ```powershell
 & $SUPABASE db dump --schema public -f C:\tmp\remote_public_schema.sql
 & $SUPABASE migration new remote_public_schema
 ```
 
-Copy `C:\tmp\remote_public_schema.sql` into the generated migration file.
+Copy the dump into the generated migration and rename the timestamp so it sorts before feature migrations.
 
-Important for this project: the baseline migration must sort before feature migrations. Example:
-
-```text
-20260626050000_remote_public_schema.sql
-20260626055459_advertisement_management.sql
-```
-
-If local reset fails on `EXCLUDE USING gist` with UUID, add this near the top of the baseline migration:
+If reset fails on a GiST exclusion constraint with UUID, ensure the baseline has this near the top:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS "btree_gist" WITH SCHEMA "extensions";
 ```
 
-Do not use `migration repair` unless the migration was already applied on the remote database and only the migration history table is wrong.
+## Creating A Supabase Feature
 
-## Run Local Supabase
-
-Start the local stack:
-
-```powershell
-& $SUPABASE start
-```
-
-Reset local database from local migrations:
+1. Write the smallest failing test first.
+2. Create a migration with the CLI:
 
 ```powershell
-& $SUPABASE db reset --local
+& $SUPABASE migration new feature_name
 ```
 
-This resets local only. Never add `--linked` or `--db-url` unless you intentionally want to target a remote database.
-
-Check local URLs and keys:
+3. Put only the required SQL in that migration.
+4. Apply locally:
 
 ```powershell
-& $SUPABASE status
+& $SUPABASE migration up --local
 ```
 
-Put the local values in `.env.local`:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=PASTE_LOCAL_ANON_KEY
-ADMIN_AUTH_BYPASS=true
-ADVERTISEMENT_IMAGE_WORKER_URL=
-ADVERTISEMENT_IMAGE_WORKER_SECRET=
-```
-
-Restart the Next.js dev server after changing `.env.local`.
-
-```powershell
-npm.cmd run dev
-```
-
-## Local Admin Login
-
-For quick UI testing, keep:
-
-```env
-ADMIN_AUTH_BYPASS=true
-```
-
-No password is needed for `/admin/*` routes when bypass is enabled.
-
-To test real login:
-
-1. Open local Studio from `supabase status` (usually `http://127.0.0.1:54323`).
-2. Go to Authentication -> Users -> Add user.
-3. Create:
-
-```text
-Email: admin@example.local
-Password: Admin123456!
-Auto Confirm User: true
-```
-
-4. Copy the new auth user UID.
-5. Insert the matching admin row:
-
-```powershell
-& $SUPABASE db query "insert into public.users (email, role_id, uid, name) values ('admin@example.local', 1, 'PASTE_AUTH_UID', 'Local Admin');"
-```
-
-6. Set:
-
-```env
-ADMIN_AUTH_BYPASS=false
-```
-
-7. Restart the dev server and log in with the local admin email/password.
-
-If you see `Invalid Refresh Token`, clear cookies for `localhost:3000` or use an incognito window.
-
-## Local Data
-
-Do not clone production data by default. Prefer a small `supabase/seed.sql` with fake rows needed for testing.
-
-If you must pull public data from production:
-
-```powershell
-& $SUPABASE db dump --data-only --schema public --exclude public.users --exclude public.profiles -f supabase\seed.sql
-& $SUPABASE db reset --local
-```
-
-The Supabase CLI excludes managed schemas such as `auth` and `storage` from dumps, so cloning `public.users` or `profiles` can fail on foreign keys to `auth.users`.
-
-## Development Loop
-
-Create migrations with the CLI:
-
-```powershell
-& $SUPABASE migration new descriptive_name
-```
-
-Apply and test locally:
+If local state is messy, rebuild from scratch:
 
 ```powershell
 & $SUPABASE db reset --local
+```
+
+`db reset --local` only resets local. Never add `--linked` or `--db-url` unless intentionally targeting a remote database.
+
+5. Run checks:
+
+```powershell
 npm.cmd run typecheck
 npm.cmd run lint
 npm.cmd run test
 ```
 
-Check migration history:
+## RLS Rules
 
-```powershell
-& $SUPABASE migration list
+Every table in `public` that is exposed through Supabase APIs must have RLS enabled and explicit policies.
+
+Admin-only policies should follow the existing role check:
+
+```sql
+exists (
+  select 1
+  from public.users
+  where users.role_id = 1
+    and (
+      users.uid = auth.uid()
+      or users.email = auth.jwt() ->> 'email'
+    )
+)
 ```
 
-## Production Release
+Do not use broad policies like this for admin-only data:
 
-Production gets schema changes from reviewed migrations only.
+```sql
+using (true)
+```
 
-Before pushing:
+or:
+
+```sql
+to authenticated using (true)
+```
+
+Those allow every logged-in user to read the table through Supabase APIs.
+
+## Local Admin User
+
+Create a local auth user in Supabase Studio from `supabase status`:
+
+```text
+Authentication -> Users -> Add user
+Email: admin@example.local
+Password: Admin123456!
+Auto Confirm User: true
+```
+
+Copy the new auth user UID, then insert the matching admin row:
+
+```powershell
+& $SUPABASE db query "insert into public.users (email, role_id, uid, name) values ('admin@example.local', 1, 'PASTE_AUTH_UID', 'Local Admin');"
+```
+
+`public.users.uid` must equal `auth.users.id`. `public.users.id` is not the auth UID.
+
+If login behaves strangely after changing users or env vars, clear cookies for `localhost:3000` or use an incognito window.
+
+## Seed Data
+
+Prefer small fake seeds for feature work.
+
+The existing `supabase/seed.sql` may contain production-like data. Use it only for private local/staging testing and never treat it as a clean fixture.
+
+To restore a multi-statement seed file, use `psql`; `supabase db query -f` may fail on multi-statement dumps:
+
+```powershell
+psql "$STAGING_DB_URL" -f supabase\seed.sql
+```
+
+If `psql` is unavailable, install/use a PostgreSQL client rather than splitting the dump by hand.
+
+## Staging
+
+Use a separate staging Supabase project for QA.
+
+For a fresh staging project, pushing the local baseline plus feature migrations is expected:
+
+```powershell
+& $SUPABASE db push --db-url $STAGING_DB_URL --dry-run
+& $SUPABASE db push --db-url $STAGING_DB_URL
+```
+
+Use a pooler connection string from the staging dashboard when direct `db.<project-ref>.supabase.co` DNS does not resolve.
+
+Keep staging credentials out of committed files. If a database URL or password is pasted into chat/logs, rotate it.
+
+Create staging auth/admin users in the staging dashboard, then insert matching rows in `public.users`.
+
+## Production
+
+Before production, temporarily move the local-only baseline out of `supabase/migrations`:
+
+```powershell
+Move-Item supabase\migrations\20260626050000_remote_public_schema.sql C:\tmp\20260626050000_remote_public_schema.sql
+```
+
+Dry-run production:
 
 ```powershell
 npm.cmd run typecheck
@@ -203,10 +230,22 @@ npm.cmd run build
 & $SUPABASE db push --dry-run
 ```
 
-If the dry run is correct:
+The dry-run must list only new production migrations. It must not list:
+
+```text
+20260626050000_remote_public_schema.sql
+```
+
+Push only after reviewing the dry-run:
 
 ```powershell
 & $SUPABASE db push
+```
+
+Move the baseline back after the production workflow:
+
+```powershell
+Move-Item C:\tmp\20260626050000_remote_public_schema.sql supabase\migrations\20260626050000_remote_public_schema.sql
 ```
 
 Do not run these against production:
@@ -216,13 +255,7 @@ Do not run these against production:
 & $SUPABASE db reset --db-url "..."
 ```
 
-Use `migration repair` only to fix migration history after confirming the schema already exists remotely.
-
-## Supabase Branches
-
-Use Supabase Branching only when a PR or QA flow needs a cloud preview environment. For normal local development, Supabase local is cheaper and simpler.
-
-Branches are separate Supabase environments with their own API credentials and do not start with production data by default.
+Use `migration repair` only after confirming the schema already exists remotely and only the migration history table is wrong.
 
 ## Advertisement Media
 
@@ -254,4 +287,5 @@ Runtime Next.js scripts (`dev` and `start`) run through `node --use-system-ca` s
 ## References
 
 - Supabase CLI: https://supabase.com/docs/reference/cli
+- Supabase local development: https://supabase.com/docs/guides/local-development
 - Supabase Branching: https://supabase.com/docs/guides/deployment/branching

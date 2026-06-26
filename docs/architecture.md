@@ -17,7 +17,6 @@ Admin UI -> Server Component / Server Action -> Server Service -> Repository / S
 Supabase Auth session is checked server-side in admin routes.
 The app looks up `public.users` by `uid = auth.user.id`, then falls back to `email = auth.user.email` while legacy rows are backfilled.
 Only `role_id = 1` can access MVP 1 admin image management.
-Local development can set `ADMIN_AUTH_BYPASS=true` to skip the login session check for UI testing; the bypass is disabled in production.
 Listings and images are read through server repositories; client components do not access Supabase directly.
 Image display URLs are built from `image_name` using the approved Lambda host, without an image proxy or client-side credential.
 The image page uses the `zone` query parameter to select one image category at a time; missing or unknown zones fall back to the first grouped zone.
