@@ -8,15 +8,16 @@ import {
   CookingPotIcon,
   DoorClosedIcon,
   ImageIcon,
+  Loader2Icon,
   MessageCircleCodeIcon,
-  SaveIcon,
   Trash2Icon,
   UploadCloudIcon,
-  XIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type ChangeEvent, type ReactNode, useEffect, useRef, useTransition } from "react";
+import { toast } from "sonner";
 
 import { buildAwsImageUrl } from "../../../lib/aws-image-url";
 import { cn } from "../../../lib/utils";
@@ -37,11 +38,6 @@ import { Button, buttonVariants } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
 
-interface DraftPreview {
-  file: File;
-  src: string;
-}
-
 const fallbackGroup: ImageZoneGroup = {
   images: [],
   maxMove: 0,
@@ -59,12 +55,6 @@ const zoneIconByName = {
   image: ImageIcon,
   "message-circle-code": MessageCircleCodeIcon,
 } satisfies Record<ImageZoneIconName, LucideIcon>;
-
-function formatFileSize(bytes?: number): string {
-  if (bytes === undefined) return "";
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
 
 function displayUrl(image: HouseImageItem): string | null {
   const provider = getHouseImageStorageProvider(image.image_url);
@@ -133,66 +123,40 @@ function ImageCard({
   );
 }
 
-function DraftImageCard({
-  action,
-  imageOrder,
-  preview,
-  zone,
-}: {
-  action: ReactNode;
-  imageOrder: number;
-  preview: DraftPreview;
-  zone: string;
-}) {
-  return (
-    <AdminImageCard
-      action={action}
-      alt={preview.file.name}
-      imageName={preview.file.name}
-      metaRows={[{ label: "ขนาด", value: formatFileSize(preview.file.size) }]}
-      orderLabel={formatImageMoveLabel(imageOrder)}
-      previewDescription="ดูตัวอย่างรูปขนาดใหญ่"
-      previewLabel={`เปิดตัวอย่างรูปขนาดใหญ่ ${preview.file.name}`}
-      secondaryLabel={getImageZoneMeta(zone).label}
-      secondaryTitle={zone}
-      src={preview.src}
-    />
-  );
-}
-
-export function ImageZoneViewer({
-  action,
-  groups,
-  propertyId,
-  returnTo,
-  selectedZone,
-}: {
-  action: (formData: FormData) => void | Promise<void>;
+interface ImageZoneViewerProps {
+  bulkDeleteAction: (imageIds: number[]) => Promise<{
+    databaseFailed: Array<{ id: number; fileName: string | null; message: string }>;
+    deleted: Array<{ id: number; fileName: string | null }>;
+    skipped: Array<{ id: number; reason: string }>;
+    storageFailed: Array<{ id: number; fileName: string | null; message: string }>;
+  }>;
+  deleteAction: (imageId: number) => Promise<{
+    cleanupWarning: boolean;
+    deletedId: number;
+    fileName: string | null;
+  }>;
   groups: ImageZoneGroup[];
   propertyId: string;
   returnTo?: string;
   selectedZone?: string;
-}) {
-  const formRef = useRef<HTMLFormElement>(null);
+  uploadAction: (formData: FormData) => Promise<{ uploadedCount: number }>;
+}
+
+export function ImageZoneViewer({
+  groups,
+  propertyId,
+  returnTo,
+  selectedZone,
+  uploadAction,
+}: ImageZoneViewerProps) {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const activeZoneRef = useRef<HTMLAnchorElement>(null);
-  const previewsRef = useRef<DraftPreview[]>([]);
-  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
-  const [isDirty, setIsDirty] = useState(false);
-  const [previews, setPreviews] = useState<DraftPreview[]>([]);
+  const [isMutating, startMutationTransition] = useTransition();
   const sidebarGroups = groups.length > 0 ? groups : [fallbackGroup];
   const selectedGroup = getSelectedImageZoneGroup(sidebarGroups, selectedZone) ?? fallbackGroup;
-  const visibleImages = selectedGroup.images.filter((image) => !deletedImageIds.includes(String(image.id)));
+  const visibleImages = selectedGroup.images;
   const selectedMeta = getImageZoneMeta(selectedGroup.zone);
-  const maxMove = Math.max(0, ...selectedGroup.images.map((image) => image.image_move ?? 0));
-
-  useEffect(() => {
-    return () => {
-      for (const preview of previewsRef.current) {
-        URL.revokeObjectURL(preview.src);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const activeZone = activeZoneRef.current;
@@ -205,91 +169,36 @@ export function ImageZoneViewer({
     });
   }, [selectedGroup.zone]);
 
-  function syncInputFiles(files: File[]) {
-    if (!inputRef.current) return;
+  function uploadSelectedFiles(files: File[]) {
+    if (files.length === 0) return;
 
-    const transfer = new DataTransfer();
-    for (const file of files) transfer.items.add(file);
-    inputRef.current.files = transfer.files;
-  }
+    startMutationTransition(() => {
+      void (async () => {
+        const formData = new FormData();
+        formData.append("image_zone", selectedGroup.zone);
+        for (const file of files) {
+          formData.append("images", file);
+        }
 
-  function replacePreviews(files: File[], syncInput = false) {
-    for (const preview of previewsRef.current) {
-      URL.revokeObjectURL(preview.src);
-    }
-
-    const nextPreviews = files.map((file) => ({
-      file,
-      src: URL.createObjectURL(file),
-    }));
-    previewsRef.current = nextPreviews;
-    setPreviews(nextPreviews);
-    if (syncInput) syncInputFiles(files);
-  }
-
-  function appendPreviews(files: File[], syncInput = false) {
-    const newPreviews = files.map((file) => ({
-      file,
-      src: URL.createObjectURL(file),
-    }));
-    const nextPreviews = [...previewsRef.current, ...newPreviews];
-
-    previewsRef.current = nextPreviews;
-    setPreviews(nextPreviews);
-    if (syncInput) syncInputFiles(nextPreviews.map((preview) => preview.file));
-  }
-
-  function markDirty() {
-    setIsDirty(true);
-  }
-
-  function onFilesChange(event: ChangeEvent<HTMLInputElement>) {
-    markDirty();
-    appendPreviews(Array.from(event.currentTarget.files ?? []), true);
-  }
-
-  function removeDraftFile(indexToRemove: number) {
-    markDirty();
-    replacePreviews(
-      previewsRef.current.filter((_, index) => index !== indexToRemove).map((preview) => preview.file),
-      true,
-    );
-  }
-
-  function markImageDeleted(imageId: number) {
-    markDirty();
-    setDeletedImageIds((imageIds) => {
-      const value = String(imageId);
-      return imageIds.includes(value) ? imageIds : [...imageIds, value];
+        try {
+          const result = await uploadAction(formData);
+          toast.success(`อัปโหลดรูปแล้ว ${result.uploadedCount} รูป`);
+          router.refresh();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "อัปโหลดรูปไม่สำเร็จ");
+        } finally {
+          if (inputRef.current) inputRef.current.value = "";
+        }
+      })();
     });
   }
 
-  function resetDraft() {
-    formRef.current?.reset();
-    replacePreviews([], true);
-    setDeletedImageIds([]);
-    setIsDirty(false);
-  }
-
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    if (!isDirty) {
-      event.preventDefault();
-    }
+  function onFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    void uploadSelectedFiles(Array.from(event.currentTarget.files ?? []));
   }
 
   return (
-    <form
-      action={action}
-      className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-xl border bg-background lg:grid-cols-[220px_1fr] lg:grid-rows-1"
-      onSubmit={onSubmit}
-      ref={formRef}
-    >
-      <input name="image_zone" type="hidden" value={selectedGroup.zone} />
-      {returnTo ? <input name="return_to" type="hidden" value={returnTo} /> : null}
-      {deletedImageIds.map((imageId) => (
-        <input key={imageId} name="deleted_image_ids" type="hidden" value={imageId} />
-      ))}
-
+    <div className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-xl border bg-background lg:grid-cols-[220px_1fr] lg:grid-rows-1">
       <aside className="min-w-0 min-h-0 border-b bg-muted/20 lg:grid lg:grid-rows-[auto_minmax(0,1fr)] lg:border-b-0 lg:border-r">
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">Zones</h2>
@@ -351,24 +260,31 @@ export function ImageZoneViewer({
                 {selectedMeta.label}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {visibleImages.length + previews.length} รูป · Zone Order: {orderRangeLabel(selectedGroup)}
+                {visibleImages.length} รูป · Zone Order: {orderRangeLabel(selectedGroup)}
               </p>
             </div>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <Label
+              aria-disabled={isMutating}
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
                 "cursor-pointer text-foreground",
+                isMutating && "pointer-events-none opacity-50",
               )}
               htmlFor="house-images-upload"
             >
-              <UploadCloudIcon data-icon="inline-start" />
-              อัปโหลดรูป
+              {isMutating ? (
+                <Loader2Icon className="animate-spin" data-icon="inline-start" />
+              ) : (
+                <UploadCloudIcon data-icon="inline-start" />
+              )}
+              {isMutating ? "กำลังอัปโหลด" : "อัปโหลดรูป"}
             </Label>
             <input
               accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
               className="sr-only"
+              disabled={isMutating}
               id="house-images-upload"
               multiple
               name="images"
@@ -379,7 +295,7 @@ export function ImageZoneViewer({
           </div>
         </header>
 
-        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-3 p-2">
+        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] gap-3 p-2">
           <div className="min-h-0 overflow-y-auto overscroll-contain rounded-lg">
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
               {visibleImages.map((image, index) => {
@@ -391,7 +307,7 @@ export function ImageZoneViewer({
                       canDelete ? (
                         <Button
                           className="size-7 bg-background/90"
-                          onClick={() => markImageDeleted(image.id)}
+                          disabled
                           size="icon"
                           type="button"
                           variant="destructive"
@@ -408,44 +324,10 @@ export function ImageZoneViewer({
                   />
                 );
               })}
-
-              {previews.map((preview, index) => (
-                <DraftImageCard
-                  action={
-                    <Button
-                      className="size-7 bg-background/90"
-                      onClick={() => removeDraftFile(index)}
-                      size="icon"
-                      type="button"
-                      variant="destructive"
-                    >
-                      <Trash2Icon data-icon="inline-start" />
-                      <span className="sr-only">ลบรูป draft</span>
-                    </Button>
-                  }
-                  imageOrder={maxMove + index + 1}
-                  key={`${preview.file.name}-${preview.file.size}-${index}`}
-                  preview={preview}
-                  zone={selectedGroup.zone}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="border-t bg-background px-2 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:flex lg:justify-end">
-            <div className="flex gap-2 lg:w-auto">
-              <Button className="flex-1 lg:flex-none" disabled={!isDirty} onClick={resetDraft} type="button" variant="outline">
-                <XIcon data-icon="inline-start" />
-                ยกเลิก
-              </Button>
-              <Button className="flex-1 lg:flex-none" disabled={!isDirty} type="submit">
-                <SaveIcon data-icon="inline-start" />
-                บันทึกการเปลี่ยนแปลง
-              </Button>
             </div>
           </div>
         </div>
       </section>
-    </form>
+    </div>
   );
 }

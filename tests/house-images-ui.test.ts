@@ -58,13 +58,11 @@ describe("house image mobile UI", () => {
     );
     assert.match(
       source,
-      /className="grid min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)_auto\] gap-3 p-2"/,
+      /className="grid min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)\] gap-3 p-2"/,
     );
     assert.match(source, /className="min-h-0 overflow-y-auto overscroll-contain rounded-lg"/);
-    assert.match(
-      source,
-      /className="border-t bg-background px-2 pt-3 pb-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\] lg:flex lg:justify-end"/,
-    );
+    assert.doesNotMatch(source, /grid-rows-\[minmax\(0,1fr\)_auto\]/);
+    assert.doesNotMatch(source, /border-t bg-background px-2 pt-3/);
     assert.doesNotMatch(source, /sticky bottom-0/);
   });
 
@@ -73,12 +71,13 @@ describe("house image mobile UI", () => {
     assert.match(source, /buttonVariants\(\{ variant: "outline", size: "sm" \}\)/);
     assert.match(
       source,
-      /<p className="text-xs text-muted-foreground">\s*\{visibleImages\.length \+ previews\.length\} รูป · Zone Order: \{orderRangeLabel\(selectedGroup\)\}\s*<\/p>/,
+      /<p className="text-xs text-muted-foreground">\s*\{visibleImages\.length\} รูป · Zone Order: \{orderRangeLabel\(selectedGroup\)\}\s*<\/p>/,
     );
     assert.match(
       source,
       /<div className="ml-auto flex shrink-0 items-center gap-2">[\s\S]*<Label[\s\S]*htmlFor="house-images-upload"[\s\S]*<UploadCloudIcon[\s\S]*อัปโหลดรูป[\s\S]*<input[\s\S]*id="house-images-upload"[\s\S]*name="images"[\s\S]*type="file"[\s\S]*<\/div>/,
     );
+    assert.doesNotMatch(source, /visibleImages\.length \+ previews\.length/);
     assert.doesNotMatch(source, /<Badge variant="secondary">\{visibleImages\.length \+ previews\.length\} รูป<\/Badge>/);
     assert.doesNotMatch(source, /flex flex-wrap items-center gap-2 text-xs text-muted-foreground/);
     assert.doesNotMatch(source, /border border-dashed bg-muted\/20/);
@@ -140,6 +139,34 @@ describe("house image mobile UI", () => {
     assert.match(pageSource, /bulkDeleteAction=\{deleteHouseImagesAction\.bind\(null, propertyId\)\}/);
     assert.doesNotMatch(pageSource, /updateHouseImagesAction/);
     assert.doesNotMatch(pageSource, /action=\{updateHouseImagesAction\.bind\(null, propertyId\)\}/);
+  });
+
+  it("removes the staged save and draft preview flow", () => {
+    assert.doesNotMatch(source, /SaveIcon/);
+    assert.doesNotMatch(source, /DraftPreview/);
+    assert.doesNotMatch(source, /DraftImageCard/);
+    assert.doesNotMatch(source, /deletedImageIds/);
+    assert.doesNotMatch(source, /isDirty/);
+    assert.doesNotMatch(source, /resetDraft/);
+    assert.doesNotMatch(source, /name="deleted_image_ids"/);
+    assert.doesNotMatch(source, /function appendPreviews/);
+    assert.doesNotMatch(source, /URL\.createObjectURL/);
+    assert.doesNotMatch(source, /URL\.revokeObjectURL/);
+  });
+
+  it("uploads selected files immediately and refreshes the grid", () => {
+    assert.match(source, /import \{ toast \} from "sonner";/);
+    assert.match(source, /useRouter/);
+    assert.match(source, /const router = useRouter\(\);/);
+    assert.match(source, /uploadAction: \(formData: FormData\) => Promise<\{ uploadedCount: number \}>/);
+    assert.match(source, /function onFilesChange\(event: ChangeEvent<HTMLInputElement>\)/);
+    assert.match(source, /void uploadSelectedFiles\(Array\.from\(event\.currentTarget\.files \?\? \[\]\)\)/);
+    assert.match(source, /await uploadAction\(formData\)/);
+    assert.match(source, /formData\.append\("image_zone", selectedGroup\.zone\)/);
+    assert.match(source, /formData\.append\("images", file\)/);
+    assert.match(source, /toast\.success/);
+    assert.match(source, /toast\.error/);
+    assert.match(source, /router\.refresh\(\)/);
   });
 
   it("uses provider policy before showing existing image delete controls", () => {
