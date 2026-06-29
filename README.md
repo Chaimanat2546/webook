@@ -302,7 +302,7 @@ rm -rf .next .open-next
 npm run deploy
 ```
 
-GitHub Actions can deploy the admin app automatically from Ubuntu with `.github/workflows/deploy-admin.yml`. Add these repository secrets before enabling push deploys:
+GitHub Actions can deploy the admin app automatically from Ubuntu with `.github/workflows/deploy-admin.yml`. The job uses the `Cloudflare-Staging` environment, so add these environment secrets before enabling push deploys:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
