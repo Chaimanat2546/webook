@@ -16,7 +16,11 @@
 
 # next.js
 /.next/
+/.open-next/
 /out/
+
+# cloudflare local state
+/.wrangler/
 
 # production
 /build

@@ -12,6 +12,11 @@
 
 Admin UI -> Server Component / Server Action -> Server Service -> Repository / Storage Adapter -> Supabase / External API
 
+## Deployment
+
+The admin app deploys to Cloudflare Workers through OpenNext using the root `wrangler.jsonc`.
+The advertisement media Worker is separate and uses `workers/media/wrangler.jsonc`.
+
 ## MVP 1 Admin Image Flow
 
 Supabase Auth session is checked server-side in admin routes.
