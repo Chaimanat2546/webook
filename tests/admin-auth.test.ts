@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
   ADMIN_ROLE_ID,
   canAccessAdmin,
-  isAdminAuthBypassEnabled,
   pickAdminUser,
 } from "../server/auth/admin.ts";
 
@@ -36,27 +36,14 @@ describe("admin authorization", () => {
     assert.deepEqual(user, { id: 2, role_id: 1 });
   });
 
-  it("allows auth bypass only outside production", () => {
-    assert.equal(
-      isAdminAuthBypassEnabled({
-        ADMIN_AUTH_BYPASS: "true",
-        NODE_ENV: "development",
-      }),
-      true,
-    );
-    assert.equal(
-      isAdminAuthBypassEnabled({
-        ADMIN_AUTH_BYPASS: "true",
-        NODE_ENV: "production",
-      }),
-      false,
-    );
-    assert.equal(
-      isAdminAuthBypassEnabled({
-        ADMIN_AUTH_BYPASS: "false",
-        NODE_ENV: "development",
-      }),
-      false,
-    );
+  it("does not include a local auth override", () => {
+    const adminAuthSource = readFileSync(new URL("../server/auth/admin.ts", import.meta.url), "utf8");
+    const envFlag = ["ADMIN_AUTH", ["BY", "PASS"].join("")].join("_");
+    const fixtureId = ["dev", ["by", "pass"].join("")].join("-");
+    const helperName = ["isAdminAuth", "By", "passEnabled"].join("");
+
+    assert.doesNotMatch(adminAuthSource, new RegExp(envFlag));
+    assert.doesNotMatch(adminAuthSource, new RegExp(fixtureId));
+    assert.doesNotMatch(adminAuthSource, new RegExp(helperName));
   });
 });

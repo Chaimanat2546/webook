@@ -81,6 +81,14 @@ describe("admin layout sidebar UI", () => {
     assert.doesNotMatch(sidebarSource, /SidebarRail/);
   });
 
+  it("does not make the sidebar inset wider than the remaining viewport", () => {
+    const sidebarInsetBlock =
+      uiSidebarSource.match(/function SidebarInset[\s\S]*?function SidebarInput/)?.[0] ?? "";
+
+    assert.match(sidebarInsetBlock, /min-w-0/);
+    assert.doesNotMatch(sidebarInsetBlock, /\bw-full\b/);
+  });
+
   it("uses a mobile hamburger trigger and full-screen mobile drawer", () => {
     assert.match(uiSidebarSource, /MenuIcon/);
     assert.match(uiSidebarSource, /<MenuIcon className="md:hidden"/);

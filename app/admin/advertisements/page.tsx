@@ -1,0 +1,70 @@
+import Link from "next/link";
+
+import { AdvertisementList } from "../../../components/admin/advertisements/advertisement-list";
+import { Button } from "../../../components/ui/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "../../../components/ui/empty";
+import { Input } from "../../../components/ui/input";
+import { requireAdmin } from "../../../server/auth/admin";
+import { getAdvertisements } from "../../../server/repositories/advertisements";
+
+export default async function AdvertisementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const search = q?.trim() ?? "";
+  const { supabase } = await requireAdmin();
+  const advertisements = await getAdvertisements(supabase);
+  const visibleAdvertisements = search
+    ? advertisements.filter((advertisement) => {
+        const query = search.toLowerCase();
+        return (
+          advertisement.title.toLowerCase().includes(query) ||
+          advertisement.id.toLowerCase().includes(query)
+        );
+      })
+    : advertisements;
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">โฆษณา</h1>
+          <p className="text-sm font-medium text-muted-foreground">จัดการรูปภาพและสถานะโฆษณา</p>
+        </div>
+        <Button asChild className="w-full sm:w-auto">
+          <Link href="/admin/advertisements/new">สร้างโฆษณา</Link>
+        </Button>
+      </div>
+
+      <form className="mb-4">
+        <Input
+          className="md:max-w-sm"
+          defaultValue={search}
+          name="q"
+          placeholder="ค้นหาโฆษณา, ID..."
+          type="search"
+        />
+      </form>
+
+      {visibleAdvertisements.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>{search ? "ไม่พบโฆษณาที่ค้นหา" : "ยังไม่มีโฆษณา"}</EmptyTitle>
+            <EmptyDescription>
+              {search ? "ลองเปลี่ยนคำค้นหา" : "สร้างโฆษณาเพื่ออัปโหลดรูปภาพ"}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <AdvertisementList advertisements={visibleAdvertisements} />
+      )}
+    </div>
+  );
+}

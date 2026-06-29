@@ -16,12 +16,6 @@ export function canAccessAdmin(user: Pick<AdminUserForAuth, "role_id"> | null): 
   return user?.role_id === ADMIN_ROLE_ID;
 }
 
-export function isAdminAuthBypassEnabled(
-  env: { ADMIN_AUTH_BYPASS?: string; NODE_ENV?: string } = process.env,
-): boolean {
-  return env.NODE_ENV !== "production" && env.ADMIN_AUTH_BYPASS === "true";
-}
-
 export function pickAdminUser({
   byEmail,
   byUid,
@@ -36,18 +30,6 @@ export function pickAdminUser({
 export const requireAdmin = cache(async () => {
   const { createSupabaseServerClient } = await import("../../lib/supabase/server");
   const supabase = await createSupabaseServerClient();
-
-  if (isAdminAuthBypassEnabled()) {
-    return {
-      adminUser: { id: 0, role_id: ADMIN_ROLE_ID },
-      isAuthorized: true,
-      supabase,
-      user: {
-        email: "dev-bypass@example.local",
-        id: "dev-bypass",
-      },
-    };
-  }
 
   const [{ redirect }, { findAdminUserByAuthIdentity }] = await Promise.all([
     import("next/navigation"),
