@@ -53,6 +53,7 @@ describe("Cloudflare web deployment", () => {
     assert.match(workflow, /workflow_dispatch:/);
     assert.match(workflow, /branches:\s*\[\s*main\s*\]/);
     assert.match(workflow, /runs-on:\s*ubuntu-latest/);
+    assert.match(workflow, /environment:\s*Cloudflare-Staging/);
     assert.match(workflow, /node-version:\s*22/);
     assert.match(workflow, /npm ci/);
     assert.match(workflow, /npm run typecheck/);
