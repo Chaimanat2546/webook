@@ -2,7 +2,6 @@ import { awsImageHostname } from "../../lib/aws-image-url.ts";
 import { validateHouseImageObjectKey } from "../../lib/house-image-url.ts";
 import {
   buildManagedImageFileName,
-  isSupportedImageMimeType,
   validateManagedImageFileName,
   type ManagedImageNameOptions,
 } from "./image-file-names.ts";
@@ -53,6 +52,12 @@ export type HouseImageFileOperation = "create" | "delete" | "replace";
 export type HouseImageStorageProvider = "aws-s3" | "r2" | "unknown";
 
 const HOUSE_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const supportedHouseImageMimeTypes = new Set([
+  "image/avif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 const validImageZones = new Set(["cover", ...Object.keys(IMAGE_ZONE_META)]);
 
 const thaiDateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
@@ -151,7 +156,7 @@ export function isHouseImageFileOperationAllowed(
 }
 
 export function validateHouseImageFile(file: File): File {
-  if (!isSupportedImageMimeType(file.type)) throw new Error("Unsupported image type");
+  if (!supportedHouseImageMimeTypes.has(file.type)) throw new Error("Unsupported image type");
   if (file.size > HOUSE_MAX_IMAGE_BYTES) throw new Error("House image is too large");
   return file;
 }

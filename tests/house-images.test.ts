@@ -204,6 +204,10 @@ describe("house image mutation rules", () => {
       () => validateHouseImageFile(new File(["x"], "house.txt", { type: "text/plain" })),
       /Unsupported image type/,
     );
+    assert.throws(
+      () => validateHouseImageFile(new File(["gif"], "animated.gif", { type: "image/gif" })),
+      /Unsupported image type/,
+    );
     assert.throws(() => validateHouseImageZone("living_room"), /Invalid image zone/);
   });
 });
