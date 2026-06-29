@@ -75,10 +75,26 @@ describe("admin layout sidebar UI", () => {
       "utf8",
     );
 
-    assert.doesNotMatch(sidebarSource, /useSidebar/);
     assert.doesNotMatch(sidebarSource, /toggleSidebar/);
-    assert.doesNotMatch(sidebarSource, /<SidebarMenuButton[\s\S]*onClick=/);
+    assert.doesNotMatch(sidebarSource, /<SidebarMenuButton[^>]*onClick=/);
     assert.doesNotMatch(sidebarSource, /SidebarRail/);
+  });
+
+  it("closes the mobile drawer after a navigation menu link is selected", () => {
+    const sidebarSource = readFileSync(
+      new URL("../components/layout/admin-desktop-sidebar.tsx", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(sidebarSource, /useSidebar/);
+    assert.match(sidebarSource, /const \{ isMobile, setOpenMobile \} = useSidebar\(\);/);
+    assert.match(
+      sidebarSource,
+      /function closeMobileSidebar\(\) \{\s*if \(isMobile\) setOpenMobile\(false\);\s*\}/,
+    );
+    assert.match(sidebarSource, /<Link href="\/admin\/houses" onClick=\{closeMobileSidebar\}>/);
+    assert.match(sidebarSource, /<Link href="\/admin\/advertisements" onClick=\{closeMobileSidebar\}>/);
+    assert.doesNotMatch(sidebarSource, /toggleSidebar/);
   });
 
   it("does not make the sidebar inset wider than the remaining viewport", () => {

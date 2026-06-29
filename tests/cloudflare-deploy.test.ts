@@ -59,6 +59,8 @@ describe("Cloudflare web deployment", () => {
     assert.match(workflow, /npm run lint/);
     assert.match(workflow, /npm run test/);
     assert.match(workflow, /npm run deploy/);
+    assert.match(workflow, /name:\s*Verify deployment secrets/);
+    assert.match(workflow, /Missing GitHub secret: CLOUDFLARE_API_TOKEN/);
     assert.match(workflow, /CLOUDFLARE_API_TOKEN:\s*\$\{\{\s*secrets\.CLOUDFLARE_API_TOKEN\s*\}\}/);
     assert.doesNotMatch(workflow, /workers\/media\/wrangler\.jsonc/);
   });
