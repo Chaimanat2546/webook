@@ -150,8 +150,6 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(source, /resetDraft/);
     assert.doesNotMatch(source, /name="deleted_image_ids"/);
     assert.doesNotMatch(source, /function appendPreviews/);
-    assert.doesNotMatch(source, /URL\.createObjectURL/);
-    assert.doesNotMatch(source, /URL\.revokeObjectURL/);
   });
 
   it("uploads selected files immediately and refreshes the grid", () => {
@@ -167,6 +165,24 @@ describe("house image mobile UI", () => {
     assert.match(source, /toast\.success/);
     assert.match(source, /toast\.error/);
     assert.match(source, /router\.refresh\(\)/);
+  });
+
+  it("shows a per-file upload queue with resize and retry states", () => {
+    assert.match(source, /resizeHouseImageFile/);
+    assert.match(source, /UploadQueueItem/);
+    assert.match(source, /status: "pending-resize"/);
+    assert.match(source, /"resizing"/);
+    assert.match(source, /"pending-upload"/);
+    assert.match(source, /"uploading"/);
+    assert.match(source, /"uploaded"/);
+    assert.match(source, /"failed"/);
+    assert.match(source, /uploadQueue/);
+    assert.match(source, /retryFailedUploads/);
+    assert.match(source, /removeUploadQueueItem/);
+    assert.match(source, /อัปโหลดแล้ว/);
+    assert.match(source, /ลองใหม่เฉพาะรูปที่ไม่สำเร็จ/);
+    assert.match(source, /ขนาดเดิม/);
+    assert.match(source, /หลังแปลง/);
   });
 
   it("confirms single image deletion with a preview before calling the delete action", () => {

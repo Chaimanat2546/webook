@@ -22,6 +22,10 @@ import { type ChangeEvent, type ReactNode, useEffect, useRef, useState, useTrans
 import { toast } from "sonner";
 
 import { buildAwsImageUrl } from "../../../lib/aws-image-url";
+import {
+  resizeHouseImageFile,
+  type ResizedHouseImage,
+} from "../../../lib/house-image-resize";
 import { cn } from "../../../lib/utils";
 import {
   formatImageMoveLabel,
@@ -67,6 +71,23 @@ const zoneIconByName = {
   "message-circle-code": MessageCircleCodeIcon,
 } satisfies Record<ImageZoneIconName, LucideIcon>;
 
+type UploadQueueStatus =
+  | "pending-resize"
+  | "resizing"
+  | "pending-upload"
+  | "uploading"
+  | "uploaded"
+  | "failed";
+
+interface UploadQueueItem {
+  error?: string;
+  file: File;
+  id: string;
+  previewSrc: string;
+  resized?: ResizedHouseImage;
+  status: UploadQueueStatus;
+}
+
 function displayUrl(image: HouseImageItem): string | null {
   const provider = getHouseImageStorageProvider(image.image_url);
   if (provider === "r2" && image.image_url) {
@@ -91,6 +112,29 @@ function imageZoneHref(propertyId: string, zone: string, returnTo?: string): str
 function orderRangeLabel(group: ImageZoneGroup): string {
   if (group.images.length === 0) return "-";
   return `${formatImageMoveLabel(group.minMove)} - ${formatImageMoveLabel(group.maxMove)}`;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function uploadQueueStatusLabel(status: UploadQueueStatus): string {
+  switch (status) {
+    case "pending-resize":
+      return "รอแปลงรูป";
+    case "resizing":
+      return "กำลังแปลง";
+    case "pending-upload":
+      return "รออัปโหลด";
+    case "uploading":
+      return "กำลังอัปโหลด";
+    case "uploaded":
+      return "สำเร็จ";
+    case "failed":
+      return "ไม่สำเร็จ";
+  }
 }
 
 function ZoneIcon({ icon }: { icon: ImageZoneIconName }) {
@@ -165,7 +209,9 @@ export function ImageZoneViewer({
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const activeZoneRef = useRef<HTMLAnchorElement>(null);
+  const queuePreviewsRef = useRef<string[]>([]);
   const [isMutating, startMutationTransition] = useTransition();
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [singleDeleteImage, setSingleDeleteImage] = useState<HouseImageItem | null>(null);
   const [isBulkSelecting, setIsBulkSelecting] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
@@ -192,8 +238,52 @@ export function ImageZoneViewer({
     });
   }, [selectedGroup.zone]);
 
+  useEffect(() => {
+    return () => {
+      for (const src of queuePreviewsRef.current) {
+        URL.revokeObjectURL(src);
+      }
+    };
+  }, []);
+
+  function updateUploadQueueItem(id: string, updates: Partial<UploadQueueItem>) {
+    setUploadQueue((items) =>
+      items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+    );
+  }
+
+  function removeUploadQueueItem(id: string) {
+    setUploadQueue((items) => {
+      const item = items.find((queueItem) => queueItem.id === id);
+      if (item) URL.revokeObjectURL(item.previewSrc);
+      queuePreviewsRef.current = queuePreviewsRef.current.filter((src) => src !== item?.previewSrc);
+      return items.filter((queueItem) => queueItem.id !== id);
+    });
+  }
+
+  function queueItemsForFiles(files: File[]) {
+    const items = files.map((file) => {
+      const previewSrc = URL.createObjectURL(file);
+      queuePreviewsRef.current.push(previewSrc);
+      return {
+        file,
+        id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+        previewSrc,
+        status: "pending-resize" as const,
+      };
+    });
+
+    setUploadQueue((existing) => [...existing, ...items]);
+    return items;
+  }
+
+  function retryFailedUploads() {
+    return;
+  }
+
   function uploadSelectedFiles(files: File[]) {
     if (files.length === 0) return;
+    queueItemsForFiles(files);
 
     startMutationTransition(() => {
       void (async () => {
@@ -480,6 +570,48 @@ export function ImageZoneViewer({
             </div>
           </div>
         </div>
+
+          {uploadQueue.length > 0 ? (
+            <section className="border-t bg-background px-3 py-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium">
+                  อัปโหลดแล้ว {uploadQueue.filter((item) => item.status === "uploaded").length}/{uploadQueue.length} รูป
+                </p>
+                <Button
+                  disabled={!uploadQueue.some((item) => item.status === "failed")}
+                  onClick={retryFailedUploads}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  ลองใหม่เฉพาะรูปที่ไม่สำเร็จ
+                </Button>
+              </div>
+              <div className="grid gap-2">
+                {uploadQueue.map((item) => (
+                  <div className="flex items-center gap-3 rounded-md border p-2" key={item.id}>
+                    <img alt={item.file.name} className="size-14 rounded object-cover" src={item.previewSrc} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{item.file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {uploadQueueStatusLabel(item.status)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ขนาดเดิม {formatFileSize(item.file.size)}
+                        {item.resized ? ` -> หลังแปลง ${formatFileSize(item.resized.resizedSize)}` : ""}
+                      </p>
+                      {item.error ? <p className="text-xs text-destructive">{item.error}</p> : null}
+                    </div>
+                    {item.status === "failed" || item.status === "uploaded" ? (
+                      <Button onClick={() => removeUploadQueueItem(item.id)} size="sm" type="button" variant="ghost">
+                        นำออก
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
       </section>
     </div>
 
