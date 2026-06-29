@@ -20,4 +20,13 @@ describe("house list table UI", () => {
     assert.match(source, /export function HouseList\(\{ houses, returnTo \}/);
     assert.match(source, /href=\{imageHref\(house\.property_id, returnTo\)\}/);
   });
+
+  it("uses Thai display helpers for zone and status values", () => {
+    assert.match(source, /formatHouseActiveStatus/);
+    assert.match(source, /formatHouseZone/);
+    assert.match(source, /formatHouseActiveStatus\(active\)/);
+    assert.match(source, /formatHouseZone\(house\.location_zone\)/);
+    assert.doesNotMatch(source, />Active</);
+    assert.doesNotMatch(source, />Inactive</);
+  });
 });

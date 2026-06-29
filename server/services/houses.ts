@@ -9,6 +9,32 @@ export interface HouseListItem {
   title: string | null;
 }
 
+const HOUSE_ZONE_LABELS_TH: Record<string, string> = {
+  bang_saray: "บางเสร่",
+  bang_saen: "บางแสน",
+  bangkok: "กรุงเทพ",
+  bangsaray: "บางเสร่",
+  bangsean: "บางแสน",
+  hua_hin: "หัวหิน",
+  huahin: "หัวหิน",
+  jomtien: "จอมเทียน",
+  khaoyai: "เขาใหญ่",
+  pattaya: "พัทยา",
+  rayong: "ระยอง",
+  sattahip: "สัตหีบ",
+};
+
+export function formatHouseZone(zone: string | null | undefined): string {
+  const trimmed = zone?.trim();
+  if (!trimmed) return "-";
+
+  return HOUSE_ZONE_LABELS_TH[trimmed.toLowerCase()] ?? trimmed;
+}
+
+export function formatHouseActiveStatus(active: boolean | null | undefined): string {
+  return active === true ? "ใช้งานอยู่" : "ปิดใช้งาน";
+}
+
 export function normalizeHouseSearch(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? value[0] : value ?? "").trim();
 }
@@ -52,4 +78,23 @@ export function toListingSearchPattern(value: string): string {
     .replace(/%/g, "\\%")
     .replace(/_/g, "\\_")
     .trim();
+}
+
+export function toListingPropertyIdSearchValue(value: string): string | null {
+  const match = /^(?:dv\s*-\s*)?(\d+)$/i.exec(normalizeHouseSearch(value));
+  if (!match) return null;
+
+  const propertyId = match[1].replace(/^0+(?=\d)/, "");
+  return /^0+$/.test(propertyId) ? null : propertyId;
+}
+
+export function toListingSearchFilter(value: string): string {
+  const pattern = toListingSearchPattern(value);
+  if (!pattern) return "";
+
+  const filters = [`title.ilike.%${pattern}%`, `location_zone.ilike.%${pattern}%`];
+  const propertyId = toListingPropertyIdSearchValue(value);
+  if (propertyId) filters.push(`property_id.eq.${propertyId}`);
+
+  return filters.join(",");
 }

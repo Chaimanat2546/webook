@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getPageRange, toListingSearchPattern } from "../services/houses";
+import { getPageRange, toListingSearchFilter } from "../services/houses";
 
 export async function getPaginatedListings(
   supabase: SupabaseClient,
@@ -13,7 +13,7 @@ export async function getPaginatedListings(
   },
 ) {
   const { from, to } = getPageRange(page);
-  const pattern = toListingSearchPattern(search);
+  const searchFilter = toListingSearchFilter(search);
   let query = supabase
     .from("listings")
     .select("property_id,title,bedrooms,bathrooms,location_zone,is_active", {
@@ -23,10 +23,8 @@ export async function getPaginatedListings(
     .order("property_id", { ascending: true })
     .range(from, to);
 
-  if (pattern) {
-    query = query.or(
-      `title.ilike.%${pattern}%,property_id.ilike.%${pattern}%,location_zone.ilike.%${pattern}%`,
-    );
+  if (searchFilter) {
+    query = query.or(searchFilter);
   }
 
   const { count, data, error } = await query;

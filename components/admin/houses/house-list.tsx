@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-import type { HouseListItem } from "../../../server/services/houses";
+import {
+  formatHouseActiveStatus,
+  formatHouseZone,
+  type HouseListItem,
+} from "../../../server/services/houses";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
@@ -14,7 +18,7 @@ import {
 } from "../../ui/table";
 
 function StatusBadge({ active }: { active: boolean | null }) {
-  return <Badge variant={active ? "default" : "secondary"}>{active ? "Active" : "Inactive"}</Badge>;
+  return <Badge variant={active ? "default" : "secondary"}>{formatHouseActiveStatus(active)}</Badge>;
 }
 
 function imageHref(propertyId: string, returnTo: string) {
@@ -48,7 +52,9 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                 </div>
                 <div>
                   <dt>โซน</dt>
-                  <dd className="font-medium text-foreground">{house.location_zone || "-"}</dd>
+                  <dd className="font-medium text-foreground">
+                    {formatHouseZone(house.location_zone)}
+                  </dd>
                 </div>
               </dl>
               <Button asChild className="w-full">
@@ -79,7 +85,9 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                 <TableCell className="font-mono text-xs">DV-{house.property_id}</TableCell>
                 <TableCell className="text-muted-foreground">{house.bedrooms ?? "-"}</TableCell>
                 <TableCell className="text-muted-foreground">{house.bathrooms ?? "-"}</TableCell>
-                <TableCell className="text-muted-foreground">{house.location_zone || "-"}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatHouseZone(house.location_zone)}
+                </TableCell>
                 <TableCell>
                   <StatusBadge active={house.is_active} />
                 </TableCell>

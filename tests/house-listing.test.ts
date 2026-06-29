@@ -3,10 +3,14 @@ import { describe, it } from "node:test";
 
 import {
   HOUSE_PAGE_SIZE,
+  formatHouseActiveStatus,
+  formatHouseZone,
   getPaginationItems,
   getPageRange,
   normalizeHouseSearch,
   sortActiveFirst,
+  toListingPropertyIdSearchValue,
+  toListingSearchFilter,
   toListingSearchPattern,
 } from "../server/services/houses.ts";
 
@@ -32,6 +36,24 @@ describe("house listing rules", () => {
     assert.equal(toListingSearchPattern("A),id.eq.1"), "A id.eq.1");
   });
 
+  it("extracts property ids from DV-prefixed search text case-insensitively", () => {
+    assert.equal(toListingPropertyIdSearchValue("DV-181"), "181");
+    assert.equal(toListingPropertyIdSearchValue("dv-181"), "181");
+    assert.equal(toListingPropertyIdSearchValue("dV-181"), "181");
+    assert.equal(toListingPropertyIdSearchValue("Dv-181"), "181");
+    assert.equal(toListingPropertyIdSearchValue("181"), "181");
+    assert.equal(toListingPropertyIdSearchValue("DV-pool"), null);
+  });
+
+  it("builds listing search filters without applying ilike to property_id", () => {
+    const filter = toListingSearchFilter("DV-181");
+
+    assert.match(filter, /title\.ilike\.%DV-181%/);
+    assert.match(filter, /location_zone\.ilike\.%DV-181%/);
+    assert.match(filter, /property_id\.eq\.181/);
+    assert.doesNotMatch(filter, /property_id\.ilike/);
+  });
+
   it("sorts active houses first without losing inactive houses", () => {
     const houses = [
       { is_active: false, property_id: "B" },
@@ -44,6 +66,37 @@ describe("house listing rules", () => {
       "B",
       "C",
     ]);
+  });
+
+  it("formats house zones with Thai labels and keeps unknown zones readable", () => {
+    const zoneLabels = {
+      bang_saen: "บางแสน",
+      bang_saray: "บางเสร่",
+      bangkok: "กรุงเทพ",
+      bangsaray: "บางเสร่",
+      bangsean: "บางแสน",
+      hua_hin: "หัวหิน",
+      huahin: "หัวหิน",
+      jomtien: "จอมเทียน",
+      khaoyai: "เขาใหญ่",
+      pattaya: "พัทยา",
+      rayong: "ระยอง",
+      sattahip: "สัตหีบ",
+    };
+
+    for (const [zone, label] of Object.entries(zoneLabels)) {
+      assert.equal(formatHouseZone(zone), label);
+    }
+
+    assert.equal(formatHouseZone("BANGSEAN"), "บางแสน");
+    assert.equal(formatHouseZone("unknown-zone"), "unknown-zone");
+    assert.equal(formatHouseZone(null), "-");
+  });
+
+  it("formats active status in Thai", () => {
+    assert.equal(formatHouseActiveStatus(true), "ใช้งานอยู่");
+    assert.equal(formatHouseActiveStatus(false), "ปิดใช้งาน");
+    assert.equal(formatHouseActiveStatus(null), "ปิดใช้งาน");
   });
 
   it("collapses long pagination with ellipsis around the current page", () => {

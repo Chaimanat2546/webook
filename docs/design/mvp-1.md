@@ -45,6 +45,11 @@ Show:
 
 `id` may exist internally but does not need to be visible.
 
+Display rules:
+
+- `location_zone` is shown as a Thai label for approved zone aliases: `bangkok`, `bangsaray`, `bang_saray`, `bangsean`, `bang_saen`, `hua_hin`, `huahin`, `jomtien`, `khaoyai`, `pattaya`, `rayong`, and `sattahip`; unknown values fall back to the stored value.
+- `is_active = true` is shown as `ใช้งานอยู่`; `is_active = false` or missing is shown as `ปิดใช้งาน`.
+
 ### Search
 
 Search input placeholder:
