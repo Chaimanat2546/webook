@@ -28,6 +28,11 @@ describe("house image actions", () => {
     assert.doesNotMatch(actionsSource, /LEGACY_SYSTEM_IMAGE_CREATE_BY/);
     assert.match(actionsSource, /insertHouseImages/);
     assert.match(actionsSource, /deleteHouseImageById/);
+    assert.match(repositorySource, /const houseImageSelect =/);
+    assert.match(repositorySource, /export async function getHouseImageById/);
+    assert.match(repositorySource, /\.from\("images"\)[\s\S]*\.select\(houseImageSelect\)[\s\S]*\.eq\("id", id\)[\s\S]*\.maybeSingle\(\)/);
+    assert.match(repositorySource, /export async function getHouseImagesByIds/);
+    assert.match(repositorySource, /\.from\("images"\)[\s\S]*\.select\(houseImageSelect\)[\s\S]*\.in\("id", ids\)/);
     assert.match(repositorySource, /export async function insertHouseImages/);
     assert.match(repositorySource, /export async function deleteHouseImageById/);
   });

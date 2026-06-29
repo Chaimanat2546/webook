@@ -11,12 +11,44 @@ export interface HouseImageInsert {
   updated_at: string;
 }
 
+const houseImageSelect =
+  "id,property_id,image_name,image_url,image_zone,image_move,created_at,updated_at";
+
 export async function getImagesByPropertyId(supabase: SupabaseClient, propertyId: string) {
   const { data, error } = await supabase
     .from("images")
-    .select("id,property_id,image_name,image_url,image_zone,image_move,created_at,updated_at")
+    .select(houseImageSelect)
     .eq("property_id", propertyId)
     .order("image_move", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
+export async function getHouseImageById(supabase: SupabaseClient, id: number) {
+  const { data, error } = await supabase
+    .from("images")
+    .select(houseImageSelect)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+export async function getHouseImagesByIds(supabase: SupabaseClient, ids: number[]) {
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("images")
+    .select(houseImageSelect)
+    .in("id", ids);
 
   if (error) {
     throw new Error(error.message);
