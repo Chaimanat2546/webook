@@ -75,7 +75,7 @@ describe("house image mobile UI", () => {
     );
     assert.match(
       source,
-      /<div className="ml-auto flex shrink-0 items-center gap-2">[\s\S]*<Label[\s\S]*htmlFor="house-images-upload"[\s\S]*<UploadCloudIcon[\s\S]*อัปโหลดรูป[\s\S]*<input[\s\S]*id="house-images-upload"[\s\S]*name="images"[\s\S]*type="file"[\s\S]*<\/div>/,
+      /<div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">[\s\S]*<Label[\s\S]*htmlFor="house-images-upload"[\s\S]*<UploadCloudIcon[\s\S]*<input[\s\S]*id="house-images-upload"[\s\S]*name="images"[\s\S]*type="file"[\s\S]*<\/div>/,
     );
     assert.doesNotMatch(source, /visibleImages\.length \+ previews\.length/);
     assert.doesNotMatch(source, /<Badge variant="secondary">\{visibleImages\.length \+ previews\.length\} รูป<\/Badge>/);
@@ -179,6 +179,25 @@ describe("house image mobile UI", () => {
     assert.match(source, /cleanupWarning/);
     assert.match(source, /toast\.warning/);
     assert.match(source, /router\.refresh\(\)/);
+  });
+
+  it("bulk deletes selected images from the current zone only after confirmation", () => {
+    assert.match(source, /isBulkSelecting/);
+    assert.match(source, /selectedBulkDeleteIds/);
+    assert.match(
+      source,
+      /const deletableImages = visibleImages\.filter\(\(image\) =>\s*isHouseImageFileOperationAllowed\(image\.image_url, "delete"\),\s*\);/,
+    );
+    assert.match(source, /function toggleSelectAllInCurrentZone\(checked: boolean\)/);
+    assert.match(source, /new Set\(deletableImages\.map\(\(image\) => image\.id\)\)/);
+    assert.match(source, /function toggleBulkDeleteImage\(imageId: number, checked: boolean\)/);
+    assert.match(source, /const selectedBulkDeleteIdsArray = selectedBulkDeleteImages\.map\(\(image\) => image\.id\);/);
+    assert.match(source, /bulkDeleteAction\(selectedBulkDeleteIdsArray\)/);
+    assert.match(source, /checked=\{allCurrentZoneImagesSelected\}/);
+    assert.match(source, /checked=\{selectedBulkDeleteIds\.has\(image\.id\)\}/);
+    assert.match(source, /ยืนยันลบรูปที่เลือก/);
+    assert.match(source, /selectedBulkDeleteImages\.map/);
+    assert.match(source, /setSelectedBulkDeleteIds\(new Set\(\)\)/);
   });
 
   it("uses provider policy before showing existing image delete controls", () => {

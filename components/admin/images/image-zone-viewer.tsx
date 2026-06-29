@@ -152,6 +152,7 @@ interface ImageZoneViewerProps {
 }
 
 export function ImageZoneViewer({
+  bulkDeleteAction,
   deleteAction,
   groups,
   propertyId,
@@ -164,9 +165,18 @@ export function ImageZoneViewer({
   const activeZoneRef = useRef<HTMLAnchorElement>(null);
   const [isMutating, startMutationTransition] = useTransition();
   const [singleDeleteImage, setSingleDeleteImage] = useState<HouseImageItem | null>(null);
+  const [isBulkSelecting, setIsBulkSelecting] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [selectedBulkDeleteIds, setSelectedBulkDeleteIds] = useState<Set<number>>(new Set());
   const sidebarGroups = groups.length > 0 ? groups : [fallbackGroup];
   const selectedGroup = getSelectedImageZoneGroup(sidebarGroups, selectedZone) ?? fallbackGroup;
   const visibleImages = selectedGroup.images;
+  const deletableImages = visibleImages.filter((image) =>
+    isHouseImageFileOperationAllowed(image.image_url, "delete"),
+  );
+  const selectedBulkDeleteImages = deletableImages.filter((image) => selectedBulkDeleteIds.has(image.id));
+  const allCurrentZoneImagesSelected =
+    deletableImages.length > 0 && selectedBulkDeleteImages.length === deletableImages.length;
   const selectedMeta = getImageZoneMeta(selectedGroup.zone);
 
   useEffect(() => {
@@ -178,6 +188,13 @@ export function ImageZoneViewer({
       block: "nearest",
       inline: "start",
     });
+  }, [selectedGroup.zone]);
+
+  useEffect(() => {
+    setIsBulkSelecting(false);
+    setIsBulkDeleteDialogOpen(false);
+    setSingleDeleteImage(null);
+    setSelectedBulkDeleteIds(new Set());
   }, [selectedGroup.zone]);
 
   function uploadSelectedFiles(files: File[]) {
@@ -224,6 +241,53 @@ export function ImageZoneViewer({
           router.refresh();
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "ลบรูปไม่สำเร็จ");
+        }
+      })();
+    });
+  }
+
+  function clearBulkDeleteSelection() {
+    setIsBulkSelecting(false);
+    setIsBulkDeleteDialogOpen(false);
+    setSelectedBulkDeleteIds(new Set());
+  }
+
+  function toggleSelectAllInCurrentZone(checked: boolean) {
+    setSelectedBulkDeleteIds(checked ? new Set(deletableImages.map((image) => image.id)) : new Set());
+  }
+
+  function toggleBulkDeleteImage(imageId: number, checked: boolean) {
+    setSelectedBulkDeleteIds((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(imageId);
+      } else {
+        next.delete(imageId);
+      }
+      return next;
+    });
+  }
+
+  function confirmBulkDelete() {
+    const selectedBulkDeleteIdsArray = selectedBulkDeleteImages.map((image) => image.id);
+    if (selectedBulkDeleteIdsArray.length === 0) return;
+
+    startMutationTransition(() => {
+      void (async () => {
+        try {
+          const result = await bulkDeleteAction(selectedBulkDeleteIdsArray);
+          const failedCount = result.databaseFailed.length + result.skipped.length + result.storageFailed.length;
+
+          if (failedCount > 0) {
+            toast.warning(`ลบรูปแล้ว ${result.deleted.length} รูป แต่มี ${failedCount} รายการที่ลบไม่ครบ`);
+          } else {
+            toast.success(`ลบรูปแล้ว ${result.deleted.length} รูป`);
+          }
+
+          clearBulkDeleteSelection();
+          router.refresh();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "ลบรูปที่เลือกไม่สำเร็จ");
         }
       })();
     });
@@ -297,34 +361,75 @@ export function ImageZoneViewer({
               </p>
             </div>
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <Label
-              aria-disabled={isMutating}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "cursor-pointer text-foreground",
-                isMutating && "pointer-events-none opacity-50",
-              )}
-              htmlFor="house-images-upload"
-            >
-              {isMutating ? (
-                <Loader2Icon className="animate-spin" data-icon="inline-start" />
-              ) : (
-                <UploadCloudIcon data-icon="inline-start" />
-              )}
-              {isMutating ? "กำลังอัปโหลด" : "อัปโหลดรูป"}
-            </Label>
-            <input
-              accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
-              className="sr-only"
-              disabled={isMutating}
-              id="house-images-upload"
-              multiple
-              name="images"
-              onChange={onFilesChange}
-              ref={inputRef}
-              type="file"
-            />
+          <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {isBulkSelecting ? (
+              <>
+                <label className="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-xs font-medium">
+                  <input
+                    aria-label="เลือกทั้งหมดในโซนปัจจุบัน"
+                    checked={allCurrentZoneImagesSelected}
+                    className="size-4 accent-primary"
+                    disabled={deletableImages.length === 0 || isMutating}
+                    onChange={(event) => toggleSelectAllInCurrentZone(event.currentTarget.checked)}
+                    type="checkbox"
+                  />
+                  เลือกทั้งหมด
+                </label>
+                <Button
+                  disabled={selectedBulkDeleteImages.length === 0 || isMutating}
+                  onClick={() => setIsBulkDeleteDialogOpen(true)}
+                  size="sm"
+                  type="button"
+                  variant="destructive"
+                >
+                  <Trash2Icon data-icon="inline-start" />
+                  ลบที่เลือก ({selectedBulkDeleteImages.length})
+                </Button>
+                <Button disabled={isMutating} onClick={clearBulkDeleteSelection} size="sm" type="button" variant="outline">
+                  ยกเลิก
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  disabled={deletableImages.length === 0 || isMutating}
+                  onClick={() => setIsBulkSelecting(true)}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <Trash2Icon data-icon="inline-start" />
+                  เลือกลบ
+                </Button>
+                <Label
+                  aria-disabled={isMutating}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "cursor-pointer text-foreground",
+                    isMutating && "pointer-events-none opacity-50",
+                  )}
+                  htmlFor="house-images-upload"
+                >
+                  {isMutating ? (
+                    <Loader2Icon className="animate-spin" data-icon="inline-start" />
+                  ) : (
+                    <UploadCloudIcon data-icon="inline-start" />
+                  )}
+                  {isMutating ? "กำลังอัปโหลด" : "อัปโหลดรูป"}
+                </Label>
+                <input
+                  accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  disabled={isMutating}
+                  id="house-images-upload"
+                  multiple
+                  name="images"
+                  onChange={onFilesChange}
+                  ref={inputRef}
+                  type="file"
+                />
+              </>
+            )}
           </div>
         </header>
 
@@ -333,23 +438,41 @@ export function ImageZoneViewer({
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
               {visibleImages.map((image, index) => {
                 const canDelete = isHouseImageFileOperationAllowed(image.image_url, "delete");
+                const action = canDelete ? (
+                  isBulkSelecting ? (
+                    <label
+                      className={cn(
+                        "flex size-7 cursor-pointer items-center justify-center rounded-md border bg-background/95 shadow-sm",
+                        selectedBulkDeleteIds.has(image.id) && "border-primary bg-primary text-primary-foreground",
+                      )}
+                      title="เลือกรูปนี้"
+                    >
+                      <input
+                        aria-label={`เลือกรูป ${image.image_name ?? image.id}`}
+                        checked={selectedBulkDeleteIds.has(image.id)}
+                        className="size-4 accent-primary"
+                        disabled={isMutating}
+                        onChange={(event) => toggleBulkDeleteImage(image.id, event.currentTarget.checked)}
+                        type="checkbox"
+                      />
+                    </label>
+                  ) : (
+                    <Button
+                      className="size-7 bg-background/90"
+                      onClick={() => setSingleDeleteImage(image)}
+                      size="icon"
+                      type="button"
+                      variant="destructive"
+                    >
+                      <Trash2Icon data-icon="inline-start" />
+                      <span className="sr-only">ลบรูป</span>
+                    </Button>
+                  )
+                ) : undefined;
 
                 return (
                   <ImageCard
-                    action={
-                      canDelete ? (
-                        <Button
-                          className="size-7 bg-background/90"
-                          onClick={() => setSingleDeleteImage(image)}
-                          size="icon"
-                          type="button"
-                          variant="destructive"
-                        >
-                          <Trash2Icon data-icon="inline-start" />
-                          <span className="sr-only">ลบรูป</span>
-                        </Button>
-                      ) : undefined
-                    }
+                    action={action}
                     image={image}
                     key={image.id}
                     priority={index === 0}
@@ -398,6 +521,54 @@ export function ImageZoneViewer({
             <Button disabled={isMutating} onClick={confirmSingleDelete} type="button" variant="destructive">
               <Trash2Icon data-icon="inline-start" />
               ลบรูปนี้
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันลบรูปที่เลือก</DialogTitle>
+            <DialogDescription>
+              ลบเฉพาะรูปที่เลือกในโซน {selectedMeta.label} จำนวน {selectedBulkDeleteImages.length} รูป
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid max-h-80 gap-2 overflow-y-auto pr-1">
+            {selectedBulkDeleteImages.map((image) => (
+              <div className="grid grid-cols-[4rem_1fr] items-center gap-3 rounded-md border p-2" key={image.id}>
+                <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded bg-muted">
+                  {displayUrl(image) ? (
+                    <img
+                      alt={image.image_name ?? "house image"}
+                      className="h-full w-full object-cover"
+                      src={displayUrl(image) ?? undefined}
+                    />
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">แสดงรูปไม่ได้</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-xs font-medium">{image.image_name ?? "-"}</p>
+                  <p className="text-xs text-muted-foreground">Order {formatImageMoveLabel(image.image_move)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                ยกเลิก
+              </Button>
+            </DialogClose>
+            <Button
+              disabled={isMutating || selectedBulkDeleteImages.length === 0}
+              onClick={confirmBulkDelete}
+              type="button"
+              variant="destructive"
+            >
+              <Trash2Icon data-icon="inline-start" />
+              ยืนยันลบ
             </Button>
           </DialogFooter>
         </DialogContent>
