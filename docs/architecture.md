@@ -27,6 +27,11 @@ Image display URLs are built from `image_name` using the approved Lambda host, w
 The image page uses the `zone` query parameter to select one image category at a time; missing or unknown zones fall back to the first grouped zone.
 Known image zones are mapped to Thai display labels and Lucide icon names in `server/services/images.ts`; unknown zones keep their raw label and use the fallback image icon.
 
+House image storage has two provider classes:
+
+- Legacy AWS/S3-backed images are valid for display through the existing Lambda URL path, but physical file mutation is delete-only.
+- Cloudflare R2 is the only writable storage for new or replaced house image files; create, replace/edit, and delete operations must go through server-side adapters.
+
 ## Advertisement Media Flow
 
 Admin pages write advertisement metadata through server actions and Supabase repositories.
@@ -39,6 +44,7 @@ External systems read active advertisements through Supabase API and build image
 - Client components should not access private credentials.
 - Route handlers should validate input before calling services.
 - Storage provider details should stay behind adapter modules.
+- House image file operations must route by trusted provider/source metadata and reject unsupported mutations instead of falling back to another provider.
 - Implementation choices should favor maintainability, reuse, security, and performance over the shortest local patch.
 - New dependencies are acceptable when they make the implementation safer, simpler, or easier to maintain. Agents must explain the reason and ask before installing them.
 - UI flow and screen structure must be confirmed with the user step by step before implementation, unless an approved design already exists.

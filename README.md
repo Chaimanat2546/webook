@@ -16,7 +16,13 @@ Access is limited to Administrator users (`public.users.role_id = 1`).
 - Tailwind CSS
 - shadcn/ui
 - Supabase
-- Cloudflare Workers / R2 for advertisement image files
+- Cloudflare Workers / R2 for advertisement image files and new managed house image files
+
+## House Image Storage Policy
+
+- Existing imported house images may continue to display through the current AWS/S3-backed image source.
+- New or replaced house image files must be managed in Cloudflare R2 through server-side code.
+- AWS/S3-backed house images are delete-only. Do not upload, replace, or edit physical house image files in AWS/S3.
 
 ## Supabase Feature Workflow
 
