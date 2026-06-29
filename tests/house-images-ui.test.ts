@@ -26,7 +26,7 @@ describe("house image mobile UI", () => {
   it("bounds the mobile zones scroller and keeps image cards compact", () => {
     assert.match(source, /grid min-w-0 overflow-hidden/);
     assert.match(source, /aside className="min-w-0/);
-    assert.match(source, /<ScrollArea className="w-full min-w-0"/);
+    assert.match(source, /<ScrollArea className="w-full min-w-0(?: [^"]*)?"/);
     assert.match(source, /<nav\s+className="flex w-max min-w-full/);
     assert.match(source, /grid grid-cols-\[repeat\(auto-fill,minmax\(9rem,9rem\)\)\]/);
     assert.match(source, /items-start justify-center gap-3 p-3/);
@@ -42,10 +42,64 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(loadingSource, /h-40 rounded-lg/);
   });
 
+  it("keeps the image manager bounded and scrolls only the image grid", () => {
+    assert.match(pageSource, /className="flex h-\[calc\(100dvh-6\.5rem\)\] min-h-0 flex-col gap-4"/);
+    assert.match(
+      source,
+      /className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-\[auto_minmax\(0,1fr\)\] rounded-xl border bg-background lg:grid-cols-\[220px_1fr\] lg:grid-rows-1"/,
+    );
+    assert.match(
+      source,
+      /aside className="min-w-0 min-h-0 border-b bg-muted\/20 lg:grid lg:grid-rows-\[auto_minmax\(0,1fr\)\] lg:border-b-0 lg:border-r"/,
+    );
+    assert.match(
+      source,
+      /section className="grid min-h-0 min-w-0 grid-rows-\[auto_minmax\(0,1fr\)\]"/,
+    );
+    assert.match(
+      source,
+      /className="grid min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)_auto\] gap-3 p-2"/,
+    );
+    assert.match(source, /className="min-h-0 overflow-y-auto overscroll-contain rounded-lg"/);
+    assert.match(
+      source,
+      /className="border-t bg-background px-2 pt-3 pb-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\] lg:flex lg:justify-end"/,
+    );
+    assert.doesNotMatch(source, /sticky bottom-0/);
+  });
+
+  it("keeps the image count in the header details and moves upload to the far right", () => {
+    assert.match(source, /import \{ Button, buttonVariants \} from "\.\.\/\.\.\/ui\/button";/);
+    assert.match(source, /buttonVariants\(\{ variant: "outline", size: "sm" \}\)/);
+    assert.match(
+      source,
+      /<p className="text-xs text-muted-foreground">\s*\{visibleImages\.length \+ previews\.length\} รูป · Zone Order: \{orderRangeLabel\(selectedGroup\)\}\s*<\/p>/,
+    );
+    assert.match(
+      source,
+      /<div className="ml-auto flex shrink-0 items-center gap-2">[\s\S]*<Label[\s\S]*htmlFor="house-images-upload"[\s\S]*<UploadCloudIcon[\s\S]*อัปโหลดรูป[\s\S]*<input[\s\S]*id="house-images-upload"[\s\S]*name="images"[\s\S]*type="file"[\s\S]*<\/div>/,
+    );
+    assert.doesNotMatch(source, /<Badge variant="secondary">\{visibleImages\.length \+ previews\.length\} รูป<\/Badge>/);
+    assert.doesNotMatch(source, /flex flex-wrap items-center gap-2 text-xs text-muted-foreground/);
+    assert.doesNotMatch(source, /border border-dashed bg-muted\/20/);
+    assert.doesNotMatch(source, /min-h-28 cursor-pointer flex-col/);
+  });
+
   it("changes zones with Next Link so sidebar state is not reset by a full reload", () => {
     assert.match(source, /import Link from "next\/link"/);
     assert.match(source, /<Link[\s\S]*href=\{imageZoneHref\(propertyId, group\.zone, returnTo\)\}/);
     assert.doesNotMatch(source, /<a\b[\s\S]*href=\{imageZoneHref\(propertyId, group\.zone, returnTo\)\}/);
+  });
+
+  it("scrolls the selected mobile zone chip into view without reordering zones", () => {
+    assert.match(source, /const activeZoneRef = useRef<HTMLAnchorElement>\(null\);/);
+    assert.match(source, /window\.matchMedia\("\(max-width: 1023px\)"\)\.matches/);
+    assert.match(
+      source,
+      /activeZone\.scrollIntoView\(\{\s*behavior: "smooth",\s*block: "nearest",\s*inline: "start",\s*\}\);/,
+    );
+    assert.match(source, /\}, \[selectedGroup\.zone\]\);/);
+    assert.match(source, /ref=\{isActive \? activeZoneRef : undefined\}/);
   });
 
   it("keeps the house list return URL through the image page and zone changes", () => {

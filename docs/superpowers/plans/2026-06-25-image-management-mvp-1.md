@@ -1600,7 +1600,6 @@ export default async function HouseImagesPage({
           <p className="font-mono text-xs text-muted-foreground">{house.property_id}</p>
           <h1 className="text-xl font-semibold">{house.title || "ไม่พบชื่อบ้านพัก"}</h1>
         </div>
-        <Badge className="w-fit" variant="secondary">ดูอย่างเดียว</Badge>
       </div>
 
       <ImageZoneViewer groups={groups} />

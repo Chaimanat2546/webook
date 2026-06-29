@@ -62,7 +62,7 @@ export default async function HouseImagesPage({
   const groups = groupImagesByZone(images);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex h-[calc(100dvh-6.5rem)] min-h-0 flex-col gap-4">
       <header className="flex flex-col gap-3 border-b pb-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-2">
           <Button asChild className="w-fit px-0" size="sm" variant="ghost">
@@ -81,9 +81,6 @@ export default async function HouseImagesPage({
             </p>
           </div>
         </div>
-        <Button className="w-fit" size="sm" variant="outline">
-          ดูอย่างเดียว
-        </Button>
       </header>
 
       <ImageZoneViewer

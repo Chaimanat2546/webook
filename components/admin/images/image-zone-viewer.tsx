@@ -33,7 +33,7 @@ import {
 } from "../../../server/services/images";
 import { AdminImageCard } from "../image-asset-card";
 import { Badge } from "../../ui/badge";
-import { Button } from "../../ui/button";
+import { Button, buttonVariants } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
 
@@ -175,6 +175,7 @@ export function ImageZoneViewer({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeZoneRef = useRef<HTMLAnchorElement>(null);
   const previewsRef = useRef<DraftPreview[]>([]);
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
@@ -192,6 +193,17 @@ export function ImageZoneViewer({
       }
     };
   }, []);
+
+  useEffect(() => {
+    const activeZone = activeZoneRef.current;
+    if (!activeZone || !window.matchMedia("(max-width: 1023px)").matches) return;
+
+    activeZone.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "start",
+    });
+  }, [selectedGroup.zone]);
 
   function syncInputFiles(files: File[]) {
     if (!inputRef.current) return;
@@ -266,18 +278,23 @@ export function ImageZoneViewer({
   }
 
   return (
-    <form action={action} className="grid min-w-0 overflow-hidden rounded-xl border bg-background lg:grid-cols-[220px_1fr]" onSubmit={onSubmit} ref={formRef}>
+    <form
+      action={action}
+      className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-xl border bg-background lg:grid-cols-[220px_1fr] lg:grid-rows-1"
+      onSubmit={onSubmit}
+      ref={formRef}
+    >
       <input name="image_zone" type="hidden" value={selectedGroup.zone} />
       {returnTo ? <input name="return_to" type="hidden" value={returnTo} /> : null}
       {deletedImageIds.map((imageId) => (
         <input key={imageId} name="deleted_image_ids" type="hidden" value={imageId} />
       ))}
 
-      <aside className="min-w-0 border-b bg-muted/20 lg:border-b-0 lg:border-r">
+      <aside className="min-w-0 min-h-0 border-b bg-muted/20 lg:grid lg:grid-rows-[auto_minmax(0,1fr)] lg:border-b-0 lg:border-r">
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">Zones</h2>
         </div>
-        <ScrollArea className="w-full min-w-0">
+        <ScrollArea className="w-full min-w-0 lg:h-full">
           <nav
             className="flex w-max min-w-full gap-2 p-3 lg:w-auto lg:min-w-0 lg:flex-col"
             aria-label="Image zones"
@@ -295,6 +312,7 @@ export function ImageZoneViewer({
                   )}
                   href={imageZoneHref(propertyId, group.zone, returnTo)}
                   key={group.zone}
+                  ref={isActive ? activeZoneRef : undefined}
                   title={group.zone}
                 >
                   <span className="flex min-w-0 items-center gap-2">
@@ -322,7 +340,7 @@ export function ImageZoneViewer({
         </ScrollArea>
       </aside>
 
-      <section className="min-w-0">
+      <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -337,17 +355,16 @@ export function ImageZoneViewer({
               </p>
             </div>
           </div>
-          <Badge variant="secondary">{visibleImages.length + previews.length} รูป</Badge>
-        </header>
-
-        <div className="grid min-w-0 gap-4 p-2">
-          <div className="rounded-lg border border-dashed bg-muted/20">
-            <Label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 p-4 text-center" htmlFor="house-images-upload">
-              <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <UploadCloudIcon className="size-5" />
-              </span>
-              <span className="font-medium">อัปโหลดรูปในหมวดนี้</span>
-              <span className="text-xs text-muted-foreground">รองรับ AVIF, GIF, JPG, PNG, WEBP ไม่เกิน 10 MB</span>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <Label
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "cursor-pointer text-foreground",
+              )}
+              htmlFor="house-images-upload"
+            >
+              <UploadCloudIcon data-icon="inline-start" />
+              อัปโหลดรูป
             </Label>
             <input
               accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
@@ -360,58 +377,62 @@ export function ImageZoneViewer({
               type="file"
             />
           </div>
+        </header>
 
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
-            {visibleImages.map((image, index) => {
-              const canDelete = isHouseImageFileOperationAllowed(image.image_url, "delete");
+        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-3 p-2">
+          <div className="min-h-0 overflow-y-auto overscroll-contain rounded-lg">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
+              {visibleImages.map((image, index) => {
+                const canDelete = isHouseImageFileOperationAllowed(image.image_url, "delete");
 
-              return (
-                <ImageCard
+                return (
+                  <ImageCard
+                    action={
+                      canDelete ? (
+                        <Button
+                          className="size-7 bg-background/90"
+                          onClick={() => markImageDeleted(image.id)}
+                          size="icon"
+                          type="button"
+                          variant="destructive"
+                        >
+                          <Trash2Icon data-icon="inline-start" />
+                          <span className="sr-only">ลบรูป</span>
+                        </Button>
+                      ) : undefined
+                    }
+                    image={image}
+                    key={image.id}
+                    priority={index === 0}
+                    zone={selectedGroup.zone}
+                  />
+                );
+              })}
+
+              {previews.map((preview, index) => (
+                <DraftImageCard
                   action={
-                    canDelete ? (
-                      <Button
-                        className="size-7 bg-background/90"
-                        onClick={() => markImageDeleted(image.id)}
-                        size="icon"
-                        type="button"
-                        variant="destructive"
-                      >
-                        <Trash2Icon data-icon="inline-start" />
-                        <span className="sr-only">ลบรูป</span>
-                      </Button>
-                    ) : undefined
+                    <Button
+                      className="size-7 bg-background/90"
+                      onClick={() => removeDraftFile(index)}
+                      size="icon"
+                      type="button"
+                      variant="destructive"
+                    >
+                      <Trash2Icon data-icon="inline-start" />
+                      <span className="sr-only">ลบรูป draft</span>
+                    </Button>
                   }
-                  image={image}
-                  key={image.id}
-                  priority={index === 0}
+                  imageOrder={maxMove + index + 1}
+                  key={`${preview.file.name}-${preview.file.size}-${index}`}
+                  preview={preview}
                   zone={selectedGroup.zone}
                 />
-              );
-            })}
-
-            {previews.map((preview, index) => (
-              <DraftImageCard
-                action={
-                  <Button
-                    className="size-7 bg-background/90"
-                    onClick={() => removeDraftFile(index)}
-                    size="icon"
-                    type="button"
-                    variant="destructive"
-                  >
-                    <Trash2Icon data-icon="inline-start" />
-                    <span className="sr-only">ลบรูป draft</span>
-                  </Button>
-                }
-                imageOrder={maxMove + index + 1}
-                key={`${preview.file.name}-${preview.file.size}-${index}`}
-                preview={preview}
-                zone={selectedGroup.zone}
-              />
-            ))}
+              ))}
+            </div>
           </div>
 
-          <div className="sticky bottom-0 z-10 -mx-2 border-t bg-background/95 px-2 py-3 backdrop-blur lg:flex lg:justify-end">
+          <div className="border-t bg-background px-2 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:flex lg:justify-end">
             <div className="flex gap-2 lg:w-auto">
               <Button className="flex-1 lg:flex-none" disabled={!isDirty} onClick={resetDraft} type="button" variant="outline">
                 <XIcon data-icon="inline-start" />

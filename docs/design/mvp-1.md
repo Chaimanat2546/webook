@@ -118,8 +118,11 @@ Approved mobile direction:
 - Back link, house title, `property_id`, total image count, and read-only badge stay near the top
 - Back link uses validated `returnTo` when present and falls back to `/admin/houses`
 - Horizontal zone chips act as folder navigation and keep the selected zone obvious
+- On mobile, selecting a zone scrolls the active zone chip into the first visible position without reordering the zone list
 - Zone navigation preserves `returnTo`
 - Show only the selected zone images
+- The image manager is a bounded workspace; the image grid scrolls inside the workspace while zone navigation and form actions stay visible
+- The selected-zone header keeps the image count in the left detail text and uses the far-right header action slot for the upload button; do not keep a duplicate image-count badge on the far right
 - Image cards stack vertically with preview, zone order badge, zone badge, `image_name`, `created_at`, and `updated_at`
 - Clicking a valid image card opens a larger read-only preview dialog
 
@@ -129,6 +132,7 @@ Approved desktop direction:
 - Header shows back link, house title, `property_id`, total image count, and read-only badge
 - Left panel lists zone folders with zone order ranges and image counts
 - Right panel shows the selected zone header, image count, zone order range, and image card grid
+- The page should avoid whole-page scrolling for long image sets; keep the right image grid as the primary scroll container and keep form actions visible
 - Image order badges show the `image_move` value within the selected zone
 
 ### Data
@@ -159,10 +163,6 @@ Missing or empty `image_zone` goes under:
 `ไม่ระบุหมวด`
 
 ### Read-only Controls
-
-Show a small read-only badge:
-
-`ดูอย่างเดียว`
 
 Image cards may be clickable for opening a larger preview dialog. This is still read-only and must not expose mutation controls.
 

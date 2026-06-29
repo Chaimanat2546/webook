@@ -28,6 +28,7 @@ Current R2 upload contract:
 - Clients must not submit R2 paths such as `houses/{property_id}/...`.
 
 - MVP นี้ใช้ draft UI แบบ advertisement: เลือกรูป/ลบรูปในหน้า แล้วค่อยบันทึกพร้อมกัน
+- Upload is exposed as the far-right action in the selected-zone header, while the image count remains in the left detail text; do not use a full-width upload drop zone.
 - รูปใหม่ upload ไป Cloudflare R2 ตอน save แล้วเพิ่ม record ใน `images`
 - record ใหม่ที่ผูกกับไฟล์จริงต้องใช้ Cloudflare R2 เป็น writable provider เท่านั้น
 - AWS/S3-backed images เป็น legacy/display-only ชั่วคราว ยังใช้แสดงผลได้ แต่ยังไม่ให้ลบไฟล์จริง และห้ามสร้างหรือแก้ไฟล์จริงบน AWS/S3
