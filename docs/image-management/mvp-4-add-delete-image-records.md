@@ -26,10 +26,14 @@ Current R2 upload contract:
 - New house image rows store the full Worker URL in `images.image_url` for R2 display/provider detection.
 - New house image rows assign `image_move` from the selected `image_zone` only; order is scoped to `property_id + image_zone`.
 - Clients must not submit R2 paths such as `houses/{property_id}/...`.
+- Multi-file selection is allowed, but the client processes files through an upload queue.
+- Each queued file is resized/compressed to WebP before upload.
+- The MVP sends one resized file per upload request.
+- GIF files are rejected and are not part of the supported house image upload formats.
 
-- MVP นี้ใช้ draft UI แบบ advertisement: เลือกรูป/ลบรูปในหน้า แล้วค่อยบันทึกพร้อมกัน
+- MVP นี้ใช้ operation-based UI: เลือกรูปแล้วอัปโหลดผ่าน queue ทันที และลบรูปผ่าน confirmation แยกแต่ละ operation
 - Upload is exposed as the far-right action in the selected-zone header, while the image count remains in the left detail text; do not use a full-width upload drop zone.
-- รูปใหม่ upload ไป Cloudflare R2 ตอน save แล้วเพิ่ม record ใน `images`
+- รูปใหม่ upload ไป Cloudflare R2 จาก queue แล้วเพิ่ม record ใน `images`
 - record ใหม่ที่ผูกกับไฟล์จริงต้องใช้ Cloudflare R2 เป็น writable provider เท่านั้น
 - AWS/S3-backed images เป็น legacy/display-only ชั่วคราว ยังใช้แสดงผลได้ แต่ยังไม่ให้ลบไฟล์จริง และห้ามสร้างหรือแก้ไฟล์จริงบน AWS/S3
 - ใช้ `images.image_url` เป็น discriminator ฝั่ง server สำหรับแยก AWS/S3 legacy กับ R2 ห้ามรับ provider จาก client และห้ามเพิ่ม provider column ใหม่
@@ -40,8 +44,8 @@ Current R2 upload contract:
 - ลบไฟล์จริงโดยไม่มี confirmation
 - สร้าง open image proxy
 - เพิ่ม provider config ใหม่โดยไม่มีเหตุผล
-- advanced upload
-- image optimization
+- advanced upload beyond one-at-a-time queue processing
+- image optimization beyond the required 1920px WebP resize policy
 
 ## Rules
 

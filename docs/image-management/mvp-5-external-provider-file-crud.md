@@ -27,6 +27,9 @@ MVP นี้เป็นรอบที่เสี่ยงที่สุด 
 - ห้ามเพิ่ม provider column ใหม่สำหรับแยก storage source ใน MVP นี้
 - New R2 house files use key prefix `houses/{property_id}/...` on the shared media Worker/R2 bucket.
 - AWS/S3 physical delete remains disabled until the project has an approved delete endpoint, secret, and failure behavior.
+- New house image uploads should arrive at the server as resized WebP files from the admin client.
+- Server validation remains authoritative and rejects unsupported types, including GIF.
+- Upload queue partial failures are shown to the admin and can be retried per failed image.
 
 ## Out of Scope
 
