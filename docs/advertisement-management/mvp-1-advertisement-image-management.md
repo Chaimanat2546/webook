@@ -1,0 +1,296 @@
+# MVP 1: Advertisement Image Management
+
+## Goal
+
+สร้างระบบ admin สำหรับจัดการโฆษณาและรูปภาพโฆษณา
+
+MVP นี้ให้ admin สร้าง แก้ไข เปิด/ปิด และจัดการรูปโฆษณาได้ โดยระบบอื่นจะอ่านข้อมูล active advertisements ผ่าน Supabase API และนำ `image_name` ไปสร้าง URL รูปจาก Cloudflare Worker เอง
+
+## In Scope
+
+- จำกัดการใช้งานเฉพาะ Administrator
+- สร้างตาราง `advertisements`
+- สร้างตาราง `advertisement_images`
+- แสดงรายการโฆษณาทั้งหมดใน admin
+- เรียง `is_active = true` ก่อน `is_active = false`
+- ในกลุ่ม active เดียวกันเรียง `updated_at` ใหม่สุดก่อน
+- สร้างโฆษณาใหม่พร้อม title และรูป 1-2 รูป
+- แก้ไข title
+- เปิด/ปิด `is_active`
+- เพิ่มรูปใหม่เป็น draft และยังไม่ upload จนกดบันทึก
+- ลบรูปเดิมเป็น draft delete และยังไม่ลบจริงจนกดบันทึก
+- validate จำนวนรูปสุดท้ายตอนกดบันทึก
+- preview รูปเดิมและรูป draft ได้
+- ระบบกำหนด `image_order` เองเป็น 1, 2
+- Public/Supabase API อ่านได้เฉพาะ active advertisements
+
+## Out of Scope
+
+- หน้า public/customer ใน `webook`
+- Manual image ordering
+- โฆษณาที่มีมากกว่า 2 รูป
+- Rich text description
+- CTA link
+- Schedule start/end date
+- Targeting
+- Analytics
+- Background reconciliation job สำหรับ orphaned R2 objects
+- Database trigger เพื่อบังคับ minimum child image count
+
+## Screens
+
+### `/admin/advertisements`
+
+ใช้สำหรับดูรายการโฆษณาทั้งหมด
+
+ข้อมูลที่แสดง:
+
+- `title`
+- `is_active`
+- จำนวนรูป
+- `updated_at`
+- action เข้า detail
+
+Rules:
+
+- แสดงโฆษณาทั้งหมด
+- เรียง active ก่อน inactive
+- เรียง `updated_at` ใหม่สุดก่อนภายในกลุ่มเดียวกัน
+- มีปุ่มสร้างโฆษณาใหม่
+
+### `/admin/advertisements/new`
+
+ใช้สำหรับสร้างโฆษณาใหม่
+
+ข้อมูลที่กรอก:
+
+- `title`
+- รูป 1-2 รูป
+
+Rules:
+
+- ต้องมี title
+- ต้องมีรูปอย่างน้อย 1 รูป
+- มีรูปได้สูงสุด 2 รูป
+- เลือกรูปแล้วอยู่ใน draft ก่อน
+- ยังไม่ upload ไป R2 จนกดบันทึก
+- preview รูป draft ได้
+- ออกจากหน้าแล้วทิ้ง draft ได้เลย
+
+### `/admin/advertisements/[id]`
+
+ใช้สำหรับแก้ไขโฆษณาเดิม
+
+ข้อมูลที่แก้ไขได้:
+
+- `title`
+- `is_active`
+- รูปโฆษณา
+
+Rules:
+
+- เพิ่มรูปใหม่เป็น draft ก่อน
+- กดบันทึกแล้วค่อย upload รูปใหม่และ update metadata
+- ลบรูปเดิมด้วยปุ่มถังขยะแล้วซ่อนจากหน้าเป็น draft delete
+- ยังไม่ลบจริงจนกดบันทึก
+- ถ้าจำนวนรูปสุดท้ายจะเหลือ 0 หรือเกิน 2 รูป ต้องแสดง alert และไม่ save
+- ถ้ารูป preview/load ไม่ได้ ไม่บล็อกการ save title/status
+- user ไม่สามารถจัด order เอง
+
+## Data Source
+
+Database: Supabase Database
+
+### `advertisements`
+
+Fields:
+
+- `id`
+- `title`
+- `is_active`
+- `created_at`
+- `updated_at`
+
+### `advertisement_images`
+
+Fields:
+
+- `id`
+- `advertisement_id`
+- `image_name`
+- `image_order`
+- `created_at`
+- `updated_at`
+
+Constraints:
+
+- `advertisement_id` references `advertisements(id)` on delete cascade
+- `unique(advertisement_id, image_order)`
+- `image_order between 1 and 2`
+
+Business rule:
+
+- โฆษณา 1 รายการต้องมีรูปอย่างน้อย 1 รูป
+- MVP นี้บังคับ minimum-one-image ใน admin service/route handler ไม่ใช้ database trigger
+
+## Supabase API Behavior
+
+ระบบอื่นอ่านผ่าน Supabase API
+
+อ่านได้เฉพาะ:
+
+- `advertisements.is_active = true`
+- `advertisement_images` ของ active advertisements เท่านั้น
+
+ตัวอย่าง query:
+
+```text
+advertisements?select=id,title,advertisement_images(image_name,image_order)&is_active=eq.true
+```
+
+Supabase API ส่ง `image_name` เท่านั้น ไม่ส่ง full image URL
+
+## Image Storage Behavior
+
+Current R2 storage contract:
+
+- Supabase stores filename-only `advertisement_images.image_name` values, not full paths or URLs.
+- New `image_name` values use `YYYYMMDDHHmmss_random10.ext`, for example `20260109220657_60b5a9a545.webp`.
+- The server composes R2 object keys as `advertisements/{advertisement_id}/{image_name}`.
+- Worker URLs are built as `{ADVERTISEMENT_IMAGE_WORKER_URL}/advertisements/{advertisement_id}/{image_name}`.
+- Clients and public readers must not treat `image_name` alone as a full object key.
+
+รูปเก็บใน Cloudflare R2 ผ่าน Worker/storage adapter
+
+MVP นี้ใช้ shared media storage:
+
+- R2 bucket: `webook-media`
+- Worker name: `webook-media`
+- Start domain: `*.workers.dev`
+- Advertisement image prefix: `advertisements/`
+- Public read: `GET /{image_name}`
+- Private write/delete: `PUT /{image_name}` และ `DELETE /{image_name}` ต้องมี Bearer secret
+
+`image_name` เป็น source of truth และควรเป็น key เช่น:
+
+```text
+advertisements/{advertisement_id}/1.webp
+advertisements/{advertisement_id}/2.webp
+```
+
+รูปถูกเรียกด้วยรูปแบบ:
+
+```text
+{ADVERTISEMENT_IMAGE_WORKER_URL}/{image_name}
+```
+
+ต้องมี helper สำหรับ R2 image key/URL แยกจาก `lib/aws-image-url.ts` เพราะ helper เดิมของบ้านพักห้าม `/` ในชื่อรูป
+
+Rules:
+
+- ห้ามเก็บ binary รูปใน Supabase
+- Max upload size is 10 MB per image.
+- Before submit, newly selected images are resized in the browser so the longest side is at most 1080px while preserving aspect ratio.
+- Images that need resizing are encoded from canvas as WebP when supported; images already within 1080px are uploaded unchanged.
+- ห้ามเก็บ full image URL เป็น source of truth
+- ห้าม expose R2 credential ไป client
+- ห้ามสร้าง open image proxy
+- validate `image_name` ว่าอยู่ใต้ prefix `advertisements/`
+- ห้าม `..`, protocol, host หรือ path traversal
+- อนุญาตเฉพาะ image extension ที่กำหนด
+
+Environment variables:
+
+```env
+ADVERTISEMENT_IMAGE_WORKER_URL=
+ADVERTISEMENT_IMAGE_WORKER_SECRET=
+```
+
+## Save And Delete Behavior
+
+Create:
+
+1. Validate title
+2. Validate image count 1-2
+3. Generate advertisement id
+4. Upload images to R2
+5. Insert `advertisements`
+6. Insert `advertisement_images`
+7. If Supabase write fails, best-effort delete newly uploaded R2 objects
+
+Update:
+
+1. Validate title
+2. Read pending `deleted_image_ids`
+3. Validate final image count 1-2 after pending deletes and new uploads
+4. Upload newly added draft images on save
+5. Update `advertisements`
+6. Delete pending `advertisement_images` rows
+7. Insert new `advertisement_images`
+8. Normalize `image_order` to 1, 2
+9. Best-effort delete unreferenced R2 objects for images removed from the form
+
+Delete image in edit form:
+
+1. Click the trash icon to hide the image from the form
+2. Keep the delete as a draft until save
+3. Enable cancel once there is a draft change
+4. On save, block the form if the final image count would be 0 or more than 2
+
+## RLS
+
+- Enable RLS on `advertisements`
+- Enable RLS on `advertisement_images`
+- Public read on `advertisements` only where `is_active = true`
+- Public read on `advertisement_images` only where parent advertisement is active
+- Administrator can create, update, delete
+- Public users cannot create, update, delete
+
+## States
+
+Loading:
+
+- กำลังโหลดรายการโฆษณา
+- กำลังโหลด detail
+- กำลังบันทึก
+- กำลังบันทึกการลบรูป
+
+Empty:
+
+- ยังไม่มีโฆษณา
+- ยังไม่ได้เลือกรูป
+
+Error:
+
+- ไม่มีสิทธิ์เข้าใช้งาน
+- โหลดข้อมูลไม่สำเร็จ
+- title ว่าง
+- ไม่มีรูป
+- รูปเกิน 2 รูป
+- จำนวนรูปสุดท้ายไม่อยู่ระหว่าง 1-2 รูป
+- upload รูปไม่สำเร็จ
+- ลบ R2 object ไม่สำเร็จ
+- รูป preview/load ไม่ได้
+
+## Testing Checklist
+
+- newly selected files append to existing unsaved draft images instead of replacing them
+- new uploads store filename-only `image_name` values and server-side R2 keys under `advertisements/{advertisement_id}/{image_name}`
+- newly selected advertisement images are resized to max 1080px before upload
+- Administrator เข้าใช้งานได้
+- non-admin เข้าใช้งานไม่ได้
+- list แสดง active ก่อน inactive
+- list เรียง `updated_at` ใหม่สุดก่อนในกลุ่มเดียวกัน
+- create ต้องมี title
+- create ต้องมีรูปอย่างน้อย 1 รูป
+- create ห้ามเกิน 2 รูป
+- เพิ่มรูปยังไม่ upload จนกดบันทึก
+- preview รูป draft ได้
+- preview รูปเดิมได้
+- delete image เป็น draft delete จนกดบันทึก
+- ปุ่มยกเลิก enabled เมื่อมี draft change
+- save บล็อกเมื่อจำนวนรูปสุดท้ายไม่อยู่ระหว่าง 1-2 รูป
+- ระบบ normalize `image_order` เป็น 1, 2
+- public Supabase API เห็นเฉพาะ active advertisements
+- public Supabase API ไม่เห็น inactive advertisement images
+- ไม่มี R2 credential หรือ private token หลุดไป client
