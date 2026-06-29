@@ -277,31 +277,76 @@ export function ImageZoneViewer({
     return items;
   }
 
-  function retryFailedUploads() {
-    return;
+  async function processUploadQueueItem(item: UploadQueueItem) {
+    try {
+      updateUploadQueueItem(item.id, { error: undefined, status: "resizing" });
+      const resized = await resizeHouseImageFile(item.file);
+      updateUploadQueueItem(item.id, { resized, status: "pending-upload" });
+
+      const formData = new FormData();
+      formData.append("image_zone", selectedGroup.zone);
+      formData.append("images", resized.file);
+
+      updateUploadQueueItem(item.id, { status: "uploading" });
+      await uploadAction(formData);
+      updateUploadQueueItem(item.id, { resized, status: "uploaded" });
+    } catch (error) {
+      updateUploadQueueItem(item.id, {
+        error: error instanceof Error ? error.message : "อัปโหลดรูปไม่สำเร็จ",
+        status: "failed",
+      });
+      throw error;
+    }
   }
 
   function uploadSelectedFiles(files: File[]) {
     if (files.length === 0) return;
-    queueItemsForFiles(files);
+    const items = queueItemsForFiles(files);
 
     startMutationTransition(() => {
       void (async () => {
-        const formData = new FormData();
-        formData.append("image_zone", selectedGroup.zone);
-        for (const file of files) {
-          formData.append("images", file);
+        let failedCount = 0;
+        for (const item of items) {
+          try {
+            await processUploadQueueItem(item);
+          } catch {
+            failedCount += 1;
+          }
         }
 
-        try {
-          const result = await uploadAction(formData);
-          toast.success(`อัปโหลดรูปแล้ว ${result.uploadedCount} รูป`);
-          router.refresh();
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "อัปโหลดรูปไม่สำเร็จ");
-        } finally {
-          if (inputRef.current) inputRef.current.value = "";
+        if (failedCount > 0) {
+          toast.warning(`อัปโหลดเสร็จบางส่วน มีรูปไม่สำเร็จ ${failedCount} รูป`);
+        } else {
+          toast.success(`อัปโหลดรูปแล้ว ${items.length} รูป`);
         }
+
+        if (inputRef.current) inputRef.current.value = "";
+        router.refresh();
+      })();
+    });
+  }
+
+  function retryFailedUploads() {
+    const failedItems = uploadQueue.filter((item) => item.status === "failed");
+    if (failedItems.length === 0) return;
+
+    startMutationTransition(() => {
+      void (async () => {
+        let failedCount = 0;
+        for (const item of failedItems) {
+          try {
+            await processUploadQueueItem(item);
+          } catch {
+            failedCount += 1;
+          }
+        }
+
+        if (failedCount > 0) {
+          toast.warning(`ลองใหม่แล้ว ยังมีรูปไม่สำเร็จ ${failedCount} รูป`);
+        } else {
+          toast.success("อัปโหลดรูปที่ไม่สำเร็จครบแล้ว");
+        }
+        router.refresh();
       })();
     });
   }
@@ -505,7 +550,7 @@ export function ImageZoneViewer({
                   {isMutating ? "กำลังอัปโหลด" : "อัปโหลดรูป"}
                 </Label>
                 <input
-                  accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+                  accept="image/avif,image/jpeg,image/png,image/webp"
                   className="sr-only"
                   disabled={isMutating}
                   id="house-images-upload"

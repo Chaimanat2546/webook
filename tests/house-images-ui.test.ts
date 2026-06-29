@@ -152,18 +152,21 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(source, /function appendPreviews/);
   });
 
-  it("uploads selected files immediately and refreshes the grid", () => {
+  it("queues selected files immediately and refreshes the grid after processing", () => {
     assert.match(source, /import \{ toast \} from "sonner";/);
     assert.match(source, /useRouter/);
     assert.match(source, /const router = useRouter\(\);/);
     assert.match(source, /uploadAction: \(formData: FormData\) => Promise<\{ uploadedCount: number \}>/);
     assert.match(source, /function onFilesChange\(event: ChangeEvent<HTMLInputElement>\)/);
     assert.match(source, /void uploadSelectedFiles\(Array\.from\(event\.currentTarget\.files \?\? \[\]\)\)/);
+    assert.match(source, /const items = queueItemsForFiles\(files\)/);
+    assert.match(source, /await processUploadQueueItem\(item\)/);
     assert.match(source, /await uploadAction\(formData\)/);
     assert.match(source, /formData\.append\("image_zone", selectedGroup\.zone\)/);
-    assert.match(source, /formData\.append\("images", file\)/);
+    assert.match(source, /formData\.append\("images", resized\.file\)/);
+    assert.match(source, /accept="image\/avif,image\/jpeg,image\/png,image\/webp"/);
     assert.match(source, /toast\.success/);
-    assert.match(source, /toast\.error/);
+    assert.match(source, /toast\.warning/);
     assert.match(source, /router\.refresh\(\)/);
   });
 
@@ -183,6 +186,17 @@ describe("house image mobile UI", () => {
     assert.match(source, /ลองใหม่เฉพาะรูปที่ไม่สำเร็จ/);
     assert.match(source, /ขนาดเดิม/);
     assert.match(source, /หลังแปลง/);
+  });
+
+  it("resizes then uploads queued files one at a time", () => {
+    assert.match(source, /async function processUploadQueueItem/);
+    assert.match(source, /await resizeHouseImageFile\(item\.file\)/);
+    assert.match(source, /formData\.append\("images", resized\.file\)/);
+    assert.match(source, /await uploadAction\(formData\)/);
+    assert.match(source, /for \(const item of items\)/);
+    assert.doesNotMatch(source, /for \(const file of files\) {\s*formData\.append\("images", file\)/);
+    assert.match(source, /status: "uploaded"/);
+    assert.match(source, /status: "failed"/);
   });
 
   it("confirms single image deletion with a preview before calling the delete action", () => {
