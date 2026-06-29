@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import {
   ArmchairIcon,
   BathIcon,
@@ -190,13 +192,6 @@ export function ImageZoneViewer({
     });
   }, [selectedGroup.zone]);
 
-  useEffect(() => {
-    setIsBulkSelecting(false);
-    setIsBulkDeleteDialogOpen(false);
-    setSingleDeleteImage(null);
-    setSelectedBulkDeleteIds(new Set());
-  }, [selectedGroup.zone]);
-
   function uploadSelectedFiles(files: File[]) {
     if (files.length === 0) return;
 
@@ -249,6 +244,7 @@ export function ImageZoneViewer({
   function clearBulkDeleteSelection() {
     setIsBulkSelecting(false);
     setIsBulkDeleteDialogOpen(false);
+    setSingleDeleteImage(null);
     setSelectedBulkDeleteIds(new Set());
   }
 
@@ -318,6 +314,7 @@ export function ImageZoneViewer({
                   )}
                   href={imageZoneHref(propertyId, group.zone, returnTo)}
                   key={group.zone}
+                  onClick={clearBulkDeleteSelection}
                   ref={isActive ? activeZoneRef : undefined}
                   title={group.zone}
                 >
