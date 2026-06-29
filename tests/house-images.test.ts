@@ -6,8 +6,12 @@ import {
   formatImageMoveLabel,
   formatThaiImageDateTime,
   getImageZoneMeta,
+  buildHouseImageName,
+  getImageFiles,
   getSelectedImageZoneGroup,
   groupImagesByZone,
+  validateHouseImageFile,
+  validateHouseImageZone,
 } from "../server/services/images.ts";
 
 describe("house image grouping", () => {
@@ -109,7 +113,7 @@ describe("house image grouping", () => {
 });
 
 describe("house image storage policy", () => {
-  it("infers provider from image_url and keeps AWS/S3 delete-only", async () => {
+  it("infers provider from image_url and keeps AWS/S3 mutations disabled for now", async () => {
     const imagesModule = await import("../server/services/images.ts");
 
     assert.equal(typeof imagesModule.isHouseImageFileOperationAllowed, "function");
@@ -140,8 +144,30 @@ describe("house image storage policy", () => {
         "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/villa.webp",
         "delete",
       ),
-      true,
+      false,
     );
     assert.equal(isAllowed(null, "delete"), false);
+  });
+});
+
+describe("house image mutation rules", () => {
+  it("validates files, zones, and builds R2 image names", () => {
+    const image = new File([new Uint8Array([1])], "house.webp", { type: "image/webp" });
+    const formData = new FormData();
+    formData.append("images", image);
+    formData.append("images", new File([], "empty.webp", { type: "image/webp" }));
+
+    assert.deepEqual(getImageFiles(formData, "images"), [image]);
+    assert.equal(validateHouseImageFile(image), image);
+    assert.equal(validateHouseImageZone(" bedroom "), "bedroom");
+    assert.equal(
+      buildHouseImageName("181", "3f6b9f41-9999-4bbb-8888-5812de2db111", "image/webp"),
+      "houses/181/3f6b9f41-9999-4bbb-8888-5812de2db111.webp",
+    );
+    assert.throws(
+      () => validateHouseImageFile(new File(["x"], "house.txt", { type: "text/plain" })),
+      /Unsupported image type/,
+    );
+    assert.throws(() => validateHouseImageZone("living_room"), /Invalid image zone/);
   });
 });

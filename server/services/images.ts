@@ -43,6 +43,16 @@ export interface ImageZoneMeta {
 export type HouseImageFileOperation = "create" | "delete" | "replace";
 export type HouseImageStorageProvider = "aws-s3" | "r2" | "unknown";
 
+const HOUSE_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const extensionByMimeType: Record<string, string> = {
+  "image/avif": "avif",
+  "image/gif": "gif",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+const validImageZones = new Set(["cover", ...Object.keys(IMAGE_ZONE_META)]);
+
 const thaiDateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
   dateStyle: "medium",
   hour12: false,
@@ -117,7 +127,37 @@ export function isHouseImageFileOperationAllowed(
   operation: HouseImageFileOperation,
 ): boolean {
   const provider = getHouseImageStorageProvider(imageUrl);
-  return provider === "r2" || (provider === "aws-s3" && operation === "delete");
+  return (
+    provider === "r2" &&
+    (operation === "create" || operation === "replace" || operation === "delete")
+  );
+}
+
+export function validateHouseImageFile(file: File): File {
+  if (!extensionByMimeType[file.type]) throw new Error("Unsupported image type");
+  if (file.size > HOUSE_MAX_IMAGE_BYTES) throw new Error("House image is too large");
+  return file;
+}
+
+export function validateHouseImageZone(value: string): string {
+  const zone = value.trim();
+  if (!validImageZones.has(zone)) throw new Error("Invalid image zone");
+  return zone;
+}
+
+export function buildHouseImageName(propertyId: string, imageId: string, mimeType: string): string {
+  const id = propertyId.trim();
+  const extension = extensionByMimeType[mimeType];
+  if (!/^\d+$/.test(id)) throw new Error("Invalid property id");
+  if (!/^[a-z0-9-]+$/i.test(imageId)) throw new Error("Invalid image id");
+  if (!extension) throw new Error("Unsupported image type");
+  return `houses/${id}/${imageId}.${extension}`;
+}
+
+export function getImageFiles(formData: FormData, fieldName: string): File[] {
+  return formData
+    .getAll(fieldName)
+    .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
 export function groupImagesByZone(images: HouseImageItem[]): ImageZoneGroup[] {

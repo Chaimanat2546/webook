@@ -10,7 +10,7 @@ export async function findAdminUserByAuthIdentity(
 ): Promise<{ byEmail: AdminUserRow | null; byUid: AdminUserRow | null }> {
   const { data: byUid, error: uidError } = await supabase
     .from("users")
-    .select("id, role_id")
+    .select("mid, role_id, allow_tools")
     .eq("uid", authUser.id)
     .maybeSingle();
 
@@ -24,7 +24,7 @@ export async function findAdminUserByAuthIdentity(
 
   const { data: byEmail, error: emailError } = await supabase
     .from("users")
-    .select("id, role_id")
+    .select("mid, role_id, allow_tools")
     .eq("email", authUser.email)
     .maybeSingle();
 

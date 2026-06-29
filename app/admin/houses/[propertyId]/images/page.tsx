@@ -5,10 +5,20 @@ import { notFound } from "next/navigation";
 import { ImageZoneViewer } from "../../../../../components/admin/images/image-zone-viewer";
 import { Badge } from "../../../../../components/ui/badge";
 import { Button } from "../../../../../components/ui/button";
-import { requireAdmin } from "../../../../../server/auth/admin";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "../../../../../components/ui/empty";
+import {
+  canUseAccommodation,
+  requireAdmin,
+} from "../../../../../server/auth/admin";
 import { getImagesByPropertyId } from "../../../../../server/repositories/images";
 import { getListingByPropertyId } from "../../../../../server/repositories/listings";
 import { groupImagesByZone } from "../../../../../server/services/images";
+import { updateHouseImagesAction } from "./actions";
 
 function getSafeReturnTo(value?: string): string | null {
   if (value === "/admin/houses" || value?.startsWith("/admin/houses?")) {
@@ -29,7 +39,19 @@ export default async function HouseImagesPage({
   const { returnTo, zone } = await searchParams;
   const safeReturnTo = getSafeReturnTo(returnTo);
   const backHref = safeReturnTo ?? "/admin/houses";
-  const { supabase } = await requireAdmin();
+  const { adminUser, supabase } = await requireAdmin();
+
+  if (!canUseAccommodation(adminUser)) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>ไม่มีสิทธิ์เข้าถึงหมวดบ้านพัก</EmptyTitle>
+          <EmptyDescription>บัญชีนี้ยังไม่ได้เปิด allow_accommodation</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   const house = await getListingByPropertyId(supabase, propertyId);
 
   if (!house) {
@@ -65,6 +87,7 @@ export default async function HouseImagesPage({
       </header>
 
       <ImageZoneViewer
+        action={updateHouseImagesAction.bind(null, propertyId)}
         groups={groups}
         propertyId={propertyId}
         returnTo={safeReturnTo ?? undefined}

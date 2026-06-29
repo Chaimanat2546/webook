@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
 
 import {
   Dialog,
@@ -37,14 +37,7 @@ export function ImagePreviewDialog({
           <DialogDescription>ดูตัวอย่างรูปขนาดใหญ่</DialogDescription>
         </DialogHeader>
         <div className="overflow-hidden rounded-lg bg-muted">
-          <Image
-            alt={alt}
-            className="h-auto max-h-[82dvh] w-full object-contain"
-            height={1200}
-            sizes="(min-width: 1024px) 90vw, 96vw"
-            src={src}
-            width={1600}
-          />
+          <img alt={alt} className="h-auto max-h-[82dvh] w-full object-contain" src={src} />
         </div>
       </DialogContent>
     </Dialog>

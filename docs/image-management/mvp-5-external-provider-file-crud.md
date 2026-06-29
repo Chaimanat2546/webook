@@ -20,11 +20,13 @@ MVP นี้เป็นรอบที่เสี่ยงที่สุด 
 
 - Cloudflare R2 เป็น writable storage เดียวสำหรับรูปบ้านพักใหม่หรือรูปที่ถูก replace/edit ผ่าน admin tool
 - R2 operations ที่อนุญาต: upload/create, replace/edit physical file, delete physical file
-- AWS/S3-backed existing images เป็น legacy/delete-only
-- AWS/S3 operations ที่ห้าม: upload/import รูปใหม่, replace/edit physical file, copy รูปใหม่เข้า AWS/S3
+- AWS/S3-backed existing images เป็น legacy/display-only ชั่วคราว
+- AWS/S3 operations ที่ห้าม: upload/import รูปใหม่, replace/edit physical file, copy รูปใหม่เข้า AWS/S3, delete physical file
 - การแสดงผลรูปเดิมที่มาจาก AWS/S3 ยังใช้ต่อได้ตาม behavior ปัจจุบัน
 - Storage adapter ต้องอยู่ฝั่ง server เท่านั้น และเลือก provider จาก `images.image_url` ที่อ่านจาก database ไม่ใช่ค่าที่ client ส่งมาโดยตรง
 - ห้ามเพิ่ม provider column ใหม่สำหรับแยก storage source ใน MVP นี้
+- New R2 house files use key prefix `houses/{property_id}/...` on the shared media Worker/R2 bucket.
+- AWS/S3 physical delete remains disabled until the project has an approved delete endpoint, secret, and failure behavior.
 
 ## Out of Scope
 
@@ -53,7 +55,7 @@ MVP นี้เป็นรอบที่เสี่ยงที่สุด 
 - R2 upload/create สำเร็จผ่าน server adapter
 - R2 replace/edit สำเร็จผ่าน server adapter
 - R2 delete สำเร็จหลัง confirmation
-- AWS/S3 delete-only path สำเร็จหลัง confirmation
+- AWS/S3 delete path ถูกปิดไว้และต้องถูกปฏิเสธ
 - AWS/S3 upload หรือ replace/edit ถูกปฏิเสธ
 - unknown provider/source ถูกปฏิเสธเมื่อพยายาม mutate ไฟล์จริง
 - provider timeout แล้วแสดง error

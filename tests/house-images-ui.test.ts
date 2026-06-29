@@ -66,9 +66,35 @@ describe("house image mobile UI", () => {
     assert.match(previewDialogSource, /DialogTitle/);
     assert.match(previewDialogSource, /max-w-7xl/);
     assert.match(previewDialogSource, /max-h-\[82dvh\]/);
-    assert.match(previewDialogSource, /sizes="\(min-width: 1024px\) 90vw, 96vw"/);
+    assert.match(previewDialogSource, /<img/);
     assert.doesNotMatch(previewDialogSource, /EyeIcon/);
     assert.doesNotMatch(previewDialogSource, /size="icon-xs"/);
     assert.doesNotMatch(previewDialogSource, /title="ดูรูป"/);
+  });
+
+  it("adds draft upload and pending delete controls like advertisement images", () => {
+    assert.match(pageSource, /updateHouseImagesAction/);
+    assert.match(pageSource, /action=\{updateHouseImagesAction\.bind\(null, propertyId\)\}/);
+    assert.match(source, /"use client"/);
+    assert.match(source, /name="images"/);
+    assert.match(source, /name="deleted_image_ids"/);
+    assert.match(source, /name="image_zone"/);
+    assert.match(source, /name="return_to"/);
+    assert.match(source, /URL\.createObjectURL/);
+    assert.match(source, /URL\.revokeObjectURL/);
+    assert.match(source, /UploadCloudIcon/);
+    assert.match(source, /SaveIcon/);
+    assert.match(source, /Trash2Icon/);
+    assert.match(source, /disabled=\{!isDirty\}/);
+  });
+
+  it("uses provider policy before showing existing image delete controls", () => {
+    assert.match(source, /isHouseImageFileOperationAllowed\(image\.image_url, "delete"\)/);
+  });
+
+  it("uses image_url only for R2 display and keeps AWS/S3 display on the Lambda path", () => {
+    assert.match(source, /provider === "r2" && image\.image_url/);
+    assert.doesNotMatch(source, /provider === "aws-s3" \|\| provider === "r2"/);
+    assert.match(source, /buildAwsImageUrl\(image\.image_name\)/);
   });
 });

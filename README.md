@@ -7,7 +7,8 @@ Current focus:
 - House image management
 - Advertisement management MVP
 
-Access is limited to Administrator users (`public.users.role_id = 1`).
+Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
+House image access currently requires `allow_tools.allow_accommodation = true`.
 
 ## Tech Stack
 
@@ -22,8 +23,10 @@ Access is limited to Administrator users (`public.users.role_id = 1`).
 
 - Existing imported house images may continue to display through the current AWS/S3-backed image source.
 - New or replaced house image files must be managed in Cloudflare R2 through server-side code.
-- AWS/S3-backed house images are delete-only. Do not upload, replace, or edit physical house image files in AWS/S3.
+- AWS/S3-backed house images are display-only for now. Keep provider detection, but do not upload, replace, edit, or delete physical house image files in AWS/S3 until a delete endpoint and failure behavior are approved.
 - Use `images.image_url` to distinguish AWS/S3 legacy images from Cloudflare R2 images; do not add a provider column.
+- New house image uploads use the shared media Worker env vars: `ADVERTISEMENT_IMAGE_WORKER_URL` and `ADVERTISEMENT_IMAGE_WORKER_SECRET`.
+- House image admins must have `allow_tools.allow_accommodation = true`. Adding new house images also requires a positive `users.mid` because `images.create_by` is required.
 
 ## Supabase Feature Workflow
 
@@ -64,6 +67,7 @@ Copy `.env.example` to `.env.local` and point the app at local Supabase:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=PASTE_LOCAL_ANON_KEY
+# Shared media Worker for advertisements and new house images.
 ADVERTISEMENT_IMAGE_WORKER_URL=
 ADVERTISEMENT_IMAGE_WORKER_SECRET=
 ```
@@ -139,13 +143,13 @@ npm.cmd run test
 
 Every table in `public` that is exposed through Supabase APIs must have RLS enabled and explicit policies.
 
-Admin-only policies should follow the existing role check:
+Admin-only house image policies should follow the existing accommodation permission check:
 
 ```sql
 exists (
   select 1
   from public.users
-  where users.role_id = 1
+  where users.allow_tools @> '{"allow_accommodation": true}'::jsonb
     and (
       users.uid = auth.uid()
       or users.email = auth.jwt() ->> 'email'
@@ -178,10 +182,10 @@ Password: Admin123456!
 Auto Confirm User: true
 ```
 
-Copy the new auth user UID, then insert the matching admin row:
+Copy the new auth user UID, then insert the matching admin row. Keep `mid` when testing house image uploads:
 
 ```powershell
-& $SUPABASE db query "insert into public.users (email, role_id, uid, name) values ('admin@example.local', 1, 'PASTE_AUTH_UID', 'Local Admin');"
+& $SUPABASE db query "insert into public.users (email, role_id, uid, name, mid, allow_tools) values ('admin@example.local', 1, 'PASTE_AUTH_UID', 'Local Admin', 1, '{""allow_accommodation"": true}'::jsonb);"
 ```
 
 `public.users.uid` must equal `auth.users.id`. `public.users.id` is not the auth UID.
@@ -298,6 +302,20 @@ rm -rf .next .open-next
 npm run deploy
 ```
 
+GitHub Actions can deploy the admin app automatically from Ubuntu with `.github/workflows/deploy-admin.yml`. Add these repository secrets before enabling push deploys:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `ADVERTISEMENT_IMAGE_WORKER_URL`
+
+Keep `ADVERTISEMENT_IMAGE_WORKER_SECRET` as a Cloudflare Worker secret on `webook-admin`; the workflow does not set or rotate it. The media Worker stays manual:
+
+```powershell
+npx.cmd wrangler deploy --config workers/media/wrangler.jsonc
+```
+
 ## Advertisement Media
 
 Supabase stores advertisement image metadata only:
@@ -314,6 +332,8 @@ Required server-side variables for advertisement image uploads:
 ADVERTISEMENT_IMAGE_WORKER_URL=
 ADVERTISEMENT_IMAGE_WORKER_SECRET=
 ```
+
+The same Worker/R2 variables are reused for new managed house image uploads under the `houses/{property_id}/...` key prefix.
 
 ## Scripts
 
