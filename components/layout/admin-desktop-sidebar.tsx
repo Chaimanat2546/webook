@@ -15,6 +15,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "../ui/sidebar";
 import { TooltipProvider } from "../ui/tooltip";
 
@@ -24,6 +25,11 @@ export function AdminDesktopSidebar({
   signOutAction: () => Promise<void>;
 }) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  function closeMobileSidebar() {
+    if (isMobile) setOpenMobile(false);
+  }
 
   return (
     <TooltipProvider>
@@ -55,7 +61,7 @@ export function AdminDesktopSidebar({
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive tooltip="บ้านพัก">
-                    <Link href="/admin/houses">
+                    <Link href="/admin/houses" onClick={closeMobileSidebar}>
                       <HouseIcon data-icon="inline-start" />
                       <span>บ้านพัก</span>
                     </Link>
@@ -67,7 +73,7 @@ export function AdminDesktopSidebar({
                     isActive={pathname.startsWith("/admin/advertisements")}
                     tooltip="โฆษณา"
                   >
-                    <Link href="/admin/advertisements">
+                    <Link href="/admin/advertisements" onClick={closeMobileSidebar}>
                       <MegaphoneIcon data-icon="inline-start" />
                       <span>โฆษณา</span>
                     </Link>
