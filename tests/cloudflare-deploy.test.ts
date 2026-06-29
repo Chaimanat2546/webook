@@ -43,4 +43,23 @@ describe("Cloudflare web deployment", () => {
       "npm run cf:assert-linux && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     );
   });
+
+  it("deploys the admin app from GitHub Actions on Ubuntu only", () => {
+    const workflowPath = new URL("../.github/workflows/deploy-admin.yml", import.meta.url);
+
+    assert.ok(existsSync(workflowPath));
+
+    const workflow = readFileSync(workflowPath, "utf8");
+    assert.match(workflow, /workflow_dispatch:/);
+    assert.match(workflow, /branches:\s*\[\s*main\s*\]/);
+    assert.match(workflow, /runs-on:\s*ubuntu-latest/);
+    assert.match(workflow, /node-version:\s*22/);
+    assert.match(workflow, /npm ci/);
+    assert.match(workflow, /npm run typecheck/);
+    assert.match(workflow, /npm run lint/);
+    assert.match(workflow, /npm run test/);
+    assert.match(workflow, /npm run deploy/);
+    assert.match(workflow, /CLOUDFLARE_API_TOKEN:\s*\$\{\{\s*secrets\.CLOUDFLARE_API_TOKEN\s*\}\}/);
+    assert.doesNotMatch(workflow, /workers\/media\/wrangler\.jsonc/);
+  });
 });

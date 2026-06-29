@@ -1,4 +1,4 @@
-const ADVERTISEMENT_IMAGE_PREFIX = "advertisements/";
+const HOUSE_IMAGE_PREFIX = "houses/";
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"];
 
 function decodeImageName(value: string): string {
@@ -9,7 +9,7 @@ function decodeImageName(value: string): string {
   }
 }
 
-export function validateAdvertisementImageObjectKey(value: string): string {
+export function validateHouseImageObjectKey(value: string): string {
   const trimmed = value.trim();
   const decoded = decodeImageName(trimmed).replace(/\\/g, "/");
   const segments = decoded.split("/");
@@ -18,7 +18,7 @@ export function validateAdvertisementImageObjectKey(value: string): string {
     !trimmed ||
     trimmed.startsWith("//") ||
     decoded.includes("://") ||
-    !decoded.startsWith(ADVERTISEMENT_IMAGE_PREFIX) ||
+    !decoded.startsWith(HOUSE_IMAGE_PREFIX) ||
     segments.some((segment) => !segment || segment === "." || segment === "..")
   ) {
     throw new Error("Invalid image name");
@@ -31,18 +31,18 @@ export function validateAdvertisementImageObjectKey(value: string): string {
   return decoded;
 }
 
-export const validateAdvertisementImageName = validateAdvertisementImageObjectKey;
+export const validateHouseImageName = validateHouseImageObjectKey;
 
-export function encodeImagePath(imageName: string): string {
-  return validateAdvertisementImageObjectKey(imageName)
+export function encodeHouseImagePath(imageName: string): string {
+  return validateHouseImageObjectKey(imageName)
     .split("/")
     .map((segment) => encodeURIComponent(segment))
     .join("/");
 }
 
-export function buildAdvertisementImageUrl(imageName: string, baseUrl: string): string {
+export function buildHouseImageUrl(imageName: string, baseUrl: string): string {
   const base = baseUrl.trim().replace(/\/+$/, "");
-  if (!base) throw new Error("Missing advertisement image base URL");
+  if (!base) throw new Error("Missing house image base URL");
 
-  return `${base}/${encodeImagePath(imageName)}`;
+  return `${base}/${encodeHouseImagePath(imageName)}`;
 }

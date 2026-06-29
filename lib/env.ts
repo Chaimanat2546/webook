@@ -19,3 +19,7 @@ export function getAdvertisementImageEnv() {
 
   return { workerSecret, workerUrl };
 }
+
+export function getHouseImageEnv() {
+  return getAdvertisementImageEnv();
+}

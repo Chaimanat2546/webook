@@ -1,3 +1,11 @@
+import { validateAdvertisementImageObjectKey } from "../../lib/advertisement-image-url.ts";
+import {
+  buildManagedImageFileName,
+  isSupportedImageMimeType,
+  validateManagedImageFileName,
+  type ManagedImageNameOptions,
+} from "./image-file-names.ts";
+
 export const ADVERTISEMENT_MIN_IMAGES = 1;
 export const ADVERTISEMENT_MAX_IMAGES = 2;
 export const ADVERTISEMENT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -7,14 +15,6 @@ export interface AdvertisementImageItem {
   image_name: string;
   image_order: number;
 }
-
-const extensionByMimeType: Record<string, string> = {
-  "image/avif": "avif",
-  "image/gif": "gif",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 
 export function validateAdvertisementTitle(value: string): string {
   const title = value.trim();
@@ -45,7 +45,7 @@ export function validateAdvertisementImageEditCount({
 }
 
 export function validateAdvertisementImageFile(file: File): File {
-  if (!extensionByMimeType[file.type]) throw new Error("Unsupported image type");
+  if (!isSupportedImageMimeType(file.type)) throw new Error("Unsupported image type");
   if (file.size > ADVERTISEMENT_MAX_IMAGE_BYTES) throw new Error("Advertisement image is too large");
   return file;
 }
@@ -57,16 +57,22 @@ export function assertCanDeleteAdvertisementImage(imageCount: number): void {
 }
 
 export function buildAdvertisementImageName(
-  advertisementId: string,
-  imageOrder: number,
   mimeType: string,
+  options?: ManagedImageNameOptions,
 ): string {
-  const extension = extensionByMimeType[mimeType];
-  if (!extension) throw new Error("Unsupported image type");
-  if (!Number.isInteger(imageOrder) || imageOrder < 1 || imageOrder > ADVERTISEMENT_MAX_IMAGES) {
-    throw new Error("Invalid image order");
-  }
-  return `advertisements/${advertisementId}/${imageOrder}.${extension}`;
+  return buildManagedImageFileName(mimeType, options);
+}
+
+export function buildAdvertisementImageObjectKey(advertisementId: string, imageName: string): string {
+  const id = advertisementId.trim();
+  if (!/^[a-z0-9_-]+$/i.test(id)) throw new Error("Invalid advertisement id");
+  return `advertisements/${id}/${validateManagedImageFileName(imageName)}`;
+}
+
+export function resolveAdvertisementImageObjectKey(advertisementId: string, imageName: string): string {
+  const normalized = imageName.trim().replace(/\\/g, "/");
+  if (normalized.startsWith("advertisements/")) return validateAdvertisementImageObjectKey(normalized);
+  return buildAdvertisementImageObjectKey(advertisementId, normalized);
 }
 
 export function normalizeAdvertisementImages<T extends AdvertisementImageItem>(images: T[]): T[] {

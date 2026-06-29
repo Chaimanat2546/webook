@@ -1,9 +1,12 @@
 import { cache } from "react";
 
-export const ADMIN_ROLE_ID = 1;
+export interface AdminAllowTools {
+  allow_accommodation?: boolean;
+}
 
 export interface AdminUserForAuth {
-  id: number;
+  allow_tools: AdminAllowTools | null;
+  mid: number | null;
   role_id: number | null;
 }
 
@@ -12,8 +15,8 @@ export interface AuthUserIdentity {
   email?: string | null;
 }
 
-export function canAccessAdmin(user: Pick<AdminUserForAuth, "role_id"> | null): boolean {
-  return user?.role_id === ADMIN_ROLE_ID;
+export function canUseAccommodation(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_accommodation === true;
 }
 
 export function pickAdminUser({
@@ -53,7 +56,7 @@ export const requireAdmin = cache(async () => {
 
   return {
     adminUser,
-    isAuthorized: canAccessAdmin(adminUser),
+    isAuthorized: canUseAccommodation(adminUser),
     supabase,
     user,
   };

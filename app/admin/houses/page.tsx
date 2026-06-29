@@ -14,6 +14,7 @@ import {
   normalizeHouseSearch,
   normalizePage,
 } from "../../../server/services/houses";
+import { canUseAccommodation } from "../../../server/auth/admin";
 
 export default async function HousesPage({
   searchParams,
@@ -23,7 +24,19 @@ export default async function HousesPage({
   const params = await searchParams;
   const page = normalizePage(params.page);
   const search = normalizeHouseSearch(params.q);
-  const { supabase } = await requireAdmin();
+  const { adminUser, supabase } = await requireAdmin();
+
+  if (!canUseAccommodation(adminUser)) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>ไม่มีสิทธิ์เข้าถึงหมวดบ้านพัก</EmptyTitle>
+          <EmptyDescription>บัญชีนี้ยังไม่ได้เปิด allow_accommodation</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   const { count, houses } = await getPaginatedListings(supabase, { page, search });
   const totalPages = Math.max(1, Math.ceil(count / HOUSE_PAGE_SIZE));
   const returnToParams = new URLSearchParams();

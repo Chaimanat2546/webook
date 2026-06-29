@@ -152,6 +152,14 @@ Supabase API ส่ง `image_name` เท่านั้น ไม่ส่ง 
 
 ## Image Storage Behavior
 
+Current R2 storage contract:
+
+- Supabase stores filename-only `advertisement_images.image_name` values, not full paths or URLs.
+- New `image_name` values use `YYYYMMDDHHmmss_random10.ext`, for example `20260109220657_60b5a9a545.webp`.
+- The server composes R2 object keys as `advertisements/{advertisement_id}/{image_name}`.
+- Worker URLs are built as `{ADVERTISEMENT_IMAGE_WORKER_URL}/advertisements/{advertisement_id}/{image_name}`.
+- Clients and public readers must not treat `image_name` alone as a full object key.
+
 รูปเก็บใน Cloudflare R2 ผ่าน Worker/storage adapter
 
 MVP นี้ใช้ shared media storage:
@@ -266,6 +274,8 @@ Error:
 
 ## Testing Checklist
 
+- newly selected files append to existing unsaved draft images instead of replacing them
+- new uploads store filename-only `image_name` values and server-side R2 keys under `advertisements/{advertisement_id}/{image_name}`
 - newly selected advertisement images are resized to max 1080px before upload
 - Administrator เข้าใช้งานได้
 - non-admin เข้าใช้งานไม่ได้

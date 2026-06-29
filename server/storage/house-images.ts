@@ -1,4 +1,4 @@
-import { buildAdvertisementImageUrl } from "../../lib/advertisement-image-url.ts";
+import { buildHouseImageUrl } from "../../lib/house-image-url.ts";
 
 interface WorkerConfig {
   fetchImpl?: typeof fetch;
@@ -9,10 +9,10 @@ interface WorkerConfig {
 
 async function workerErrorMessage(action: string, response: Response): Promise<string> {
   const body = (await response.text()).trim().slice(0, 200);
-  return `Failed to ${action} advertisement image (${response.status})${body ? `: ${body}` : ""}`;
+  return `Failed to ${action} house image (${response.status})${body ? `: ${body}` : ""}`;
 }
 
-export async function uploadAdvertisementImageObject({
+export async function uploadHouseImageObject({
   body,
   contentType,
   fetchImpl = fetch,
@@ -23,7 +23,7 @@ export async function uploadAdvertisementImageObject({
   body: BodyInit;
   contentType: string;
 }) {
-  const response = await fetchImpl(buildAdvertisementImageUrl(objectKey, workerUrl), {
+  const response = await fetchImpl(buildHouseImageUrl(objectKey, workerUrl), {
     body,
     headers: {
       authorization: `Bearer ${workerSecret}`,
@@ -37,13 +37,13 @@ export async function uploadAdvertisementImageObject({
   }
 }
 
-export async function deleteAdvertisementImageObject({
+export async function deleteHouseImageObject({
   fetchImpl = fetch,
   objectKey,
   workerSecret,
   workerUrl,
 }: WorkerConfig) {
-  const response = await fetchImpl(buildAdvertisementImageUrl(objectKey, workerUrl), {
+  const response = await fetchImpl(buildHouseImageUrl(objectKey, workerUrl), {
     headers: {
       authorization: `Bearer ${workerSecret}`,
     },

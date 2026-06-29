@@ -34,7 +34,7 @@ function keyFromRequest(request: Request): string {
   const parts = key.split("/");
 
   if (
-    !key.startsWith("advertisements/") ||
+    (!key.startsWith("advertisements/") && !key.startsWith("houses/")) ||
     key.includes("://") ||
     parts.some((part) => !part || part === "." || part === "..")
   ) {

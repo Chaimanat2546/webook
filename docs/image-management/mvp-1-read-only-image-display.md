@@ -118,10 +118,20 @@ Navigation:
 
 - The back link uses a validated `returnTo` value and falls back to `/admin/houses`.
 - Zone navigation preserves `returnTo` so returning to the house list keeps the previous page/search state.
+- On mobile, changing zones scrolls the active zone chip into the first visible position without changing the stored zone order.
+- The image manager uses a bounded workspace: zones, selected-zone header, inline upload action, and form actions remain visible while the image grid is the primary scroll area for long image sets.
+- The selected-zone header keeps the image count in the left detail text and uses the far-right header action slot for the upload button; avoid a duplicate far-right image-count badge.
 
 ## Data Source
 
 Database: Supabase Database
+
+Current ordering rule:
+
+- `image_move` is scoped to `property_id + image_zone`, not the whole house.
+- The image page sorts images inside each selected zone by `image_move`.
+- Zone folder order is separate from `image_move` and should not be inferred from the highest/lowest image number.
+- New uploads in later MVPs should assign the next `image_move` from the selected zone only.
 
 ### `listings`
 

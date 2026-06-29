@@ -17,11 +17,15 @@ import {
   getAdvertisementById,
   type AdvertisementImageRow,
 } from "../../../../server/repositories/advertisements";
+import { resolveAdvertisementImageObjectKey } from "../../../../server/services/advertisements";
 import { updateAdvertisementAction } from "../actions";
 
 function imageSrc(image: AdvertisementImageRow, workerUrl: string): string | null {
   try {
-    return buildAdvertisementImageUrl(image.image_name, workerUrl);
+    return buildAdvertisementImageUrl(
+      resolveAdvertisementImageObjectKey(image.advertisement_id, image.image_name),
+      workerUrl,
+    );
   } catch {
     return null;
   }
@@ -71,10 +75,12 @@ export default async function AdvertisementDetailPage({
   const existingImages: AdvertisementFormImage[] = [...(advertisement.advertisement_images ?? [])]
     .sort((a, b) => a.image_order - b.image_order || a.id.localeCompare(b.id))
     .map((image) => ({
+      created_at: image.created_at,
       id: image.id,
       image_name: image.image_name,
       image_order: image.image_order,
       src: imageSrc(image, workerUrl),
+      updated_at: image.updated_at,
     }));
   const action = updateAdvertisementAction.bind(null, advertisement.id);
 
