@@ -131,24 +131,15 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(sharedCardSource, /title="ดูรูป"/);
   });
 
-  it("adds draft upload and pending delete controls like advertisement images", () => {
-    assert.match(pageSource, /updateHouseImagesAction/);
-    assert.match(pageSource, /action=\{updateHouseImagesAction\.bind\(null, propertyId\)\}/);
-    assert.match(source, /"use client"/);
-    assert.match(source, /name="images"/);
-    assert.match(source, /name="deleted_image_ids"/);
-    assert.match(source, /name="image_zone"/);
-    assert.match(source, /name="return_to"/);
-    assert.match(source, /URL\.createObjectURL/);
-    assert.match(source, /URL\.revokeObjectURL/);
-    assert.match(source, /function appendPreviews\(files: File\[\]/);
-    assert.match(source, /const nextPreviews = \[\.\.\.previewsRef\.current, \.\.\.newPreviews\]/);
-    assert.match(source, /appendPreviews\(Array\.from\(event\.currentTarget\.files \?\? \[\]\), true\)/);
-    assert.match(source, /syncInputFiles\(nextPreviews\.map\(\(preview\) => preview\.file\)\)/);
-    assert.match(source, /UploadCloudIcon/);
-    assert.match(source, /SaveIcon/);
-    assert.match(source, /Trash2Icon/);
-    assert.match(source, /disabled=\{!isDirty\}/);
+  it("wires immediate upload and confirmed delete actions into the image manager", () => {
+    assert.match(pageSource, /uploadHouseImagesAction/);
+    assert.match(pageSource, /deleteHouseImageAction/);
+    assert.match(pageSource, /deleteHouseImagesAction/);
+    assert.match(pageSource, /uploadAction=\{uploadHouseImagesAction\.bind\(null, propertyId\)\}/);
+    assert.match(pageSource, /deleteAction=\{deleteHouseImageAction\.bind\(null, propertyId\)\}/);
+    assert.match(pageSource, /bulkDeleteAction=\{deleteHouseImagesAction\.bind\(null, propertyId\)\}/);
+    assert.doesNotMatch(pageSource, /updateHouseImagesAction/);
+    assert.doesNotMatch(pageSource, /action=\{updateHouseImagesAction\.bind\(null, propertyId\)\}/);
   });
 
   it("uses provider policy before showing existing image delete controls", () => {
