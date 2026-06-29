@@ -123,6 +123,13 @@ Navigation:
 
 Database: Supabase Database
 
+Current ordering rule:
+
+- `image_move` is scoped to `property_id + image_zone`, not the whole house.
+- The image page sorts images inside each selected zone by `image_move`.
+- Zone folder order is separate from `image_move` and should not be inferred from the highest/lowest image number.
+- New uploads in later MVPs should assign the next `image_move` from the selected zone only.
+
 ### `listings`
 
 ใช้ fields:

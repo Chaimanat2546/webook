@@ -120,16 +120,16 @@ Approved mobile direction:
 - Horizontal zone chips act as folder navigation and keep the selected zone obvious
 - Zone navigation preserves `returnTo`
 - Show only the selected zone images
-- Image cards stack vertically with preview, global order badge, zone badge, `image_name`, `created_at`, and `updated_at`
+- Image cards stack vertically with preview, zone order badge, zone badge, `image_name`, `created_at`, and `updated_at`
 - Clicking a valid image card opens a larger read-only preview dialog
 
 Approved desktop direction:
 
 - Reuse the admin sidebar shell
 - Header shows back link, house title, `property_id`, total image count, and read-only badge
-- Left panel lists zone folders with global order ranges and image counts
-- Right panel shows the selected zone header, image count, global order range, and image card grid
-- Image order badges show actual global `image_move` values
+- Left panel lists zone folders with zone order ranges and image counts
+- Right panel shows the selected zone header, image count, zone order range, and image card grid
+- Image order badges show the `image_move` value within the selected zone
 
 ### Data
 
@@ -148,11 +148,11 @@ Show:
 ### Ordering
 
 - Group images by `image_zone`
-- Sort zone folders by the lowest `image_move` in each zone
+- Sort known zone folders by fixed zone order: `cover`, `inside`, `parking`, `bathroom`, `bedroom`, `kitchen`, `review`, `outside`; unknown zones follow by their existing order/name.
 - Sort images inside each zone by `image_move`
-- Display actual global `image_move` values
-- Do not reset order numbers per zone
-- Approved zone example: `cover` #1, `living_room` #2-#4, `bedroom` #5-#6, `pool` #7-#8, unassigned #9
+- `image_move` is scoped to `property_id + image_zone`, not the whole house.
+- New uploads use the next `image_move` from the selected zone only.
+- Approved zone example: `cover` #1-#2 and `bedroom` #1 can coexist for the same house.
 
 Missing or empty `image_zone` goes under:
 

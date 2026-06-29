@@ -8,6 +8,7 @@ import {
   getImageZoneMeta,
   buildHouseImageName,
   getImageFiles,
+  getNextHouseImageMove,
   getSelectedImageZoneGroup,
   groupImagesByZone,
   validateHouseImageFile,
@@ -15,20 +16,32 @@ import {
 } from "../server/services/images.ts";
 
 describe("house image grouping", () => {
-  it("groups by image_zone and sorts folders by lowest global image_move", () => {
+  it("groups by image_zone, sorts images within each zone, and keeps zone order separate", () => {
     const groups = groupImagesByZone([
-      { id: 1, image_move: 4, image_name: "b.webp", image_zone: "bedroom" },
+      { id: 1, image_move: 1, image_name: "b.webp", image_zone: "bedroom" },
       { id: 2, image_move: 1, image_name: "c.webp", image_zone: "cover" },
-      { id: 3, image_move: 2, image_name: "l.webp", image_zone: "living_room" },
-      { id: 4, image_move: 3, image_name: "l2.webp", image_zone: "living_room" },
+      { id: 3, image_move: 2, image_name: "i2.webp", image_zone: "inside" },
+      { id: 4, image_move: 1, image_name: "i1.webp", image_zone: "inside" },
     ]);
 
     assert.deepEqual(groups.map((group) => group.zone), [
       "cover",
-      "living_room",
+      "inside",
       "bedroom",
     ]);
-    assert.deepEqual(groups[1]?.images.map((image) => image.image_move), [2, 3]);
+    assert.deepEqual(groups[1]?.images.map((image) => image.image_move), [1, 2]);
+  });
+
+  it("assigns the next image_move from the selected zone only", () => {
+    const remainingImages = [
+      { id: 1, image_move: 1, image_name: "cover.webp", image_zone: "cover" },
+      { id: 2, image_move: 63, image_name: "bedroom.webp", image_zone: "bedroom" },
+      { id: 3, image_move: 7, image_name: "inside.webp", image_zone: "inside" },
+    ];
+
+    assert.equal(getNextHouseImageMove(remainingImages, "cover"), 2);
+    assert.equal(getNextHouseImageMove(remainingImages, "cover", 1), 3);
+    assert.equal(getNextHouseImageMove(remainingImages, "outside"), 1);
   });
 
   it("uses Thai unassigned label for empty zones", () => {

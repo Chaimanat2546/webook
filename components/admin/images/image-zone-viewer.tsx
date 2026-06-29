@@ -309,7 +309,7 @@ export function ImageZoneViewer({
                           isActive ? "text-primary-foreground/80" : "text-muted-foreground",
                         )}
                       >
-                        Order {orderRangeLabel(group)}
+                        Zone Order {orderRangeLabel(group)}
                       </span>
                     </span>
                   </span>
@@ -333,7 +333,7 @@ export function ImageZoneViewer({
                 {selectedMeta.label}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {visibleImages.length + previews.length} รูป · Global Order: {orderRangeLabel(selectedGroup)}
+                {visibleImages.length + previews.length} รูป · Zone Order: {orderRangeLabel(selectedGroup)}
               </p>
             </div>
           </div>

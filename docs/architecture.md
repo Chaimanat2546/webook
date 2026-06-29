@@ -28,6 +28,7 @@ Legacy AWS/S3 image display URLs are built from `image_name` using the approved 
 House and advertisement image cards share `components/admin/image-asset-card.tsx` for the card layout, 4:3 preview area, click-to-preview dialog, and Thai create/update metadata rows.
 The image page uses the `zone` query parameter to select one image category at a time; missing or unknown zones fall back to the first grouped zone.
 Known image zones are mapped to Thai display labels and Lucide icon names in `server/services/images.ts`; unknown zones keep their raw label and use the fallback image icon.
+House `image_move` values are scoped to `property_id + image_zone`; new uploads calculate the next order number only from the selected zone.
 
 House image storage has two provider classes:
 

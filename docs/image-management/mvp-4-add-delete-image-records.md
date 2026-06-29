@@ -24,6 +24,7 @@ Current R2 upload contract:
 - New uploads store filename-only `images.image_name` values using `YYYYMMDDHHmmss_random10.ext`, for example `20260222205910_63fe3bcbc8.webp`.
 - The server composes the R2 object key as `houses/{property_id}/{image_name}`.
 - New house image rows store the full Worker URL in `images.image_url` for R2 display/provider detection.
+- New house image rows assign `image_move` from the selected `image_zone` only; order is scoped to `property_id + image_zone`.
 - Clients must not submit R2 paths such as `houses/{property_id}/...`.
 
 - MVP นี้ใช้ draft UI แบบ advertisement: เลือกรูป/ลบรูปในหน้า แล้วค่อยบันทึกพร้อมกัน
@@ -55,6 +56,7 @@ Current R2 upload contract:
 ## Testing Checklist
 
 - New upload stores filename-only `images.image_name` and R2 object key `houses/{property_id}/{image_name}`.
+- New upload into a zone with existing `#1` becomes `#2` even if another zone already has a higher `image_move`.
 - เพิ่มรูปได้
 - เพิ่มรูปซ้ำไม่ได้
 - extension ที่ไม่รองรับถูกปฏิเสธ

@@ -22,6 +22,7 @@ import {
   buildHouseImageObjectKey,
   getHouseImageStorageProvider,
   getImageFiles,
+  getNextHouseImageMove,
   isHouseImageFileOperationAllowed,
   resolveHouseImageObjectKey,
   validateHouseImageFile,
@@ -72,12 +73,6 @@ function imagePageHref(propertyId: string, zone: string, returnTo: string | null
   return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
 }
 
-function imageMoveValue(image: { image_move: number | null }): number {
-  return typeof image.image_move === "number" && Number.isFinite(image.image_move)
-    ? image.image_move
-    : 0;
-}
-
 async function cleanupUploadedImages({
   objectKeys,
   workerSecret,
@@ -120,7 +115,6 @@ export async function updateHouseImagesAction(propertyId: string, formData: Form
     imagesToDelete.some((image) => getHouseImageStorageProvider(image.image_url) === "r2")
       ? getHouseImageEnv()
       : null;
-  const maxMove = Math.max(0, ...remainingImages.map(imageMoveValue));
   const uploadedObjectKeys: string[] = [];
   const rows: HouseImageInsert[] = [];
   const now = new Date().toISOString();
@@ -141,7 +135,7 @@ export async function updateHouseImagesAction(propertyId: string, formData: Form
         rows.push({
           created_at: now,
           create_by: adminCreateBy,
-          image_move: maxMove + index + 1,
+          image_move: getNextHouseImageMove(remainingImages, imageZone, index),
           image_name: imageName,
           image_url: buildHouseImageUrl(objectKey, imageEnv.workerUrl),
           image_zone: imageZone,

@@ -101,6 +101,11 @@ describe("house image mobile UI", () => {
     assert.match(source, /isHouseImageFileOperationAllowed\(image\.image_url, "delete"\)/);
   });
 
+  it("labels image_move as zone order instead of global house order", () => {
+    assert.match(source, /Zone Order/);
+    assert.doesNotMatch(source, /Global Order/);
+  });
+
   it("uses image_url only for R2 display and keeps AWS/S3 display on the Lambda path", () => {
     assert.match(source, /provider === "r2" && image\.image_url/);
     assert.doesNotMatch(source, /provider === "aws-s3" \|\| provider === "r2"/);

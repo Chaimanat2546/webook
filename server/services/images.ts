@@ -36,6 +36,8 @@ export const IMAGE_ZONE_META = {
   outside: { icon: "door-closed", label: "ภายนอก" },
 } as const;
 
+const IMAGE_ZONE_ORDER = ["cover", ...Object.keys(IMAGE_ZONE_META)] as const;
+
 export type ImageZoneKey = keyof typeof IMAGE_ZONE_META;
 export type ImageZoneIconName =
   | (typeof IMAGE_ZONE_META)[ImageZoneKey]["icon"]
@@ -60,10 +62,25 @@ const thaiDateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
   timeZone: "Asia/Bangkok",
 });
 
+function normalizedZone(value: string | null | undefined): string {
+  return value?.trim() || UNASSIGNED_IMAGE_ZONE;
+}
+
 function moveValue(image: HouseImageItem): number {
   return typeof image.image_move === "number" && Number.isFinite(image.image_move)
     ? image.image_move
     : Number.MAX_SAFE_INTEGER;
+}
+
+function imageMoveForNewOrder(image: HouseImageItem): number {
+  return typeof image.image_move === "number" && Number.isFinite(image.image_move)
+    ? image.image_move
+    : 0;
+}
+
+function zoneOrderValue(zone: string): number {
+  const index = IMAGE_ZONE_ORDER.findIndex((value) => value === zone);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
 export function formatImageMoveLabel(imageMove: number | null): string {
@@ -145,6 +162,22 @@ export function validateHouseImageZone(value: string): string {
   return zone;
 }
 
+export function getNextHouseImageMove(
+  images: HouseImageItem[],
+  zone: string,
+  offset = 0,
+): number {
+  const selectedZone = normalizedZone(zone);
+  const maxMove = Math.max(
+    0,
+    ...images
+      .filter((image) => normalizedZone(image.image_zone) === selectedZone)
+      .map(imageMoveForNewOrder),
+  );
+
+  return maxMove + offset + 1;
+}
+
 export function buildHouseImageName(
   mimeType: string,
   options?: ManagedImageNameOptions,
@@ -174,7 +207,7 @@ export function groupImagesByZone(images: HouseImageItem[]): ImageZoneGroup[] {
   const groups = new Map<string, HouseImageItem[]>();
 
   for (const image of images) {
-    const zone = image.image_zone?.trim() || UNASSIGNED_IMAGE_ZONE;
+    const zone = normalizedZone(image.image_zone);
     const zoneImages = groups.get(zone) ?? [];
     zoneImages.push(image);
     groups.set(zone, zoneImages);
@@ -192,5 +225,9 @@ export function groupImagesByZone(images: HouseImageItem[]): ImageZoneGroup[] {
         zone,
       };
     })
-    .sort((a, b) => a.minMove - b.minMove);
+    .sort((a, b) => {
+      const zoneOrderDelta = zoneOrderValue(a.zone) - zoneOrderValue(b.zone);
+      if (zoneOrderDelta !== 0) return zoneOrderDelta;
+      return a.minMove - b.minMove || a.zone.localeCompare(b.zone, "th");
+    });
 }
