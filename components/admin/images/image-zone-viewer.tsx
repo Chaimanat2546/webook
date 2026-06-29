@@ -16,7 +16,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ChangeEvent, type ReactNode, useEffect, useRef, useTransition } from "react";
+import { type ChangeEvent, type ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { buildAwsImageUrl } from "../../../lib/aws-image-url";
@@ -35,6 +35,15 @@ import {
 import { AdminImageCard } from "../image-asset-card";
 import { Badge } from "../../ui/badge";
 import { Button, buttonVariants } from "../../ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../ui/dialog";
 import { Label } from "../../ui/label";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
 
@@ -143,6 +152,7 @@ interface ImageZoneViewerProps {
 }
 
 export function ImageZoneViewer({
+  deleteAction,
   groups,
   propertyId,
   returnTo,
@@ -153,6 +163,7 @@ export function ImageZoneViewer({
   const inputRef = useRef<HTMLInputElement>(null);
   const activeZoneRef = useRef<HTMLAnchorElement>(null);
   const [isMutating, startMutationTransition] = useTransition();
+  const [singleDeleteImage, setSingleDeleteImage] = useState<HouseImageItem | null>(null);
   const sidebarGroups = groups.length > 0 ? groups : [fallbackGroup];
   const selectedGroup = getSelectedImageZoneGroup(sidebarGroups, selectedZone) ?? fallbackGroup;
   const visibleImages = selectedGroup.images;
@@ -197,8 +208,30 @@ export function ImageZoneViewer({
     void uploadSelectedFiles(Array.from(event.currentTarget.files ?? []));
   }
 
+  function confirmSingleDelete() {
+    if (!singleDeleteImage) return;
+
+    startMutationTransition(() => {
+      void (async () => {
+        try {
+          const result = await deleteAction(singleDeleteImage.id);
+          if (result.cleanupWarning) {
+            toast.warning("ลบรายการรูปแล้ว แต่ลบไฟล์ใน storage ไม่ครบ");
+          } else {
+            toast.success("ลบรูปแล้ว");
+          }
+          setSingleDeleteImage(null);
+          router.refresh();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "ลบรูปไม่สำเร็จ");
+        }
+      })();
+    });
+  }
+
   return (
-    <div className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-xl border bg-background lg:grid-cols-[220px_1fr] lg:grid-rows-1">
+    <>
+      <div className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-xl border bg-background lg:grid-cols-[220px_1fr] lg:grid-rows-1">
       <aside className="min-w-0 min-h-0 border-b bg-muted/20 lg:grid lg:grid-rows-[auto_minmax(0,1fr)] lg:border-b-0 lg:border-r">
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">Zones</h2>
@@ -307,7 +340,7 @@ export function ImageZoneViewer({
                       canDelete ? (
                         <Button
                           className="size-7 bg-background/90"
-                          disabled
+                          onClick={() => setSingleDeleteImage(image)}
                           size="icon"
                           type="button"
                           variant="destructive"
@@ -329,5 +362,46 @@ export function ImageZoneViewer({
         </div>
       </section>
     </div>
+
+      <Dialog open={singleDeleteImage !== null} onOpenChange={(open) => !open && setSingleDeleteImage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการลบรูป</DialogTitle>
+            <DialogDescription>ตรวจสอบรูปก่อนยืนยันการลบ รูปที่ลบแล้วจะถูกนำออกจากบ้านพักนี้</DialogDescription>
+          </DialogHeader>
+          {singleDeleteImage ? (
+            <div className="grid gap-3">
+              <div className="overflow-hidden rounded-md bg-muted">
+                {displayUrl(singleDeleteImage) ? (
+                  <img
+                    alt={singleDeleteImage.image_name ?? "house image"}
+                    className="max-h-80 w-full object-contain"
+                    src={displayUrl(singleDeleteImage) ?? undefined}
+                  />
+                ) : (
+                  <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">
+                    แสดงรูปไม่ได้
+                  </div>
+                )}
+              </div>
+              <p className="break-all font-mono text-xs text-muted-foreground">
+                {singleDeleteImage.image_name ?? "-"}
+              </p>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                ยกเลิก
+              </Button>
+            </DialogClose>
+            <Button disabled={isMutating} onClick={confirmSingleDelete} type="button" variant="destructive">
+              <Trash2Icon data-icon="inline-start" />
+              ลบรูปนี้
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

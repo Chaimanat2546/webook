@@ -169,6 +169,18 @@ describe("house image mobile UI", () => {
     assert.match(source, /router\.refresh\(\)/);
   });
 
+  it("confirms single image deletion with a preview before calling the delete action", () => {
+    assert.match(source, /singleDeleteImage/);
+    assert.match(source, /setSingleDeleteImage\(image\)/);
+    assert.match(source, /deleteAction\(singleDeleteImage\.id\)/);
+    assert.match(source, /ลบรูปนี้/);
+    assert.match(source, /ยืนยันการลบรูป/);
+    assert.match(source, /displayUrl\(singleDeleteImage\)/);
+    assert.match(source, /cleanupWarning/);
+    assert.match(source, /toast\.warning/);
+    assert.match(source, /router\.refresh\(\)/);
+  });
+
   it("uses provider policy before showing existing image delete controls", () => {
     assert.match(source, /isHouseImageFileOperationAllowed\(image\.image_url, "delete"\)/);
   });
