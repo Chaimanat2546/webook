@@ -21,17 +21,19 @@ MVP 1 ใช้สิทธิ์รายหมวดจาก `allow_tools` �
 ## Current Admin Flow
 
 - `/admin/houses/[propertyId]/images` is a zone-scoped image manager. The `zone` query value controls the current image zone.
+- The zone menu always shows the configured setup zones in this order, even when a zone has no images: รูปปก, ภายนอก, ที่จอดรถ, ภายใน, ห้องครัว, ห้องนอน, ห้องน้ำ, รีวิว. Zone menu items show only the image count, and empty zones render an in-grid empty state.
 - Uploading files starts immediately after the admin chooses files. There is no staged house-image draft and no save button for uploads.
 - Single delete is explicit: R2-backed images show a delete control, clicking it opens a confirmation dialog with the image preview, and confirming deletes that one image.
-- Bulk delete uses a selection mode in the current zone only. `Select all` selects only deletable images visible in the current zone, admins can uncheck individual images, then confirm deletion from a preview list.
+- Bulk delete uses a selection mode in the current zone only. `Select all` selects only deletable images visible in the current zone, admins can click image cards to toggle individual selections, then confirm deletion from a larger delete queue preview.
 - AWS/S3-backed legacy images remain display-only. They can be viewed, but they do not show house-image delete controls until provider behavior is approved.
-- Each upload/delete operation calls its own server action and refreshes the page after success. Storage cleanup warnings are surfaced to the admin instead of being hidden.
-- House image upload uses a client-side queue.
+- Single delete confirmation dialogs close immediately after confirm, then in-progress/success/warning/error feedback is shown through toast notifications. Bulk delete keeps the queue visible while deleting so the admin can see per-image status and retry failed rows.
+- Bulk delete is controlled by the client one image at a time with `deleteHouseImageAction(imageId)`. Do not call one bulk server action for the progress UI, because the client would only know start/end instead of per-image progress.
+- House image upload uses a client-side queue internally, but in-progress feedback is shown through toast notifications instead of a persistent queue panel.
 - GIF is not supported for house image upload.
 - Selected files are resized to WebP before upload.
 - Resize target: max long edge 1920px, WebP quality 0.82.
 - Upload requests are sent one file at a time in the MVP to avoid large combined request bodies.
-- Upload uses partial success: successful files stay saved, failed files remain in the queue for retry.
+- Upload uses partial success: successful files stay saved, failed files appear as muted, unsaved cards in the current zone grid with a failed-upload summary and retry/remove actions.
 
 ## Project Constraints
 

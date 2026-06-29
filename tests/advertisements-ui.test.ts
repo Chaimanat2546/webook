@@ -35,7 +35,7 @@ describe("advertisement admin UI", () => {
     assert.match(source, /<TableHead>ID<\/TableHead>/);
   });
 
-  it("adds create and detail forms with draft previews and delete confirmation", () => {
+  it("adds create and detail forms with immediate edit image operations", () => {
     assert.ok(existsSync(new URL("../app/admin/advertisements/new/page.tsx", import.meta.url)));
     assert.ok(existsSync(new URL("../app/admin/advertisements/[id]/page.tsx", import.meta.url)));
 
@@ -70,11 +70,12 @@ describe("advertisement admin UI", () => {
     assert.match(formSource, /const nextPreviews = \[\.\.\.previewsRef\.current, \.\.\.newPreviews\]/);
     assert.match(formSource, /appendPreviews\(resizedFiles,\s*true\)/);
     assert.match(formSource, /syncInputFiles\(nextPreviews\.map\(\(preview\) => preview\.file\)\)/);
-    assert.match(formSource, /1080px/);
+    assert.match(formSource, /1920px/);
     const imagesInputBlock =
       formSource.match(/<(?:Input|input)[\s\S]*?name="images"[\s\S]*?type="file"[\s\S]*?\/>/)?.[0] ?? "";
     assert.match(imagesInputBlock, /^<input/);
     assert.match(imagesInputBlock, /className="sr-only"/);
+    assert.doesNotMatch(imagesInputBlock, /image\/gif/);
     assert.match(formSource, /name="images"/);
     assert.match(formSource, /className="grid min-w-0 gap-5/);
     assert.match(formSource, /lg:grid-cols-\[minmax\(18rem,26rem\)_minmax\(0,1fr\)\]/);
@@ -84,7 +85,7 @@ describe("advertisement admin UI", () => {
     assert.match(formSource, /formatThaiImageDateTime/);
     assert.match(detailSource, /created_at: image\.created_at/);
     assert.match(detailSource, /updated_at: image\.updated_at/);
-    assert.match(sharedCardSource, /CardContent className="flex min-h-16 flex-col gap-1 p-2"/);
+    assert.match(sharedCardSource, /CardContent className="flex flex-col gap-1 p-2"/);
     assert.match(formSource, /<Card className="relative w-full max-w-36 gap-0 overflow-hidden border-dashed p-0 sm:max-w-40" size="sm">/);
     assert.match(sharedCardSource, /cursor-zoom-in/);
     assert.match(formSource, /<CardContent className="grid min-w-0 gap-4 p-4"/);
@@ -95,8 +96,25 @@ describe("advertisement admin UI", () => {
     assert.doesNotMatch(formSource, /sm:grid-cols-2/);
     assert.doesNotMatch(formSource, /min-h-44/);
     assert.match(formSource, /pb-20 lg:pb-0/);
-    assert.match(formSource, /deleted_image_ids/);
-    assert.match(formSource, /deletedImageIds/);
+    assert.match(formSource, /import \{ toast \} from "sonner"/);
+    assert.match(formSource, /useRouter/);
+    assert.match(formSource, /useTransition/);
+    assert.match(formSource, /type AdvertisementUploadQueueStatus = "pending-upload" \| "uploading" \| "uploaded" \| "failed";/);
+    assert.match(formSource, /type AdvertisementBulkDeleteQueueStatus = "pending" \| "deleting" \| "deleted" \| "failed";/);
+    assert.match(formSource, /failedUploadItems/);
+    assert.match(formSource, /async function processUploadQueueItem/);
+    assert.match(formSource, /await uploadAction\(formData\)/);
+    assert.match(formSource, /toast\.loading\(`กำลังอัปโหลด \$\{current\}\/\$\{total\}`/);
+    assert.match(formSource, /function retryFailedUploads/);
+    assert.match(formSource, /singleDeleteImage/);
+    assert.match(formSource, /DialogTitle>ยืนยันการลบรูปโฆษณา/);
+    assert.match(formSource, /bulkDeleteQueue/);
+    assert.match(formSource, /function bulkDeleteStatusLabel\(status: AdvertisementBulkDeleteQueueStatus\)/);
+    assert.match(formSource, /async function processBulkDeleteQueueItem/);
+    assert.match(formSource, /await deleteAction\(item\.image\.id\)/);
+    assert.match(formSource, /toast\.loading\(`กำลังลบ \$\{current\}\/\$\{total\}`/);
+    assert.match(formSource, /function retryFailedBulkDeletes/);
+    assert.doesNotMatch(formSource, /bulkDeleteAction/);
     assert.match(formSource, /Alert/);
     assert.match(formSource, /disabled=\{!isDirty\}/);
     assert.match(
@@ -139,9 +157,19 @@ describe("advertisement admin UI", () => {
       new URL("../app/admin/advertisements/actions.ts", import.meta.url),
       "utf8",
     );
-    assert.match(actionsSource, /deleted_image_ids/);
+    assert.match(actionsSource, /export async function uploadAdvertisementImagesAction/);
+    assert.match(actionsSource, /uploadedCount/);
+    assert.match(actionsSource, /export async function deleteAdvertisementImageAction/);
+    assert.match(actionsSource, /deletedId/);
+    assert.match(actionsSource, /cleanupWarning/);
     assert.match(actionsSource, /validateAdvertisementImageEditCount/);
     assert.match(actionsSource, /getAvailableAdvertisementImageOrders/);
+    assert.doesNotMatch(actionsSource, /deleteAdvertisementImagesAction/);
+
+    assert.match(detailSource, /uploadAdvertisementImagesAction/);
+    assert.match(detailSource, /deleteAdvertisementImageAction/);
+    assert.match(detailSource, /uploadAction=\{uploadAdvertisementImagesAction\.bind\(null, advertisement\.id\)\}/);
+    assert.match(detailSource, /deleteAction=\{deleteAdvertisementImageAction\}/);
   });
 
   it("shows a shadcn sonner toast after creating or saving an advertisement", () => {

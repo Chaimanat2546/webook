@@ -26,8 +26,8 @@ Adding house image records uses `public.users.mid` as the legacy numeric `images
 Listings and images are read through server repositories; client components do not access Supabase directly.
 Legacy AWS/S3 image display URLs are built from `image_name` using the approved Lambda host, without an image proxy or client-side credential.
 House and advertisement image cards share `components/admin/image-asset-card.tsx` for the card layout, 4:3 preview area, click-to-preview dialog, and Thai create/update metadata rows.
-The image page uses the `zone` query parameter to select one image category at a time; missing or unknown zones fall back to the first grouped zone.
-Known image zones are mapped to Thai display labels and Lucide icon names in `server/services/images.ts`; unknown zones keep their raw label and use the fallback image icon.
+The image page uses the `zone` query parameter to select one image category at a time; missing or unknown zones fall back to the first configured zone.
+Known image zones are mapped to Thai display labels and Lucide icon names in `server/services/images.ts`; the setup menu always includes `cover`, `outside`, `parking`, `inside`, `kitchen`, `bedroom`, `bathroom`, and `review` in that order, even when a zone has no images. Unknown zones with existing images keep their raw label and use the fallback image icon after the configured zones.
 House `image_move` values are scoped to `property_id + image_zone`; new uploads calculate the next order number only from the selected zone.
 
 House image storage has two provider classes:
@@ -39,10 +39,10 @@ House image storage has two provider classes:
 - New house image R2 object keys are composed server-side as `houses/{property_id}/{image_name}`; clients must not submit storage paths.
 - New house image rows store the full Worker URL in `images.image_url` for R2 display/provider detection.
 - The same shared media Worker/R2 bucket also serves `advertisements/...`.
-- `/admin/houses/[propertyId]/images` uses operation-specific server actions: uploads run immediately when files are selected, single deletes require preview confirmation, and bulk deletes require selecting images from the current zone before confirmation.
+- `/admin/houses/[propertyId]/images` uses operation-specific server actions: uploads run immediately when files are selected, single deletes require preview confirmation, and bulk deletes require selecting images from the current zone before the client processes a per-image delete queue.
 - New R2 files are uploaded before inserting `images` rows; if the database write fails, uploaded R2 objects are cleaned up best-effort.
 - Delete operations are allowed only for trusted R2-backed image rows. Legacy AWS/S3-backed house images remain display-only.
-- Bulk select-all is scoped to the currently selected image zone in the client, and the server still validates requested image ids against the trusted property images before deleting.
+- Bulk select-all is scoped to the currently selected image zone in the client. Bulk delete progress flows call the single-image delete action one trusted R2 image id at a time; do not use one bulk server action when the UI needs per-image status or retry.
 
 ## Advertisement Media Flow
 

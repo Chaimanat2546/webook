@@ -26,10 +26,32 @@ describe("house image grouping", () => {
 
     assert.deepEqual(groups.map((group) => group.zone), [
       "cover",
+      "outside",
+      "parking",
       "inside",
+      "kitchen",
       "bedroom",
+      "bathroom",
+      "review",
     ]);
-    assert.deepEqual(groups[1]?.images.map((image) => image.image_move), [1, 2]);
+    assert.deepEqual(groups.find((group) => group.zone === "inside")?.images.map((image) => image.image_move), [1, 2]);
+    assert.equal(groups.find((group) => group.zone === "outside")?.images.length, 0);
+  });
+
+  it("includes every configured house image zone even when no image exists", () => {
+    const groups = groupImagesByZone([]);
+
+    assert.deepEqual(groups.map((group) => group.zone), [
+      "cover",
+      "outside",
+      "parking",
+      "inside",
+      "kitchen",
+      "bedroom",
+      "bathroom",
+      "review",
+    ]);
+    assert.deepEqual(groups.map((group) => group.images.length), [0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
   it("assigns the next image_move from the selected zone only", () => {
@@ -48,9 +70,10 @@ describe("house image grouping", () => {
     const groups = groupImagesByZone([
       { id: 1, image_move: 9, image_name: "x.webp", image_zone: "" },
     ]);
+    const unassignedGroup = groups.find((group) => group.zone === UNASSIGNED_IMAGE_ZONE);
 
-    assert.equal(groups[0]?.zone, UNASSIGNED_IMAGE_ZONE);
-    assert.equal(groups[0]?.zone, "ไม่ระบุหมวด");
+    assert.equal(unassignedGroup?.zone, UNASSIGNED_IMAGE_ZONE);
+    assert.equal(unassignedGroup?.zone, "ไม่ระบุหมวด");
   });
 
   it("formats image card metadata for Thai admins", () => {
@@ -73,12 +96,19 @@ describe("house image grouping", () => {
     ]);
 
     assert.equal(getSelectedImageZoneGroup(groups, "living_room")?.zone, "living_room");
+    assert.equal(getSelectedImageZoneGroup(groups, "outside")?.zone, "outside");
+    assert.equal(getSelectedImageZoneGroup(groups, "outside")?.images.length, 0);
     assert.equal(getSelectedImageZoneGroup(groups, "missing")?.zone, "cover");
     assert.equal(getSelectedImageZoneGroup(groups, undefined)?.zone, "cover");
     assert.equal(getSelectedImageZoneGroup([], "cover"), null);
   });
 
   it("maps known image zones to Thai labels and lucide icon names", () => {
+    assert.deepEqual(getImageZoneMeta("cover"), {
+      icon: "image",
+      key: "cover",
+      label: "รูปปก",
+    });
     assert.deepEqual(getImageZoneMeta("inside"), {
       icon: "armchair",
       key: "inside",
@@ -117,10 +147,10 @@ describe("house image grouping", () => {
   });
 
   it("keeps unknown image zone labels readable with a fallback icon", () => {
-    assert.deepEqual(getImageZoneMeta("cover"), {
+    assert.deepEqual(getImageZoneMeta("legacy_zone"), {
       icon: "image",
-      key: "cover",
-      label: "cover",
+      key: "legacy_zone",
+      label: "legacy_zone",
     });
   });
 });

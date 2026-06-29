@@ -65,10 +65,10 @@ describe("advertisement rules", () => {
     );
   });
 
-  it("scales advertisement images down to a 1080px max side", () => {
-    assert.deepEqual(resizeToMax(2000, 1000), { width: 1080, height: 540 });
-    assert.deepEqual(resizeToMax(1000, 2000), { width: 540, height: 1080 });
-    assert.deepEqual(resizeToMax(3000, 2000), { width: 1080, height: 720 });
+  it("scales advertisement images down to a 1920px max side", () => {
+    assert.deepEqual(resizeToMax(2000, 1000), { width: 1920, height: 960 });
+    assert.deepEqual(resizeToMax(1000, 2000), { width: 960, height: 1920 });
+    assert.deepEqual(resizeToMax(3000, 2000), { width: 1920, height: 1280 });
     assert.deepEqual(resizeToMax(800, 600), { width: 800, height: 600 });
   });
 
@@ -82,6 +82,10 @@ describe("advertisement rules", () => {
     assert.equal(validateAdvertisementImageFile(image), image);
     assert.throws(
       () => validateAdvertisementImageFile(new File(["x"], "ad.txt", { type: "text/plain" })),
+      /Unsupported image type/,
+    );
+    assert.throws(
+      () => validateAdvertisementImageFile(new File(["gif"], "ad.gif", { type: "image/gif" })),
       /Unsupported image type/,
     );
   });

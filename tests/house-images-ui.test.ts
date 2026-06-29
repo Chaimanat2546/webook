@@ -32,8 +32,8 @@ describe("house image mobile UI", () => {
     assert.match(source, /items-start justify-center gap-3 p-3/);
     assert.match(source, /AdminImageCard/);
     assert.match(sharedCardSource, /max-w-36/);
-    assert.match(sharedCardSource, /CardContent className="flex min-h-16 flex-col gap-1 p-2"/);
-    assert.match(sharedCardSource, /text-\[10px\]/);
+    assert.match(sharedCardSource, /CardContent className="flex flex-col gap-1 p-2"/);
+    assert.match(sharedCardSource, /text-\[11px\]/);
     assert.match(sharedCardSource, /<AspectRatio className="bg-muted" ratio=\{4 \/ 3\}>/);
     assert.doesNotMatch(source, /grid grid-cols-2 gap-3 p-3/);
     assert.match(loadingSource, /grid grid-cols-\[repeat\(auto-fill,minmax\(9rem,9rem\)\)\]/);
@@ -71,8 +71,10 @@ describe("house image mobile UI", () => {
     assert.match(source, /buttonVariants\(\{ variant: "outline", size: "sm" \}\)/);
     assert.match(
       source,
-      /<p className="text-xs text-muted-foreground">\s*\{visibleImages\.length\} รูป · Zone Order: \{orderRangeLabel\(selectedGroup\)\}\s*<\/p>/,
+      /<p className="text-xs text-muted-foreground">\s*\{visibleImages\.length\} รูป\s*<\/p>/,
     );
+    assert.doesNotMatch(source, /Zone Order/);
+    assert.doesNotMatch(source, /orderRangeLabel/);
     assert.match(
       source,
       /<div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">[\s\S]*<Label[\s\S]*htmlFor="house-images-upload"[\s\S]*<UploadCloudIcon[\s\S]*<input[\s\S]*id="house-images-upload"[\s\S]*name="images"[\s\S]*type="file"[\s\S]*<\/div>/,
@@ -80,8 +82,14 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(source, /visibleImages\.length \+ previews\.length/);
     assert.doesNotMatch(source, /<Badge variant="secondary">\{visibleImages\.length \+ previews\.length\} รูป<\/Badge>/);
     assert.doesNotMatch(source, /flex flex-wrap items-center gap-2 text-xs text-muted-foreground/);
-    assert.doesNotMatch(source, /border border-dashed bg-muted\/20/);
     assert.doesNotMatch(source, /min-h-28 cursor-pointer flex-col/);
+  });
+
+  it("shows empty configured zones as selectable settings destinations", () => {
+    assert.match(source, /const sidebarGroups = groups\.length > 0 \? groups : \[fallbackGroup\];/);
+    assert.match(source, /<Badge className="shrink-0" variant=\{isActive \? "secondary" : "outline"\}>\s*\{group\.images\.length\} รูป\s*<\/Badge>/);
+    assert.match(source, /visibleImages\.length === 0 && failedUploadItems\.length === 0/);
+    assert.match(source, /โซนนี้ยังไม่มีรูป/);
   });
 
   it("changes zones with Next Link so sidebar state is not reset by a full reload", () => {
@@ -120,6 +128,7 @@ describe("house image mobile UI", () => {
     assert.match(sharedCardSource, /relative w-full max-w-36/);
     assert.match(sharedCardSource, /DialogTrigger asChild/);
     assert.match(sharedCardSource, /className="absolute inset-0/);
+    assert.match(source, /previewEnabled=\{!isBulkSelecting\}/);
     assert.match(sharedCardSource, /DialogContent/);
     assert.match(sharedCardSource, /DialogTitle/);
     assert.match(sharedCardSource, /max-w-7xl/);
@@ -130,13 +139,25 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(sharedCardSource, /title="ดูรูป"/);
   });
 
+  it("keeps the house card order badge but removes unused dates and zone badges", () => {
+    const houseCardSource = source.slice(
+      source.indexOf("function ImageCard"),
+      source.indexOf("function FailedUploadCard"),
+    );
+
+    assert.doesNotMatch(source, /formatThaiImageDateTime/);
+    assert.doesNotMatch(houseCardSource, /metaRows=\{\[/);
+    assert.match(source, /orderLabel=\{formatImageMoveLabel\(image\.image_move\)\}/);
+    assert.doesNotMatch(source, /secondaryLabel=\{zoneMeta\.label\}/);
+  });
+
   it("wires immediate upload and confirmed delete actions into the image manager", () => {
     assert.match(pageSource, /uploadHouseImagesAction/);
     assert.match(pageSource, /deleteHouseImageAction/);
-    assert.match(pageSource, /deleteHouseImagesAction/);
     assert.match(pageSource, /uploadAction=\{uploadHouseImagesAction\.bind\(null, propertyId\)\}/);
     assert.match(pageSource, /deleteAction=\{deleteHouseImageAction\.bind\(null, propertyId\)\}/);
-    assert.match(pageSource, /bulkDeleteAction=\{deleteHouseImagesAction\.bind\(null, propertyId\)\}/);
+    assert.doesNotMatch(pageSource, /deleteHouseImagesAction/);
+    assert.doesNotMatch(pageSource, /bulkDeleteAction=/);
     assert.doesNotMatch(pageSource, /updateHouseImagesAction/);
     assert.doesNotMatch(pageSource, /action=\{updateHouseImagesAction\.bind\(null, propertyId\)\}/);
   });
@@ -152,25 +173,33 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(source, /function appendPreviews/);
   });
 
-  it("queues selected files immediately and refreshes the grid after processing", () => {
+  it("queues selected files immediately, reports upload progress in toast, and refreshes the grid", () => {
     assert.match(source, /import \{ toast \} from "sonner";/);
     assert.match(source, /useRouter/);
     assert.match(source, /const router = useRouter\(\);/);
     assert.match(source, /uploadAction: \(formData: FormData\) => Promise<\{ uploadedCount: number \}>/);
     assert.match(source, /function onFilesChange\(event: ChangeEvent<HTMLInputElement>\)/);
     assert.match(source, /void uploadSelectedFiles\(Array\.from\(event\.currentTarget\.files \?\? \[\]\)\)/);
-    assert.match(source, /const items = queueItemsForFiles\(files\)/);
-    assert.match(source, /await processUploadQueueItem\(item\)/);
+    assert.match(source, /const items = queueItemsForFiles\(files, selectedGroup\.zone\)/);
+    assert.match(source, /function uploadQueueIdSuffix/);
+    assert.match(source, /typeof randomUUID === "function"/);
+    assert.match(source, /randomUUID\.call\(cryptoProvider\)/);
+    assert.match(source, /fallbackUploadQueueIdSuffix\(\)/);
+    assert.doesNotMatch(source, /crypto\.randomUUID\(\)/);
+    assert.match(source, /await processUploadQueueItem\(\s*item,\s*\(status\) =>/);
     assert.match(source, /await uploadAction\(formData\)/);
-    assert.match(source, /formData\.append\("image_zone", selectedGroup\.zone\)/);
+    assert.match(source, /formData\.append\("image_zone", item\.zone\)/);
     assert.match(source, /formData\.append\("images", resized\.file\)/);
     assert.match(source, /accept="image\/avif,image\/jpeg,image\/png,image\/webp"/);
+    assert.match(source, /toast\.loading/);
+    assert.match(source, /updateUploadProgressToast/);
+    assert.match(source, /toast\.dismiss\(uploadToastId\)/);
     assert.match(source, /toast\.success/);
     assert.match(source, /toast\.warning/);
     assert.match(source, /router\.refresh\(\)/);
   });
 
-  it("shows a per-file upload queue with resize and retry states", () => {
+  it("shows failed uploads as muted grid cards with retry actions instead of a full upload queue panel", () => {
     assert.match(source, /resizeHouseImageFile/);
     assert.match(source, /UploadQueueItem/);
     assert.match(source, /status: "pending-resize"/);
@@ -180,12 +209,21 @@ describe("house image mobile UI", () => {
     assert.match(source, /"uploaded"/);
     assert.match(source, /"failed"/);
     assert.match(source, /uploadQueue/);
+    assert.match(
+      source,
+      /const failedUploadItems = uploadQueue\.filter\(\s*\(item\) => item\.status === "failed" && item\.zone === selectedGroup\.zone,\s*\)/,
+    );
+    assert.match(source, /FailedUploadCard/);
+    assert.match(source, /failedUploadItems\.length > 0/);
+    assert.match(source, /failedUploadItems\.map/);
+    assert.match(source, /border-dashed/);
+    assert.match(source, /grayscale/);
+    assert.match(source, /ยังไม่ถูกบันทึก/);
     assert.match(source, /retryFailedUploads/);
+    assert.match(source, /clearFailedUploads/);
     assert.match(source, /removeUploadQueueItem/);
-    assert.match(source, /อัปโหลดแล้ว/);
-    assert.match(source, /ลองใหม่เฉพาะรูปที่ไม่สำเร็จ/);
-    assert.match(source, /ขนาดเดิม/);
-    assert.match(source, /หลังแปลง/);
+    assert.doesNotMatch(source, /uploadQueue\.map/);
+    assert.doesNotMatch(source, /border-t bg-background px-3 py-3/);
   });
 
   it("resizes then uploads queued files one at a time", () => {
@@ -193,7 +231,7 @@ describe("house image mobile UI", () => {
     assert.match(source, /await resizeHouseImageFile\(item\.file\)/);
     assert.match(source, /formData\.append\("images", resized\.file\)/);
     assert.match(source, /await uploadAction\(formData\)/);
-    assert.match(source, /for \(const item of items\)/);
+    assert.match(source, /for \(const \[index, item\] of items\.entries\(\)\)/);
     assert.doesNotMatch(source, /for \(const file of files\) {\s*formData\.append\("images", file\)/);
     assert.match(source, /status: "uploaded"/);
     assert.match(source, /status: "failed"/);
@@ -202,7 +240,11 @@ describe("house image mobile UI", () => {
   it("confirms single image deletion with a preview before calling the delete action", () => {
     assert.match(source, /singleDeleteImage/);
     assert.match(source, /setSingleDeleteImage\(image\)/);
-    assert.match(source, /deleteAction\(singleDeleteImage\.id\)/);
+    assert.match(source, /const imageToDelete = singleDeleteImage;/);
+    assert.match(source, /const deleteToastId = toast\.loading\("กำลังลบรูป"/);
+    assert.match(source, /setSingleDeleteImage\(null\);\s*startMutationTransition/);
+    assert.match(source, /deleteAction\(imageToDelete\.id\)/);
+    assert.match(source, /toast\.dismiss\(deleteToastId\)/);
     assert.match(source, /ลบรูปนี้/);
     assert.match(source, /ยืนยันการลบรูป/);
     assert.match(source, /displayUrl\(singleDeleteImage\)/);
@@ -221,13 +263,63 @@ describe("house image mobile UI", () => {
     assert.match(source, /function toggleSelectAllInCurrentZone\(checked: boolean\)/);
     assert.match(source, /new Set\(deletableImages\.map\(\(image\) => image\.id\)\)/);
     assert.match(source, /function toggleBulkDeleteImage\(imageId: number, checked: boolean\)/);
-    assert.match(source, /const selectedBulkDeleteIdsArray = selectedBulkDeleteImages\.map\(\(image\) => image\.id\);/);
-    assert.match(source, /bulkDeleteAction\(selectedBulkDeleteIdsArray\)/);
+    assert.match(source, /previewEnabled=\{!isBulkSelecting\}/);
+    assert.match(source, /const isSelected = selectedBulkDeleteIds\.has\(image\.id\);/);
+    assert.match(source, /selected=\{isSelected\}/);
+    assert.match(
+      source,
+      /onSelect=\{\s*isBulkSelecting && canDelete\s*\?\s*\(\) => toggleBulkDeleteImage\(image\.id, !selectedBulkDeleteIds\.has\(image\.id\)\)\s*:\s*undefined\s*\}/,
+    );
     assert.match(source, /checked=\{allCurrentZoneImagesSelected\}/);
-    assert.match(source, /checked=\{selectedBulkDeleteIds\.has\(image\.id\)\}/);
     assert.match(source, /ยืนยันลบรูปที่เลือก/);
-    assert.match(source, /selectedBulkDeleteImages\.map/);
+    assert.match(source, /bulkDeleteQueue\.map/);
+    assert.match(
+      source,
+      /<DialogContent className="flex max-h-\[calc\(100dvh-2rem\)\] max-w-5xl flex-col overflow-hidden">/,
+    );
+    assert.match(source, /<div className="min-h-0 flex-1 overflow-y-auto pr-1">/);
+    assert.match(source, /<div className="grid grid-cols-\[repeat\(auto-fill,minmax\(9rem,1fr\)\)\] gap-3">/);
+    assert.doesNotMatch(source, /grid max-h-\[70dvh\] grid-cols-\[repeat\(auto-fill,minmax\(9rem,1fr\)\)\]/);
+    assert.match(source, /shortImageName\(image\.image_name\)/);
+    assert.match(source, /\{ label: "ชื่อรูป", value: shortImageName\(image\.image_name\) \}/);
+    assert.match(source, /\{ label: "สถานะ", value: <span className=\{statusClassName\}>\{statusLabel\}<\/span> \}/);
+    assert.match(source, /\{ label: "สาเหตุ", value: item\.error \}/);
+    assert.match(source, /previewDescription="ดูรูปก่อนยืนยันลบ"/);
+    assert.doesNotMatch(source, /grid grid-cols-\[4rem_1fr\]/);
+    assert.doesNotMatch(source, /Order \{formatImageMoveLabel\(image\.image_move\)\}/);
     assert.match(source, /setSelectedBulkDeleteIds\(new Set\(\)\)/);
+    assert.doesNotMatch(source, /bulkDeleteAction\(selectedBulkDeleteIdsArray\)/);
+  });
+
+  it("runs bulk deletion as a per-image delete queue with progress and retry", () => {
+    assert.match(source, /type BulkDeleteQueueStatus = "pending" \| "deleting" \| "deleted" \| "failed";/);
+    assert.match(source, /interface BulkDeleteQueueItem/);
+    assert.match(source, /bulkDeleteQueue/);
+    assert.match(source, /function bulkDeleteStatusLabel\(status: BulkDeleteQueueStatus\)/);
+    assert.match(source, /return "รอลบ"/);
+    assert.match(source, /return "กำลังลบ"/);
+    assert.match(source, /return "ลบแล้ว"/);
+    assert.match(source, /return "ลบไม่สำเร็จ"/);
+    assert.match(source, /function queueItemsForBulkDelete\(images: HouseImageItem\[\]\)/);
+    assert.match(source, /status: "pending" as const/);
+    assert.match(source, /async function processBulkDeleteQueueItem/);
+    assert.match(source, /await deleteAction\(item\.image\.id\)/);
+    assert.match(source, /updateBulkDeleteQueueItem\(item\.id, \{ status: "deleting"/);
+    assert.match(source, /updateBulkDeleteQueueItem\(item\.id, \{\s*status: "deleted"/);
+    assert.match(source, /updateBulkDeleteQueueItem\(item\.id, \{\s*error:/);
+    assert.match(source, /status: "failed"/);
+    assert.match(source, /function updateBulkDeleteProgressToast/);
+    assert.match(source, /toast\.loading\(`กำลังลบ \$\{current\}\/\$\{total\}`/);
+    assert.match(source, /for \(const \[index, item\] of items\.entries\(\)\)/);
+    assert.match(source, /await processBulkDeleteQueueItem\(item/);
+    assert.match(source, /toast\.success\(`ลบสำเร็จทั้งหมด \$\{successCount\} รูป`\)/);
+    assert.match(source, /toast\.warning\(`ลบสำเร็จ \$\{successCount\} รูป, ลบไม่สำเร็จ \$\{failedCount\} รูป`\)/);
+    assert.match(source, /function retryFailedBulkDeletes/);
+    assert.match(source, /item\.status === "failed"/);
+    assert.match(source, /onClick=\{\(\) => retryFailedBulkDeletes\(\)\}/);
+    assert.match(source, /onClick=\{\(\) => retryFailedBulkDeletes\(\[item\.id\]\)\}/);
+    assert.doesNotMatch(source, /bulkDeleteAction:/);
+    assert.doesNotMatch(source, /bulkDeleteAction\(selectedBulkDeleteIdsArray\)/);
   });
 
   it("uses provider policy before showing existing image delete controls", () => {
@@ -235,7 +327,8 @@ describe("house image mobile UI", () => {
   });
 
   it("labels image_move as zone order instead of global house order", () => {
-    assert.match(source, /Zone Order/);
+    assert.match(source, /orderLabel=\{formatImageMoveLabel\(image\.image_move\)\}/);
+    assert.doesNotMatch(source, /Zone Order/);
     assert.doesNotMatch(source, /Global Order/);
   });
 

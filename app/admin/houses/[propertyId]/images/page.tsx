@@ -20,7 +20,6 @@ import { getListingByPropertyId } from "../../../../../server/repositories/listi
 import { groupImagesByZone } from "../../../../../server/services/images";
 import {
   deleteHouseImageAction,
-  deleteHouseImagesAction,
   uploadHouseImagesAction,
 } from "./actions";
 
@@ -88,7 +87,6 @@ export default async function HouseImagesPage({
       </header>
 
       <ImageZoneViewer
-        bulkDeleteAction={deleteHouseImagesAction.bind(null, propertyId)}
         deleteAction={deleteHouseImageAction.bind(null, propertyId)}
         groups={groups}
         propertyId={propertyId}

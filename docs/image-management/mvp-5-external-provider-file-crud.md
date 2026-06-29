@@ -29,7 +29,8 @@ MVP นี้เป็นรอบที่เสี่ยงที่สุด 
 - AWS/S3 physical delete remains disabled until the project has an approved delete endpoint, secret, and failure behavior.
 - New house image uploads should arrive at the server as resized WebP files from the admin client.
 - Server validation remains authoritative and rejects unsupported types, including GIF.
-- Upload queue partial failures are shown to the admin and can be retried per failed image.
+- Upload partial failures are shown as muted, unsaved cards in the current zone grid, with a failed-upload summary and retry/remove actions per failed image.
+- Bulk delete partial failures stay in the delete queue with failed status and retry; the client calls the single-image delete action per image so progress is visible.
 
 ## Out of Scope
 
@@ -49,6 +50,7 @@ MVP นี้เป็นรอบที่เสี่ยงที่สุด 
 - ต้อง handle กรณี database success แต่ provider fail
 - ต้อง handle กรณี provider success แต่ database fail
 - ถ้า provider/source ไม่ชัดเจนหรือไม่รองรับ operation ต้อง block operation และแจ้ง error
+- Bulk delete flows that need per-image progress must not use one bulk server action; the client should process one trusted R2 image id at a time.
 - ห้าม expose R2 credential, AWS/S3 credential, Bearer token, หรือ Authorization header ไป client
 
 ## Testing Checklist
@@ -66,5 +68,6 @@ MVP นี้เป็นรอบที่เสี่ยงที่สุด 
 - cancel แล้วไม่ลบ
 - physical delete fail แล้วแจ้งเตือน
 - database delete fail แล้วแจ้ง error
+- bulk delete แสดง progress รายรูปและค้างรายการที่ fail ไว้ให้ retry
 - ไม่มี open image proxy
 - ไม่มี arbitrary external URL fetch
