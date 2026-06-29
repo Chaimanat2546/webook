@@ -28,6 +28,14 @@ House/accommodation menu access currently requires `allow_tools.allow_accommodat
 - New house image uploads use the shared media Worker env vars: `ADVERTISEMENT_IMAGE_WORKER_URL` and `ADVERTISEMENT_IMAGE_WORKER_SECRET`.
 - House image admins must have `allow_tools.allow_accommodation = true`. Adding new house images also requires a positive `users.mid` because `images.create_by` is required.
 
+## House Image Admin Flow
+
+- The image manager works one image zone at a time through `/admin/houses/[propertyId]/images?zone=...`.
+- File selection uploads house images immediately to R2 through server-side code. There is no staged upload/save step for house images.
+- Single-image delete opens a confirmation dialog with the image preview before deleting.
+- Bulk delete uses selection mode for the current zone only. `Select all` selects only deletable images visible in that zone, and the admin confirms from a preview list before deletion.
+- AWS/S3-backed legacy house images remain display-only and are excluded from delete controls.
+
 ## Supabase Feature Workflow
 
 Use this flow for every new feature that touches Supabase.

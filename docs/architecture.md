@@ -39,7 +39,10 @@ House image storage has two provider classes:
 - New house image R2 object keys are composed server-side as `houses/{property_id}/{image_name}`; clients must not submit storage paths.
 - New house image rows store the full Worker URL in `images.image_url` for R2 display/provider detection.
 - The same shared media Worker/R2 bucket also serves `advertisements/...`.
-- `/admin/houses/[propertyId]/images` saves draft uploads/deletes through a server action. New R2 files are uploaded before inserting `images` rows; if the database write fails, uploaded R2 objects are cleaned up best-effort.
+- `/admin/houses/[propertyId]/images` uses operation-specific server actions: uploads run immediately when files are selected, single deletes require preview confirmation, and bulk deletes require selecting images from the current zone before confirmation.
+- New R2 files are uploaded before inserting `images` rows; if the database write fails, uploaded R2 objects are cleaned up best-effort.
+- Delete operations are allowed only for trusted R2-backed image rows. Legacy AWS/S3-backed house images remain display-only.
+- Bulk select-all is scoped to the currently selected image zone in the client, and the server still validates requested image ids against the trusted property images before deleting.
 
 ## Advertisement Media Flow
 
