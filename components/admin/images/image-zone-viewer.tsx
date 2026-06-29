@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import {
   ArmchairIcon,
   BathIcon,
@@ -33,13 +31,11 @@ import {
   type ImageZoneIconName,
   type ImageZoneGroup,
 } from "../../../server/services/images";
-import { AspectRatio } from "../../ui/aspect-ratio";
+import { AdminImageCard } from "../image-asset-card";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
-import { Card, CardContent } from "../../ui/card";
 import { Label } from "../../ui/label";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
-import { ImagePreviewDialog } from "./image-preview-dialog";
 
 interface DraftPreview {
   file: File;
@@ -117,52 +113,23 @@ function ImageCard({
   const zoneMeta = getImageZoneMeta(zone);
 
   return (
-    <Card className="relative w-full max-w-36 cursor-zoom-in gap-0 overflow-hidden p-0 sm:max-w-40" size="sm">
-      <div className="relative">
-        <AspectRatio ratio={4 / 3} className="bg-muted">
-          {src ? (
-            <img
-              alt={image.image_name ?? "house image"}
-              className="h-full w-full object-cover"
-              loading={priority ? "eager" : "lazy"}
-              src={src}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              แสดงรูปไม่ได้
-            </div>
-          )}
-        </AspectRatio>
-        <Badge className="absolute left-1 top-1 rounded-md px-1.5 py-0 font-mono text-[10px]" variant="secondary">
-          {formatImageMoveLabel(image.image_move)}
-        </Badge>
-        <Badge
-          className="absolute right-1 top-1 max-w-[calc(100%-3.5rem)] truncate rounded-md px-1.5 py-0 text-[10px]"
-          title={zone}
-        >
-          {zoneMeta.label}
-        </Badge>
-        {action ? <div className="absolute right-1 bottom-1 z-20">{action}</div> : null}
-      </div>
-      <CardContent className="flex flex-col gap-1 p-2">
-        <p className="truncate font-mono text-[11px] font-medium leading-tight" title={image.image_name ?? undefined}>
-          {image.image_name ?? "-"}
-        </p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-1 gap-y-0.5 text-[10px] leading-tight text-muted-foreground">
-          <dt>สร้าง</dt>
-          <dd className="truncate text-foreground">{formatThaiImageDateTime(image.created_at)}</dd>
-          <dt>อัปเดต</dt>
-          <dd className="truncate text-foreground">{formatThaiImageDateTime(image.updated_at)}</dd>
-        </dl>
-      </CardContent>
-      {src ? (
-        <ImagePreviewDialog
-          alt={image.image_name ?? "house image"}
-          imageName={image.image_name ?? "-"}
-          src={src}
-        />
-      ) : null}
-    </Card>
+    <AdminImageCard
+      action={action}
+      alt={image.image_name ?? "house image"}
+      imageName={image.image_name ?? "-"}
+      imageUnavailableText="แสดงรูปไม่ได้"
+      loading={priority ? "eager" : "lazy"}
+      metaRows={[
+        { label: "สร้าง", value: formatThaiImageDateTime(image.created_at) },
+        { label: "อัปเดต", value: formatThaiImageDateTime(image.updated_at) },
+      ]}
+      orderLabel={formatImageMoveLabel(image.image_move)}
+      previewDescription="ดูตัวอย่างรูปขนาดใหญ่"
+      previewLabel={`เปิดตัวอย่างรูปขนาดใหญ่ ${image.image_name ?? "-"}`}
+      secondaryLabel={zoneMeta.label}
+      secondaryTitle={zone}
+      src={src}
+    />
   );
 }
 
@@ -178,27 +145,18 @@ function DraftImageCard({
   zone: string;
 }) {
   return (
-    <Card className="relative w-full max-w-36 cursor-zoom-in gap-0 overflow-hidden p-0 sm:max-w-40" size="sm">
-      <div className="relative">
-        <AspectRatio ratio={4 / 3} className="bg-muted">
-          <img alt={preview.file.name} className="h-full w-full object-cover" src={preview.src} />
-        </AspectRatio>
-        <Badge className="absolute left-1 top-1 rounded-md px-1.5 py-0 font-mono text-[10px]" variant="secondary">
-          {formatImageMoveLabel(imageOrder)}
-        </Badge>
-        <Badge className="absolute right-1 top-1 rounded-md px-1.5 py-0 text-[10px]">
-          {getImageZoneMeta(zone).label}
-        </Badge>
-        <div className="absolute right-1 bottom-1 z-20">{action}</div>
-      </div>
-      <CardContent className="flex flex-col gap-1 p-2">
-        <p className="truncate font-mono text-[11px] font-medium leading-tight" title={preview.file.name}>
-          {preview.file.name}
-        </p>
-        <p className="text-[10px] leading-tight text-muted-foreground">{formatFileSize(preview.file.size)}</p>
-      </CardContent>
-      <ImagePreviewDialog alt={preview.file.name} imageName={preview.file.name} src={preview.src} />
-    </Card>
+    <AdminImageCard
+      action={action}
+      alt={preview.file.name}
+      imageName={preview.file.name}
+      metaRows={[{ label: "ขนาด", value: formatFileSize(preview.file.size) }]}
+      orderLabel={formatImageMoveLabel(imageOrder)}
+      previewDescription="ดูตัวอย่างรูปขนาดใหญ่"
+      previewLabel={`เปิดตัวอย่างรูปขนาดใหญ่ ${preview.file.name}`}
+      secondaryLabel={getImageZoneMeta(zone).label}
+      secondaryTitle={zone}
+      src={preview.src}
+    />
   );
 }
 
@@ -257,19 +215,31 @@ export function ImageZoneViewer({
     if (syncInput) syncInputFiles(files);
   }
 
+  function appendPreviews(files: File[], syncInput = false) {
+    const newPreviews = files.map((file) => ({
+      file,
+      src: URL.createObjectURL(file),
+    }));
+    const nextPreviews = [...previewsRef.current, ...newPreviews];
+
+    previewsRef.current = nextPreviews;
+    setPreviews(nextPreviews);
+    if (syncInput) syncInputFiles(nextPreviews.map((preview) => preview.file));
+  }
+
   function markDirty() {
     setIsDirty(true);
   }
 
   function onFilesChange(event: ChangeEvent<HTMLInputElement>) {
     markDirty();
-    replacePreviews(Array.from(event.currentTarget.files ?? []));
+    appendPreviews(Array.from(event.currentTarget.files ?? []), true);
   }
 
   function removeDraftFile(indexToRemove: number) {
     markDirty();
     replacePreviews(
-      previews.filter((_, index) => index !== indexToRemove).map((preview) => preview.file),
+      previewsRef.current.filter((_, index) => index !== indexToRemove).map((preview) => preview.file),
       true,
     );
   }

@@ -2,7 +2,7 @@ import { buildAdvertisementImageUrl } from "../../lib/advertisement-image-url.ts
 
 interface WorkerConfig {
   fetchImpl?: typeof fetch;
-  imageName: string;
+  objectKey: string;
   workerSecret: string;
   workerUrl: string;
 }
@@ -16,14 +16,14 @@ export async function uploadAdvertisementImageObject({
   body,
   contentType,
   fetchImpl = fetch,
-  imageName,
+  objectKey,
   workerSecret,
   workerUrl,
 }: WorkerConfig & {
   body: BodyInit;
   contentType: string;
 }) {
-  const response = await fetchImpl(buildAdvertisementImageUrl(imageName, workerUrl), {
+  const response = await fetchImpl(buildAdvertisementImageUrl(objectKey, workerUrl), {
     body,
     headers: {
       authorization: `Bearer ${workerSecret}`,
@@ -39,11 +39,11 @@ export async function uploadAdvertisementImageObject({
 
 export async function deleteAdvertisementImageObject({
   fetchImpl = fetch,
-  imageName,
+  objectKey,
   workerSecret,
   workerUrl,
 }: WorkerConfig) {
-  const response = await fetchImpl(buildAdvertisementImageUrl(imageName, workerUrl), {
+  const response = await fetchImpl(buildAdvertisementImageUrl(objectKey, workerUrl), {
     headers: {
       authorization: `Bearer ${workerSecret}`,
     },

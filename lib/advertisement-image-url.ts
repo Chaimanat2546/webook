@@ -9,7 +9,7 @@ function decodeImageName(value: string): string {
   }
 }
 
-export function validateAdvertisementImageName(value: string): string {
+export function validateAdvertisementImageObjectKey(value: string): string {
   const trimmed = value.trim();
   const decoded = decodeImageName(trimmed).replace(/\\/g, "/");
   const segments = decoded.split("/");
@@ -31,8 +31,10 @@ export function validateAdvertisementImageName(value: string): string {
   return decoded;
 }
 
+export const validateAdvertisementImageName = validateAdvertisementImageObjectKey;
+
 export function encodeImagePath(imageName: string): string {
-  return validateAdvertisementImageName(imageName)
+  return validateAdvertisementImageObjectKey(imageName)
     .split("/")
     .map((segment) => encodeURIComponent(segment))
     .join("/");

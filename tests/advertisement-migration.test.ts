@@ -22,4 +22,15 @@ describe("advertisement migration", () => {
     assert.match(sql, /Public can read active advertisement images/);
     assert.match(sql, /Administrators can manage advertisements/);
   });
+
+  it("uses accommodation permission for advertisement management", () => {
+    const sql = readdirSync(new URL("../supabase/migrations", import.meta.url))
+      .filter((file) => file.endsWith(".sql"))
+      .map((file) => readFileSync(join("supabase/migrations", file), "utf8"))
+      .join("\n");
+
+    assert.match(sql, /drop policy if exists "Administrators can manage advertisements"/);
+    assert.match(sql, /drop policy if exists "Administrators can manage advertisement images"/);
+    assert.match(sql, /users\.allow_tools @> '\{"allow_accommodation": true\}'::jsonb/);
+  });
 });

@@ -2,7 +2,7 @@ import { buildHouseImageUrl } from "../../lib/house-image-url.ts";
 
 interface WorkerConfig {
   fetchImpl?: typeof fetch;
-  imageName: string;
+  objectKey: string;
   workerSecret: string;
   workerUrl: string;
 }
@@ -16,14 +16,14 @@ export async function uploadHouseImageObject({
   body,
   contentType,
   fetchImpl = fetch,
-  imageName,
+  objectKey,
   workerSecret,
   workerUrl,
 }: WorkerConfig & {
   body: BodyInit;
   contentType: string;
 }) {
-  const response = await fetchImpl(buildHouseImageUrl(imageName, workerUrl), {
+  const response = await fetchImpl(buildHouseImageUrl(objectKey, workerUrl), {
     body,
     headers: {
       authorization: `Bearer ${workerSecret}`,
@@ -39,11 +39,11 @@ export async function uploadHouseImageObject({
 
 export async function deleteHouseImageObject({
   fetchImpl = fetch,
-  imageName,
+  objectKey,
   workerSecret,
   workerUrl,
 }: WorkerConfig) {
-  const response = await fetchImpl(buildHouseImageUrl(imageName, workerUrl), {
+  const response = await fetchImpl(buildHouseImageUrl(objectKey, workerUrl), {
     headers: {
       authorization: `Bearer ${workerSecret}`,
     },

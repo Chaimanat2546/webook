@@ -6,12 +6,12 @@ const source = readFileSync(
   new URL("../components/admin/images/image-zone-viewer.tsx", import.meta.url),
   "utf8",
 );
-const previewDialogPath = new URL(
-  "../components/admin/images/image-preview-dialog.tsx",
+const sharedCardPath = new URL(
+  "../components/admin/image-asset-card.tsx",
   import.meta.url,
 );
-const previewDialogSource = existsSync(previewDialogPath)
-  ? readFileSync(previewDialogPath, "utf8")
+const sharedCardSource = existsSync(sharedCardPath)
+  ? readFileSync(sharedCardPath, "utf8")
   : "";
 const loadingSource = readFileSync(
   new URL("../app/admin/houses/[propertyId]/images/loading.tsx", import.meta.url),
@@ -30,11 +30,16 @@ describe("house image mobile UI", () => {
     assert.match(source, /<nav\s+className="flex w-max min-w-full/);
     assert.match(source, /grid grid-cols-\[repeat\(auto-fill,minmax\(9rem,9rem\)\)\]/);
     assert.match(source, /items-start justify-start gap-2 p-2/);
-    assert.match(source, /max-w-36/);
-    assert.match(source, /text-\[10px\]/);
+    assert.match(source, /AdminImageCard/);
+    assert.match(sharedCardSource, /max-w-36/);
+    assert.match(sharedCardSource, /CardContent className="flex min-h-16 flex-col gap-1 p-2"/);
+    assert.match(sharedCardSource, /text-\[10px\]/);
+    assert.match(sharedCardSource, /<AspectRatio className="bg-muted" ratio=\{4 \/ 3\}>/);
     assert.doesNotMatch(source, /grid grid-cols-2 gap-3 p-3/);
     assert.match(loadingSource, /grid grid-cols-\[repeat\(auto-fill,minmax\(9rem,9rem\)\)\]/);
+    assert.match(loadingSource, /aspect-\[4\/3\]/);
     assert.doesNotMatch(loadingSource, /h-64/);
+    assert.doesNotMatch(loadingSource, /h-40 rounded-lg/);
   });
 
   it("changes zones with Next Link so sidebar state is not reset by a full reload", () => {
@@ -57,19 +62,19 @@ describe("house image mobile UI", () => {
   });
 
   it("opens a larger read-only preview by clicking each valid image card", () => {
-    assert.match(source, /import \{ ImagePreviewDialog \}/);
-    assert.match(source, /<ImagePreviewDialog/);
-    assert.match(source, /relative w-full max-w-36/);
-    assert.match(previewDialogSource, /DialogTrigger asChild/);
-    assert.match(previewDialogSource, /className="absolute inset-0/);
-    assert.match(previewDialogSource, /DialogContent/);
-    assert.match(previewDialogSource, /DialogTitle/);
-    assert.match(previewDialogSource, /max-w-7xl/);
-    assert.match(previewDialogSource, /max-h-\[82dvh\]/);
-    assert.match(previewDialogSource, /<img/);
-    assert.doesNotMatch(previewDialogSource, /EyeIcon/);
-    assert.doesNotMatch(previewDialogSource, /size="icon-xs"/);
-    assert.doesNotMatch(previewDialogSource, /title="ดูรูป"/);
+    assert.match(source, /import \{ AdminImageCard/);
+    assert.doesNotMatch(source, /ImagePreviewDialog/);
+    assert.match(sharedCardSource, /relative w-full max-w-36/);
+    assert.match(sharedCardSource, /DialogTrigger asChild/);
+    assert.match(sharedCardSource, /className="absolute inset-0/);
+    assert.match(sharedCardSource, /DialogContent/);
+    assert.match(sharedCardSource, /DialogTitle/);
+    assert.match(sharedCardSource, /max-w-7xl/);
+    assert.match(sharedCardSource, /max-h-\[82dvh\]/);
+    assert.match(sharedCardSource, /<img/);
+    assert.doesNotMatch(sharedCardSource, /EyeIcon/);
+    assert.doesNotMatch(sharedCardSource, /size="icon-xs"/);
+    assert.doesNotMatch(sharedCardSource, /title="ดูรูป"/);
   });
 
   it("adds draft upload and pending delete controls like advertisement images", () => {
@@ -82,6 +87,10 @@ describe("house image mobile UI", () => {
     assert.match(source, /name="return_to"/);
     assert.match(source, /URL\.createObjectURL/);
     assert.match(source, /URL\.revokeObjectURL/);
+    assert.match(source, /function appendPreviews\(files: File\[\]/);
+    assert.match(source, /const nextPreviews = \[\.\.\.previewsRef\.current, \.\.\.newPreviews\]/);
+    assert.match(source, /appendPreviews\(Array\.from\(event\.currentTarget\.files \?\? \[\]\), true\)/);
+    assert.match(source, /syncInputFiles\(nextPreviews\.map\(\(preview\) => preview\.file\)\)/);
     assert.match(source, /UploadCloudIcon/);
     assert.match(source, /SaveIcon/);
     assert.match(source, /Trash2Icon/);

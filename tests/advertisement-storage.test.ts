@@ -22,13 +22,17 @@ describe("advertisement image storage adapter", () => {
       body: new Uint8Array([1, 2, 3]),
       contentType: "image/webp",
       fetchImpl,
-      imageName: "advertisements/ad-1/1.webp",
+      objectKey: "advertisements/ad-1/20260109220657_60b5a9a545.webp",
       workerSecret: "secret",
       workerUrl: "https://webook-media.example.workers.dev",
     });
 
     assert.equal(calls[0]?.method, "PUT");
     assert.equal(calls[0]?.headers.authorization, "Bearer secret");
+    assert.equal(
+      calls[0]?.url,
+      "https://webook-media.example.workers.dev/advertisements/ad-1/20260109220657_60b5a9a545.webp",
+    );
   });
 
   it("throws when delete fails", async () => {
@@ -36,7 +40,7 @@ describe("advertisement image storage adapter", () => {
       () =>
         deleteAdvertisementImageObject({
           fetchImpl: async () => new Response("boom", { status: 500 }),
-          imageName: "advertisements/ad-1/1.webp",
+          objectKey: "advertisements/ad-1/20260109220657_60b5a9a545.webp",
           workerSecret: "secret",
           workerUrl: "https://webook-media.example.workers.dev",
         }),
@@ -51,7 +55,7 @@ describe("advertisement image storage adapter", () => {
           body: new Uint8Array([1]),
           contentType: "image/webp",
           fetchImpl: async () => new Response("Unauthorized", { status: 401 }),
-          imageName: "advertisements/ad-1/1.webp",
+          objectKey: "advertisements/ad-1/20260109220657_60b5a9a545.webp",
           workerSecret: "wrong",
           workerUrl: "https://webook-media.example.workers.dev",
         }),

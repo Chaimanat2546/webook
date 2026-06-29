@@ -8,7 +8,7 @@ Current focus:
 - Advertisement management MVP
 
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
-House image access currently requires `allow_tools.allow_accommodation = true`.
+House/accommodation menu access currently requires `allow_tools.allow_accommodation = true`.
 
 ## Tech Stack
 

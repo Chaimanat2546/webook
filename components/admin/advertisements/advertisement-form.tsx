@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import {
   ImageIcon,
   SaveIcon,
@@ -10,9 +8,11 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import { resizeToMax } from "../../../lib/advertisement-image-resize";
+import { formatThaiImageDateTime } from "../../../server/services/images";
+import { AdminImageCard } from "../image-asset-card";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { AspectRatio } from "../../ui/aspect-ratio";
 import { Badge } from "../../ui/badge";
@@ -22,17 +22,18 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Separator } from "../../ui/separator";
 import { Switch } from "../../ui/switch";
-import { AdvertisementImagePreviewDialog } from "./advertisement-image-preview-dialog";
 
 const MAX_IMAGES = 2;
 const RESIZED_IMAGE_TYPE = "image/webp";
 const RESIZED_IMAGE_QUALITY = 0.9;
 
 export interface AdvertisementFormImage {
+  created_at?: string | null;
   id: string;
   image_name: string;
   image_order: number;
   src: string | null;
+  updated_at?: string | null;
 }
 
 interface DraftPreview {
@@ -112,51 +113,6 @@ async function resizeAdvertisementImageFile(file: File): Promise<File> {
   return new File([blob], name, { type, lastModified: file.lastModified });
 }
 
-function ImageSlotCard({
-  action,
-  imageName,
-  imageOrder,
-  meta,
-  src,
-}: {
-  action?: ReactNode;
-  imageName: string;
-  imageOrder: number;
-  meta?: string;
-  src: string | null;
-}) {
-  return (
-    <Card className="relative w-full max-w-36 cursor-pointer gap-0 overflow-hidden p-0 sm:max-w-40" size="sm">
-      <div className="relative">
-        <AspectRatio className="bg-muted" ratio={4 / 3}>
-          {src ? (
-            <img alt={imageName} className="h-full w-full object-cover" src={src} />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Preview unavailable
-            </div>
-          )}
-        </AspectRatio>
-        <Badge className="absolute left-2 top-2 rounded-md font-mono" variant="secondary">
-          #{imageOrder}
-        </Badge>
-        {action ? <div className="absolute right-2 top-2 z-20">{action}</div> : null}
-      </div>
-      <CardContent className="flex min-h-10 items-start justify-between gap-2 p-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-mono text-[11px] font-medium leading-tight" title={imageName}>
-            {imageName}
-          </p>
-          <p className="min-h-[1lh] text-[10px] leading-tight text-muted-foreground">{meta}</p>
-        </div>
-      </CardContent>
-      {src ? (
-        <AdvertisementImagePreviewDialog alt={imageName} imageName={imageName} src={src} />
-      ) : null}
-    </Card>
-  );
-}
-
 function EmptySlot({ imageOrder }: { imageOrder: number }) {
   return (
     <Card className="relative w-full max-w-36 gap-0 overflow-hidden border-dashed p-0 sm:max-w-40" size="sm">
@@ -166,7 +122,7 @@ function EmptySlot({ imageOrder }: { imageOrder: number }) {
           <span>สล๊อตที่ {imageOrder} (ว่าง)</span>
         </div>
       </AspectRatio>
-      <CardContent className="min-h-10 p-2" />
+      <CardContent className="min-h-16 p-2" />
     </Card>
   );
 }
@@ -231,6 +187,18 @@ export function AdvertisementForm({
     if (syncInput) syncInputFiles(files);
   }
 
+  function appendPreviews(files: File[], syncInput = false) {
+    const newPreviews = files.map((file) => ({
+      file,
+      src: URL.createObjectURL(file),
+    }));
+    const nextPreviews = [...previewsRef.current, ...newPreviews];
+
+    previewsRef.current = nextPreviews;
+    setPreviews(nextPreviews);
+    if (syncInput) syncInputFiles(nextPreviews.map((preview) => preview.file));
+  }
+
   function markDirty() {
     setIsDirty(true);
     setError(null);
@@ -242,10 +210,10 @@ export function AdvertisementForm({
     try {
       const resizedFiles = await Promise.all(selected.map(resizeAdvertisementImageFile));
       if (resizeRunRef.current !== runId) return;
-      replacePreviews(resizedFiles, true);
+      appendPreviews(resizedFiles, true);
     } catch {
       if (resizeRunRef.current !== runId) return;
-      replacePreviews([], true);
+      syncInputFiles(previewsRef.current.map((preview) => preview.file));
       setError("ปรับขนาดรูปภาพไม่ได้ กรุณาเลือกรูปใหม่");
     } finally {
       if (resizeRunRef.current === runId) setIsResizingImages(false);
@@ -263,7 +231,7 @@ export function AdvertisementForm({
   function removeDraftFile(indexToRemove: number) {
     markDirty();
     replacePreviews(
-      previews.filter((_, index) => index !== indexToRemove).map((preview) => preview.file),
+      previewsRef.current.filter((_, index) => index !== indexToRemove).map((preview) => preview.file),
       true,
     );
   }
@@ -395,12 +363,12 @@ export function AdvertisementForm({
 
           <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-start gap-2 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
             {visibleExistingImages.map((image, index) => (
-              <ImageSlotCard
+              <AdminImageCard
                 action={
                   <Button
-                    className="bg-background/90"
+                    className="size-7 bg-background/90"
                     onClick={() => markImageDeleted(image.id)}
-                    size="icon-sm"
+                    size="icon"
                     type="button"
                     variant="destructive"
                   >
@@ -408,20 +376,28 @@ export function AdvertisementForm({
                     <span className="sr-only">ลบรูป</span>
                   </Button>
                 }
+                actionPlacement="top-right"
+                alt={image.image_name}
                 imageName={image.image_name}
-                imageOrder={index + 1}
                 key={image.id}
+                metaRows={[
+                  { label: "สร้าง", value: formatThaiImageDateTime(image.created_at) },
+                  { label: "อัปเดต", value: formatThaiImageDateTime(image.updated_at) },
+                ]}
+                orderLabel={`# ${index + 1}`}
+                previewDescription="Advertisement image preview"
+                previewLabel={`Open advertisement image preview: ${image.image_name}`}
                 src={image.src}
               />
             ))}
 
             {previews.map((preview, index) => (
-              <ImageSlotCard
+              <AdminImageCard
                 action={
                   <Button
-                    className="bg-background/90"
+                    className="size-7 bg-background/90"
                     onClick={() => removeDraftFile(index)}
-                    size="icon-sm"
+                    size="icon"
                     type="button"
                     variant="destructive"
                   >
@@ -429,10 +405,14 @@ export function AdvertisementForm({
                     <span className="sr-only">ลบรูป</span>
                   </Button>
                 }
+                actionPlacement="top-right"
+                alt={preview.file.name}
                 imageName={preview.file.name}
-                imageOrder={visibleExistingImages.length + index + 1}
                 key={`${preview.file.name}-${preview.file.size}-${index}`}
-                meta={formatFileSize(preview.file.size)}
+                metaRows={[{ label: "ขนาด", value: formatFileSize(preview.file.size) }]}
+                orderLabel={`# ${visibleExistingImages.length + index + 1}`}
+                previewDescription="Advertisement image preview"
+                previewLabel={`Open advertisement image preview: ${preview.file.name}`}
                 src={preview.src}
               />
             ))}

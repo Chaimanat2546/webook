@@ -19,9 +19,11 @@ import {
 import { getListingByPropertyId } from "../../../../../server/repositories/listings";
 import {
   buildHouseImageName,
+  buildHouseImageObjectKey,
   getHouseImageStorageProvider,
   getImageFiles,
   isHouseImageFileOperationAllowed,
+  resolveHouseImageObjectKey,
   validateHouseImageFile,
   validateHouseImageZone,
 } from "../../../../../server/services/images";
@@ -77,16 +79,16 @@ function imageMoveValue(image: { image_move: number | null }): number {
 }
 
 async function cleanupUploadedImages({
-  imageNames,
+  objectKeys,
   workerSecret,
   workerUrl,
 }: {
-  imageNames: string[];
+  objectKeys: string[];
   workerSecret: string;
   workerUrl: string;
 }) {
   await Promise.allSettled(
-    imageNames.map((imageName) => deleteHouseImageObject({ imageName, workerSecret, workerUrl })),
+    objectKeys.map((objectKey) => deleteHouseImageObject({ objectKey, workerSecret, workerUrl })),
   );
 }
 
@@ -119,28 +121,29 @@ export async function updateHouseImagesAction(propertyId: string, formData: Form
       ? getHouseImageEnv()
       : null;
   const maxMove = Math.max(0, ...remainingImages.map(imageMoveValue));
-  const uploadedImageNames: string[] = [];
+  const uploadedObjectKeys: string[] = [];
   const rows: HouseImageInsert[] = [];
   const now = new Date().toISOString();
 
   try {
     if (imageEnv) {
       for (const [index, file] of files.entries()) {
-        const imageName = buildHouseImageName(propertyId, crypto.randomUUID(), file.type);
+        const imageName = buildHouseImageName(file.type);
+        const objectKey = buildHouseImageObjectKey(propertyId, imageName);
         await uploadHouseImageObject({
           body: await file.arrayBuffer(),
           contentType: file.type,
-          imageName,
+          objectKey,
           workerSecret: imageEnv.workerSecret,
           workerUrl: imageEnv.workerUrl,
         });
-        uploadedImageNames.push(imageName);
+        uploadedObjectKeys.push(objectKey);
         rows.push({
           created_at: now,
           create_by: adminCreateBy,
           image_move: maxMove + index + 1,
           image_name: imageName,
-          image_url: buildHouseImageUrl(imageName, imageEnv.workerUrl),
+          image_url: buildHouseImageUrl(objectKey, imageEnv.workerUrl),
           image_zone: imageZone,
           property_id: numericPropertyId,
           updated_at: now,
@@ -159,7 +162,7 @@ export async function updateHouseImagesAction(propertyId: string, formData: Form
           .filter((image) => getHouseImageStorageProvider(image.image_url) === "r2")
           .map((image) =>
             deleteHouseImageObject({
-              imageName: image.image_name ?? "",
+              objectKey: resolveHouseImageObjectKey(propertyId, image.image_name ?? ""),
               workerSecret: imageEnv.workerSecret,
               workerUrl: imageEnv.workerUrl,
             }),
@@ -169,7 +172,7 @@ export async function updateHouseImagesAction(propertyId: string, formData: Form
   } catch (error) {
     if (imageEnv) {
       await cleanupUploadedImages({
-        imageNames: uploadedImageNames,
+        objectKeys: uploadedObjectKeys,
         workerSecret: imageEnv.workerSecret,
         workerUrl: imageEnv.workerUrl,
       });

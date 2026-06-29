@@ -19,9 +19,11 @@ import {
 import {
   assertCanDeleteAdvertisementImage,
   buildAdvertisementImageName,
+  buildAdvertisementImageObjectKey,
   getAvailableAdvertisementImageOrders,
   getImageFiles,
   normalizeAdvertisementImages,
+  resolveAdvertisementImageObjectKey,
   validateAdvertisementImageEditCount,
   validateAdvertisementImageCount,
   validateAdvertisementImageFile,
@@ -54,17 +56,17 @@ function assertAuthorized(isAuthorized: boolean): void {
 }
 
 async function cleanupUploadedImages({
-  imageNames,
+  objectKeys,
   workerSecret,
   workerUrl,
 }: {
-  imageNames: string[];
+  objectKeys: string[];
   workerSecret: string;
   workerUrl: string;
 }) {
   await Promise.allSettled(
-    imageNames.map((imageName) =>
-      deleteAdvertisementImageObject({ imageName, workerSecret, workerUrl }),
+    objectKeys.map((objectKey) =>
+      deleteAdvertisementImageObject({ objectKey, workerSecret, workerUrl }),
     ),
   );
 }
@@ -94,22 +96,23 @@ export async function createAdvertisementAction(formData: FormData) {
 
   const advertisementId = crypto.randomUUID();
   const { workerSecret, workerUrl } = getAdvertisementImageEnv();
-  const uploadedImageNames: string[] = [];
+  const uploadedObjectKeys: string[] = [];
   const imageRows: AdvertisementImageInsert[] = [];
 
   try {
     for (const [index, file] of files.entries()) {
       const imageOrder = index + 1;
-      const imageName = buildAdvertisementImageName(advertisementId, imageOrder, file.type);
+      const imageName = buildAdvertisementImageName(file.type);
+      const objectKey = buildAdvertisementImageObjectKey(advertisementId, imageName);
 
       await uploadAdvertisementImageObject({
         body: await file.arrayBuffer(),
         contentType: file.type,
-        imageName,
+        objectKey,
         workerSecret,
         workerUrl,
       });
-      uploadedImageNames.push(imageName);
+      uploadedObjectKeys.push(objectKey);
       imageRows.push({ advertisement_id: advertisementId, image_name: imageName, image_order: imageOrder });
     }
 
@@ -120,7 +123,7 @@ export async function createAdvertisementAction(formData: FormData) {
       title,
     });
   } catch (error) {
-    await cleanupUploadedImages({ imageNames: uploadedImageNames, workerSecret, workerUrl });
+    await cleanupUploadedImages({ objectKeys: uploadedObjectKeys, workerSecret, workerUrl });
     throw error;
   }
 
@@ -150,7 +153,7 @@ export async function updateAdvertisementAction(id: string, formData: FormData) 
 
   const imageEnv = files.length > 0 ? getAdvertisementImageEnv() : null;
   const imageOrders = getAvailableAdvertisementImageOrders(remainingImages, files.length);
-  const uploadedImageNames: string[] = [];
+  const uploadedObjectKeys: string[] = [];
   const imageRows: AdvertisementImageInsert[] = [];
 
   try {
@@ -158,16 +161,17 @@ export async function updateAdvertisementAction(id: string, formData: FormData) 
       for (const [index, file] of files.entries()) {
         const imageOrder = imageOrders[index];
         if (!imageOrder) throw new Error("Invalid image order");
-        const imageName = buildAdvertisementImageName(id, imageOrder, file.type);
+        const imageName = buildAdvertisementImageName(file.type);
+        const objectKey = buildAdvertisementImageObjectKey(id, imageName);
 
         await uploadAdvertisementImageObject({
           body: await file.arrayBuffer(),
           contentType: file.type,
-          imageName,
+          objectKey,
           workerSecret: imageEnv.workerSecret,
           workerUrl: imageEnv.workerUrl,
         });
-        uploadedImageNames.push(imageName);
+        uploadedObjectKeys.push(objectKey);
         imageRows.push({ advertisement_id: id, image_name: imageName, image_order: imageOrder });
       }
     }
@@ -184,7 +188,7 @@ export async function updateAdvertisementAction(id: string, formData: FormData) 
       await Promise.allSettled(
         imagesToDelete.map((image) =>
           deleteAdvertisementImageObject({
-            imageName: image.image_name,
+            objectKey: resolveAdvertisementImageObjectKey(image.advertisement_id, image.image_name),
             workerSecret,
             workerUrl,
           }),
@@ -194,7 +198,7 @@ export async function updateAdvertisementAction(id: string, formData: FormData) 
   } catch (error) {
     if (imageEnv) {
       await cleanupUploadedImages({
-        imageNames: uploadedImageNames,
+        objectKeys: uploadedObjectKeys,
         workerSecret: imageEnv.workerSecret,
         workerUrl: imageEnv.workerUrl,
       });
@@ -219,7 +223,7 @@ export async function deleteAdvertisementImageAction(imageId: string) {
 
   const { workerSecret, workerUrl } = getAdvertisementImageEnv();
   await deleteAdvertisementImageObject({
-    imageName: image.image_name,
+    objectKey: resolveAdvertisementImageObjectKey(image.advertisement_id, image.image_name),
     workerSecret,
     workerUrl,
   });

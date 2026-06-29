@@ -43,6 +43,14 @@ describe("advertisement admin UI", () => {
       new URL("../components/admin/advertisements/advertisement-form.tsx", import.meta.url),
       "utf8",
     );
+    const detailSource = readFileSync(
+      new URL("../app/admin/advertisements/[id]/page.tsx", import.meta.url),
+      "utf8",
+    );
+    const sharedCardSource = readFileSync(
+      new URL("../components/admin/image-asset-card.tsx", import.meta.url),
+      "utf8",
+    );
     assert.match(formSource, /Card/);
     assert.match(formSource, /AspectRatio/);
     assert.match(formSource, /Separator/);
@@ -58,7 +66,10 @@ describe("advertisement admin UI", () => {
     assert.match(formSource, /resizeRunRef/);
     assert.match(formSource, /setIsResizingImages\(true\)/);
     assert.match(formSource, /setIsResizingImages\(false\)/);
-    assert.match(formSource, /replacePreviews\(resizedFiles,\s*true\)/);
+    assert.match(formSource, /function appendPreviews\(files: File\[\]/);
+    assert.match(formSource, /const nextPreviews = \[\.\.\.previewsRef\.current, \.\.\.newPreviews\]/);
+    assert.match(formSource, /appendPreviews\(resizedFiles,\s*true\)/);
+    assert.match(formSource, /syncInputFiles\(nextPreviews\.map\(\(preview\) => preview\.file\)\)/);
     assert.match(formSource, /1080px/);
     const imagesInputBlock =
       formSource.match(/<(?:Input|input)[\s\S]*?name="images"[\s\S]*?type="file"[\s\S]*?\/>/)?.[0] ?? "";
@@ -67,12 +78,15 @@ describe("advertisement admin UI", () => {
     assert.match(formSource, /name="images"/);
     assert.match(formSource, /className="grid min-w-0 gap-5/);
     assert.match(formSource, /lg:grid-cols-\[minmax\(18rem,26rem\)_minmax\(0,1fr\)\]/);
-    assert.match(formSource, /<div className="min-w-0 flex-1">/);
-    assert.match(formSource, /CardContent className="flex min-h-10 items-start justify-between gap-2 p-2"/);
-    assert.match(formSource, /<p className="min-h-\[1lh\] text-\[10px\] leading-tight text-muted-foreground">/);
+    assert.match(formSource, /import \{ AdminImageCard/);
+    assert.match(formSource, /created_at\?: string \| null/);
+    assert.match(formSource, /updated_at\?: string \| null/);
+    assert.match(formSource, /formatThaiImageDateTime/);
+    assert.match(detailSource, /created_at: image\.created_at/);
+    assert.match(detailSource, /updated_at: image\.updated_at/);
+    assert.match(sharedCardSource, /CardContent className="flex min-h-16 flex-col gap-1 p-2"/);
     assert.match(formSource, /<Card className="relative w-full max-w-36 gap-0 overflow-hidden border-dashed p-0 sm:max-w-40" size="sm">/);
-    assert.match(formSource, /cursor-pointer/);
-    assert.doesNotMatch(formSource, /cursor-zoom-in/);
+    assert.match(sharedCardSource, /cursor-zoom-in/);
     assert.match(formSource, /<CardContent className="grid min-w-0 gap-4 p-4"/);
     assert.match(
       formSource,
@@ -90,8 +104,10 @@ describe("advertisement admin UI", () => {
       /<Button\s+className="flex-1 lg:flex-none"\s+disabled=\{!isDirty \|\| isResizingImages\}\s+type="submit"/,
     );
     assert.match(formSource, /Trash2Icon/);
-    assert.match(formSource, /<div className="absolute right-2 top-2 z-20">/);
-    assert.match(formSource, /<\/CardContent>\s*\{src \? \(\s*<AdvertisementImagePreviewDialog/);
+    assert.match(sharedCardSource, /absolute right-1 z-20/);
+    assert.match(sharedCardSource, /actionPlacement === "top-right"/);
+    assert.doesNotMatch(formSource, /AdvertisementImagePreviewDialog/);
+    assert.doesNotMatch(formSource, /function ImageSlotCard/);
     assert.doesNotMatch(formSource, /DeleteAdvertisementImageButton/);
     assert.match(formSource, /ตั้งค่าโฆษณา/);
     assert.match(formSource, /รูปภาพโฆษณา/);
@@ -104,24 +120,20 @@ describe("advertisement admin UI", () => {
     assert.match(nextConfigSource, /serverActions/);
     assert.match(nextConfigSource, /bodySizeLimit:\s*"10mb"/);
 
-    const previewSource = readFileSync(
-      new URL("../components/admin/advertisements/advertisement-image-preview-dialog.tsx", import.meta.url),
-      "utf8",
-    );
     assert.match(
-      previewSource,
+      sharedCardSource,
       /DialogContent className="w-\[calc\(100vw-0\.5rem\)\] max-w-7xl gap-3 p-3 sm:w-\[calc\(100vw-2rem\)\] sm:max-w-7xl sm:p-4"/,
     );
-    assert.match(previewSource, /<DialogTrigger asChild>/);
-    assert.match(previewSource, /<button/);
-    assert.match(previewSource, /className="absolute inset-0 z-10 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring\/50"/);
-    assert.match(previewSource, /DialogHeader className="min-w-0 pr-8"/);
-    assert.match(previewSource, /<div className="min-w-0 overflow-hidden rounded-lg bg-muted">/);
-    assert.match(previewSource, /<img/);
-    assert.match(previewSource, /className="h-auto max-h-\[82dvh\] w-full object-contain"/);
-    assert.doesNotMatch(previewSource, /EyeIcon/);
-    assert.doesNotMatch(previewSource, /<Button/);
-    assert.doesNotMatch(previewSource, /next\/image/);
+    assert.match(sharedCardSource, /<DialogTrigger asChild>/);
+    assert.match(sharedCardSource, /<button/);
+    assert.match(sharedCardSource, /className="absolute inset-0 z-10 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring\/50"/);
+    assert.match(sharedCardSource, /DialogHeader className="min-w-0 pr-8"/);
+    assert.match(sharedCardSource, /<div className="min-w-0 overflow-hidden rounded-lg bg-muted">/);
+    assert.match(sharedCardSource, /<img/);
+    assert.match(sharedCardSource, /className="h-auto max-h-\[82dvh\] w-full object-contain"/);
+    assert.doesNotMatch(sharedCardSource, /EyeIcon/);
+    assert.doesNotMatch(sharedCardSource, /<Button/);
+    assert.doesNotMatch(sharedCardSource, /next\/image/);
 
     const actionsSource = readFileSync(
       new URL("../app/admin/advertisements/actions.ts", import.meta.url),

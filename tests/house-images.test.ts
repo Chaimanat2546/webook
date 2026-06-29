@@ -151,18 +151,41 @@ describe("house image storage policy", () => {
 });
 
 describe("house image mutation rules", () => {
-  it("validates files, zones, and builds R2 image names", () => {
+  it("validates files, zones, and builds R2 image names", async () => {
+    const imagesModule = await import("../server/services/images.ts");
+    assert.equal(typeof imagesModule.buildHouseImageObjectKey, "function");
+    assert.equal(typeof imagesModule.resolveHouseImageObjectKey, "function");
+
     const image = new File([new Uint8Array([1])], "house.webp", { type: "image/webp" });
     const formData = new FormData();
     formData.append("images", image);
     formData.append("images", new File([], "empty.webp", { type: "image/webp" }));
+    const buildHouseImageObjectKey = imagesModule.buildHouseImageObjectKey as (
+      propertyId: string,
+      imageName: string,
+    ) => string;
+    const resolveHouseImageObjectKey = imagesModule.resolveHouseImageObjectKey as (
+      propertyId: string,
+      imageName: string,
+    ) => string;
 
     assert.deepEqual(getImageFiles(formData, "images"), [image]);
     assert.equal(validateHouseImageFile(image), image);
     assert.equal(validateHouseImageZone(" bedroom "), "bedroom");
     assert.equal(
-      buildHouseImageName("181", "3f6b9f41-9999-4bbb-8888-5812de2db111", "image/webp"),
-      "houses/181/3f6b9f41-9999-4bbb-8888-5812de2db111.webp",
+      buildHouseImageName("image/webp", {
+        now: new Date("2026-02-22T13:59:10.000Z"),
+        randomHex: "63fe3bcbc8",
+      }),
+      "20260222205910_63fe3bcbc8.webp",
+    );
+    assert.equal(
+      buildHouseImageObjectKey("181", "20260222205910_63fe3bcbc8.webp"),
+      "houses/181/20260222205910_63fe3bcbc8.webp",
+    );
+    assert.equal(
+      resolveHouseImageObjectKey("181", "houses/181/legacy.webp"),
+      "houses/181/legacy.webp",
     );
     assert.throws(
       () => validateHouseImageFile(new File(["x"], "house.txt", { type: "text/plain" })),

@@ -1,4 +1,11 @@
 import { awsImageHostname } from "../../lib/aws-image-url.ts";
+import { validateHouseImageObjectKey } from "../../lib/house-image-url.ts";
+import {
+  buildManagedImageFileName,
+  isSupportedImageMimeType,
+  validateManagedImageFileName,
+  type ManagedImageNameOptions,
+} from "./image-file-names.ts";
 
 export const UNASSIGNED_IMAGE_ZONE = "ไม่ระบุหมวด";
 
@@ -44,13 +51,6 @@ export type HouseImageFileOperation = "create" | "delete" | "replace";
 export type HouseImageStorageProvider = "aws-s3" | "r2" | "unknown";
 
 const HOUSE_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const extensionByMimeType: Record<string, string> = {
-  "image/avif": "avif",
-  "image/gif": "gif",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 const validImageZones = new Set(["cover", ...Object.keys(IMAGE_ZONE_META)]);
 
 const thaiDateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
@@ -134,7 +134,7 @@ export function isHouseImageFileOperationAllowed(
 }
 
 export function validateHouseImageFile(file: File): File {
-  if (!extensionByMimeType[file.type]) throw new Error("Unsupported image type");
+  if (!isSupportedImageMimeType(file.type)) throw new Error("Unsupported image type");
   if (file.size > HOUSE_MAX_IMAGE_BYTES) throw new Error("House image is too large");
   return file;
 }
@@ -145,13 +145,23 @@ export function validateHouseImageZone(value: string): string {
   return zone;
 }
 
-export function buildHouseImageName(propertyId: string, imageId: string, mimeType: string): string {
+export function buildHouseImageName(
+  mimeType: string,
+  options?: ManagedImageNameOptions,
+): string {
+  return buildManagedImageFileName(mimeType, options);
+}
+
+export function buildHouseImageObjectKey(propertyId: string, imageName: string): string {
   const id = propertyId.trim();
-  const extension = extensionByMimeType[mimeType];
   if (!/^\d+$/.test(id)) throw new Error("Invalid property id");
-  if (!/^[a-z0-9-]+$/i.test(imageId)) throw new Error("Invalid image id");
-  if (!extension) throw new Error("Unsupported image type");
-  return `houses/${id}/${imageId}.${extension}`;
+  return `houses/${id}/${validateManagedImageFileName(imageName)}`;
+}
+
+export function resolveHouseImageObjectKey(propertyId: string, imageName: string): string {
+  const normalized = imageName.trim().replace(/\\/g, "/");
+  if (normalized.startsWith("houses/")) return validateHouseImageObjectKey(normalized);
+  return buildHouseImageObjectKey(propertyId, normalized);
 }
 
 export function getImageFiles(formData: FormData, fieldName: string): File[] {

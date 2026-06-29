@@ -22,14 +22,17 @@ describe("house image storage adapter", () => {
       body: new Uint8Array([1, 2, 3]),
       contentType: "image/webp",
       fetchImpl,
-      imageName: "houses/181/1.webp",
+      objectKey: "houses/181/20260222205910_63fe3bcbc8.webp",
       workerSecret: "secret",
       workerUrl: "https://webook-media.example.workers.dev",
     });
 
     assert.equal(calls[0]?.method, "PUT");
     assert.equal(calls[0]?.headers.authorization, "Bearer secret");
-    assert.equal(calls[0]?.url, "https://webook-media.example.workers.dev/houses/181/1.webp");
+    assert.equal(
+      calls[0]?.url,
+      "https://webook-media.example.workers.dev/houses/181/20260222205910_63fe3bcbc8.webp",
+    );
   });
 
   it("throws when delete fails", async () => {
@@ -37,7 +40,7 @@ describe("house image storage adapter", () => {
       () =>
         deleteHouseImageObject({
           fetchImpl: async () => new Response("boom", { status: 500 }),
-          imageName: "houses/181/1.webp",
+          objectKey: "houses/181/20260222205910_63fe3bcbc8.webp",
           workerSecret: "secret",
           workerUrl: "https://webook-media.example.workers.dev",
         }),
