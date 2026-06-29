@@ -25,6 +25,7 @@ Only build routes that are in scope. Extra labels may appear in mockups for layo
 - Use a top app bar
 - Put admin navigation behind a hamburger button
 - Open navigation in a `Sheet` or drawer
+- Close the mobile drawer after a navigation menu item is selected
 - Do not use a crowded horizontal menu
 - Do not use a bottom nav with many admin items
 
