@@ -281,7 +281,6 @@ describe("house image mobile UI", () => {
     assert.match(source, /<div className="grid grid-cols-\[repeat\(auto-fill,minmax\(9rem,1fr\)\)\] gap-3">/);
     assert.doesNotMatch(source, /grid max-h-\[70dvh\] grid-cols-\[repeat\(auto-fill,minmax\(9rem,1fr\)\)\]/);
     assert.match(source, /shortImageName\(image\.image_name\)/);
-    assert.match(source, /\{ label: "ชื่อรูป", value: shortImageName\(image\.image_name\) \}/);
     assert.match(source, /\{ label: "สถานะ", value: <span className=\{statusClassName\}>\{statusLabel\}<\/span> \}/);
     assert.match(source, /\{ label: "สาเหตุ", value: item\.error \}/);
     assert.match(source, /previewDescription="ดูรูปก่อนยืนยันลบ"/);

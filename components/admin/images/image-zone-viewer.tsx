@@ -1041,7 +1041,6 @@ export function ImageZoneViewer({
                       imageName={shortImageName(image.image_name)}
                       imageUnavailableText="แสดงรูปไม่ได้"
                       metaRows={[
-                        { label: "ชื่อรูป", value: shortImageName(image.image_name) },
                         { label: "สถานะ", value: <span className={statusClassName}>{statusLabel}</span> },
                         ...(item.error ? [{ label: "สาเหตุ", value: item.error }] : []),
                       ]}

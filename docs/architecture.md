@@ -48,11 +48,12 @@ House image storage has two provider classes:
 
 Advertisement management is part of the accommodation admin menu and uses `public.users.allow_tools.allow_accommodation = true`.
 Admin pages write advertisement metadata through server actions and Supabase repositories.
-Advertisement files are uploaded/deleted through the server-only Worker adapter.
+Advertisement files are uploaded/deleted through the server-only Worker adapter. Create mode uploads images on create submit after generating an advertisement id; edit mode uploads selected images immediately through a client queue and uses operation-specific delete actions.
 Supabase stores filename-only `advertisement_images.image_name` values.
 Advertisement R2 object keys are composed server-side as `advertisements/{advertisement_id}/{image_name}`.
 External systems read active advertisements through Supabase API and build image URLs from `{ADVERTISEMENT_IMAGE_WORKER_URL}/advertisements/{advertisement_id}/{image_name}`.
 The media Worker accepts only `advertisements/` and `houses/` key prefixes.
+Advertisement edit bulk delete flows call the single-image delete action one image id at a time so the client can show per-image progress and retry failed rows.
 
 ## Rules
 

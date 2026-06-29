@@ -1,14 +1,20 @@
 import { validateAdvertisementImageObjectKey } from "../../lib/advertisement-image-url.ts";
 import {
   buildManagedImageFileName,
-  isSupportedImageMimeType,
   validateManagedImageFileName,
   type ManagedImageNameOptions,
 } from "./image-file-names.ts";
 
-export const ADVERTISEMENT_MIN_IMAGES = 1;
+export const ADVERTISEMENT_MIN_IMAGES = 0;
 export const ADVERTISEMENT_MAX_IMAGES = 2;
 export const ADVERTISEMENT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+const supportedAdvertisementImageMimeTypes = new Set([
+  "image/avif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 export interface AdvertisementImageItem {
   id: string;
@@ -24,7 +30,7 @@ export function validateAdvertisementTitle(value: string): string {
 
 export function validateAdvertisementImageCount(count: number): number {
   if (count < ADVERTISEMENT_MIN_IMAGES) {
-    throw new Error("Advertisement requires at least 1 image");
+    throw new Error("Advertisement image count cannot be negative");
   }
   if (count > ADVERTISEMENT_MAX_IMAGES) {
     throw new Error("Advertisement supports at most 2 images");
@@ -45,15 +51,9 @@ export function validateAdvertisementImageEditCount({
 }
 
 export function validateAdvertisementImageFile(file: File): File {
-  if (!isSupportedImageMimeType(file.type)) throw new Error("Unsupported image type");
+  if (!supportedAdvertisementImageMimeTypes.has(file.type)) throw new Error("Unsupported image type");
   if (file.size > ADVERTISEMENT_MAX_IMAGE_BYTES) throw new Error("Advertisement image is too large");
   return file;
-}
-
-export function assertCanDeleteAdvertisementImage(imageCount: number): void {
-  if (imageCount <= ADVERTISEMENT_MIN_IMAGES) {
-    throw new Error("Cannot delete the last advertisement image");
-  }
 }
 
 export function buildAdvertisementImageName(

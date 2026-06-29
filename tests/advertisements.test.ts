@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  assertCanDeleteAdvertisementImage,
   buildAdvertisementImageName,
   getAvailableAdvertisementImageOrders,
   getImageFiles,
@@ -18,7 +17,8 @@ describe("advertisement rules", () => {
   it("validates title and image count", () => {
     assert.equal(validateAdvertisementTitle("  Summer Promo  "), "Summer Promo");
     assert.throws(() => validateAdvertisementTitle(" "), /Advertisement title is required/);
-    assert.throws(() => validateAdvertisementImageCount(0), /at least 1 image/);
+    assert.equal(validateAdvertisementImageCount(0), 0);
+    assert.throws(() => validateAdvertisementImageCount(-1), /cannot be negative/);
     assert.throws(() => validateAdvertisementImageCount(3), /at most 2 images/);
   });
 
@@ -90,20 +90,26 @@ describe("advertisement rules", () => {
     );
   });
 
-  it("blocks deleting the last advertisement image", () => {
-    assert.equal(assertCanDeleteAdvertisementImage(2), undefined);
-    assert.throws(() => assertCanDeleteAdvertisementImage(1), /last advertisement image/);
-  });
-
-  it("validates edit drafts after pending deletes and new uploads", () => {
+  it("allows deleting every advertisement image", () => {
     assert.equal(
       validateAdvertisementImageEditCount({
         deletedImageCount: 1,
+        existingImageCount: 1,
+        newImageCount: 0,
+      }),
+      0,
+    );
+    assert.equal(
+      validateAdvertisementImageEditCount({
+        deletedImageCount: 2,
         existingImageCount: 2,
         newImageCount: 0,
       }),
-      1,
+      0,
     );
+  });
+
+  it("validates edit drafts after pending deletes and new uploads", () => {
     assert.equal(
       validateAdvertisementImageEditCount({
         deletedImageCount: 2,
@@ -111,15 +117,6 @@ describe("advertisement rules", () => {
         newImageCount: 1,
       }),
       1,
-    );
-    assert.throws(
-      () =>
-        validateAdvertisementImageEditCount({
-          deletedImageCount: 2,
-          existingImageCount: 2,
-          newImageCount: 0,
-        }),
-      /at least 1 image/,
     );
   });
 

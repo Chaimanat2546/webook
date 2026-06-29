@@ -14,11 +14,12 @@ MVP นี้ให้ admin สร้าง แก้ไข เปิด/ปิ
 - แสดงรายการโฆษณาทั้งหมดใน admin
 - เรียง `is_active = true` ก่อน `is_active = false`
 - ในกลุ่ม active เดียวกันเรียง `updated_at` ใหม่สุดก่อน
-- สร้างโฆษณาใหม่พร้อม title และรูป 1-2 รูป
+- สร้างโฆษณาใหม่พร้อม title และรูป 0-2 รูป
 - แก้ไข title
 - เปิด/ปิด `is_active`
-- เพิ่มรูปใหม่เป็น draft และยังไม่ upload จนกดบันทึก
-- ลบรูปเดิมเป็น draft delete และยังไม่ลบจริงจนกดบันทึก
+- หน้า create เพิ่มรูปใหม่เป็น draft และ upload ตอนกดสร้างเพราะยังไม่มี advertisement id
+- หน้า edit เพิ่มรูปใหม่แบบ upload ทันทีผ่าน queue ทีละไฟล์
+- หน้า edit ลบรูปจริงหลัง confirmation โดยใช้ single delete action หรือ bulk delete queue ทีละรูป
 - validate จำนวนรูปสุดท้ายตอนกดบันทึก
 - preview รูปเดิมและรูป draft ได้
 - ระบบกำหนด `image_order` เองเป็น 1, 2
@@ -35,7 +36,7 @@ MVP นี้ให้ admin สร้าง แก้ไข เปิด/ปิ
 - Targeting
 - Analytics
 - Background reconciliation job สำหรับ orphaned R2 objects
-- Database trigger เพื่อบังคับ minimum child image count
+- Database trigger เพื่อบังคับ image count business rule
 
 ## Screens
 
@@ -65,12 +66,11 @@ Rules:
 ข้อมูลที่กรอก:
 
 - `title`
-- รูป 1-2 รูป
+- รูป 0-2 รูป
 
 Rules:
 
 - ต้องมี title
-- ต้องมีรูปอย่างน้อย 1 รูป
 - มีรูปได้สูงสุด 2 รูป
 - เลือกรูปแล้วอยู่ใน draft ก่อน
 - ยังไม่ upload ไป R2 จนกดบันทึก
@@ -89,11 +89,11 @@ Rules:
 
 Rules:
 
-- เพิ่มรูปใหม่เป็น draft ก่อน
-- กดบันทึกแล้วค่อย upload รูปใหม่และ update metadata
-- ลบรูปเดิมด้วยปุ่มถังขยะแล้วซ่อนจากหน้าเป็น draft delete
-- ยังไม่ลบจริงจนกดบันทึก
-- ถ้าจำนวนรูปสุดท้ายจะเหลือ 0 หรือเกิน 2 รูป ต้องแสดง alert และไม่ save
+- เพิ่มรูปใหม่แล้ว upload ทันทีผ่าน client queue ทีละไฟล์
+- กดบันทึกใช้สำหรับ update metadata เช่น title และ `is_active`
+- ลบรูปเดิมต้องเปิด confirmation ก่อน แล้วค่อยเรียก delete action
+- bulk delete ใช้ delete queue ฝั่ง client ทีละรูปพร้อมสถานะ `รอลบ`, `กำลังลบ`, `ลบแล้ว`, `ลบไม่สำเร็จ`
+- ถ้าจำนวนรูปจะเกิน 2 รูป ต้อง block operation และแจ้ง error
 - ถ้ารูป preview/load ไม่ได้ ไม่บล็อกการ save title/status
 - user ไม่สามารถจัด order เอง
 
@@ -130,8 +130,8 @@ Constraints:
 
 Business rule:
 
-- โฆษณา 1 รายการต้องมีรูปอย่างน้อย 1 รูป
-- MVP นี้บังคับ minimum-one-image ใน admin service/route handler ไม่ใช้ database trigger
+- โฆษณา 1 รายการมีรูปได้ 0-2 รูป
+- MVP นี้บังคับ maximum-two-images ใน admin service/route handler ไม่ใช้ database trigger
 
 ## Supabase API Behavior
 
@@ -190,8 +190,9 @@ Rules:
 
 - ห้ามเก็บ binary รูปใน Supabase
 - Max upload size is 10 MB per image.
-- Before submit, newly selected images are resized in the browser so the longest side is at most 1080px while preserving aspect ratio.
-- Images that need resizing are encoded from canvas as WebP when supported; images already within 1080px are uploaded unchanged.
+- Newly selected images are resized in the browser so the longest side is at most 1920px while preserving aspect ratio.
+- Newly selected images are encoded from canvas as WebP with quality 0.82 before upload.
+- GIF is not supported for advertisement image upload.
 - ห้ามเก็บ full image URL เป็น source of truth
 - ห้าม expose R2 credential ไป client
 - ห้ามสร้าง open image proxy
@@ -211,7 +212,7 @@ ADVERTISEMENT_IMAGE_WORKER_SECRET=
 Create:
 
 1. Validate title
-2. Validate image count 1-2
+2. Validate image count 0-2
 3. Generate advertisement id
 4. Upload images to R2
 5. Insert `advertisements`
@@ -221,21 +222,24 @@ Create:
 Update:
 
 1. Validate title
-2. Read pending `deleted_image_ids`
-3. Validate final image count 1-2 after pending deletes and new uploads
-4. Upload newly added draft images on save
-5. Update `advertisements`
-6. Delete pending `advertisement_images` rows
-7. Insert new `advertisement_images`
-8. Normalize `image_order` to 1, 2
-9. Best-effort delete unreferenced R2 objects for images removed from the form
+2. Update `advertisements`
+3. Image uploads and deletes are handled by separate operation actions in edit mode
+
+Upload image in edit form:
+
+1. Select one or more files
+2. Client resizes each file to WebP
+3. Client uploads one file at a time with `uploadAdvertisementImagesAction`
+4. Successful files are saved immediately
+5. Failed files stay as muted cards with retry/remove actions
 
 Delete image in edit form:
 
-1. Click the trash icon to hide the image from the form
-2. Keep the delete as a draft until save
-3. Enable cancel once there is a draft change
-4. On save, block the form if the final image count would be 0 or more than 2
+1. Click the trash icon and confirm from the preview dialog
+2. The dialog closes and progress/result is shown through toast
+3. Bulk delete opens a queue panel and calls `deleteAdvertisementImageAction(imageId)` one image at a time
+4. Failed bulk rows stay visible and can be retried
+5. Block deletion when it would leave the advertisement with 0 images
 
 ## RLS
 
@@ -265,9 +269,8 @@ Error:
 - ไม่มีสิทธิ์เข้าใช้งาน
 - โหลดข้อมูลไม่สำเร็จ
 - title ว่าง
-- ไม่มีรูป
 - รูปเกิน 2 รูป
-- จำนวนรูปสุดท้ายไม่อยู่ระหว่าง 1-2 รูป
+- จำนวนรูปสุดท้ายเกิน 2 รูป
 - upload รูปไม่สำเร็จ
 - ลบ R2 object ไม่สำเร็จ
 - รูป preview/load ไม่ได้
@@ -276,20 +279,23 @@ Error:
 
 - newly selected files append to existing unsaved draft images instead of replacing them
 - new uploads store filename-only `image_name` values and server-side R2 keys under `advertisements/{advertisement_id}/{image_name}`
-- newly selected advertisement images are resized to max 1080px before upload
+- newly selected advertisement images are resized to max 1920px and encoded as WebP before upload
+- GIF upload is rejected
 - Administrator เข้าใช้งานได้
 - non-admin เข้าใช้งานไม่ได้
 - list แสดง active ก่อน inactive
 - list เรียง `updated_at` ใหม่สุดก่อนในกลุ่มเดียวกัน
 - create ต้องมี title
-- create ต้องมีรูปอย่างน้อย 1 รูป
+- create มีรูปได้ 0-2 รูป
 - create ห้ามเกิน 2 รูป
-- เพิ่มรูปยังไม่ upload จนกดบันทึก
+- create เพิ่มรูปยังไม่ upload จนกดสร้าง
+- edit เพิ่มรูปแล้ว upload ทันทีผ่าน queue
 - preview รูป draft ได้
 - preview รูปเดิมได้
-- delete image เป็น draft delete จนกดบันทึก
+- edit delete image ต้อง confirm แล้วลบจริงผ่าน operation action
+- bulk delete แสดงสถานะรายรูป, progress, summary toast, และ retry เฉพาะรายการที่ลบไม่สำเร็จ
 - ปุ่มยกเลิก enabled เมื่อมี draft change
-- save บล็อกเมื่อจำนวนรูปสุดท้ายไม่อยู่ระหว่าง 1-2 รูป
+- save บล็อกเมื่อจำนวนรูปสุดท้ายเกิน 2 รูป
 - ระบบ normalize `image_order` เป็น 1, 2
 - public Supabase API เห็นเฉพาะ active advertisements
 - public Supabase API ไม่เห็น inactive advertisement images
