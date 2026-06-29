@@ -361,7 +361,7 @@ export function ImageZoneViewer({
             />
           </div>
 
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-start gap-2 p-2 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
             {visibleImages.map((image, index) => {
               const canDelete = isHouseImageFileOperationAllowed(image.image_url, "delete");
 

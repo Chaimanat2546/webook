@@ -29,7 +29,7 @@ describe("house image mobile UI", () => {
     assert.match(source, /<ScrollArea className="w-full min-w-0"/);
     assert.match(source, /<nav\s+className="flex w-max min-w-full/);
     assert.match(source, /grid grid-cols-\[repeat\(auto-fill,minmax\(9rem,9rem\)\)\]/);
-    assert.match(source, /items-start justify-start gap-2 p-2/);
+    assert.match(source, /items-start justify-center gap-3 p-3/);
     assert.match(source, /AdminImageCard/);
     assert.match(sharedCardSource, /max-w-36/);
     assert.match(sharedCardSource, /CardContent className="flex min-h-16 flex-col gap-1 p-2"/);
