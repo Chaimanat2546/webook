@@ -1,3 +1,5 @@
+import { awsImageHostname } from "../../lib/aws-image-url.ts";
+
 export const UNASSIGNED_IMAGE_ZONE = "ไม่ระบุหมวด";
 
 export interface HouseImageItem {
@@ -5,6 +7,7 @@ export interface HouseImageItem {
   id: number;
   image_move: number | null;
   image_name: string | null;
+  image_url?: string | null;
   image_zone: string | null;
   updated_at?: string | null;
 }
@@ -36,6 +39,9 @@ export interface ImageZoneMeta {
   key: string;
   label: string;
 }
+
+export type HouseImageFileOperation = "create" | "delete" | "replace";
+export type HouseImageStorageProvider = "aws-s3" | "r2" | "unknown";
 
 const thaiDateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
   dateStyle: "medium",
@@ -87,6 +93,31 @@ export function getSelectedImageZoneGroup(
   selectedZone?: string,
 ): ImageZoneGroup | null {
   return groups.find((group) => group.zone === selectedZone) ?? groups[0] ?? null;
+}
+
+export function getHouseImageStorageProvider(imageUrl?: string | null): HouseImageStorageProvider {
+  const value = imageUrl?.trim();
+  if (!value) return "unknown";
+
+  try {
+    const url = new URL(value);
+    if (url.pathname.startsWith("/houses/")) return "r2";
+    if (url.hostname === awsImageHostname || url.hostname.endsWith(".amazonaws.com")) {
+      return "aws-s3";
+    }
+  } catch {
+    if (value.startsWith("houses/")) return "r2";
+  }
+
+  return "unknown";
+}
+
+export function isHouseImageFileOperationAllowed(
+  imageUrl: string | null | undefined,
+  operation: HouseImageFileOperation,
+): boolean {
+  const provider = getHouseImageStorageProvider(imageUrl);
+  return provider === "r2" || (provider === "aws-s3" && operation === "delete");
 }
 
 export function groupImagesByZone(images: HouseImageItem[]): ImageZoneGroup[] {

@@ -31,6 +31,7 @@ House image storage has two provider classes:
 
 - Legacy AWS/S3-backed images are valid for display through the existing Lambda URL path, but physical file mutation is delete-only.
 - Cloudflare R2 is the only writable storage for new or replaced house image files; create, replace/edit, and delete operations must go through server-side adapters.
+- The provider class is inferred from `images.image_url`; do not add a separate provider column.
 
 ## Advertisement Media Flow
 
@@ -44,7 +45,7 @@ External systems read active advertisements through Supabase API and build image
 - Client components should not access private credentials.
 - Route handlers should validate input before calling services.
 - Storage provider details should stay behind adapter modules.
-- House image file operations must route by trusted provider/source metadata and reject unsupported mutations instead of falling back to another provider.
+- House image file operations must route by trusted `images.image_url` values and reject unsupported mutations instead of falling back to another provider.
 - Implementation choices should favor maintainability, reuse, security, and performance over the shortest local patch.
 - New dependencies are acceptable when they make the implementation safer, simpler, or easier to maintain. Agents must explain the reason and ask before installing them.
 - UI flow and screen structure must be confirmed with the user step by step before implementation, unless an approved design already exists.

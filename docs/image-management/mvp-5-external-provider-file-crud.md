@@ -23,7 +23,8 @@ MVP นี้เป็นรอบที่เสี่ยงที่สุด 
 - AWS/S3-backed existing images เป็น legacy/delete-only
 - AWS/S3 operations ที่ห้าม: upload/import รูปใหม่, replace/edit physical file, copy รูปใหม่เข้า AWS/S3
 - การแสดงผลรูปเดิมที่มาจาก AWS/S3 ยังใช้ต่อได้ตาม behavior ปัจจุบัน
-- Storage adapter ต้องอยู่ฝั่ง server เท่านั้น และเลือก provider จาก trusted metadata/source ไม่ใช่ค่าที่ client ส่งมาโดยตรง
+- Storage adapter ต้องอยู่ฝั่ง server เท่านั้น และเลือก provider จาก `images.image_url` ที่อ่านจาก database ไม่ใช่ค่าที่ client ส่งมาโดยตรง
+- ห้ามเพิ่ม provider column ใหม่สำหรับแยก storage source ใน MVP นี้
 
 ## Out of Scope
 

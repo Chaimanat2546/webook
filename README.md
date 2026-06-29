@@ -23,6 +23,7 @@ Access is limited to Administrator users (`public.users.role_id = 1`).
 - Existing imported house images may continue to display through the current AWS/S3-backed image source.
 - New or replaced house image files must be managed in Cloudflare R2 through server-side code.
 - AWS/S3-backed house images are delete-only. Do not upload, replace, or edit physical house image files in AWS/S3.
+- Use `images.image_url` to distinguish AWS/S3 legacy images from Cloudflare R2 images; do not add a provider column.
 
 ## Supabase Feature Workflow
 

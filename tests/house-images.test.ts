@@ -107,3 +107,41 @@ describe("house image grouping", () => {
     });
   });
 });
+
+describe("house image storage policy", () => {
+  it("infers provider from image_url and keeps AWS/S3 delete-only", async () => {
+    const imagesModule = await import("../server/services/images.ts");
+
+    assert.equal(typeof imagesModule.isHouseImageFileOperationAllowed, "function");
+    const isAllowed = imagesModule.isHouseImageFileOperationAllowed as (
+      imageUrl: string | null,
+      operation: string,
+    ) => boolean;
+
+    assert.equal(isAllowed("https://webook-media.example.workers.dev/houses/181/1.webp", "create"), true);
+    assert.equal(isAllowed("https://webook-media.example.workers.dev/houses/181/1.webp", "replace"), true);
+    assert.equal(isAllowed("https://webook-media.example.workers.dev/houses/181/1.webp", "delete"), true);
+    assert.equal(
+      isAllowed(
+        "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/villa.webp",
+        "create",
+      ),
+      false,
+    );
+    assert.equal(
+      isAllowed(
+        "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/villa.webp",
+        "replace",
+      ),
+      false,
+    );
+    assert.equal(
+      isAllowed(
+        "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/villa.webp",
+        "delete",
+      ),
+      true,
+    );
+    assert.equal(isAllowed(null, "delete"), false);
+  });
+});
