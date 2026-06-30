@@ -12,7 +12,13 @@ import { Button } from "../../../../components/ui/button";
 import { cn } from "../../../../lib/utils";
 import { buildAdvertisementImageUrl } from "../../../../lib/advertisement-image-url";
 import { getAdvertisementImageEnv } from "../../../../lib/env";
-import { requireAdmin } from "../../../../server/auth/admin";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "../../../../components/ui/empty";
+import { canUseAccommodation, requireAdmin } from "../../../../server/auth/admin";
 import {
   getAdvertisementById,
   type AdvertisementImageRow,
@@ -71,7 +77,19 @@ export default async function AdvertisementDetailPage({
 }) {
   const { id } = await params;
   const toastTitle = saveToastTitle(await searchParams);
-  const { supabase } = await requireAdmin();
+  const { adminUser, supabase } = await requireAdmin();
+
+  if (!canUseAccommodation(adminUser)) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>ไม่มีสิทธิ์เข้าถึงหมวดโฆษณา</EmptyTitle>
+          <EmptyDescription>บัญชีนี้ยังไม่ได้เปิด allow_accommodation</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   const advertisement = await getAdvertisementById(supabase, id);
   if (!advertisement) notFound();
 

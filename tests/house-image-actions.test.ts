@@ -28,11 +28,25 @@ describe("house image actions", () => {
     assert.match(actionsSource, /buildHouseImageUrl/);
     assert.match(actionsSource, /uploadHouseImageObject/);
     assert.match(actionsSource, /deleteHouseImageObject/);
+    assert.match(actionsSource, /deleteAwsHouseImageObject/);
+    assert.match(actionsSource, /getAwsS3ImageEnv/);
+    assert.match(actionsSource, /\.\.\.awsImageEnv/);
+    assert.match(actionsSource, /imageUrl/);
+    assert.match(actionsSource, /getHouseImageStorageProvider/);
     assert.match(actionsSource, /uploadedObjectKeys/);
     assert.match(actionsSource, /cleanupUploadedImages/);
     assert.match(actionsSource, /cleanupWarning/);
     assert.match(actionsSource, /storageFailed/);
     assert.match(actionsSource, /isHouseImageFileOperationAllowed\(image\.image_url, "delete"\)/);
+    assert.match(
+      actionsSource,
+      /const deleteStorageFirst = getHouseImageStorageProvider\(image\.image_url\) === "aws-s3";[\s\S]*if \(deleteStorageFirst\) {[\s\S]*await deleteStoredHouseImage[\s\S]*await deleteHouseImageById\(supabase, image\.id\);[\s\S]*if \(!deleteStorageFirst\) {/,
+    );
+    assert.equal(
+      actionsSource.match(/const deleteStorageFirst = getHouseImageStorageProvider\(image\.image_url\) === "aws-s3";/g)
+        ?.length,
+      2,
+    );
     assert.match(actionsSource, /canUseAccommodation\(adminUser\)/);
     assert.match(actionsSource, /Admin profile is incomplete/);
     assert.match(actionsSource, /create_by: adminCreateBy/);

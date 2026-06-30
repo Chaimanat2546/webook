@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getHouseImageEnv } from "../../../../../lib/env";
+import { getAwsS3ImageEnv, getHouseImageEnv } from "../../../../../lib/env";
 import { buildHouseImageUrl } from "../../../../../lib/house-image-url";
 import {
   canUseAccommodation,
@@ -22,6 +22,7 @@ import {
   buildHouseImageName,
   buildHouseImageObjectKey,
   getImageFiles,
+  getHouseImageStorageProvider,
   getNextHouseImageMove,
   isHouseImageFileOperationAllowed,
   resolveHouseImageObjectKey,
@@ -29,6 +30,7 @@ import {
   validateHouseImageZone,
 } from "../../../../../server/services/images";
 import {
+  deleteAwsHouseImageObject,
   deleteHouseImageObject,
   uploadHouseImageObject,
 } from "../../../../../server/storage/house-images";
@@ -111,6 +113,33 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown error";
 }
 
+async function deleteStoredHouseImage({
+  imageName,
+  imageUrl,
+  propertyId,
+}: {
+  imageName: string | null;
+  imageUrl?: string | null;
+  propertyId: string;
+}) {
+  if (getHouseImageStorageProvider(imageUrl) === "aws-s3") {
+    const awsImageEnv = getAwsS3ImageEnv();
+    await deleteAwsHouseImageObject({
+      ...awsImageEnv,
+      imageName: imageName ?? "",
+      imageUrl,
+    });
+    return;
+  }
+
+  const imageEnv = getHouseImageEnv();
+  await deleteHouseImageObject({
+    objectKey: resolveHouseImageObjectKey(propertyId, imageName ?? ""),
+    workerSecret: imageEnv.workerSecret,
+    workerUrl: imageEnv.workerUrl,
+  });
+}
+
 export async function uploadHouseImagesAction(
   propertyId: string,
   formData: FormData,
@@ -184,18 +213,28 @@ export async function deleteHouseImageAction(
   assertImageBelongsToProperty(image, propertyId);
   assertImageCanBeDeleted(image.image_url);
 
+  const deleteStorageFirst = getHouseImageStorageProvider(image.image_url) === "aws-s3";
+  if (deleteStorageFirst) {
+    await deleteStoredHouseImage({
+      imageName: image.image_name ?? null,
+      imageUrl: image.image_url,
+      propertyId,
+    });
+  }
+
   await deleteHouseImageById(supabase, image.id);
 
   let cleanupWarning = false;
-  try {
-    const imageEnv = getHouseImageEnv();
-    await deleteHouseImageObject({
-      objectKey: resolveHouseImageObjectKey(propertyId, image.image_name ?? ""),
-      workerSecret: imageEnv.workerSecret,
-      workerUrl: imageEnv.workerUrl,
-    });
-  } catch {
-    cleanupWarning = true;
+  if (!deleteStorageFirst) {
+    try {
+      await deleteStoredHouseImage({
+        imageName: image.image_name ?? null,
+        imageUrl: image.image_url,
+        propertyId,
+      });
+    } catch {
+      cleanupWarning = true;
+    }
   }
 
   revalidateHouseImagePaths(propertyId);
@@ -240,6 +279,24 @@ export async function deleteHouseImagesAction(
       continue;
     }
 
+    const deleteStorageFirst = getHouseImageStorageProvider(image.image_url) === "aws-s3";
+    if (deleteStorageFirst) {
+      try {
+        await deleteStoredHouseImage({
+          imageName: image.image_name ?? null,
+          imageUrl: image.image_url,
+          propertyId,
+        });
+      } catch (error) {
+        result.storageFailed.push({
+          fileName: image.image_name ?? null,
+          id: image.id,
+          message: errorMessage(error),
+        });
+        continue;
+      }
+    }
+
     try {
       await deleteHouseImageById(supabase, image.id);
       result.deleted.push({ id: image.id, fileName: image.image_name ?? null });
@@ -252,19 +309,20 @@ export async function deleteHouseImagesAction(
       continue;
     }
 
-    try {
-      const imageEnv = getHouseImageEnv();
-      await deleteHouseImageObject({
-        objectKey: resolveHouseImageObjectKey(propertyId, image.image_name ?? ""),
-        workerSecret: imageEnv.workerSecret,
-        workerUrl: imageEnv.workerUrl,
-      });
-    } catch (error) {
-      result.storageFailed.push({
-        fileName: image.image_name ?? null,
-        id: image.id,
-        message: errorMessage(error),
-      });
+    if (!deleteStorageFirst) {
+      try {
+        await deleteStoredHouseImage({
+          imageName: image.image_name ?? null,
+          imageUrl: image.image_url,
+          propertyId,
+        });
+      } catch (error) {
+        result.storageFailed.push({
+          fileName: image.image_name ?? null,
+          id: image.id,
+          message: errorMessage(error),
+        });
+      }
     }
   }
 

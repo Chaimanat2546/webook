@@ -26,4 +26,17 @@ describe("house image mutation migration", () => {
 
     assert.equal(existsSync(constraintMigration), false);
   });
+
+  it("allows public read access without public image mutations", () => {
+    const sql = readFileSync(
+      new URL("../supabase/migrations/20260630084922_allow_public_house_image_reads.sql", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(sql, /grant select on table public\.images to anon/);
+    assert.match(sql, /Public can read images/);
+    assert.match(sql, /for select[\s\S]+to anon/);
+    assert.doesNotMatch(sql, /grant insert, update, delete on table public\.images to anon/);
+    assert.doesNotMatch(sql, /for all[\s\S]+to anon/);
+  });
 });

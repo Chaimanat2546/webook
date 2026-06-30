@@ -23,9 +23,10 @@ House/accommodation menu access currently requires `allow_tools.allow_accommodat
 
 - Existing imported house images may continue to display through the current AWS/S3-backed image source.
 - New or replaced house image files must be managed in Cloudflare R2 through server-side code.
-- AWS/S3-backed house images are display-only for now. Keep provider detection, but do not upload, replace, edit, or delete physical house image files in AWS/S3 until a delete endpoint and failure behavior are approved.
+- AWS/S3-backed house images can be displayed through the legacy Lambda image URL and deleted after confirmation through signed server-side S3 `DELETE` requests. Keep provider detection, but do not upload, replace, or edit physical house image files in AWS/S3.
 - Use `images.image_url` to distinguish AWS/S3 legacy images from Cloudflare R2 images; do not add a provider column.
 - New house image uploads use the shared media Worker env vars: `ADVERTISEMENT_IMAGE_WORKER_URL` and `ADVERTISEMENT_IMAGE_WORKER_SECRET`.
+- AWS/S3 house image deletes use `AWS_REGION`, `AWS_BUCKET`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` server-side only.
 - House image admins must have `allow_tools.allow_accommodation = true`. Adding new house images also requires a positive `users.mid` because `images.create_by` is required.
 
 ## House Image Admin Flow
@@ -34,7 +35,7 @@ House/accommodation menu access currently requires `allow_tools.allow_accommodat
 - File selection uploads house images immediately to R2 through server-side code. There is no staged upload/save step for house images.
 - Single-image delete opens a confirmation dialog with the image preview before deleting.
 - Bulk delete uses selection mode for the current zone only. `Select all` selects only deletable images visible in that zone, and the admin confirms from a preview list before deletion.
-- AWS/S3-backed legacy house images remain display-only and are excluded from delete controls.
+- AWS/S3-backed legacy house images are included in delete controls when their `image_url` identifies the AWS/S3 provider.
 
 ## Supabase Feature Workflow
 
@@ -78,6 +79,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=PASTE_LOCAL_ANON_KEY
 # Shared media Worker for advertisements and new house images.
 ADVERTISEMENT_IMAGE_WORKER_URL=
 ADVERTISEMENT_IMAGE_WORKER_SECRET=
+# Legacy AWS/S3 house image delete credentials. Server-side only.
+AWS_REGION=
+AWS_BUCKET=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
 ```
 
 Restart Next.js after changing `.env.local`:
@@ -276,9 +282,35 @@ Do not run these against production:
 
 Use `migration repair` only after confirming the schema already exists remotely and only the migration history table is wrong.
 
+## Admin Web Worker Deploy
+
+The Next.js admin app deploys to a separate Cloudflare Worker through OpenNext:
+
+```powershell
+npm.cmd run deploy:cf
+```
+
+The root `wrangler.jsonc` deploys the admin web Worker named `webook-admin`.
+Do not use `workers/media/wrangler.jsonc` for the admin web app.
+The build script runs Next.js with `--webpack` and `--use-system-ca` so OpenNext can bundle server chunks correctly on this Windows workspace.
+The admin Worker uses an R2 binding named `NEXT_INC_CACHE_R2_BUCKET` for OpenNext incremental cache.
+
+Production owners should set the app runtime variables/secrets in their own Cloudflare account before deploying:
+
+```powershell
+npx.cmd wrangler secret put NEXT_PUBLIC_SUPABASE_URL
+npx.cmd wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
+npx.cmd wrangler secret put ADVERTISEMENT_IMAGE_WORKER_URL
+npx.cmd wrangler secret put ADVERTISEMENT_IMAGE_WORKER_SECRET
+npx.cmd wrangler secret put AWS_REGION
+npx.cmd wrangler secret put AWS_BUCKET
+npx.cmd wrangler secret put AWS_ACCESS_KEY_ID
+npx.cmd wrangler secret put AWS_SECRET_ACCESS_KEY
+```
+
 ## Media Worker Deploy
 
-The Next.js admin app has no Cloudflare app deployment config in this repo. Cloudflare remains only for the media Worker/R2 image pipeline.
+The media Worker/R2 image pipeline deploys separately from the admin web Worker.
 
 Set the private upload secret as a media Worker secret:
 
@@ -307,9 +339,14 @@ Required server-side variables for advertisement image uploads:
 ```env
 ADVERTISEMENT_IMAGE_WORKER_URL=
 ADVERTISEMENT_IMAGE_WORKER_SECRET=
+AWS_REGION=
+AWS_BUCKET=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
 ```
 
 The same Worker/R2 variables are reused for new managed house image uploads under the `houses/{property_id}/...` key prefix.
+The AWS variables are used only server-side when deleting legacy AWS/S3 house images.
 
 ## Scripts
 

@@ -41,7 +41,11 @@ describe("advertisement admin UI", () => {
     assert.match(source, /ปิดใช้งาน/);
     assert.match(source, /md:hidden/);
     assert.match(source, /md:block/);
-    assert.match(source, /<TableHead>ID<\/TableHead>/);
+    assert.match(source, /<TableHead[^>]*>ID<\/TableHead>/);
+    assert.match(source, /<Table className="table-fixed">/);
+    assert.match(source, /<TableHead className="w-\[42%\]">/);
+    assert.match(source, /<span className="block truncate">/);
+    assert.match(source, /<TableCell className="truncate text-muted-foreground">/);
   });
 
   it("adds create and detail forms with immediate edit image operations", () => {
@@ -271,5 +275,21 @@ describe("advertisement admin UI", () => {
     assert.match(sonnerSource, /position="top-center"/);
     assert.doesNotMatch(sonnerSource, /richColors/);
     assert.doesNotMatch(sonnerSource, /toastOptions/);
+  });
+
+  it("shows the same unauthorized empty state on advertisement pages", () => {
+    const pageSources = [
+      readFileSync(new URL("../app/admin/advertisements/page.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../app/admin/advertisements/[id]/page.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../app/admin/advertisements/new/page.tsx", import.meta.url), "utf8"),
+    ];
+
+    for (const source of pageSources) {
+      assert.match(source, /canUseAccommodation/);
+      assert.match(source, /const \{ adminUser(?:, supabase)? \} = await requireAdmin\(\)/);
+      assert.match(source, /if \(!canUseAccommodation\(adminUser\)\) \{/);
+      assert.match(source, /<Empty>/);
+      assert.match(source, /allow_accommodation/);
+    }
   });
 });
