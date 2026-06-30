@@ -206,6 +206,19 @@ Copy the new auth user UID, then insert the matching admin row. Keep `mid` when 
 
 If login behaves strangely after changing users or env vars, clear cookies for `localhost:3000` or use an incognito window.
 
+## Admin Password Reset
+
+The login page has a forgot-password mode at `/login?forgot=1`; there is no separate `/login/forgot-password` page.
+Reset emails are sent through Supabase Auth and redirect admins to `/login/reset-password`.
+Add this URL to the Supabase Auth redirect URL allow list for each environment:
+
+```text
+http://localhost:3000/login/reset-password
+https://<admin-domain>/login/reset-password
+```
+
+The app disables the reset submit button with a 1-minute browser countdown after a request. It also adds a small per-email reset throttle of 1 request per minute in the current server process. Supabase Auth and SMTP limits still apply.
+
 ## Seed Data
 
 Prefer small fake seeds for feature work.
