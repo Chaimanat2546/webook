@@ -156,7 +156,7 @@ describe("house image grouping", () => {
 });
 
 describe("house image storage policy", () => {
-  it("infers provider from image_url and keeps AWS/S3 mutations disabled for now", async () => {
+  it("allows AWS/S3 delete while keeping AWS/S3 create and replace disabled", async () => {
     const imagesModule = await import("../server/services/images.ts");
 
     assert.equal(typeof imagesModule.isHouseImageFileOperationAllowed, "function");
@@ -187,7 +187,7 @@ describe("house image storage policy", () => {
         "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/villa.webp",
         "delete",
       ),
-      false,
+      true,
     );
     assert.equal(isAllowed(null, "delete"), false);
   });

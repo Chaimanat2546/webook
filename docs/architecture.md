@@ -32,7 +32,7 @@ House `image_move` values are scoped to `property_id + image_zone`; new uploads 
 
 House image storage has two provider classes:
 
-- Legacy AWS/S3-backed images are valid for display through the existing Lambda URL path, but physical file mutation is disabled for now.
+- Legacy AWS/S3-backed images are valid for display through the existing Lambda URL path; delete is allowed through signed server-side S3 `DELETE` requests, while create/replace mutations stay disabled.
 - Cloudflare R2 is the only writable storage for new or replaced house image files; create, replace/edit, and delete operations must go through server-side adapters.
 - The provider class is inferred from `images.image_url`; do not add a separate provider column.
 - New house image files store a filename-only `images.image_name` such as `20260222205910_63fe3bcbc8.webp`.
@@ -41,8 +41,9 @@ House image storage has two provider classes:
 - The same shared media Worker/R2 bucket also serves `advertisements/...`.
 - `/admin/houses/[propertyId]/images` uses operation-specific server actions: uploads run immediately when files are selected, single deletes require preview confirmation, and bulk deletes require selecting images from the current zone before the client processes a per-image delete queue.
 - New R2 files are uploaded before inserting `images` rows; if the database write fails, uploaded R2 objects are cleaned up best-effort.
-- Delete operations are allowed only for trusted R2-backed image rows. Legacy AWS/S3-backed house images remain display-only.
-- Bulk select-all is scoped to the currently selected image zone in the client. Bulk delete progress flows call the single-image delete action one trusted R2 image id at a time; do not use one bulk server action when the UI needs per-image status or retry.
+- Delete operations are allowed for trusted R2 and AWS/S3-backed image rows. AWS/S3 delete signs direct S3 requests using `AWS_REGION`, `AWS_BUCKET`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`; uploads/replacements stay R2-only.
+- AWS/S3 delete runs physical-file deletion before deleting the `images` row. The adapter uses the S3 object key from `images.image_url` when it contains the configured bucket path, otherwise it falls back to `images.image_name`. It treats S3 DELETE 404/410 as already deleted, otherwise verifies with signed S3 HEAD; if the object still exists, the database row remains for retry.
+- Bulk select-all is scoped to the currently selected image zone in the client. Bulk delete progress flows call the single-image delete action one trusted deletable image id at a time; do not use one bulk server action when the UI needs per-image status or retry.
 
 ## Advertisement Media Flow
 

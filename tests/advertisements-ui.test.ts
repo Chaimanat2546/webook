@@ -276,4 +276,20 @@ describe("advertisement admin UI", () => {
     assert.doesNotMatch(sonnerSource, /richColors/);
     assert.doesNotMatch(sonnerSource, /toastOptions/);
   });
+
+  it("shows the same unauthorized empty state on advertisement pages", () => {
+    const pageSources = [
+      readFileSync(new URL("../app/admin/advertisements/page.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../app/admin/advertisements/[id]/page.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../app/admin/advertisements/new/page.tsx", import.meta.url), "utf8"),
+    ];
+
+    for (const source of pageSources) {
+      assert.match(source, /canUseAccommodation/);
+      assert.match(source, /const \{ adminUser(?:, supabase)? \} = await requireAdmin\(\)/);
+      assert.match(source, /if \(!canUseAccommodation\(adminUser\)\) \{/);
+      assert.match(source, /<Empty>/);
+      assert.match(source, /allow_accommodation/);
+    }
+  });
 });
