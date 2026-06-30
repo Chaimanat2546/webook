@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/alt-text */
 import Link from "next/link";
 
 import type { AdvertisementRow } from "../../../server/repositories/advertisements";
@@ -12,6 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
+import { CalendarDays, Image } from 'lucide-react';
+
 
 function StatusBadge({ active }: { active: boolean }) {
   return <Badge variant={active ? "default" : "secondary"}>{active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</Badge>;
@@ -44,11 +47,11 @@ export function AdvertisementList({
               <dl className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div>
                   <dt>รูปภาพ</dt>
-                  <dd className="font-medium text-foreground">{advertisement.advertisement_images?.length ?? 0}</dd>
+                  <dd className="font-medium text-foreground"><Image className="inline-block h-4 w-4 mr-1"/>{advertisement.advertisement_images?.length ?? 0}</dd>
                 </div>
                 <div>
                   <dt>อัปเดต</dt>
-                  <dd className="font-medium text-foreground">{formatDate(advertisement.updated_at)}</dd>
+                  <dd className="font-medium text-foreground"><CalendarDays className="inline-block h-4 w-4 mr-1"/>{formatDate(advertisement.updated_at)}</dd>
                 </div>
               </dl>
               <Button asChild className="w-full">
