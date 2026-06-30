@@ -36,16 +36,20 @@ export function AdminDesktopSidebar({
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild size="lg">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  size="lg"
+                  className="hover:bg-transparent hover:text-inherit active:bg-transparent active:text-inherit"
+                >
                   <div>
                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                      <HouseIcon />
+                      <h1>WE</h1>
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">Webook</span>
-                      <span className="truncate text-xs">จัดการรูปบ้านพัก</span>
+                      <span className="truncate text-xs">ระบบจัดการบ้านพัก</span>
                     </div>
                   </div>
                 </SidebarMenuButton>

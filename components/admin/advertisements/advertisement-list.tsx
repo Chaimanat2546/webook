@@ -60,26 +60,28 @@ export function AdvertisementList({
       </div>
 
       <Card className="hidden overflow-hidden p-0 md:block">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead>ชื่อโฆษณา</TableHead>
-              <TableHead>ID</TableHead>
-              <TableHead>จำนวนรูป</TableHead>
-              <TableHead>อัปเดตล่าสุด</TableHead>
-              <TableHead>สถานะ</TableHead>
-              <TableHead className="text-right">การจัดการ</TableHead>
+              <TableHead className="w-[42%]">ชื่อโฆษณา</TableHead>
+              <TableHead className="w-[12%]">ID</TableHead>
+              <TableHead className="w-[10%]">จำนวนรูป</TableHead>
+              <TableHead className="w-[16%]">อัปเดตล่าสุด</TableHead>
+              <TableHead className="w-[10%]">สถานะ</TableHead>
+              <TableHead className="w-[10%] text-right">การจัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {advertisements.map((advertisement) => (
               <TableRow className={advertisement.is_active ? "" : "opacity-70"} key={advertisement.id}>
-                <TableCell className="font-medium">{advertisement.title}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="block truncate">{advertisement.title}</span>
+                </TableCell>
                 <TableCell className="font-mono text-xs">ADV-{advertisement.id.slice(0, 8)}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {advertisement.advertisement_images?.length ?? 0}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{formatDate(advertisement.updated_at)}</TableCell>
+                <TableCell className="truncate text-muted-foreground">{formatDate(advertisement.updated_at)}</TableCell>
                 <TableCell>
                   <StatusBadge active={advertisement.is_active} />
                 </TableCell>

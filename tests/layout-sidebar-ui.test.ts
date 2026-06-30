@@ -116,8 +116,8 @@ describe("admin layout sidebar UI", () => {
       sidebarSource,
       /function closeMobileSidebar\(\) \{\s*if \(isMobile\) setOpenMobile\(false\);\s*\}/,
     );
-    assert.match(sidebarSource, /<Link href="\/admin\/houses" onClick=\{closeMobileSidebar\}>/);
-    assert.match(sidebarSource, /<Link href="\/admin\/advertisements" onClick=\{closeMobileSidebar\}>/);
+    assert.match(sidebarSource, /<Link[\s\S]*?href="\/admin\/houses"[\s\S]*?onClick=\{closeMobileSidebar\}[\s\S]*?>/);
+    assert.match(sidebarSource, /<Link[\s\S]*?href="\/admin\/advertisements"[\s\S]*?onClick=\{closeMobileSidebar\}[\s\S]*?>/);
     assert.doesNotMatch(sidebarSource, /toggleSidebar/);
   });
 

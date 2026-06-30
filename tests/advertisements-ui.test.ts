@@ -41,7 +41,11 @@ describe("advertisement admin UI", () => {
     assert.match(source, /ปิดใช้งาน/);
     assert.match(source, /md:hidden/);
     assert.match(source, /md:block/);
-    assert.match(source, /<TableHead>ID<\/TableHead>/);
+    assert.match(source, /<TableHead[^>]*>ID<\/TableHead>/);
+    assert.match(source, /<Table className="table-fixed">/);
+    assert.match(source, /<TableHead className="w-\[42%\]">/);
+    assert.match(source, /<span className="block truncate">/);
+    assert.match(source, /<TableCell className="truncate text-muted-foreground">/);
   });
 
   it("adds create and detail forms with immediate edit image operations", () => {

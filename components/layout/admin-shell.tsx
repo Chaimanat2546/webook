@@ -26,7 +26,7 @@ export function AdminShell({
           <Separator className="h-4" orientation="vertical" />
           <div className="flex flex-col">
             <p className="text-sm font-medium">Webook</p>
-            <p className="text-xs text-muted-foreground">จัดการรูปบ้านพัก</p>
+            <p className="text-xs text-muted-foreground">ระบบจัดการบ้านพัก</p>
           </div>
         </header>
 
