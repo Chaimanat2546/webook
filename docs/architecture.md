@@ -14,8 +14,8 @@ Admin UI -> Server Component / Server Action -> Server Service -> Repository / S
 
 ## Deployment
 
-The admin app deploys to Cloudflare Workers through OpenNext using the root `wrangler.jsonc`.
-The advertisement media Worker is separate and uses `workers/media/wrangler.jsonc`.
+The Next.js admin app has no Cloudflare app deployment config in this repo.
+Cloudflare is used only for the media Worker/R2 image pipeline through `workers/media/wrangler.jsonc`.
 
 ## MVP 1 Admin Image Flow
 

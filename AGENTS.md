@@ -32,7 +32,7 @@ Out of scope for the current feature:
 - Admin logic: Next.js Route Handlers and server-side modules
 - Package manager: npm
 - Testing: Vitest / Playwright
-- Deployment: Cloudflare Workers
+- Deployment: not configured for the Next.js admin app in this repo; Cloudflare is only used for media Worker/R2 image storage
 
 ## Commands
 
