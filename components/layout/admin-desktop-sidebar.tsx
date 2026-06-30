@@ -44,7 +44,7 @@ export function AdminDesktopSidebar({
                       <HouseIcon />
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">VillaAdmin</span>
+                      <span className="truncate font-semibold">Webook</span>
                       <span className="truncate text-xs">จัดการรูปบ้านพัก</span>
                     </div>
                   </div>

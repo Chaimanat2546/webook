@@ -18,7 +18,11 @@ import {
   type AdvertisementImageRow,
 } from "../../../../server/repositories/advertisements";
 import { resolveAdvertisementImageObjectKey } from "../../../../server/services/advertisements";
-import { updateAdvertisementAction } from "../actions";
+import {
+  deleteAdvertisementImageAction,
+  updateAdvertisementAction,
+  uploadAdvertisementImagesAction,
+} from "../actions";
 
 function imageSrc(image: AdvertisementImageRow, workerUrl: string): string | null {
   try {
@@ -108,10 +112,12 @@ export default async function AdvertisementDetailPage({
 
       <AdvertisementForm
         action={action}
+        deleteAction={deleteAdvertisementImageAction}
         defaultIsActive={advertisement.is_active}
         defaultTitle={advertisement.title}
         existingImages={existingImages}
         mode="edit"
+        uploadAction={uploadAdvertisementImagesAction.bind(null, advertisement.id)}
       />
     </div>
   );

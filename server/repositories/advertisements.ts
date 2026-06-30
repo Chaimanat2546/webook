@@ -91,6 +91,8 @@ export async function insertAdvertisementWithImages(
 
   if (advertisementError) throw new Error(advertisementError.message);
 
+  if (images.length === 0) return;
+
   const { error: imageError } = await supabase.from("advertisement_images").insert(images);
   if (imageError) {
     await supabase.from("advertisements").delete().eq("id", id);

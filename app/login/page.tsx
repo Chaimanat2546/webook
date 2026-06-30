@@ -17,7 +17,7 @@ export default async function LoginPage({
       <form action={signIn} className="w-full max-w-sm">
         <Card>
           <CardHeader>
-            <p className="text-sm font-medium text-muted-foreground">VillaAdmin</p>
+            <p className="text-sm font-medium text-muted-foreground">Webook</p>
             <CardTitle>เข้าสู่ระบบผู้ดูแล</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">

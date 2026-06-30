@@ -26,10 +26,16 @@ Current R2 upload contract:
 - New house image rows store the full Worker URL in `images.image_url` for R2 display/provider detection.
 - New house image rows assign `image_move` from the selected `image_zone` only; order is scoped to `property_id + image_zone`.
 - Clients must not submit R2 paths such as `houses/{property_id}/...`.
+- Multi-file selection is allowed, but the client processes files through an internal upload queue and shows in-progress status through toast notifications.
+- Each queued file is resized/compressed to WebP before upload.
+- The MVP sends one resized file per upload request.
+- GIF files are rejected and are not part of the supported house image upload formats.
 
-- MVP นี้ใช้ draft UI แบบ advertisement: เลือกรูป/ลบรูปในหน้า แล้วค่อยบันทึกพร้อมกัน
+- MVP นี้ใช้ operation-based UI: เลือกรูปแล้วอัปโหลดทันทีผ่าน toast progress; single delete เปิด confirmation แล้วปิด dialog หลัง confirm พร้อม toast progress; bulk delete selection ใช้การคลิก image card เพื่อเลือก แล้ว confirmation แสดง delete queue รายรูปพร้อมสถานะ `รอลบ`, `กำลังลบ`, `ลบแล้ว`, `ลบไม่สำเร็จ`, progress และ retry สำหรับรายการที่ fail
+- Bulk delete queue must call `deleteHouseImageAction(imageId)` one image at a time from the client; do not call one bulk server action when the UI needs per-image progress.
 - Upload is exposed as the far-right action in the selected-zone header, while the image count remains in the left detail text; do not use a full-width upload drop zone.
-- รูปใหม่ upload ไป Cloudflare R2 ตอน save แล้วเพิ่ม record ใน `images`
+- Zone navigation is a setup menu, not a gallery-only filter: show all configured zones in order (`cover`, `outside`, `parking`, `inside`, `kitchen`, `bedroom`, `bathroom`, `review`) even when empty, and show only image counts instead of zone order ranges.
+- รูปใหม่ upload ไป Cloudflare R2 แล้วเพิ่ม record ใน `images`; รูปที่อัปโหลดไม่สำเร็จจะแสดงเป็นการ์ดสีเทาแบบยังไม่ถูกบันทึกใน grid ของโซนปัจจุบัน พร้อม summary, retry, และ remove
 - record ใหม่ที่ผูกกับไฟล์จริงต้องใช้ Cloudflare R2 เป็น writable provider เท่านั้น
 - AWS/S3-backed images เป็น legacy/display-only ชั่วคราว ยังใช้แสดงผลได้ แต่ยังไม่ให้ลบไฟล์จริง และห้ามสร้างหรือแก้ไฟล์จริงบน AWS/S3
 - ใช้ `images.image_url` เป็น discriminator ฝั่ง server สำหรับแยก AWS/S3 legacy กับ R2 ห้ามรับ provider จาก client และห้ามเพิ่ม provider column ใหม่
@@ -40,8 +46,8 @@ Current R2 upload contract:
 - ลบไฟล์จริงโดยไม่มี confirmation
 - สร้าง open image proxy
 - เพิ่ม provider config ใหม่โดยไม่มีเหตุผล
-- advanced upload
-- image optimization
+- advanced upload beyond one-at-a-time queue processing
+- image optimization beyond the required 1920px WebP resize policy
 
 ## Rules
 
@@ -63,6 +69,7 @@ Current R2 upload contract:
 - extension ที่ไม่รองรับถูกปฏิเสธ
 - URL ที่ไม่ใช่ `https` ถูกปฏิเสธ
 - ลบรูป R2 ได้หลัง confirmation
+- bulk delete แสดงสถานะรายรูป, progress, summary toast, และ retry เฉพาะรายการที่ลบไม่สำเร็จ
 - cancel confirmation แล้วไม่ลบ
 - ลบ cover แล้วต้องเลือก cover ใหม่ก่อน save
 - operation ที่พยายามสร้าง แก้ หรือลบไฟล์จริงบน AWS/S3 ต้องถูกปฏิเสธ

@@ -18,7 +18,7 @@ Design status: mobile and desktop directions are approved from Stitch references
 
 Approved mobile direction:
 
-- Top app bar with VillaAdmin label, current section, hamburger menu, and compact account/notification affordance
+- Top app bar with Webook label, current section, hamburger menu, and compact account/notification affordance
 - Compact page header and search input
 - Stacked house cards with title, `property_id`, status badge, details, and full-width `จัดการรูป`
 - Loading, empty, empty search, error, and unauthorized states share the same compact mobile shell
@@ -44,6 +44,11 @@ Show:
 - `จัดการรูป`
 
 `id` may exist internally but does not need to be visible.
+
+Display rules:
+
+- `location_zone` is shown as a Thai label for approved zone aliases: `bangkok`, `bangsaray`, `bang_saray`, `bangsean`, `bang_saen`, `hua_hin`, `huahin`, `jomtien`, `khaoyai`, `pattaya`, `rayong`, and `sattahip`; unknown values fall back to the stored value.
+- `is_active = true` is shown as `ใช้งานอยู่`; `is_active = false` or missing is shown as `ปิดใช้งาน`.
 
 ### Search
 
@@ -114,7 +119,7 @@ Use a folder-based image management layout.
 
 Approved mobile direction:
 
-- Top app bar with VillaAdmin label, current section, hamburger menu, and compact account affordance
+- Top app bar with Webook label, current section, hamburger menu, and compact account affordance
 - Back link, house title, `property_id`, total image count, and read-only badge stay near the top
 - Back link uses validated `returnTo` when present and falls back to `/admin/houses`
 - Horizontal zone chips act as folder navigation and keep the selected zone obvious

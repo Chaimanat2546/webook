@@ -17,7 +17,6 @@ import {
   type AdvertisementImageInsert,
 } from "../../../server/repositories/advertisements";
 import {
-  assertCanDeleteAdvertisementImage,
   buildAdvertisementImageName,
   buildAdvertisementImageObjectKey,
   getAvailableAdvertisementImageOrders,
@@ -85,25 +84,30 @@ async function normalizeStoredImageOrder(
   }
 }
 
-export async function createAdvertisementAction(formData: FormData) {
+export async function uploadAdvertisementImagesAction(id: string, formData: FormData) {
   const { isAuthorized, supabase } = await requireAdmin();
   assertAuthorized(isAuthorized);
 
-  const title = validateAdvertisementTitle(requireString(formData, "title"));
-  const isActive = booleanField(formData, "is_active", true);
-  const files = getImageFiles(formData, "images").map(validateAdvertisementImageFile);
-  validateAdvertisementImageCount(files.length);
+  const advertisement = await getAdvertisementById(supabase, id);
+  if (!advertisement) throw new Error("Advertisement not found");
 
-  const advertisementId = crypto.randomUUID();
+  const existingImages = advertisement.advertisement_images ?? [];
+  const files = getImageFiles(formData, "images").map(validateAdvertisementImageFile);
+  if (files.length === 0) return { uploadedCount: 0 };
+  validateAdvertisementImageCount(existingImages.length + files.length);
+
   const { workerSecret, workerUrl } = getAdvertisementImageEnv();
+  const imageOrders = getAvailableAdvertisementImageOrders(existingImages, files.length);
   const uploadedObjectKeys: string[] = [];
   const imageRows: AdvertisementImageInsert[] = [];
 
   try {
     for (const [index, file] of files.entries()) {
-      const imageOrder = index + 1;
+      const imageOrder = imageOrders[index];
+      if (!imageOrder) throw new Error("Invalid image order");
+
       const imageName = buildAdvertisementImageName(file.type);
-      const objectKey = buildAdvertisementImageObjectKey(advertisementId, imageName);
+      const objectKey = buildAdvertisementImageObjectKey(id, imageName);
 
       await uploadAdvertisementImageObject({
         body: await file.arrayBuffer(),
@@ -113,22 +117,39 @@ export async function createAdvertisementAction(formData: FormData) {
         workerUrl,
       });
       uploadedObjectKeys.push(objectKey);
-      imageRows.push({ advertisement_id: advertisementId, image_name: imageName, image_order: imageOrder });
+      imageRows.push({ advertisement_id: id, image_name: imageName, image_order: imageOrder });
     }
 
-    await insertAdvertisementWithImages(supabase, {
-      id: advertisementId,
-      images: imageRows,
-      isActive,
-      title,
-    });
+    await insertAdvertisementImages(supabase, imageRows);
+    await normalizeStoredImageOrder(supabase, id);
   } catch (error) {
     await cleanupUploadedImages({ objectKeys: uploadedObjectKeys, workerSecret, workerUrl });
     throw error;
   }
 
   revalidatePath("/admin/advertisements");
-  redirect(`/admin/advertisements/${encodeURIComponent(advertisementId)}?created=1`);
+  revalidatePath(`/admin/advertisements/${encodeURIComponent(id)}`);
+
+  return { uploadedCount: imageRows.length };
+}
+
+export async function createAdvertisementAction(formData: FormData) {
+  const { isAuthorized, supabase } = await requireAdmin();
+  assertAuthorized(isAuthorized);
+
+  const title = validateAdvertisementTitle(requireString(formData, "title"));
+  const isActive = booleanField(formData, "is_active", true);
+
+  const advertisementId = crypto.randomUUID();
+  await insertAdvertisementWithImages(supabase, {
+    id: advertisementId,
+    images: [],
+    isActive,
+    title,
+  });
+
+  revalidatePath("/admin/advertisements");
+  return { advertisementId };
 }
 
 export async function updateAdvertisementAction(id: string, formData: FormData) {
@@ -218,18 +239,28 @@ export async function deleteAdvertisementImageAction(imageId: string) {
   const image = await getAdvertisementImageById(supabase, imageId);
   if (!image) throw new Error("Advertisement image not found");
 
-  const images = await getAdvertisementImages(supabase, image.advertisement_id);
-  assertCanDeleteAdvertisementImage(images.length);
-
   const { workerSecret, workerUrl } = getAdvertisementImageEnv();
-  await deleteAdvertisementImageObject({
-    objectKey: resolveAdvertisementImageObjectKey(image.advertisement_id, image.image_name),
-    workerSecret,
-    workerUrl,
-  });
+  const objectKey = resolveAdvertisementImageObjectKey(image.advertisement_id, image.image_name);
   await deleteAdvertisementImageById(supabase, imageId);
   await normalizeStoredImageOrder(supabase, image.advertisement_id);
 
+  let cleanupWarning: string | undefined;
+  try {
+    await deleteAdvertisementImageObject({
+      objectKey,
+      workerSecret,
+      workerUrl,
+    });
+  } catch (error) {
+    cleanupWarning = error instanceof Error ? error.message : "Failed to delete advertisement image from storage";
+  }
+
   revalidatePath("/admin/advertisements");
   revalidatePath(`/admin/advertisements/${encodeURIComponent(image.advertisement_id)}`);
+
+  return {
+    cleanupWarning,
+    deletedId: image.id,
+    fileName: image.image_name,
+  };
 }

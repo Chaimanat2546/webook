@@ -1,4 +1,4 @@
-export const ADVERTISEMENT_IMAGE_MAX_SIDE = 1080;
+export const ADVERTISEMENT_IMAGE_MAX_SIDE = 1920;
 
 export interface ImageDimensions {
   height: number;
