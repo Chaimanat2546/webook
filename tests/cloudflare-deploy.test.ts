@@ -2,67 +2,57 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-describe("Cloudflare web deployment", () => {
-  it("configures the Next.js app for OpenNext on Workers", () => {
+describe("Cloudflare deployment boundary", () => {
+  it("does not configure the Next.js admin app for Cloudflare Workers", () => {
     const configPath = new URL("../wrangler.jsonc", import.meta.url);
     const openNextConfigPath = new URL("../open-next.config.ts", import.meta.url);
-
-    assert.ok(existsSync(configPath));
-    assert.ok(existsSync(openNextConfigPath));
-
-    const config = JSON.parse(readFileSync(configPath, "utf8"));
-    assert.equal(config.name, "webook-admin");
-    assert.equal(config.main, ".open-next/worker.js");
-    assert.equal(config.compatibility_date, "2026-06-26");
-    assert.deepEqual(config.compatibility_flags, ["nodejs_compat"]);
-    assert.deepEqual(config.assets, {
-      binding: "ASSETS",
-      directory: ".open-next/assets",
-    });
-    assert.equal(config.observability.enabled, true);
-
-    const gitignore = readFileSync(new URL("../.gitignore", import.meta.url), "utf8");
-    assert.match(gitignore, /^\/\.open-next\/$/m);
-
-    const eslintConfig = readFileSync(new URL("../eslint.config.mjs", import.meta.url), "utf8");
-    assert.match(eslintConfig, /"\.open-next\/\*\*"/);
-    assert.match(eslintConfig, /"\.wrangler\/\*\*"/);
-  });
-
-  it("uses OpenNext scripts for Worker preview and deploy", () => {
-    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-
-    assert.match(packageJson.dependencies["@opennextjs/cloudflare"], /^\^/);
-    assert.match(packageJson.scripts["cf:assert-linux"], /process\.platform === 'win32'/);
-    assert.equal(
-      packageJson.scripts.preview,
-      "npm run cf:assert-linux && opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    );
-    assert.equal(
-      packageJson.scripts.deploy,
-      "npm run cf:assert-linux && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    );
-  });
-
-  it("deploys the admin app from GitHub Actions on Ubuntu only", () => {
     const workflowPath = new URL("../.github/workflows/deploy-admin.yml", import.meta.url);
 
-    assert.ok(existsSync(workflowPath));
+    assert.equal(existsSync(configPath), false);
+    assert.equal(existsSync(openNextConfigPath), false);
+    assert.equal(existsSync(workflowPath), false);
 
-    const workflow = readFileSync(workflowPath, "utf8");
-    assert.match(workflow, /workflow_dispatch:/);
-    assert.match(workflow, /branches:\s*\[\s*main\s*\]/);
-    assert.match(workflow, /runs-on:\s*ubuntu-latest/);
-    assert.match(workflow, /environment:\s*Cloudflare-Staging/);
-    assert.match(workflow, /node-version:\s*22/);
-    assert.match(workflow, /npm ci/);
-    assert.match(workflow, /npm run typecheck/);
-    assert.match(workflow, /npm run lint/);
-    assert.match(workflow, /npm run test/);
-    assert.match(workflow, /npm run deploy/);
-    assert.match(workflow, /name:\s*Verify deployment secrets/);
-    assert.match(workflow, /Missing GitHub secret: CLOUDFLARE_API_TOKEN/);
-    assert.match(workflow, /CLOUDFLARE_API_TOKEN:\s*\$\{\{\s*secrets\.CLOUDFLARE_API_TOKEN\s*\}\}/);
-    assert.doesNotMatch(workflow, /workers\/media\/wrangler\.jsonc/);
+    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      dependencies?: Record<string, string>;
+      scripts?: Record<string, string>;
+    };
+    const packageLock = JSON.parse(readFileSync(new URL("../package-lock.json", import.meta.url), "utf8")) as {
+      packages?: Record<string, { dependencies?: Record<string, string> }>;
+    };
+
+    assert.equal(Object.hasOwn(packageJson.dependencies ?? {}, "@opennextjs/cloudflare"), false);
+    assert.equal(Object.hasOwn(packageLock.packages?.[""]?.dependencies ?? {}, "@opennextjs/cloudflare"), false);
+    assert.equal(
+      Object.keys(packageLock.packages ?? {}).some((key) => key.startsWith("node_modules/@opennextjs/")),
+      false,
+    );
+    assert.equal(Object.hasOwn(packageJson.scripts ?? {}, "cf:assert-linux"), false);
+    assert.equal(Object.hasOwn(packageJson.scripts ?? {}, "preview"), false);
+    assert.equal(Object.hasOwn(packageJson.scripts ?? {}, "deploy"), false);
+  });
+
+  it("keeps Cloudflare config only for the image media Worker", () => {
+    const configPath = new URL("../workers/media/wrangler.jsonc", import.meta.url);
+
+    assert.ok(existsSync(configPath));
+
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    assert.equal(config.name, "webook-media");
+    assert.equal(config.main, "src/index.ts");
+    assert.equal(config.compatibility_date, "2026-06-26");
+    assert.deepEqual(config.r2_buckets, [
+      {
+        binding: "MEDIA_BUCKET",
+        bucket_name: "webook-media",
+      },
+    ]);
+
+    const gitignore = readFileSync(new URL("../.gitignore", import.meta.url), "utf8");
+    assert.doesNotMatch(gitignore, /^\/\.open-next\/$/m);
+    assert.match(gitignore, /^\/\.wrangler\/$/m);
+
+    const eslintConfig = readFileSync(new URL("../eslint.config.mjs", import.meta.url), "utf8");
+    assert.doesNotMatch(eslintConfig, /"\.open-next\/\*\*"/);
+    assert.match(eslintConfig, /"\.wrangler\/\*\*"/);
   });
 });
