@@ -19,7 +19,7 @@ Current advertisement image storage contract:
 - New uploads store filename-only `advertisement_images.image_name` values using `YYYYMMDDHHmmss_random10.ext`, for example `20260109220657_60b5a9a545.webp`.
 - The server composes R2 object keys as `advertisements/{advertisement_id}/{image_name}`.
 - External systems must compose display URLs with the advertisement id, not by appending `image_name` directly to the Worker URL.
-- Create mode still uploads selected images on create submit because the advertisement id is generated during creation.
+- Create mode creates the advertisement first, then uploads selected draft images through the same client queue using the returned advertisement id. If any image upload fails, failed cards remain visible and can be retried.
 - Edit mode uses operation-based image management: selected files upload immediately through a client queue, one file per request, and title/status changes are saved separately.
 - Advertisement uploads reject GIF, resize client-side to WebP with max long edge 1920px and quality 0.82, and keep failed uploads as muted retryable cards.
 - Single image delete requires confirmation. Bulk delete uses a client-side per-image delete queue with per-row status, final toast summary, and retry for failed rows.

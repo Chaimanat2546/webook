@@ -5,7 +5,10 @@ import { AdvertisementForm } from "../../../../components/admin/advertisements/a
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { requireAdmin } from "../../../../server/auth/admin";
-import { createAdvertisementAction } from "../actions";
+import {
+  createAdvertisementAction,
+  uploadAdvertisementImagesAction,
+} from "../actions";
 
 export default async function NewAdvertisementPage() {
   await requireAdmin();
@@ -28,7 +31,11 @@ export default async function NewAdvertisementPage() {
         </div>
       </header>
 
-      <AdvertisementForm action={createAdvertisementAction} mode="create" />
+      <AdvertisementForm
+        action={createAdvertisementAction}
+        createUploadAction={uploadAdvertisementImagesAction}
+        mode="create"
+      />
     </div>
   );
 }

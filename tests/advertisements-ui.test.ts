@@ -23,8 +23,17 @@ describe("advertisement admin UI", () => {
     assert.doesNotMatch(source, /SearchIcon/);
     assert.doesNotMatch(source, /SlidersHorizontalIcon/);
     assert.doesNotMatch(source, /name="q"/);
-    assert.match(pageSource, /<form className="mb-4"/);
+    assert.match(pageSource, /import \{ SearchIcon \} from "lucide-react"/);
+    assert.match(pageSource, /<form className="mb-4 flex gap-2 md:max-w-sm">/);
     assert.match(pageSource, /name="q"/);
+    assert.match(pageSource, /<Button className="shrink-0" type="submit">/);
+    assert.match(pageSource, /<SearchIcon aria-hidden className="size-4" \/>/);
+    assert.match(pageSource, /<Button className="shrink-0" type="submit">[\s\S]*?ค้นหา[\s\S]*?<\/Button>/);
+    assert.match(pageSource, /const ADVERTISEMENT_PAGE_SIZE = 8/);
+    assert.match(pageSource, /searchParams: Promise<\{ page\?: string; q\?: string \}>/);
+    assert.match(pageSource, /const currentPage = normalizePage\(page\)/);
+    assert.match(pageSource, /visibleAdvertisements\.slice/);
+    assert.match(pageSource, /<Pagination[\s\S]*?basePath="\/admin\/advertisements"/);
     assert.match(source, /is_active/);
     assert.match(source, /advertisement_images/);
     assert.match(pageSource, /\/admin\/advertisements\/new/);
@@ -45,6 +54,10 @@ describe("advertisement admin UI", () => {
     );
     const detailSource = readFileSync(
       new URL("../app/admin/advertisements/[id]/page.tsx", import.meta.url),
+      "utf8",
+    );
+    const newSource = readFileSync(
+      new URL("../app/admin/advertisements/new/page.tsx", import.meta.url),
       "utf8",
     );
     const sharedCardSource = readFileSync(
@@ -118,8 +131,13 @@ describe("advertisement admin UI", () => {
       /type AdvertisementBulkDeleteQueueStatus =\s*\|\s*"pending"\s*\|\s*"deleting"\s*\|\s*"deleted"\s*\|\s*"failed";/,
     );
     assert.match(formSource, /failedUploadItems/);
+    assert.match(formSource, /createdAdvertisementId/);
+    assert.match(formSource, /createUploadAction\?: \(id: string, formData: FormData\) => Promise<\{ uploadedCount: number \}>/);
+    assert.match(formSource, /formData\.delete\("images"\)/);
+    assert.match(formSource, /createUploadAction\(advertisementId, formData\)/);
+    assert.match(formSource, /\/admin\/advertisements\/\$\{encodeURIComponent\(advertisementId\)\}\?created=1/);
     assert.match(formSource, /async function processUploadQueueItem/);
-    assert.match(formSource, /await uploadAction\(formData\)/);
+    assert.match(formSource, /await queueUploadAction\(formData\)/);
     assert.match(formSource, /status === "resizing" \? "กำลังเตรียมรูป" : "กำลังอัปโหลด"/);
     assert.match(formSource, /toast\.loading\(`\$\{label\} \$\{current\}\/\$\{total\}`/);
     assert.match(formSource, /function retryFailedUploads/);
@@ -185,6 +203,12 @@ describe("advertisement admin UI", () => {
     );
     assert.match(actionsSource, /export async function uploadAdvertisementImagesAction/);
     assert.match(actionsSource, /uploadedCount/);
+    assert.match(actionsSource, /return \{ advertisementId \}/);
+    const createActionSource =
+      actionsSource.match(/export async function createAdvertisementAction[\s\S]*?export async function updateAdvertisementAction/)?.[0] ?? "";
+    assert.doesNotMatch(createActionSource, /getImageFiles/);
+    assert.doesNotMatch(createActionSource, /uploadAdvertisementImageObject/);
+    assert.doesNotMatch(createActionSource, /redirect/);
     assert.match(actionsSource, /export async function deleteAdvertisementImageAction/);
     assert.match(actionsSource, /deletedId/);
     assert.match(actionsSource, /cleanupWarning/);
@@ -196,6 +220,8 @@ describe("advertisement admin UI", () => {
     assert.match(detailSource, /deleteAdvertisementImageAction/);
     assert.match(detailSource, /uploadAction=\{uploadAdvertisementImagesAction\.bind\(null, advertisement\.id\)\}/);
     assert.match(detailSource, /deleteAction=\{deleteAdvertisementImageAction\}/);
+    assert.match(newSource, /uploadAdvertisementImagesAction/);
+    assert.match(newSource, /createUploadAction=\{uploadAdvertisementImagesAction\}/);
   });
 
   it("shows a shadcn sonner toast after creating or saving an advertisement", () => {
@@ -210,7 +236,11 @@ describe("advertisement admin UI", () => {
       new URL("../app/admin/advertisements/actions.ts", import.meta.url),
       "utf8",
     );
-    assert.match(actionsSource, /created=1/);
+    const formSource = readFileSync(
+      new URL("../components/admin/advertisements/advertisement-form.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(formSource, /created=1/);
     assert.match(actionsSource, /saved=1/);
 
     const detailSource = readFileSync(

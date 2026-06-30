@@ -1,5 +1,8 @@
+import { SearchIcon } from "lucide-react";
+
 import { HouseList } from "../../../components/admin/houses/house-list";
 import { Pagination } from "../../../components/admin/houses/pagination";
+import { Button } from "../../../components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -51,14 +54,18 @@ export default async function HousesPage({
         <p className="text-sm font-medium text-muted-foreground">จัดการข้อมูลบ้านพัก</p>
       </div>
 
-      <form className="mb-4">
+      <form className="mb-4 flex gap-2 md:max-w-sm">
         <Input
-          className="md:max-w-sm"
+          className="min-w-0 flex-1"
           defaultValue={search}
           name="q"
           placeholder="ค้นหาบ้านพัก..."
           type="search"
         />
+        <Button className="shrink-0" type="submit">
+          <SearchIcon aria-hidden className="size-4" />
+          ค้นหา
+        </Button>
       </form>
 
       {houses.length === 0 ? (

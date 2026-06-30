@@ -1,6 +1,8 @@
+import { SearchIcon } from "lucide-react";
 import Link from "next/link";
 
 import { AdvertisementList } from "../../../components/admin/advertisements/advertisement-list";
+import { Pagination } from "../../../components/admin/houses/pagination";
 import { Button } from "../../../components/ui/button";
 import {
   Empty,
@@ -11,13 +13,17 @@ import {
 import { Input } from "../../../components/ui/input";
 import { requireAdmin } from "../../../server/auth/admin";
 import { getAdvertisements } from "../../../server/repositories/advertisements";
+import { normalizePage } from "../../../server/services/houses";
+
+const ADVERTISEMENT_PAGE_SIZE = 8;
 
 export default async function AdvertisementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ page?: string; q?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { page, q } = await searchParams;
+  const currentPage = normalizePage(page);
   const search = q?.trim() ?? "";
   const { supabase } = await requireAdmin();
   const advertisements = await getAdvertisements(supabase);
@@ -30,6 +36,10 @@ export default async function AdvertisementsPage({
         );
       })
     : advertisements;
+  const totalPages = Math.max(1, Math.ceil(visibleAdvertisements.length / ADVERTISEMENT_PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const from = (safeCurrentPage - 1) * ADVERTISEMENT_PAGE_SIZE;
+  const paginatedAdvertisements = visibleAdvertisements.slice(from, from + ADVERTISEMENT_PAGE_SIZE);
 
   return (
     <div>
@@ -43,14 +53,18 @@ export default async function AdvertisementsPage({
         </Button>
       </div>
 
-      <form className="mb-4">
+      <form className="mb-4 flex gap-2 md:max-w-sm">
         <Input
-          className="md:max-w-sm"
+          className="min-w-0 flex-1"
           defaultValue={search}
           name="q"
           placeholder="ค้นหาโฆษณา, ID..."
           type="search"
         />
+        <Button className="shrink-0" type="submit">
+          <SearchIcon aria-hidden className="size-4" />
+          ค้นหา
+        </Button>
       </form>
 
       {visibleAdvertisements.length === 0 ? (
@@ -63,7 +77,15 @@ export default async function AdvertisementsPage({
           </EmptyHeader>
         </Empty>
       ) : (
-        <AdvertisementList advertisements={visibleAdvertisements} />
+        <>
+          <AdvertisementList advertisements={paginatedAdvertisements} />
+          <Pagination
+            basePath="/admin/advertisements"
+            currentPage={safeCurrentPage}
+            search={search}
+            totalPages={totalPages}
+          />
+        </>
       )}
     </div>
   );

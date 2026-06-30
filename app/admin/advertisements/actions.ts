@@ -139,44 +139,17 @@ export async function createAdvertisementAction(formData: FormData) {
 
   const title = validateAdvertisementTitle(requireString(formData, "title"));
   const isActive = booleanField(formData, "is_active", true);
-  const files = getImageFiles(formData, "images").map(validateAdvertisementImageFile);
-  validateAdvertisementImageCount(files.length);
 
   const advertisementId = crypto.randomUUID();
-  const { workerSecret, workerUrl } = getAdvertisementImageEnv();
-  const uploadedObjectKeys: string[] = [];
-  const imageRows: AdvertisementImageInsert[] = [];
-
-  try {
-    for (const [index, file] of files.entries()) {
-      const imageOrder = index + 1;
-      const imageName = buildAdvertisementImageName(file.type);
-      const objectKey = buildAdvertisementImageObjectKey(advertisementId, imageName);
-
-      await uploadAdvertisementImageObject({
-        body: await file.arrayBuffer(),
-        contentType: file.type,
-        objectKey,
-        workerSecret,
-        workerUrl,
-      });
-      uploadedObjectKeys.push(objectKey);
-      imageRows.push({ advertisement_id: advertisementId, image_name: imageName, image_order: imageOrder });
-    }
-
-    await insertAdvertisementWithImages(supabase, {
-      id: advertisementId,
-      images: imageRows,
-      isActive,
-      title,
-    });
-  } catch (error) {
-    await cleanupUploadedImages({ objectKeys: uploadedObjectKeys, workerSecret, workerUrl });
-    throw error;
-  }
+  await insertAdvertisementWithImages(supabase, {
+    id: advertisementId,
+    images: [],
+    isActive,
+    title,
+  });
 
   revalidatePath("/admin/advertisements");
-  redirect(`/admin/advertisements/${encodeURIComponent(advertisementId)}?created=1`);
+  return { advertisementId };
 }
 
 export async function updateAdvertisementAction(id: string, formData: FormData) {

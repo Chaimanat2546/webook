@@ -150,6 +150,10 @@ function shortImageName(imageName: string | null): string {
   return `${imageName.slice(0, 29)}...`;
 }
 
+function advertisementCreatedPath(advertisementId: string): string {
+  return `/admin/advertisements/${encodeURIComponent(advertisementId)}?created=1`;
+}
+
 function uploadQueueStatusLabel(
   status: AdvertisementUploadQueueStatus,
 ): string {
@@ -314,6 +318,7 @@ function FailedAdvertisementUploadCard({
 
 export function AdvertisementForm({
   action,
+  createUploadAction,
   deleteAction,
   defaultIsActive = true,
   defaultTitle = "",
@@ -321,7 +326,10 @@ export function AdvertisementForm({
   mode,
   uploadAction,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (
+    formData: FormData,
+  ) => void | { advertisementId: string } | Promise<void | { advertisementId: string }>;
+  createUploadAction?: (id: string, formData: FormData) => Promise<{ uploadedCount: number }>;
   deleteAction?: (imageId: string) => Promise<AdvertisementDeleteResult>;
   defaultIsActive?: boolean;
   defaultTitle?: string;
@@ -356,12 +364,17 @@ export function AdvertisementForm({
   >(new Set());
   const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [createdAdvertisementId, setCreatedAdvertisementId] = useState<
+    string | null
+  >(null);
   const [singleDeleteImage, setSingleDeleteImage] =
     useState<AdvertisementFormImage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const usesOperationImages =
     mode === "edit" && Boolean(uploadAction && deleteAction);
+  const createHasStoredAdvertisement =
+    mode === "create" && createdAdvertisementId !== null;
   const visibleExistingImages = usesOperationImages
     ? existingImages
     : existingImages.filter((image) => !deletedImageIds.includes(image.id));
@@ -380,6 +393,8 @@ export function AdvertisementForm({
     isUploading ||
     isDeleting ||
     isBulkDeleting;
+  const imageUploadDisabled =
+    isBusy || remainingSlots === 0 || createHasStoredAdvertisement;
   const canDeleteExistingImages = visibleExistingImages.length > 0;
   const selectedBulkDeleteImages = visibleExistingImages.filter((image) =>
     selectedBulkDeleteIds.has(image.id),
@@ -535,8 +550,12 @@ export function AdvertisementForm({
   async function processUploadQueueItem(
     item: AdvertisementUploadQueueItem,
     onStatusChange?: (status: AdvertisementUploadQueueStatus) => void,
+    uploadActionOverride?: (
+      formData: FormData,
+    ) => Promise<{ uploadedCount: number }>,
   ) {
-    if (!uploadAction) return;
+    const queueUploadAction = uploadActionOverride ?? uploadAction;
+    if (!queueUploadAction) return;
 
     try {
       onStatusChange?.("resizing");
@@ -549,7 +568,7 @@ export function AdvertisementForm({
 
       onStatusChange?.("uploading");
       updateUploadQueueItem(item.id, { status: "uploading" });
-      await uploadAction(formData);
+      await queueUploadAction(formData);
       updateUploadQueueItem(item.id, { resized, status: "uploaded" });
       removeUploadQueueItem(item.id);
     } catch (uploadError) {
@@ -564,7 +583,13 @@ export function AdvertisementForm({
     }
   }
 
-  function processUploadItems(items: AdvertisementUploadQueueItem[]) {
+  function processUploadItems(
+    items: AdvertisementUploadQueueItem[],
+    uploadActionOverride?: (
+      formData: FormData,
+    ) => Promise<{ uploadedCount: number }>,
+    completionHref?: string,
+  ) {
     if (items.length === 0) return;
 
     const uploadToastId = toast.loading(`กำลังเตรียมรูป 1/${items.length}`, {
@@ -578,14 +603,17 @@ export function AdvertisementForm({
         try {
           for (const [index, item] of items.entries()) {
             try {
-              await processUploadQueueItem(item, (status) =>
-                updateUploadProgressToast(
-                  uploadToastId,
-                  item,
-                  index + 1,
-                  items.length,
-                  status,
-                ),
+              await processUploadQueueItem(
+                item,
+                (status) =>
+                  updateUploadProgressToast(
+                    uploadToastId,
+                    item,
+                    index + 1,
+                    items.length,
+                    status,
+                  ),
+                uploadActionOverride,
               );
             } catch {
               failedCount += 1;
@@ -601,7 +629,11 @@ export function AdvertisementForm({
             toast.success(`อัปโหลดรูปแล้ว ${items.length} รูป`);
           }
 
-          router.refresh();
+          if (completionHref && failedCount === 0) {
+            router.push(completionHref);
+          } else {
+            router.refresh();
+          }
         } finally {
           if (inputRef.current) inputRef.current.value = "";
           setIsUploading(false);
@@ -648,7 +680,15 @@ export function AdvertisementForm({
           retryItems.find((candidate) => candidate.id === item.id) ?? item,
       ),
     );
-    processUploadItems(retryItems);
+    processUploadItems(
+      retryItems,
+      createdAdvertisementId && createUploadAction
+        ? (formData) => createUploadAction(createdAdvertisementId, formData)
+        : undefined,
+      createdAdvertisementId
+        ? advertisementCreatedPath(createdAdvertisementId)
+        : undefined,
+    );
   }
 
   function onFilesChange(event: ChangeEvent<HTMLInputElement>) {
@@ -692,6 +732,52 @@ export function AdvertisementForm({
     setIsDirty(false);
   }
 
+  function submitCreateAdvertisement(form: HTMLFormElement) {
+    const filesToUpload = previewsRef.current.map((preview) => preview.file);
+    const formData = new FormData(form);
+    formData.delete("images");
+
+    startTransition(() => {
+      void (async () => {
+        try {
+          setError(null);
+          const result = await action(formData);
+          const advertisementId =
+            result &&
+            typeof result === "object" &&
+            "advertisementId" in result &&
+            typeof result.advertisementId === "string"
+              ? result.advertisementId
+              : null;
+
+          if (!advertisementId) throw new Error("Cannot create advertisement");
+
+          setCreatedAdvertisementId(advertisementId);
+          setIsDirty(false);
+
+          const completionHref = advertisementCreatedPath(advertisementId);
+          if (filesToUpload.length === 0 || !createUploadAction) {
+            router.push(completionHref);
+            return;
+          }
+
+          replacePreviews([], true);
+          processUploadItems(
+            queueItemsForFiles(filesToUpload),
+            (formData) => createUploadAction(advertisementId, formData),
+            completionHref,
+          );
+        } catch (createError) {
+          setError(
+            createError instanceof Error
+              ? createError.message
+              : "สร้างโฆษณาไม่สำเร็จ",
+          );
+        }
+      })();
+    });
+  }
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     if (isBusy) {
       event.preventDefault();
@@ -708,6 +794,12 @@ export function AdvertisementForm({
     if (totalImages > MAX_IMAGES) {
       event.preventDefault();
       setError(`โฆษณารองรับสูงสุด ${MAX_IMAGES} รูป`);
+      return;
+    }
+
+    if (mode === "create") {
+      event.preventDefault();
+      submitCreateAdvertisement(event.currentTarget);
     }
   }
 
@@ -920,7 +1012,11 @@ export function AdvertisementForm({
 
   return (
     <form
-      action={action}
+      action={
+        mode === "create"
+          ? undefined
+          : (action as (formData: FormData) => void | Promise<void>)
+      }
       className="grid min-w-0 gap-5 pb-20 lg:pb-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,26rem)]"
       onChange={onFormChange}
       onSubmit={onSubmit}
@@ -1071,12 +1167,11 @@ export function AdvertisementForm({
                     เลือกลบ
                   </Button>
                   <Label
-                    aria-disabled={isBusy || remainingSlots === 0}
+                    aria-disabled={imageUploadDisabled}
                     className={cn(
                       buttonVariants({ variant: "outline", size: "sm" }),
                       "cursor-pointer text-foreground",
-                      (isBusy || remainingSlots === 0) &&
-                        "pointer-events-none opacity-50",
+                      imageUploadDisabled && "pointer-events-none opacity-50",
                     )}
                     htmlFor="advertisement-images-upload"
                   >
@@ -1093,7 +1188,7 @@ export function AdvertisementForm({
                   <input
                     accept="image/avif,image/jpeg,image/png,image/webp"
                     className="sr-only"
-                    disabled={isBusy || remainingSlots === 0}
+                    disabled={imageUploadDisabled}
                     id="advertisement-images-upload"
                     multiple
                     name="images"

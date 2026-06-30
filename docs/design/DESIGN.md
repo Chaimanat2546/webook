@@ -1,12 +1,12 @@
-# VillaAdmin Global Design System
+# Webook Global Design System
 
-VillaAdmin is an admin-only web application for managing pool villa data and pool villa images.
+Webook is an admin-only web application for managing pool villa data and pool villa images.
 
 This file is the global design source of truth for current and future admin screens.
 
 ## Product Type
 
-VillaAdmin is:
+Webook is:
 
 - internal admin software
 - data-management focused
@@ -15,7 +15,7 @@ VillaAdmin is:
 - mobile-first
 - built for repeated admin use
 
-VillaAdmin is not:
+Webook is not:
 
 - a public villa listing website
 - a booking website
@@ -32,7 +32,7 @@ Use these references as inspiration only. Do not copy any brand directly.
 - Airtable: dense tables, list scanning, multi-column readability, searchable records, structured metadata
 - Supabase: technical admin mood, developer-tool confidence, calm security/error states, practical dashboard surfaces
 
-VillaAdmin translates those references into a light, practical admin interface.
+Webook translates those references into a light, practical admin interface.
 
 ## Visual Foundation
 

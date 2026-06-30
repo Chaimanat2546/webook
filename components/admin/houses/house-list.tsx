@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
+import { Toilet, BedDouble, MapPinHouse } from "lucide-react";
 
 function StatusBadge({ active }: { active: boolean | null }) {
   return <Badge variant={active ? "default" : "secondary"}>{formatHouseActiveStatus(active)}</Badge>;
@@ -36,7 +37,7 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <div className="min-w-0">
                 <CardTitle className="truncate text-sm">{house.title || "-"}</CardTitle>
-                <p className="font-mono text-xs text-muted-foreground">{house.property_id}</p>
+                <p className="font-mono text-xs text-muted-foreground">DV-{house.property_id}</p>
               </div>
               <StatusBadge active={house.is_active} />
             </CardHeader>
@@ -44,16 +45,16 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
               <dl className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                 <div>
                   <dt>ห้องนอน</dt>
-                  <dd className="font-medium text-foreground">{house.bedrooms ?? "-"}</dd>
+                  <dd className="font-medium text-foreground"><BedDouble className="inline-block h-4 w-4 mr-1" />{house.bedrooms ?? "-"}</dd>
                 </div>
                 <div>
                   <dt>ห้องน้ำ</dt>
-                  <dd className="font-medium text-foreground">{house.bathrooms ?? "-"}</dd>
+                  <dd className="font-medium text-foreground"><Toilet className="inline-block h-4 w-4 mr-1" />{house.bathrooms ?? "-"}</dd>
                 </div>
                 <div>
                   <dt>โซน</dt>
                   <dd className="font-medium text-foreground">
-                    {formatHouseZone(house.location_zone)}
+                    <MapPinHouse className="inline-block h-4 w-4 mr-1" />{formatHouseZone(house.location_zone)}
                   </dd>
                 </div>
               </dl>
@@ -66,26 +67,28 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
       </div>
 
       <Card className="hidden overflow-hidden p-0 md:block">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead>ชื่อบ้านพัก</TableHead>
-              <TableHead>ID</TableHead>
-              <TableHead>ห้องนอน</TableHead>
-              <TableHead>ห้องน้ำ</TableHead>
-              <TableHead>ทำเล(zone)</TableHead>
-              <TableHead>สถานะ</TableHead>
-              <TableHead className="text-right">การจัดการ</TableHead>
+              <TableHead className="w-[44%]">ชื่อบ้านพัก</TableHead>
+              <TableHead className="w-[8%]">ID</TableHead>
+              <TableHead className="w-[8%]">ห้องนอน</TableHead>
+              <TableHead className="w-[8%]">ห้องน้ำ</TableHead>
+              <TableHead className="w-[11%]">ทำเล(zone)</TableHead>
+              <TableHead className="w-[10%]">สถานะ</TableHead>
+              <TableHead className="w-[11%] text-right">การจัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {houses.map((house) => (
               <TableRow className={house.is_active ? "" : "opacity-70"} key={house.property_id}>
-                <TableCell className="font-medium">{house.title || "-"}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="block truncate">{house.title || "-"}</span>
+                </TableCell>
                 <TableCell className="font-mono text-xs">DV-{house.property_id}</TableCell>
                 <TableCell className="text-muted-foreground">{house.bedrooms ?? "-"}</TableCell>
                 <TableCell className="text-muted-foreground">{house.bathrooms ?? "-"}</TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className="truncate text-muted-foreground">
                   {formatHouseZone(house.location_zone)}
                 </TableCell>
                 <TableCell>

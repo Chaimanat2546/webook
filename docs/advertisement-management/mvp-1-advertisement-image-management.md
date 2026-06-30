@@ -17,7 +17,7 @@ MVP นี้ให้ admin สร้าง แก้ไข เปิด/ปิ
 - สร้างโฆษณาใหม่พร้อม title และรูป 0-2 รูป
 - แก้ไข title
 - เปิด/ปิด `is_active`
-- หน้า create เพิ่มรูปใหม่เป็น draft และ upload ตอนกดสร้างเพราะยังไม่มี advertisement id
+- หน้า create เพิ่มรูปใหม่เป็น draft; ตอนกดสร้างให้สร้าง `advertisements` ก่อน แล้ว client ใช้ id ที่ได้มา upload รูปผ่าน queue ทีละไฟล์
 - หน้า edit เพิ่มรูปใหม่แบบ upload ทันทีผ่าน queue ทีละไฟล์
 - หน้า edit ลบรูปจริงหลัง confirmation โดยใช้ single delete action หรือ bulk delete queue ทีละรูป
 - validate จำนวนรูปสุดท้ายตอนกดบันทึก
@@ -55,6 +55,7 @@ MVP นี้ให้ admin สร้าง แก้ไข เปิด/ปิ
 Rules:
 
 - แสดงโฆษณาทั้งหมด
+- แบ่งหน้าแบบ numbered pagination หน้า `/admin/houses` โดยแสดง 8 รายการต่อหน้า และรักษา query `q` ระหว่างเปลี่ยนหน้า
 - เรียง active ก่อน inactive
 - เรียง `updated_at` ใหม่สุดก่อนภายในกลุ่มเดียวกัน
 - มีปุ่มสร้างโฆษณาใหม่
@@ -214,10 +215,10 @@ Create:
 1. Validate title
 2. Validate image count 0-2
 3. Generate advertisement id
-4. Upload images to R2
-5. Insert `advertisements`
-6. Insert `advertisement_images`
-7. If Supabase write fails, best-effort delete newly uploaded R2 objects
+4. Insert `advertisements`
+5. Client uploads selected draft images one file at a time with the returned advertisement id
+6. Each successful upload inserts `advertisement_images`
+7. If an image row write fails during queue upload, best-effort delete the newly uploaded R2 object
 
 Update:
 
@@ -288,7 +289,7 @@ Error:
 - create ต้องมี title
 - create มีรูปได้ 0-2 รูป
 - create ห้ามเกิน 2 รูป
-- create เพิ่มรูปยังไม่ upload จนกดสร้าง
+- create เพิ่มรูปยังไม่ upload จนกดสร้าง จากนั้น client upload ทีละไฟล์หลังได้ advertisement id
 - edit เพิ่มรูปแล้ว upload ทันทีผ่าน queue
 - preview รูป draft ได้
 - preview รูปเดิมได้
