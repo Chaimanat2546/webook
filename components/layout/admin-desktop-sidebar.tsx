@@ -60,7 +60,11 @@ export function AdminDesktopSidebar({
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive tooltip="บ้านพัก">
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/admin/houses")}
+                    tooltip="บ้านพัก"
+                  >
                     <Link href="/admin/houses" onClick={closeMobileSidebar}>
                       <HouseIcon data-icon="inline-start" />
                       <span>บ้านพัก</span>
@@ -73,7 +77,10 @@ export function AdminDesktopSidebar({
                     isActive={pathname.startsWith("/admin/advertisements")}
                     tooltip="โฆษณา"
                   >
-                    <Link href="/admin/advertisements" onClick={closeMobileSidebar}>
+                    <Link
+                      href="/admin/advertisements"
+                      onClick={closeMobileSidebar}
+                    >
                       <MegaphoneIcon data-icon="inline-start" />
                       <span>โฆษณา</span>
                     </Link>
@@ -98,7 +105,6 @@ export function AdminDesktopSidebar({
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
-
       </Sidebar>
     </TooltipProvider>
   );
