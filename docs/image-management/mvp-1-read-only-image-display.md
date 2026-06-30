@@ -61,7 +61,10 @@ Rules:
 
 - แสดงบ้านพักทั้งหมด ทั้ง `is_active = true` และ `is_active = false`
 - เรียง `is_active = true` ก่อน `is_active = false`
+- แสดง `location_zone` เป็นภาษาไทยจาก approved aliases: `bangkok`, `bangsaray`, `bang_saray`, `bangsean`, `bang_saen`, `hua_hin`, `huahin`, `jomtien`, `khaoyai`, `pattaya`, `rayong`, และ `sattahip`; ถ้าไม่รู้จักให้แสดงค่าจาก database
+- แสดงสถานะ `is_active` เป็นภาษาไทย: `ใช้งานอยู่` สำหรับ `true` และ `ปิดใช้งาน` สำหรับ `false` หรือค่าว่าง
 - มี search input สำหรับค้นหาจาก `title`, `property_id`, และ `location_zone`
+- `property_id` search accepts exact numeric ids and case-insensitive DV-prefixed ids such as `DV-181`, `dv-181`, `dV-181`, and `Dv-181`; it uses exact numeric matching, not text `ilike` on the bigint column.
 - ผลลัพธ์จาก search ยังคงเรียง `is_active = true` ก่อน `is_active = false`
 - ไม่แสดง cover image, thumbnail, image placeholder หรือ gallery preview ในหน้านี้
 - action ต่อบ้านมีเพียงปุ่ม "จัดการรูป"

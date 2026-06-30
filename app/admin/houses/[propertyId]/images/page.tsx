@@ -18,7 +18,10 @@ import {
 import { getImagesByPropertyId } from "../../../../../server/repositories/images";
 import { getListingByPropertyId } from "../../../../../server/repositories/listings";
 import { groupImagesByZone } from "../../../../../server/services/images";
-import { updateHouseImagesAction } from "./actions";
+import {
+  deleteHouseImageAction,
+  uploadHouseImagesAction,
+} from "./actions";
 
 function getSafeReturnTo(value?: string): string | null {
   if (value === "/admin/houses" || value?.startsWith("/admin/houses?")) {
@@ -84,11 +87,12 @@ export default async function HouseImagesPage({
       </header>
 
       <ImageZoneViewer
-        action={updateHouseImagesAction.bind(null, propertyId)}
+        deleteAction={deleteHouseImageAction.bind(null, propertyId)}
         groups={groups}
         propertyId={propertyId}
         returnTo={safeReturnTo ?? undefined}
         selectedZone={zone}
+        uploadAction={uploadHouseImagesAction.bind(null, propertyId)}
       />
     </div>
   );

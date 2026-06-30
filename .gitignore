@@ -16,7 +16,6 @@
 
 # next.js
 /.next/
-/.open-next/
 /out/
 
 # cloudflare local state
@@ -29,6 +28,7 @@
 .DS_Store
 *.pem
 .superpowers/
+/doc/diary/
 
 # debug
 npm-debug.log*

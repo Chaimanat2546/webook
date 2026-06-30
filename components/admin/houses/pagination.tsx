@@ -11,10 +11,12 @@ import { getPaginationItems } from "../../../server/services/houses";
 import { cn } from "../../../lib/utils";
 
 export function Pagination({
+  basePath = "/admin/houses",
   currentPage,
   search,
   totalPages,
 }: {
+  basePath?: string;
   currentPage: number;
   search: string;
   totalPages: number;
@@ -29,7 +31,7 @@ export function Pagination({
     const params = new URLSearchParams();
     params.set("page", String(page));
     if (search) params.set("q", search);
-    return `/admin/houses?${params}`;
+    return `${basePath}?${params}`;
   };
 
   return (

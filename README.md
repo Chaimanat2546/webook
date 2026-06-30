@@ -1,4 +1,4 @@
-# VillaAdmin
+# Webook
 
 Admin-only web app for managing pool villa images and advertisement images.
 
@@ -17,7 +17,7 @@ House/accommodation menu access currently requires `allow_tools.allow_accommodat
 - Tailwind CSS
 - shadcn/ui
 - Supabase
-- Cloudflare Workers / R2 for advertisement image files and new managed house image files
+- Cloudflare R2 with a dedicated media Worker for advertisement image files and new managed house image files
 
 ## House Image Storage Policy
 
@@ -27,6 +27,14 @@ House/accommodation menu access currently requires `allow_tools.allow_accommodat
 - Use `images.image_url` to distinguish AWS/S3 legacy images from Cloudflare R2 images; do not add a provider column.
 - New house image uploads use the shared media Worker env vars: `ADVERTISEMENT_IMAGE_WORKER_URL` and `ADVERTISEMENT_IMAGE_WORKER_SECRET`.
 - House image admins must have `allow_tools.allow_accommodation = true`. Adding new house images also requires a positive `users.mid` because `images.create_by` is required.
+
+## House Image Admin Flow
+
+- The image manager works one image zone at a time through `/admin/houses/[propertyId]/images?zone=...`.
+- File selection uploads house images immediately to R2 through server-side code. There is no staged upload/save step for house images.
+- Single-image delete opens a confirmation dialog with the image preview before deleting.
+- Bulk delete uses selection mode for the current zone only. `Select all` selects only deletable images visible in that zone, and the admin confirms from a preview list before deletion.
+- AWS/S3-backed legacy house images remain display-only and are excluded from delete controls.
 
 ## Supabase Feature Workflow
 
@@ -268,49 +276,17 @@ Do not run these against production:
 
 Use `migration repair` only after confirming the schema already exists remotely and only the migration history table is wrong.
 
-## Cloudflare Workers App Deploy
+## Media Worker Deploy
 
-The root `wrangler.jsonc` deploys the Next.js admin app through OpenNext. `workers/media/wrangler.jsonc` deploys only the advertisement media Worker.
+The Next.js admin app has no Cloudflare app deployment config in this repo. Cloudflare remains only for the media Worker/R2 image pipeline.
 
-Build and deploy the admin app from WSL/Linux or CI on Linux. OpenNext for Cloudflare currently warns that Windows builds are not fully supported, and a Windows-built bundle can miss generated Turbopack server chunks and return `500 Internal Server Error` after deploy.
-
-Set the public build/runtime values before building:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-ADVERTISEMENT_IMAGE_WORKER_URL=
-```
-
-Set the private upload secret as a Worker secret:
+Set the private upload secret as a media Worker secret:
 
 ```powershell
-npx.cmd wrangler secret put ADVERTISEMENT_IMAGE_WORKER_SECRET
+npx.cmd wrangler secret put ADVERTISEMENT_IMAGE_WORKER_SECRET --config workers/media/wrangler.jsonc
 ```
 
-Preview locally:
-
-```bash
-rm -rf .next .open-next
-npm run preview
-```
-
-Deploy the admin app:
-
-```bash
-rm -rf .next .open-next
-npm run deploy
-```
-
-GitHub Actions can deploy the admin app automatically from Ubuntu with `.github/workflows/deploy-admin.yml`. The job uses the `Cloudflare-Staging` environment, so add these environment secrets before enabling push deploys:
-
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `ADVERTISEMENT_IMAGE_WORKER_URL`
-
-Keep `ADVERTISEMENT_IMAGE_WORKER_SECRET` as a Cloudflare Worker secret on `webook-admin`; the workflow does not set or rotate it. The media Worker stays manual:
+Deploy the media Worker manually:
 
 ```powershell
 npx.cmd wrangler deploy --config workers/media/wrangler.jsonc

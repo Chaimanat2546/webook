@@ -26,33 +26,53 @@ export function AdminImageCard({
   action,
   actionPlacement = "bottom-right",
   alt,
+  className,
   imageName,
   imageUnavailableText = "Preview unavailable",
   loading = "lazy",
   metaRows = [],
+  onSelect,
   orderLabel,
   previewDescription = "Image preview",
+  previewEnabled = true,
   previewLabel,
   secondaryLabel,
   secondaryTitle,
+  selected = false,
+  selectionLabel,
   src,
 }: {
   action?: ReactNode;
   actionPlacement?: "bottom-right" | "top-right";
   alt: string;
+  className?: string;
   imageName: string;
   imageUnavailableText?: string;
   loading?: "eager" | "lazy";
   metaRows?: AdminImageCardMetaRow[];
-  orderLabel: string;
+  onSelect?: () => void;
+  orderLabel?: string;
   previewDescription?: string;
+  previewEnabled?: boolean;
   previewLabel?: string;
   secondaryLabel?: string;
   secondaryTitle?: string;
+  selected?: boolean;
+  selectionLabel?: string;
   src: string | null;
 }) {
+  const cardLabel = selectionLabel ?? `เลือกรูป ${imageName}`;
+
   return (
-    <Card className="relative w-full max-w-36 cursor-zoom-in gap-0 overflow-hidden p-0 sm:max-w-40" size="sm">
+    <Card
+      className={cn(
+        "relative w-full max-w-36 gap-0 overflow-hidden p-0 sm:max-w-40",
+        onSelect ? "cursor-pointer" : previewEnabled && src ? "cursor-zoom-in" : "",
+        selected && "border-primary ring-2 ring-primary/35",
+        className,
+      )}
+      size="sm"
+    >
       <div className="relative">
         <AspectRatio className="bg-muted" ratio={4 / 3}>
           {src ? (
@@ -63,9 +83,11 @@ export function AdminImageCard({
             </div>
           )}
         </AspectRatio>
-        <Badge className="absolute left-1 top-1 rounded-md px-1.5 py-0 font-mono text-[10px]" variant="secondary">
-          {orderLabel}
-        </Badge>
+        {orderLabel ? (
+          <Badge className="absolute left-1 top-1 rounded-md px-1.5 py-0 font-mono text-[10px]" variant="secondary">
+            {orderLabel}
+          </Badge>
+        ) : null}
         {secondaryLabel ? (
           <Badge
             className="absolute right-1 top-1 max-w-[calc(100%-3.5rem)] truncate rounded-md px-1.5 py-0 text-[10px]"
@@ -86,7 +108,7 @@ export function AdminImageCard({
         ) : null}
       </div>
 
-      <CardContent className="flex min-h-16 flex-col gap-1 p-2">
+      <CardContent className="flex flex-col gap-1 p-2">
         <p className="truncate font-mono text-[11px] font-medium leading-tight" title={imageName}>
           {imageName}
         </p>
@@ -99,12 +121,20 @@ export function AdminImageCard({
               </Fragment>
             ))}
           </dl>
-        ) : (
-          <div className="min-h-[2lh]" />
-        )}
+        ) : null}
       </CardContent>
 
-      {src ? (
+      {onSelect ? (
+        <button
+          aria-label={cardLabel}
+          aria-pressed={selected}
+          className="absolute inset-0 z-10 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          onClick={onSelect}
+          type="button"
+        >
+          <span className="sr-only">{cardLabel}</span>
+        </button>
+      ) : previewEnabled && src ? (
         <Dialog>
           <DialogTrigger asChild>
             <button

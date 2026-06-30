@@ -968,7 +968,7 @@ export default async function LoginPage({
       >
         <Card>
           <CardHeader>
-            <p className="text-sm font-medium text-muted-foreground">VillaAdmin</p>
+            <p className="text-sm font-medium text-muted-foreground">Webook</p>
             <CardTitle>เข้าสู่ระบบผู้ดูแล</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
@@ -1050,7 +1050,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VillaAdmin",
+  title: "Webook",
   description: "Admin-only pool villa image management",
 };
 
@@ -1101,7 +1101,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-10 border-b bg-background px-4 py-3 md:hidden">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold">VillaAdmin</p>
+            <p className="text-sm font-semibold">Webook</p>
             <p className="text-xs text-muted-foreground">จัดการรูปบ้านพัก</p>
           </div>
           <Sheet>
@@ -1109,7 +1109,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <Button size="sm" variant="outline">เมนู</Button>
             </SheetTrigger>
             <SheetContent side="right">
-              <SheetTitle>VillaAdmin</SheetTitle>
+              <SheetTitle>Webook</SheetTitle>
               <nav className="mt-4 flex flex-col gap-2">
                 <Button asChild variant="secondary">
                   <Link href="/admin/houses">บ้านพัก</Link>
@@ -1128,7 +1128,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
       <div className="mx-auto flex min-h-screen w-full max-w-7xl">
         <aside className="hidden w-56 shrink-0 border-r bg-background p-4 md:block">
-          <p className="mb-6 text-sm font-semibold">VillaAdmin</p>
+          <p className="mb-6 text-sm font-semibold">Webook</p>
           <nav className="flex flex-col gap-1">
             <Button asChild className="justify-start" variant="secondary">
               <Link href="/admin/houses">บ้านพัก</Link>

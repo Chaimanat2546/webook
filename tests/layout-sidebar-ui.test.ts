@@ -32,6 +32,30 @@ describe("admin layout sidebar UI", () => {
     assert.doesNotMatch(source, /SheetContent/);
   });
 
+  it("seeds the desktop sidebar state from the persisted sidebar cookie", () => {
+    const layoutSource = readFileSync(
+      new URL("../app/admin/layout.tsx", import.meta.url),
+      "utf8",
+    );
+    const shellSource = readFileSync(
+      new URL("../components/layout/admin-shell.tsx", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(layoutSource, /import \{ cookies \} from "next\/headers";/);
+    assert.match(layoutSource, /const cookieStore = await cookies\(\);/);
+    assert.match(
+      layoutSource,
+      /const defaultSidebarOpen = cookieStore\.get\("sidebar_state"\)\?\.value !== "false";/,
+    );
+    assert.match(
+      layoutSource,
+      /<AdminShell defaultSidebarOpen=\{defaultSidebarOpen\}>\{children\}<\/AdminShell>/,
+    );
+    assert.match(shellSource, /defaultSidebarOpen = true/);
+    assert.match(shellSource, /<SidebarProvider defaultOpen=\{defaultSidebarOpen\}>/);
+  });
+
   it("keeps the explicit sidebar trigger out of the sidebar header", () => {
     const sidebarSource = readFileSync(
       new URL("../components/layout/admin-desktop-sidebar.tsx", import.meta.url),

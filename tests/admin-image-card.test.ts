@@ -12,9 +12,13 @@ describe("shared admin image card", () => {
     assert.match(source, /export interface AdminImageCardMetaRow/);
     assert.match(source, /export function AdminImageCard/);
     assert.match(source, /<AspectRatio className="bg-muted" ratio=\{4 \/ 3\}>/);
-    assert.match(source, /CardContent className="flex min-h-16 flex-col gap-1 p-2"/);
+    assert.match(source, /CardContent className="flex flex-col gap-1 p-2"/);
     assert.match(source, /DialogTrigger asChild/);
     assert.match(source, /max-h-\[82dvh\]/);
+    assert.match(source, /previewEnabled = true/);
+    assert.match(source, /onSelect/);
+    assert.match(source, /aria-pressed=\{selected\}/);
+    assert.match(source, /previewEnabled && src/);
   });
 
   it("is used by both house images and advertisement images", () => {

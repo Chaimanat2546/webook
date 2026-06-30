@@ -2,7 +2,6 @@ import { awsImageHostname } from "../../lib/aws-image-url.ts";
 import { validateHouseImageObjectKey } from "../../lib/house-image-url.ts";
 import {
   buildManagedImageFileName,
-  isSupportedImageMimeType,
   validateManagedImageFileName,
   type ManagedImageNameOptions,
 } from "./image-file-names.ts";
@@ -26,19 +25,30 @@ export interface ImageZoneGroup {
   zone: string;
 }
 
+export const HOUSE_IMAGE_ZONE_ORDER = [
+  "cover",
+  "outside",
+  "parking",
+  "inside",
+  "kitchen",
+  "bedroom",
+  "bathroom",
+  "review",
+] as const;
+
+export type ImageZoneKey = (typeof HOUSE_IMAGE_ZONE_ORDER)[number];
+
 export const IMAGE_ZONE_META = {
-  inside: { icon: "armchair", label: "ภายใน" },
-  parking: { icon: "car-front", label: "ที่จอดรถ" },
-  bathroom: { icon: "bath", label: "ห้องน้ำ" },
-  bedroom: { icon: "bed-double", label: "ห้องนอน" },
-  kitchen: { icon: "cooking-pot", label: "ห้องครัว" },
-  review: { icon: "message-circle-code", label: "รีวิว" },
+  cover: { icon: "image", label: "รูปปก" },
   outside: { icon: "door-closed", label: "ภายนอก" },
-} as const;
+  parking: { icon: "car-front", label: "ที่จอดรถ" },
+  inside: { icon: "armchair", label: "ภายใน" },
+  kitchen: { icon: "cooking-pot", label: "ห้องครัว" },
+  bedroom: { icon: "bed-double", label: "ห้องนอน" },
+  bathroom: { icon: "bath", label: "ห้องน้ำ" },
+  review: { icon: "message-circle-code", label: "รีวิว" },
+} as const satisfies Record<ImageZoneKey, { icon: string; label: string }>;
 
-const IMAGE_ZONE_ORDER = ["cover", ...Object.keys(IMAGE_ZONE_META)] as const;
-
-export type ImageZoneKey = keyof typeof IMAGE_ZONE_META;
 export type ImageZoneIconName =
   | (typeof IMAGE_ZONE_META)[ImageZoneKey]["icon"]
   | "image";
@@ -53,7 +63,13 @@ export type HouseImageFileOperation = "create" | "delete" | "replace";
 export type HouseImageStorageProvider = "aws-s3" | "r2" | "unknown";
 
 const HOUSE_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const validImageZones = new Set(["cover", ...Object.keys(IMAGE_ZONE_META)]);
+const supportedHouseImageMimeTypes = new Set([
+  "image/avif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+const validImageZones = new Set<string>(HOUSE_IMAGE_ZONE_ORDER);
 
 const thaiDateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
   dateStyle: "medium",
@@ -79,7 +95,7 @@ function imageMoveForNewOrder(image: HouseImageItem): number {
 }
 
 function zoneOrderValue(zone: string): number {
-  const index = IMAGE_ZONE_ORDER.findIndex((value) => value === zone);
+  const index = HOUSE_IMAGE_ZONE_ORDER.findIndex((value) => value === zone);
   return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
@@ -151,7 +167,7 @@ export function isHouseImageFileOperationAllowed(
 }
 
 export function validateHouseImageFile(file: File): File {
-  if (!isSupportedImageMimeType(file.type)) throw new Error("Unsupported image type");
+  if (!supportedHouseImageMimeTypes.has(file.type)) throw new Error("Unsupported image type");
   if (file.size > HOUSE_MAX_IMAGE_BYTES) throw new Error("House image is too large");
   return file;
 }
@@ -206,6 +222,10 @@ export function getImageFiles(formData: FormData, fieldName: string): File[] {
 export function groupImagesByZone(images: HouseImageItem[]): ImageZoneGroup[] {
   const groups = new Map<string, HouseImageItem[]>();
 
+  for (const zone of HOUSE_IMAGE_ZONE_ORDER) {
+    groups.set(zone, []);
+  }
+
   for (const image of images) {
     const zone = normalizedZone(image.image_zone);
     const zoneImages = groups.get(zone) ?? [];
@@ -220,14 +240,15 @@ export function groupImagesByZone(images: HouseImageItem[]): ImageZoneGroup[] {
 
       return {
         images: sortedImages,
-        maxMove: Math.max(...moves),
-        minMove: Math.min(...moves),
+        maxMove: moves.length > 0 ? Math.max(...moves) : 0,
+        minMove: moves.length > 0 ? Math.min(...moves) : 0,
         zone,
       };
     })
     .sort((a, b) => {
-      const zoneOrderDelta = zoneOrderValue(a.zone) - zoneOrderValue(b.zone);
-      if (zoneOrderDelta !== 0) return zoneOrderDelta;
+      const aZoneOrder = zoneOrderValue(a.zone);
+      const bZoneOrder = zoneOrderValue(b.zone);
+      if (aZoneOrder !== bZoneOrder) return aZoneOrder - bZoneOrder;
       return a.minMove - b.minMove || a.zone.localeCompare(b.zone, "th");
     });
 }
