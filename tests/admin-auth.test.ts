@@ -56,6 +56,7 @@ describe("admin authorization", () => {
     const layoutSource = readFileSync(new URL("../app/admin/layout.tsx", import.meta.url), "utf8");
 
     assert.match(layoutSource, /await requireAdmin\(\)/);
+    assert.match(layoutSource, /export const dynamic = "force-dynamic"/);
     assert.doesNotMatch(layoutSource, /isAuthorized/);
     assert.doesNotMatch(layoutSource, /canUseAccommodation/);
   });

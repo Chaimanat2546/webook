@@ -282,9 +282,35 @@ Do not run these against production:
 
 Use `migration repair` only after confirming the schema already exists remotely and only the migration history table is wrong.
 
+## Admin Web Worker Deploy
+
+The Next.js admin app deploys to a separate Cloudflare Worker through OpenNext:
+
+```powershell
+npm.cmd run deploy:cf
+```
+
+The root `wrangler.jsonc` deploys the admin web Worker named `webook-admin`.
+Do not use `workers/media/wrangler.jsonc` for the admin web app.
+The build script runs Next.js with `--webpack` and `--use-system-ca` so OpenNext can bundle server chunks correctly on this Windows workspace.
+The admin Worker uses an R2 binding named `NEXT_INC_CACHE_R2_BUCKET` for OpenNext incremental cache.
+
+Production owners should set the app runtime variables/secrets in their own Cloudflare account before deploying:
+
+```powershell
+npx.cmd wrangler secret put NEXT_PUBLIC_SUPABASE_URL
+npx.cmd wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
+npx.cmd wrangler secret put ADVERTISEMENT_IMAGE_WORKER_URL
+npx.cmd wrangler secret put ADVERTISEMENT_IMAGE_WORKER_SECRET
+npx.cmd wrangler secret put AWS_REGION
+npx.cmd wrangler secret put AWS_BUCKET
+npx.cmd wrangler secret put AWS_ACCESS_KEY_ID
+npx.cmd wrangler secret put AWS_SECRET_ACCESS_KEY
+```
+
 ## Media Worker Deploy
 
-The Next.js admin app has no Cloudflare app deployment config in this repo. Cloudflare remains only for the media Worker/R2 image pipeline.
+The media Worker/R2 image pipeline deploys separately from the admin web Worker.
 
 Set the private upload secret as a media Worker secret:
 
