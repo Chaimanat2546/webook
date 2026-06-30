@@ -77,8 +77,10 @@ describe("advertisement admin UI", () => {
     assert.doesNotMatch(imagesInputBlock, /image\/gif/);
     assert.match(formSource, /name="images"/);
     assert.match(formSource, /className="grid min-w-0 gap-5/);
-    assert.match(formSource, /lg:grid-cols-\[minmax\(18rem,26rem\)_minmax\(0,1fr\)\]/);
+    assert.match(formSource, /lg:grid-cols-\[minmax\(0,1fr\)_minmax\(18rem,26rem\)\]/);
+    assert.match(formSource, /<Card className="min-w-0 h-fit lg:order-2">/);
     assert.match(formSource, /grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-\[auto_minmax\(0,1fr\)\] rounded-xl border bg-background/);
+    assert.match(formSource, /lg:order-1/);
     assert.doesNotMatch(formSource, /lg:grid-cols-\[220px_1fr\] lg:grid-rows-1/);
     assert.doesNotMatch(formSource, /<aside className=/);
     assert.doesNotMatch(formSource, /aria-label="Advertisement images"/);
@@ -111,7 +113,10 @@ describe("advertisement admin UI", () => {
       formSource,
       /type AdvertisementUploadQueueStatus =\s*\|\s*"pending-resize"\s*\|\s*"resizing"\s*\|\s*"pending-upload"\s*\|\s*"uploading"\s*\|\s*"uploaded"\s*\|\s*"failed";/,
     );
-    assert.match(formSource, /type AdvertisementBulkDeleteQueueStatus = "pending" \| "deleting" \| "deleted" \| "failed";/);
+    assert.match(
+      formSource,
+      /type AdvertisementBulkDeleteQueueStatus =\s*\|\s*"pending"\s*\|\s*"deleting"\s*\|\s*"deleted"\s*\|\s*"failed";/,
+    );
     assert.match(formSource, /failedUploadItems/);
     assert.match(formSource, /async function processUploadQueueItem/);
     assert.match(formSource, /await uploadAction\(formData\)/);
@@ -121,7 +126,10 @@ describe("advertisement admin UI", () => {
     assert.match(formSource, /singleDeleteImage/);
     assert.match(formSource, /DialogTitle>ยืนยันการลบรูปโฆษณา/);
     assert.match(formSource, /bulkDeleteQueue/);
-    assert.match(formSource, /function bulkDeleteStatusLabel\(status: AdvertisementBulkDeleteQueueStatus\)/);
+    assert.match(
+      formSource,
+      /function bulkDeleteStatusLabel\(\s*status: AdvertisementBulkDeleteQueueStatus,\s*\)/,
+    );
     assert.match(formSource, /async function processBulkDeleteQueueItem/);
     assert.match(formSource, /await deleteAction\(item\.image\.id\)/);
     assert.match(formSource, /toast\.loading\(`กำลังลบ \$\{current\}\/\$\{total\}`/);
@@ -132,7 +140,7 @@ describe("advertisement admin UI", () => {
     assert.match(formSource, /disabled=\{!isDirty \|\| isBusy\}/);
     assert.match(
       formSource,
-      /<Button className="flex-1 lg:flex-none" disabled=\{!isDirty \|\| isBusy\} type="submit">/,
+      /<Button\s+className="flex-1 lg:flex-none"\s+disabled=\{!isDirty \|\| isBusy\}\s+type="submit"\s*>/,
     );
     assert.match(formSource, /Trash2Icon/);
     assert.match(formSource, /CheckIcon/);

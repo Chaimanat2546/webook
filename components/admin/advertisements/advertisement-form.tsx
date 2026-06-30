@@ -79,7 +79,11 @@ type AdvertisementUploadQueueStatus =
   | "uploading"
   | "uploaded"
   | "failed";
-type AdvertisementBulkDeleteQueueStatus = "pending" | "deleting" | "deleted" | "failed";
+type AdvertisementBulkDeleteQueueStatus =
+  | "pending"
+  | "deleting"
+  | "deleted"
+  | "failed";
 
 interface DraftPreview {
   file: File;
@@ -109,7 +113,8 @@ function formatFileSize(bytes?: number): string {
 }
 
 function outputFileName(fileName: string): string {
-  const baseName = fileName.replace(/\.[^.]+$/, "").trim() || "advertisement-image";
+  const baseName =
+    fileName.replace(/\.[^.]+$/, "").trim() || "advertisement-image";
   return `${baseName}.webp`;
 }
 
@@ -120,7 +125,9 @@ function fallbackQueueIdSuffix(): string {
   if (typeof getRandomValues === "function") {
     const values = new Uint32Array(4);
     getRandomValues.call(cryptoProvider, values);
-    return Array.from(values, (value) => value.toString(16).padStart(8, "0")).join("");
+    return Array.from(values, (value) =>
+      value.toString(16).padStart(8, "0"),
+    ).join("");
   }
 
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -143,7 +150,9 @@ function shortImageName(imageName: string | null): string {
   return `${imageName.slice(0, 29)}...`;
 }
 
-function uploadQueueStatusLabel(status: AdvertisementUploadQueueStatus): string {
+function uploadQueueStatusLabel(
+  status: AdvertisementUploadQueueStatus,
+): string {
   switch (status) {
     case "pending-resize":
       return "รอแปลงรูป";
@@ -160,7 +169,9 @@ function uploadQueueStatusLabel(status: AdvertisementUploadQueueStatus): string 
   }
 }
 
-function bulkDeleteStatusLabel(status: AdvertisementBulkDeleteQueueStatus): string {
+function bulkDeleteStatusLabel(
+  status: AdvertisementBulkDeleteQueueStatus,
+): string {
   switch (status) {
     case "pending":
       return "รอลบ";
@@ -204,7 +215,10 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 async function resizeAdvertisementImageFile(file: File): Promise<File> {
-  if (file.type === "image/gif" || !supportedAdvertisementInputTypes.has(file.type)) {
+  if (
+    file.type === "image/gif" ||
+    !supportedAdvertisementInputTypes.has(file.type)
+  ) {
     throw new Error("Unsupported image type");
   }
 
@@ -258,11 +272,15 @@ function FailedAdvertisementUploadCard({
       </div>
       <div className="mt-2 min-w-0 space-y-1">
         <p className="truncate text-xs font-medium">{item.file.name}</p>
-        <p className="text-[10px] font-medium text-destructive">ยังไม่ถูกบันทึก</p>
+        <p className="text-[10px] font-medium text-destructive">
+          ยังไม่ถูกบันทึก
+        </p>
         <p className="truncate text-[10px] text-muted-foreground">
           {item.error ?? uploadQueueStatusLabel(item.status)}
         </p>
-        <p className="truncate text-[10px] text-muted-foreground">ขนาดเดิม {formatFileSize(item.file.size)}</p>
+        <p className="truncate text-[10px] text-muted-foreground">
+          ขนาดเดิม {formatFileSize(item.file.size)}
+        </p>
         <div className="flex items-center gap-1 pt-1">
           <Button
             className="size-7"
@@ -327,27 +345,48 @@ export function AdvertisementForm({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [previews, setPreviews] = useState<DraftPreview[]>([]);
-  const [uploadQueue, setUploadQueue] = useState<AdvertisementUploadQueueItem[]>([]);
-  const [bulkDeleteQueue, setBulkDeleteQueue] = useState<AdvertisementBulkDeleteQueueItem[]>([]);
-  const [selectedBulkDeleteIds, setSelectedBulkDeleteIds] = useState<Set<string>>(new Set());
+  const [uploadQueue, setUploadQueue] = useState<
+    AdvertisementUploadQueueItem[]
+  >([]);
+  const [bulkDeleteQueue, setBulkDeleteQueue] = useState<
+    AdvertisementBulkDeleteQueueItem[]
+  >([]);
+  const [selectedBulkDeleteIds, setSelectedBulkDeleteIds] = useState<
+    Set<string>
+  >(new Set());
   const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [singleDeleteImage, setSingleDeleteImage] = useState<AdvertisementFormImage | null>(null);
+  const [singleDeleteImage, setSingleDeleteImage] =
+    useState<AdvertisementFormImage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const usesOperationImages = mode === "edit" && Boolean(uploadAction && deleteAction);
+  const usesOperationImages =
+    mode === "edit" && Boolean(uploadAction && deleteAction);
   const visibleExistingImages = usesOperationImages
     ? existingImages
     : existingImages.filter((image) => !deletedImageIds.includes(image.id));
-  const failedUploadItems = uploadQueue.filter((item) => item.status === "failed");
-  const failedBulkDeleteItems = bulkDeleteQueue.filter((item) => item.status === "failed");
-  const totalImages = visibleExistingImages.length + (usesOperationImages ? 0 : previews.length);
+  const failedUploadItems = uploadQueue.filter(
+    (item) => item.status === "failed",
+  );
+  const failedBulkDeleteItems = bulkDeleteQueue.filter(
+    (item) => item.status === "failed",
+  );
+  const totalImages =
+    visibleExistingImages.length + (usesOperationImages ? 0 : previews.length);
   const remainingSlots = Math.max(0, MAX_IMAGES - totalImages);
-  const isBusy = isPending || isResizingImages || isUploading || isDeleting || isBulkDeleting;
+  const isBusy =
+    isPending ||
+    isResizingImages ||
+    isUploading ||
+    isDeleting ||
+    isBulkDeleting;
   const canDeleteExistingImages = visibleExistingImages.length > 0;
-  const selectedBulkDeleteImages = visibleExistingImages.filter((image) => selectedBulkDeleteIds.has(image.id));
+  const selectedBulkDeleteImages = visibleExistingImages.filter((image) =>
+    selectedBulkDeleteIds.has(image.id),
+  );
   const allCurrentImagesSelected =
-    visibleExistingImages.length > 0 && selectedBulkDeleteIds.size === visibleExistingImages.length;
+    visibleExistingImages.length > 0 &&
+    selectedBulkDeleteIds.size === visibleExistingImages.length;
 
   useEffect(() => {
     return () => {
@@ -400,7 +439,11 @@ export function AdvertisementForm({
   }
 
   function onFormChange(event: FormEvent<HTMLFormElement>) {
-    if (event.target instanceof HTMLInputElement && event.target.type === "file") return;
+    if (
+      event.target instanceof HTMLInputElement &&
+      event.target.type === "file"
+    )
+      return;
     markDirty();
   }
 
@@ -408,7 +451,9 @@ export function AdvertisementForm({
     setIsResizingImages(true);
 
     try {
-      const resizedFiles = await Promise.all(selected.map(resizeAdvertisementImageFile));
+      const resizedFiles = await Promise.all(
+        selected.map(resizeAdvertisementImageFile),
+      );
       if (resizeRunRef.current !== runId) return;
       appendPreviews(resizedFiles, true);
     } catch {
@@ -436,8 +481,13 @@ export function AdvertisementForm({
     return items;
   }
 
-  function updateUploadQueueItem(id: string, updates: Partial<AdvertisementUploadQueueItem>) {
-    setUploadQueue((items) => items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+  function updateUploadQueueItem(
+    id: string,
+    updates: Partial<AdvertisementUploadQueueItem>,
+  ) {
+    setUploadQueue((items) =>
+      items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+    );
   }
 
   function removeUploadQueueItem(id: string) {
@@ -445,7 +495,9 @@ export function AdvertisementForm({
       const removed = items.find((item) => item.id === id);
       if (removed) {
         URL.revokeObjectURL(removed.previewSrc);
-        queuePreviewsRef.current = queuePreviewsRef.current.filter((src) => src !== removed.previewSrc);
+        queuePreviewsRef.current = queuePreviewsRef.current.filter(
+          (src) => src !== removed.previewSrc,
+        );
       }
       return items.filter((item) => item.id !== id);
     });
@@ -457,7 +509,9 @@ export function AdvertisementForm({
       for (const item of items) {
         if (failedIds.has(item.id)) {
           URL.revokeObjectURL(item.previewSrc);
-          queuePreviewsRef.current = queuePreviewsRef.current.filter((src) => src !== item.previewSrc);
+          queuePreviewsRef.current = queuePreviewsRef.current.filter(
+            (src) => src !== item.previewSrc,
+          );
         }
       }
       return items.filter((item) => !failedIds.has(item.id));
@@ -500,7 +554,10 @@ export function AdvertisementForm({
       removeUploadQueueItem(item.id);
     } catch (uploadError) {
       updateUploadQueueItem(item.id, {
-        error: uploadError instanceof Error ? uploadError.message : "อัปโหลดรูปไม่สำเร็จ",
+        error:
+          uploadError instanceof Error
+            ? uploadError.message
+            : "อัปโหลดรูปไม่สำเร็จ",
         status: "failed",
       });
       throw uploadError;
@@ -522,7 +579,13 @@ export function AdvertisementForm({
           for (const [index, item] of items.entries()) {
             try {
               await processUploadQueueItem(item, (status) =>
-                updateUploadProgressToast(uploadToastId, item, index + 1, items.length, status),
+                updateUploadProgressToast(
+                  uploadToastId,
+                  item,
+                  index + 1,
+                  items.length,
+                  status,
+                ),
               );
             } catch {
               failedCount += 1;
@@ -531,7 +594,9 @@ export function AdvertisementForm({
 
           toast.dismiss(uploadToastId);
           if (failedCount > 0) {
-            toast.warning(`อัปโหลดสำเร็จ ${items.length - failedCount}/${items.length} รูป มีรูปไม่สำเร็จ ${failedCount} รูป`);
+            toast.warning(
+              `อัปโหลดสำเร็จ ${items.length - failedCount}/${items.length} รูป มีรูปไม่สำเร็จ ${failedCount} รูป`,
+            );
           } else {
             toast.success(`อัปโหลดรูปแล้ว ${items.length} รูป`);
           }
@@ -565,7 +630,9 @@ export function AdvertisementForm({
   function retryFailedUploads(itemIds?: string[]) {
     const retryIds = itemIds ? new Set(itemIds) : null;
     const failedItems = uploadQueue.filter(
-      (item) => item.status === "failed" && (retryIds === null || retryIds.has(item.id)),
+      (item) =>
+        item.status === "failed" &&
+        (retryIds === null || retryIds.has(item.id)),
     );
     if (failedItems.length === 0) return;
 
@@ -576,7 +643,10 @@ export function AdvertisementForm({
     }));
 
     setUploadQueue((items) =>
-      items.map((item) => retryItems.find((candidate) => candidate.id === item.id) ?? item),
+      items.map(
+        (item) =>
+          retryItems.find((candidate) => candidate.id === item.id) ?? item,
+      ),
     );
     processUploadItems(retryItems);
   }
@@ -597,7 +667,9 @@ export function AdvertisementForm({
   function removeDraftFile(indexToRemove: number) {
     markDirty();
     replacePreviews(
-      previewsRef.current.filter((_, index) => index !== indexToRemove).map((preview) => preview.file),
+      previewsRef.current
+        .filter((_, index) => index !== indexToRemove)
+        .map((preview) => preview.file),
       true,
     );
   }
@@ -605,7 +677,9 @@ export function AdvertisementForm({
   function markImageDeleted(imageId: string) {
     if (usesOperationImages) return;
     markDirty();
-    setDeletedImageIds((imageIds) => (imageIds.includes(imageId) ? imageIds : [...imageIds, imageId]));
+    setDeletedImageIds((imageIds) =>
+      imageIds.includes(imageId) ? imageIds : [...imageIds, imageId],
+    );
   }
 
   function resetDraft() {
@@ -658,7 +732,11 @@ export function AdvertisementForm({
   }
 
   function toggleSelectAllImages(checked: boolean) {
-    setSelectedBulkDeleteIds(checked ? new Set(visibleExistingImages.map((image) => image.id)) : new Set());
+    setSelectedBulkDeleteIds(
+      checked
+        ? new Set(visibleExistingImages.map((image) => image.id))
+        : new Set(),
+    );
   }
 
   function queueItemsForBulkDelete(images: AdvertisementFormImage[]) {
@@ -678,8 +756,13 @@ export function AdvertisementForm({
     setIsBulkDeleteDialogOpen(true);
   }
 
-  function updateBulkDeleteQueueItem(id: string, updates: Partial<AdvertisementBulkDeleteQueueItem>) {
-    setBulkDeleteQueue((items) => items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+  function updateBulkDeleteQueueItem(
+    id: string,
+    updates: Partial<AdvertisementBulkDeleteQueueItem>,
+  ) {
+    setBulkDeleteQueue((items) =>
+      items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+    );
   }
 
   function updateBulkDeleteProgressToast(
@@ -694,19 +777,27 @@ export function AdvertisementForm({
     });
   }
 
-  async function processBulkDeleteQueueItem(item: AdvertisementBulkDeleteQueueItem) {
+  async function processBulkDeleteQueueItem(
+    item: AdvertisementBulkDeleteQueueItem,
+  ) {
     if (!deleteAction) return;
 
     try {
-      updateBulkDeleteQueueItem(item.id, { error: undefined, status: "deleting" });
+      updateBulkDeleteQueueItem(item.id, {
+        error: undefined,
+        status: "deleting",
+      });
       const result = await deleteAction(item.image.id);
       updateBulkDeleteQueueItem(item.id, {
-        error: result.cleanupWarning ? "ลบรายการแล้ว แต่ลบไฟล์ใน storage ไม่ครบ" : undefined,
+        error: result.cleanupWarning
+          ? "ลบรายการแล้ว แต่ลบไฟล์ใน storage ไม่ครบ"
+          : undefined,
         status: "deleted",
       });
     } catch (deleteError) {
       updateBulkDeleteQueueItem(item.id, {
-        error: deleteError instanceof Error ? deleteError.message : "ลบรูปไม่สำเร็จ",
+        error:
+          deleteError instanceof Error ? deleteError.message : "ลบรูปไม่สำเร็จ",
         status: "failed",
       });
       throw deleteError;
@@ -728,7 +819,12 @@ export function AdvertisementForm({
 
         try {
           for (const [index, item] of items.entries()) {
-            updateBulkDeleteProgressToast(deleteToastId, item, index + 1, items.length);
+            updateBulkDeleteProgressToast(
+              deleteToastId,
+              item,
+              index + 1,
+              items.length,
+            );
             try {
               await processBulkDeleteQueueItem(item);
               successCount += 1;
@@ -739,7 +835,9 @@ export function AdvertisementForm({
 
           toast.dismiss(deleteToastId);
           if (failedCount > 0) {
-            toast.warning(`ลบสำเร็จ ${successCount} รูป, ลบไม่สำเร็จ ${failedCount} รูป`);
+            toast.warning(
+              `ลบสำเร็จ ${successCount} รูป, ลบไม่สำเร็จ ${failedCount} รูป`,
+            );
           } else {
             toast.success(`ลบสำเร็จทั้งหมด ${successCount} รูป`);
             clearBulkDeleteSelection();
@@ -764,7 +862,9 @@ export function AdvertisementForm({
   function retryFailedBulkDeletes(itemIds?: string[]) {
     const retryIds = itemIds ? new Set(itemIds) : null;
     const failedItems = bulkDeleteQueue.filter(
-      (item) => item.status === "failed" && (retryIds === null || retryIds.has(item.id)),
+      (item) =>
+        item.status === "failed" &&
+        (retryIds === null || retryIds.has(item.id)),
     );
     if (failedItems.length === 0) return;
 
@@ -775,7 +875,10 @@ export function AdvertisementForm({
     }));
 
     setBulkDeleteQueue((items) =>
-      items.map((item) => retryItems.find((candidate) => candidate.id === item.id) ?? item),
+      items.map(
+        (item) =>
+          retryItems.find((candidate) => candidate.id === item.id) ?? item,
+      ),
     );
     processBulkDeleteItems(retryItems);
   }
@@ -803,7 +906,11 @@ export function AdvertisementForm({
           router.refresh();
         } catch (deleteError) {
           toast.dismiss(deleteToastId);
-          toast.error(deleteError instanceof Error ? deleteError.message : "ลบรูปโฆษณาไม่สำเร็จ");
+          toast.error(
+            deleteError instanceof Error
+              ? deleteError.message
+              : "ลบรูปโฆษณาไม่สำเร็จ",
+          );
         } finally {
           setIsDeleting(false);
         }
@@ -814,17 +921,22 @@ export function AdvertisementForm({
   return (
     <form
       action={action}
-      className="grid min-w-0 gap-5 pb-20 lg:pb-0 lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]"
+      className="grid min-w-0 gap-5 pb-20 lg:pb-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,26rem)]"
       onChange={onFormChange}
       onSubmit={onSubmit}
       ref={formRef}
     >
       {!usesOperationImages
         ? deletedImageIds.map((imageId) => (
-            <input key={imageId} name="deleted_image_ids" type="hidden" value={imageId} />
+            <input
+              key={imageId}
+              name="deleted_image_ids"
+              type="hidden"
+              value={imageId}
+            />
           ))
         : null}
-      <Card className="min-w-0 h-fit">
+      <Card className="min-w-0 h-fit lg:order-2">
         <CardHeader>
           <CardTitle>ตั้งค่าโฆษณา</CardTitle>
         </CardHeader>
@@ -832,21 +944,64 @@ export function AdvertisementForm({
           <Separator />
           <div className="grid gap-2">
             <Label htmlFor={titleId}>ชื่อแคมเปญโฆษณา</Label>
-            <Input className="h-10" defaultValue={defaultTitle} id={titleId} name="title" required />
+            <Input
+              className="h-10"
+              defaultValue={defaultTitle}
+              id={titleId}
+              name="title"
+              required
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <div className="grid gap-1">
               <Label htmlFor={activeId}>สถานะการแสดงผล</Label>
-              <p className="text-sm text-muted-foreground">เปิดเพื่อให้ผู้ใช้เห็นโฆษณานี้</p>
+              <p className="text-sm text-muted-foreground">
+                เปิดเพื่อให้ผู้ใช้เห็นโฆษณานี้
+              </p>
             </div>
             <input name="is_active" type="hidden" value="false" />
-            <Switch defaultChecked={defaultIsActive} id={activeId} name="is_active" value="true" />
+            <Switch
+              defaultChecked={defaultIsActive}
+              id={activeId}
+              name="is_active"
+              value="true"
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2 bg-muted/20">
+            <div className="flex gap-2 lg:w-auto">
+              <Button
+                className="flex-1 lg:flex-none"
+                disabled={!isDirty || isBusy}
+                onClick={resetDraft}
+                type="button"
+                variant="outline"
+              >
+                <XIcon data-icon="inline-start" />
+                ยกเลิก
+              </Button>
+              <Button
+                className="flex-1 lg:flex-none"
+                disabled={!isDirty || isBusy}
+                type="submit"
+              >
+                {mode === "create" ? (
+                  <UploadIcon data-icon="inline-start" />
+                ) : (
+                  <SaveIcon data-icon="inline-start" />
+                )}
+                {isBusy
+                  ? "กำลังทำงาน..."
+                  : mode === "create"
+                    ? "สร้างโฆษณา"
+                    : "บันทึกการเปลี่ยนแปลง"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-xl border bg-background">
+      <div className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-xl border bg-background lg:order-1">
         <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -854,10 +1009,15 @@ export function AdvertisementForm({
                 <ImageIcon aria-hidden className="size-4" />
               </span>
               <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold" title="รูปภาพโฆษณา">
+                <h2
+                  className="truncate text-base font-semibold"
+                  title="รูปภาพโฆษณา"
+                >
                   รูปภาพโฆษณา
                 </h2>
-                <p className="text-xs text-muted-foreground">{totalImages} รูป</p>
+                <p className="text-xs text-muted-foreground">
+                  {totalImages} รูป
+                </p>
               </div>
             </div>
             <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -869,7 +1029,9 @@ export function AdvertisementForm({
                       checked={allCurrentImagesSelected}
                       className="size-4 accent-primary"
                       disabled={visibleExistingImages.length === 0 || isBusy}
-                      onChange={(event) => toggleSelectAllImages(event.currentTarget.checked)}
+                      onChange={(event) =>
+                        toggleSelectAllImages(event.currentTarget.checked)
+                      }
                       type="checkbox"
                     />
                     เลือกทั้งหมด
@@ -884,14 +1046,22 @@ export function AdvertisementForm({
                     <Trash2Icon data-icon="inline-start" />
                     ลบที่เลือก ({selectedBulkDeleteImages.length})
                   </Button>
-                  <Button disabled={isBusy} onClick={clearBulkDeleteSelection} size="sm" type="button" variant="outline">
+                  <Button
+                    disabled={isBusy}
+                    onClick={clearBulkDeleteSelection}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
                     ยกเลิก
                   </Button>
                 </>
               ) : (
                 <>
                   <Button
-                    disabled={!usesOperationImages || !canDeleteExistingImages || isBusy}
+                    disabled={
+                      !usesOperationImages || !canDeleteExistingImages || isBusy
+                    }
                     onClick={() => setIsBulkDeleteMode(true)}
                     size="sm"
                     type="button"
@@ -905,12 +1075,16 @@ export function AdvertisementForm({
                     className={cn(
                       buttonVariants({ variant: "outline", size: "sm" }),
                       "cursor-pointer text-foreground",
-                      (isBusy || remainingSlots === 0) && "pointer-events-none opacity-50",
+                      (isBusy || remainingSlots === 0) &&
+                        "pointer-events-none opacity-50",
                     )}
                     htmlFor="advertisement-images-upload"
                   >
                     {isBusy ? (
-                      <Loader2Icon className="animate-spin" data-icon="inline-start" />
+                      <Loader2Icon
+                        className="animate-spin"
+                        data-icon="inline-start"
+                      />
                     ) : (
                       <UploadCloudIcon data-icon="inline-start" />
                     )}
@@ -951,23 +1125,39 @@ export function AdvertisementForm({
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <Button disabled={isBusy} onClick={() => retryFailedUploads()} size="sm" type="button" variant="outline">
+                    <Button
+                      disabled={isBusy}
+                      onClick={() => retryFailedUploads()}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
                       <RotateCcwIcon data-icon="inline-start" />
                       ลองใหม่ทั้งหมด
                     </Button>
-                    <Button disabled={isBusy} onClick={clearFailedUploads} size="sm" type="button" variant="ghost">
+                    <Button
+                      disabled={isBusy}
+                      onClick={clearFailedUploads}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
                       เอาออกทั้งหมด
                     </Button>
                   </div>
                 </section>
               ) : null}
-              {visibleExistingImages.length === 0 && previews.length === 0 && failedUploadItems.length === 0 ? (
+              {visibleExistingImages.length === 0 &&
+              previews.length === 0 &&
+              failedUploadItems.length === 0 ? (
                 <div className="m-3 flex min-h-60 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 px-4 py-10 text-center">
                   <div className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
                     <ImageIcon aria-hidden className="size-5" />
                   </div>
                   <p className="mt-3 text-sm font-medium">ยังไม่มีรูปโฆษณา</p>
-                  <p className="mt-1 text-xs text-muted-foreground">อัปโหลดรูปเพื่อเพิ่มในโฆษณานี้</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    อัปโหลดรูปเพื่อเพิ่มในโฆษณานี้
+                  </p>
                 </div>
               ) : null}
               <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
@@ -979,11 +1169,14 @@ export function AdvertisementForm({
                         aria-hidden
                         className={cn(
                           "flex size-7 cursor-pointer items-center justify-center rounded-md border bg-background/95 shadow-sm",
-                          selected && "border-primary bg-primary text-primary-foreground",
+                          selected &&
+                            "border-primary bg-primary text-primary-foreground",
                         )}
                         title="เลือกรูปนี้"
                       >
-                        {selected ? <CheckIcon aria-hidden className="size-4" /> : null}
+                        {selected ? (
+                          <CheckIcon aria-hidden className="size-4" />
+                        ) : null}
                       </div>
                     ) : (
                       <Button
@@ -1018,7 +1211,11 @@ export function AdvertisementForm({
                       imageName={image.image_name}
                       key={image.id}
                       loading={index === 0 ? "eager" : "lazy"}
-                      onSelect={isBulkDeleteMode && usesOperationImages ? () => toggleBulkDeleteSelection(image.id) : undefined}
+                      onSelect={
+                        isBulkDeleteMode && usesOperationImages
+                          ? () => toggleBulkDeleteSelection(image.id)
+                          : undefined
+                      }
                       orderLabel={`# ${index + 1}`}
                       previewDescription="ดูตัวอย่างรูปขนาดใหญ่"
                       previewEnabled={!isBulkDeleteMode}
@@ -1047,7 +1244,12 @@ export function AdvertisementForm({
                     alt={preview.file.name}
                     imageName={preview.file.name}
                     key={`${preview.file.name}-${preview.file.size}-${index}`}
-                    metaRows={[{ label: "ขนาด", value: formatFileSize(preview.file.size) }]}
+                    metaRows={[
+                      {
+                        label: "ขนาด",
+                        value: formatFileSize(preview.file.size),
+                      },
+                    ]}
                     orderLabel={`# ${visibleExistingImages.length + index + 1}`}
                     previewDescription="ดูตัวอย่างรูปขนาดใหญ่"
                     previewLabel={`เปิดตัวอย่างรูปขนาดใหญ่ ${preview.file.name}`}
@@ -1070,34 +1272,16 @@ export function AdvertisementForm({
         </section>
       </div>
 
-      <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur lg:col-span-2 lg:mx-0 lg:flex lg:justify-end lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
-        <div className="flex gap-2 lg:w-auto">
-          <Button
-            className="flex-1 lg:flex-none"
-            disabled={!isDirty || isBusy}
-            onClick={resetDraft}
-            type="button"
-            variant="outline"
-          >
-            <XIcon data-icon="inline-start" />
-            ยกเลิก
-          </Button>
-          <Button className="flex-1 lg:flex-none" disabled={!isDirty || isBusy} type="submit">
-            {mode === "create" ? <UploadIcon data-icon="inline-start" /> : <SaveIcon data-icon="inline-start" />}
-            {isBusy
-              ? "กำลังทำงาน..."
-              : mode === "create"
-                ? "สร้างโฆษณา"
-                : "บันทึกการเปลี่ยนแปลง"}
-          </Button>
-        </div>
-      </div>
-
-      <Dialog open={singleDeleteImage !== null} onOpenChange={(open) => !open && setSingleDeleteImage(null)}>
+      <Dialog
+        open={singleDeleteImage !== null}
+        onOpenChange={(open) => !open && setSingleDeleteImage(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>ยืนยันการลบรูปโฆษณา</DialogTitle>
-            <DialogDescription>ตรวจสอบรูปก่อนยืนยันการลบ รูปที่ลบแล้วจะถูกนำออกจากโฆษณานี้</DialogDescription>
+            <DialogDescription>
+              ตรวจสอบรูปก่อนยืนยันการลบ รูปที่ลบแล้วจะถูกนำออกจากโฆษณานี้
+            </DialogDescription>
           </DialogHeader>
           {singleDeleteImage ? (
             <div className="grid gap-3">
@@ -1125,7 +1309,12 @@ export function AdvertisementForm({
                 ยกเลิก
               </Button>
             </DialogClose>
-            <Button disabled={isBusy} onClick={confirmSingleDelete} type="button" variant="destructive">
+            <Button
+              disabled={isBusy}
+              onClick={confirmSingleDelete}
+              type="button"
+              variant="destructive"
+            >
               <Trash2Icon data-icon="inline-start" />
               ลบรูปนี้
             </Button>
@@ -1142,7 +1331,9 @@ export function AdvertisementForm({
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-5xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>ยืนยันลบรูปโฆษณาที่เลือก</DialogTitle>
-            <DialogDescription>ลบรูปโฆษณาที่เลือกจำนวน {bulkDeleteQueue.length} รูป</DialogDescription>
+            <DialogDescription>
+              ลบรูปโฆษณาที่เลือกจำนวน {bulkDeleteQueue.length} รูป
+            </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
@@ -1161,7 +1352,10 @@ export function AdvertisementForm({
                       action={
                         item.status === "deleting" ? (
                           <span className="flex size-7 items-center justify-center rounded-md bg-background/90 shadow-sm">
-                            <Loader2Icon aria-hidden className="size-4 animate-spin" />
+                            <Loader2Icon
+                              aria-hidden
+                              className="size-4 animate-spin"
+                            />
                           </span>
                         ) : item.status === "deleted" ? (
                           <span className="flex size-7 items-center justify-center rounded-md bg-emerald-600 text-white shadow-sm">
@@ -1178,8 +1372,17 @@ export function AdvertisementForm({
                       imageName={shortImageName(image.image_name)}
                       imageUnavailableText="แสดงรูปไม่ได้"
                       metaRows={[
-                        { label: "สถานะ", value: <span className={statusClassName}>{statusLabel}</span> },
-                        ...(item.error ? [{ label: "สาเหตุ", value: item.error }] : []),
+                        {
+                          label: "สถานะ",
+                          value: (
+                            <span className={statusClassName}>
+                              {statusLabel}
+                            </span>
+                          ),
+                        },
+                        ...(item.error
+                          ? [{ label: "สาเหตุ", value: item.error }]
+                          : []),
                       ]}
                       previewDescription="ดูรูปก่อนยืนยันลบ"
                       previewEnabled={!isBulkDeleting}
@@ -1205,7 +1408,8 @@ export function AdvertisementForm({
             </div>
             {failedBulkDeleteItems.length > 0 && !isBulkDeleting ? (
               <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                มีรูปที่ลบไม่สำเร็จ {failedBulkDeleteItems.length} รูป สามารถลองใหม่เฉพาะรายการที่ fail ได้
+                มีรูปที่ลบไม่สำเร็จ {failedBulkDeleteItems.length} รูป
+                สามารถลองใหม่เฉพาะรายการที่ fail ได้
               </div>
             ) : null}
           </div>
@@ -1216,7 +1420,11 @@ export function AdvertisementForm({
               </Button>
             </DialogClose>
             {failedBulkDeleteItems.length > 0 && !isBulkDeleting ? (
-              <Button onClick={() => retryFailedBulkDeletes()} type="button" variant="outline">
+              <Button
+                onClick={() => retryFailedBulkDeletes()}
+                type="button"
+                variant="outline"
+              >
                 <RotateCcwIcon data-icon="inline-start" />
                 ลองใหม่ทั้งหมด
               </Button>
