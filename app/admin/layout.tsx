@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { AdminShell } from "../../components/layout/admin-shell";
 import { requireAdmin } from "../../server/auth/admin";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await requireAdmin();
   const cookieStore = await cookies();

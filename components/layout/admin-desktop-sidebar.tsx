@@ -36,16 +36,20 @@ export function AdminDesktopSidebar({
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild size="lg">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  size="lg"
+                  className="hover:bg-transparent hover:text-inherit active:bg-transparent active:text-inherit"
+                >
                   <div>
                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                      <HouseIcon />
+                      <h1>WE</h1>
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">Webook</span>
-                      <span className="truncate text-xs">จัดการรูปบ้านพัก</span>
+                      <span className="truncate text-xs">ระบบจัดการบ้านพัก</span>
                     </div>
                   </div>
                 </SidebarMenuButton>
@@ -60,7 +64,11 @@ export function AdminDesktopSidebar({
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive tooltip="บ้านพัก">
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/admin/houses")}
+                    tooltip="บ้านพัก"
+                  >
                     <Link href="/admin/houses" onClick={closeMobileSidebar}>
                       <HouseIcon data-icon="inline-start" />
                       <span>บ้านพัก</span>
@@ -73,7 +81,10 @@ export function AdminDesktopSidebar({
                     isActive={pathname.startsWith("/admin/advertisements")}
                     tooltip="โฆษณา"
                   >
-                    <Link href="/admin/advertisements" onClick={closeMobileSidebar}>
+                    <Link
+                      href="/admin/advertisements"
+                      onClick={closeMobileSidebar}
+                    >
                       <MegaphoneIcon data-icon="inline-start" />
                       <span>โฆษณา</span>
                     </Link>
@@ -98,7 +109,6 @@ export function AdminDesktopSidebar({
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
-
       </Sidebar>
     </TooltipProvider>
   );

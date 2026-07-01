@@ -161,8 +161,9 @@ export function isHouseImageFileOperationAllowed(
 ): boolean {
   const provider = getHouseImageStorageProvider(imageUrl);
   return (
-    provider === "r2" &&
-    (operation === "create" || operation === "replace" || operation === "delete")
+    (provider === "r2" &&
+      (operation === "create" || operation === "replace" || operation === "delete")) ||
+    (provider === "aws-s3" && operation === "delete")
   );
 }
 

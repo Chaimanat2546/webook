@@ -37,9 +37,9 @@ Current R2 upload contract:
 - Zone navigation is a setup menu, not a gallery-only filter: show all configured zones in order (`cover`, `outside`, `parking`, `inside`, `kitchen`, `bedroom`, `bathroom`, `review`) even when empty, and show only image counts instead of zone order ranges.
 - รูปใหม่ upload ไป Cloudflare R2 แล้วเพิ่ม record ใน `images`; รูปที่อัปโหลดไม่สำเร็จจะแสดงเป็นการ์ดสีเทาแบบยังไม่ถูกบันทึกใน grid ของโซนปัจจุบัน พร้อม summary, retry, และ remove
 - record ใหม่ที่ผูกกับไฟล์จริงต้องใช้ Cloudflare R2 เป็น writable provider เท่านั้น
-- AWS/S3-backed images เป็น legacy/display-only ชั่วคราว ยังใช้แสดงผลได้ แต่ยังไม่ให้ลบไฟล์จริง และห้ามสร้างหรือแก้ไฟล์จริงบน AWS/S3
+- AWS/S3-backed images เป็น legacy สำหรับ create/replace ยังใช้แสดงผลได้ และลบได้ผ่าน Lambda URL เดิมหลัง confirmation แต่ห้ามสร้างหรือแก้ไฟล์จริงบน AWS/S3
 - ใช้ `images.image_url` เป็น discriminator ฝั่ง server สำหรับแยก AWS/S3 legacy กับ R2 ห้ามรับ provider จาก client และห้ามเพิ่ม provider column ใหม่
-- AWS/S3 physical delete ปิดไว้ก่อนจนกว่าจะมี delete API/secret และ failure behavior ที่ชัดเจน
+- AWS/S3 physical delete เปิดใช้ผ่าน delete API/behavior ที่อนุมัติแล้ว; failure ใช้ cleanup warning/failed queue เดิม
 
 ## Out of Scope
 
@@ -58,7 +58,7 @@ Current R2 upload contract:
 - Delete ต้องมี confirmation ถ้าเกี่ยวข้องกับไฟล์จริง
 - ถ้าผู้ใช้ cancel confirmation ห้ามลบ record และห้ามลบไฟล์
 - file create/replace/edit สำหรับรูปใหม่ต้องเป็น Cloudflare R2 เท่านั้นเมื่อเข้าสู่ MVP 5
-- AWS/S3 ไม่อนุญาต file operation ใด ๆ ในตอนนี้ รวมถึง delete physical file
+- AWS/S3 อนุญาตเฉพาะ delete physical file ผ่าน server adapter; upload/replace/edit ยังถูกปฏิเสธ
 
 ## Testing Checklist
 
@@ -72,6 +72,6 @@ Current R2 upload contract:
 - bulk delete แสดงสถานะรายรูป, progress, summary toast, และ retry เฉพาะรายการที่ลบไม่สำเร็จ
 - cancel confirmation แล้วไม่ลบ
 - ลบ cover แล้วต้องเลือก cover ใหม่ก่อน save
-- operation ที่พยายามสร้าง แก้ หรือลบไฟล์จริงบน AWS/S3 ต้องถูกปฏิเสธ
+- operation ที่พยายามสร้าง แก้ หรือ replace ไฟล์จริงบน AWS/S3 ต้องถูกปฏิเสธ; delete ต้องผ่าน confirmation
 - รูปใหม่ใช้ key prefix `houses/{property_id}/...` และเก็บ full Worker URL ใน `images.image_url`
 - หลังเพิ่ม/ลบแล้วข้อมูล reload ถูกต้อง

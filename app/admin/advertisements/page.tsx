@@ -11,7 +11,7 @@ import {
   EmptyTitle,
 } from "../../../components/ui/empty";
 import { Input } from "../../../components/ui/input";
-import { requireAdmin } from "../../../server/auth/admin";
+import { canUseAccommodation, requireAdmin } from "../../../server/auth/admin";
 import { getAdvertisements } from "../../../server/repositories/advertisements";
 import { normalizePage } from "../../../server/services/houses";
 
@@ -25,7 +25,19 @@ export default async function AdvertisementsPage({
   const { page, q } = await searchParams;
   const currentPage = normalizePage(page);
   const search = q?.trim() ?? "";
-  const { supabase } = await requireAdmin();
+  const { adminUser, supabase } = await requireAdmin();
+
+  if (!canUseAccommodation(adminUser)) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>ไม่มีสิทธิ์เข้าถึงหมวดโฆษณา</EmptyTitle>
+          <EmptyDescription>บัญชีนี้ยังไม่ได้เปิด allow_accommodation</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   const advertisements = await getAdvertisements(supabase);
   const visibleAdvertisements = search
     ? advertisements.filter((advertisement) => {

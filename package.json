@@ -5,13 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "node --use-system-ca ./node_modules/next/dist/bin/next dev",
-    "build": "next build",
+    "build": "node --use-system-ca ./node_modules/next/dist/bin/next build --webpack",
     "start": "node --use-system-ca ./node_modules/next/dist/bin/next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"tests/**/*.test.ts\""
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "preview:cf": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy:cf": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload:cf": "opennextjs-cloudflare build && opennextjs-cloudflare upload"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.1",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "class-variance-authority": "^0.7.1",

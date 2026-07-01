@@ -8,10 +8,8 @@ const packageJson = JSON.parse(
 
 describe("Supabase runtime TLS", () => {
   it("runs Next server commands with the Windows system CA store", () => {
-    for (const scriptName of ["dev", "start"]) {
+    for (const scriptName of ["dev", "build", "start"]) {
       assert.match(packageJson.scripts?.[scriptName] ?? "", /--use-system-ca/);
     }
-
-    assert.doesNotMatch(packageJson.scripts?.build ?? "", /--use-system-ca/);
   });
 });
