@@ -23,6 +23,9 @@ The media Worker/R2 image pipeline remains separate and uses `workers/media/wran
 ## MVP 1 Admin Image Flow
 
 Supabase Auth session is checked server-side in admin routes.
+The login form accepts email or `public.users.username`. Username login is resolved server-side with a Supabase service-role client, then still signs in through Supabase Auth email/password.
+Password reset uses Supabase Auth recovery emails from `/login?forgot=1` and a public `/login/reset-password` page. The reset page uses the browser Supabase client only to consume the recovery session and call `auth.updateUser({ password })`.
+Password reset requests show a 1-minute browser countdown to prevent repeated clicks, then are throttled per normalized email in the current server process; use a shared store if strict multi-instance throttling becomes required.
 The `app/admin` segment is forced dynamic so authenticated Supabase reads are not served from a stale static/OpenNext cache.
 The app looks up `public.users` by `uid = auth.user.id`, then falls back to `email = auth.user.email` while legacy rows are backfilled.
 House image access is controlled by `public.users.allow_tools.allow_accommodation = true`.

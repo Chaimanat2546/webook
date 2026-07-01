@@ -1,8 +1,48 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { canUseAccommodation, pickAdminUser } from "../server/auth/admin.ts";
+import { findSignInEmailByUsername } from "../server/repositories/admin-users.ts";
+
+interface FakeQueryResult {
+  data: Array<{ email: string | null }> | null;
+  error: { message: string } | null;
+}
+
+class FakeUsersQuery {
+  private readonly result: FakeQueryResult;
+
+  constructor(result: FakeQueryResult) {
+    this.result = result;
+  }
+
+  select(columns: string) {
+    assert.equal(columns, "email");
+    return this;
+  }
+
+  eq(column: string, value: string) {
+    assert.equal(column, "username");
+    assert.equal(value, "admin");
+    return this;
+  }
+
+  async limit(count: number) {
+    assert.equal(count, 2);
+    return this.result;
+  }
+}
+
+function fakeUsersClient(result: FakeQueryResult) {
+  return {
+    from(table: string) {
+      assert.equal(table, "users");
+      return new FakeUsersQuery(result);
+    },
+  } as unknown as SupabaseClient;
+}
 
 describe("admin authorization", () => {
   it("allows house access from allow_accommodation only", () => {
@@ -50,6 +90,27 @@ describe("admin authorization", () => {
     assert.match(repositorySource, /\.select\("mid, role_id, allow_tools"\)/);
     assert.doesNotMatch(repositorySource, /\.select\("id, role_id"\)/);
     assert.doesNotMatch(repositorySource, /\.select\("id:dv_id, role_id"\)/);
+  });
+
+  it("resolves a unique username to a sign-in email", async () => {
+    const email = await findSignInEmailByUsername(
+      fakeUsersClient({ data: [{ email: " admin@example.com " }], error: null }),
+      " admin ",
+    );
+
+    assert.equal(email, "admin@example.com");
+  });
+
+  it("does not resolve missing, duplicate, or email-less usernames", async () => {
+    assert.equal(await findSignInEmailByUsername(fakeUsersClient({ data: [], error: null }), "admin"), null);
+    assert.equal(
+      await findSignInEmailByUsername(
+        fakeUsersClient({ data: [{ email: "a@example.com" }, { email: "b@example.com" }], error: null }),
+        "admin",
+      ),
+      null,
+    );
+    assert.equal(await findSignInEmailByUsername(fakeUsersClient({ data: [{ email: null }], error: null }), "admin"), null);
   });
 
   it("keeps admin layout as authentication only", () => {

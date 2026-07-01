@@ -76,6 +76,8 @@ Copy `.env.example` to `.env.local` and point the app at local Supabase:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=PASTE_LOCAL_ANON_KEY
+# Server-side only. Required for username sign-in lookup.
+SUPABASE_SERVICE_ROLE_KEY=PASTE_LOCAL_SERVICE_ROLE_KEY
 # Shared media Worker for advertisements and new house images.
 ADVERTISEMENT_IMAGE_WORKER_URL=
 ADVERTISEMENT_IMAGE_WORKER_SECRET=
@@ -199,12 +201,27 @@ Auto Confirm User: true
 Copy the new auth user UID, then insert the matching admin row. Keep `mid` when testing house image uploads:
 
 ```powershell
-& $SUPABASE db query "insert into public.users (email, role_id, uid, name, mid, allow_tools) values ('admin@example.local', 1, 'PASTE_AUTH_UID', 'Local Admin', 1, '{""allow_accommodation"": true}'::jsonb);"
+& $SUPABASE db query "insert into public.users (username, email, role_id, uid, name, mid, allow_tools) values ('admin', 'admin@example.local', 1, 'PASTE_AUTH_UID', 'Local Admin', 1, '{""allow_accommodation"": true}'::jsonb);"
 ```
 
 `public.users.uid` must equal `auth.users.id`. `public.users.id` is not the auth UID.
 
 If login behaves strangely after changing users or env vars, clear cookies for `localhost:3000` or use an incognito window.
+
+Admins can sign in with email or `public.users.username`. Username sign-in is resolved server-side to the user's email with `SUPABASE_SERVICE_ROLE_KEY`, then authenticated through Supabase Auth. If a username is missing, duplicated, or has no email, the login fails with the same generic invalid-credentials message.
+
+## Admin Password Reset
+
+The login page has a forgot-password mode at `/login?forgot=1`; there is no separate `/login/forgot-password` page.
+Reset emails are sent through Supabase Auth and redirect admins to `/login/reset-password`.
+Add this URL to the Supabase Auth redirect URL allow list for each environment:
+
+```text
+http://localhost:3000/login/reset-password
+https://<admin-domain>/login/reset-password
+```
+
+The app disables the reset submit button with a 1-minute browser countdown after a request. It also adds a small per-email reset throttle of 1 request per minute in the current server process. Supabase Auth and SMTP limits still apply.
 
 ## Seed Data
 
