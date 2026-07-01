@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
           ) : null}
 
           {pageState === "ready" ? (
-            <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            <form autoComplete="off" className="flex flex-col gap-4" onSubmit={handleSubmit}>
               {errors.length > 0 ? (
                 <AuthMessage tone="error">
                   <ul className="list-disc space-y-1 pl-4">
@@ -164,9 +164,13 @@ export default function ResetPasswordPage() {
                   <FieldLabel htmlFor="new-password">รหัสผ่านใหม่</FieldLabel>
                   <Input
                     id="new-password"
-                    autoComplete="new-password"
+                    autoComplete="off"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
+                    data-lpignore="true"
                     minLength={8}
-                    name="password"
+                    name="newAdminCredential"
                     onChange={(event) => setPassword(event.target.value)}
                     required
                     type="password"
@@ -177,9 +181,13 @@ export default function ResetPasswordPage() {
                   <FieldLabel htmlFor="confirm-password">ยืนยันรหัสผ่านใหม่</FieldLabel>
                   <Input
                     id="confirm-password"
-                    autoComplete="new-password"
+                    autoComplete="off"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
+                    data-lpignore="true"
                     minLength={8}
-                    name="confirmPassword"
+                    name="confirmAdminCredential"
                     onChange={(event) => setConfirmPassword(event.target.value)}
                     required
                     type="password"

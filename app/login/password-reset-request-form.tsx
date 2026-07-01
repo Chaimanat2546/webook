@@ -89,7 +89,7 @@ export function PasswordResetRequestForm({
         : "ส่งลิงก์รีเซ็ตรหัสผ่าน";
 
   return (
-    <form action={action} className="flex flex-col gap-4" onSubmit={handleSubmit}>
+    <form action={action} autoComplete="off" className="flex flex-col gap-4" onSubmit={handleSubmit}>
       {sent ? (
         <AuthMessage tone="success">
           ถ้าอีเมลนี้อยู่ในระบบ เราส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้แล้ว
@@ -101,7 +101,7 @@ export function PasswordResetRequestForm({
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="reset-email">Email</FieldLabel>
-          <Input id="reset-email" name="email" type="email" autoComplete="email" required />
+          <Input id="reset-email" name="email" type="email" autoComplete="off" required />
         </Field>
       </FieldGroup>
 

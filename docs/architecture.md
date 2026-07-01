@@ -24,6 +24,7 @@ The media Worker/R2 image pipeline remains separate and uses `workers/media/wran
 
 Supabase Auth session is checked server-side in admin routes.
 The login form accepts email or `public.users.username`. Username login is resolved server-side with a Supabase service-role client, then still signs in through Supabase Auth email/password.
+Local Supabase config time-boxes admin sessions to 12 hours; configure the same Time-box user sessions value in hosted Supabase Auth settings for staging/production.
 Password reset uses Supabase Auth recovery emails from `/login?forgot=1` and a public `/login/reset-password` page. The reset page uses the browser Supabase client only to consume the recovery session and call `auth.updateUser({ password })`.
 Password reset requests show a 1-minute browser countdown to prevent repeated clicks, then are throttled per normalized email in the current server process; use a shared store if strict multi-instance throttling becomes required.
 The `app/admin` segment is forced dynamic so authenticated Supabase reads are not served from a stale static/OpenNext cache.

@@ -210,6 +210,8 @@ If login behaves strangely after changing users or env vars, clear cookies for `
 
 Admins can sign in with email or `public.users.username`. Username sign-in is resolved server-side to the user's email with `SUPABASE_SERVICE_ROLE_KEY`, then authenticated through Supabase Auth. If a username is missing, duplicated, or has no email, the login fails with the same generic invalid-credentials message.
 
+Local Supabase is configured to force re-authentication after 12 hours with `[auth.sessions].timebox = "12h"`. For staging/production, set the same value in Supabase Dashboard -> Authentication -> Sessions -> Time-box user sessions. Supabase enforces this when sessions refresh, so the visible logout can be delayed by up to the JWT expiry time.
+
 ## Admin Password Reset
 
 The login page has a forgot-password mode at `/login?forgot=1`; there is no separate `/login/forgot-password` page.
