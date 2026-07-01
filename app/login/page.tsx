@@ -56,13 +56,21 @@ export default async function LoginPage({
           ) : (
             <form action={signIn} className="flex flex-col gap-4">
               {error ? (
-                <AuthMessage tone="error">อีเมลหรือรหัสผ่านไม่ถูกต้อง</AuthMessage>
+                <AuthMessage tone="error">อีเมล/ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</AuthMessage>
               ) : null}
 
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
-                  <Input id="email" name="email" type="email" autoComplete="email" required />
+                  <FieldLabel htmlFor="identifier">Email หรือ Username</FieldLabel>
+                  <Input
+                    id="identifier"
+                    name="identifier"
+                    type="text"
+                    autoCapitalize="none"
+                    autoComplete="username"
+                    spellCheck={false}
+                    required
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="password">Password</FieldLabel>

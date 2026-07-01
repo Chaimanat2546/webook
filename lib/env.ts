@@ -9,6 +9,17 @@ export function getSupabaseEnv() {
   return { anonKey, url };
 }
 
+export function getSupabaseServiceRoleEnv() {
+  const { url } = getSupabaseEnv();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceRoleKey) {
+    return null;
+  }
+
+  return { serviceRoleKey, url };
+}
+
 export function getAdvertisementImageEnv() {
   const workerSecret = process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET;
   const workerUrl = process.env.ADVERTISEMENT_IMAGE_WORKER_URL;

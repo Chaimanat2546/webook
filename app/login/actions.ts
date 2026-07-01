@@ -7,14 +7,23 @@ import {
   normalizePasswordResetEmail,
   validatePasswordResetEmail,
 } from "../../lib/auth/password-reset";
+import { createSupabaseAdminClient } from "../../lib/supabase/admin";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { findSignInEmailByUsername } from "../../server/repositories/admin-users";
 import { consumePasswordResetRateLimit } from "../../server/auth/password-reset-rate-limit";
 
 export async function signIn(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim();
+  const identifierValue = formData.get("identifier") ?? formData.get("email");
+  const identifier = String(identifierValue ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
-  if (!email || !password) {
+  if (!identifier || !password) {
+    redirect("/login?error=invalid");
+  }
+
+  const email = await resolveSignInEmail(identifier);
+
+  if (!email) {
     redirect("/login?error=invalid");
   }
 
@@ -26,6 +35,20 @@ export async function signIn(formData: FormData) {
   }
 
   redirect("/admin/houses");
+}
+
+async function resolveSignInEmail(identifier: string) {
+  if (identifier.includes("@")) {
+    return identifier.toLowerCase();
+  }
+
+  const supabaseAdmin = createSupabaseAdminClient();
+
+  if (!supabaseAdmin) {
+    return null;
+  }
+
+  return findSignInEmailByUsername(supabaseAdmin, identifier);
 }
 
 export async function signOut() {
