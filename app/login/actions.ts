@@ -15,7 +15,7 @@ import { consumePasswordResetRateLimit } from "../../server/auth/password-reset-
 export async function signIn(formData: FormData) {
   const identifierValue = formData.get("identifier") ?? formData.get("email");
   const identifier = String(identifierValue ?? "").trim();
-  const password = String(formData.get("password") ?? "");
+  const password = String(formData.get("adminCredential") ?? formData.get("password") ?? "");
 
   if (!identifier || !password) {
     redirect("/login?error=invalid");
