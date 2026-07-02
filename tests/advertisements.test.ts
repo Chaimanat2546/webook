@@ -38,12 +38,7 @@ describe("advertisement rules", () => {
   it("builds database filenames separately from R2 object keys", async () => {
     const advertisementsModule = await import("../server/services/advertisements.ts");
     assert.equal(typeof advertisementsModule.buildAdvertisementImageObjectKey, "function");
-    assert.equal(typeof advertisementsModule.resolveAdvertisementImageObjectKey, "function");
     const buildAdvertisementImageObjectKey = advertisementsModule.buildAdvertisementImageObjectKey as (
-      advertisementId: string,
-      imageName: string,
-    ) => string;
-    const resolveAdvertisementImageObjectKey = advertisementsModule.resolveAdvertisementImageObjectKey as (
       advertisementId: string,
       imageName: string,
     ) => string;
@@ -58,10 +53,6 @@ describe("advertisement rules", () => {
     assert.equal(
       buildAdvertisementImageObjectKey("ad-1", "20260109220657_60b5a9a545.jpg"),
       "advertisements/ad-1/20260109220657_60b5a9a545.jpg",
-    );
-    assert.equal(
-      resolveAdvertisementImageObjectKey("ad-1", "advertisements/ad-1/1.webp"),
-      "advertisements/ad-1/1.webp",
     );
   });
 

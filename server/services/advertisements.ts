@@ -1,4 +1,3 @@
-import { validateAdvertisementImageObjectKey } from "../../lib/advertisement-image-url.ts";
 import {
   buildManagedImageFileName,
   validateManagedImageFileName,
@@ -67,12 +66,6 @@ export function buildAdvertisementImageObjectKey(advertisementId: string, imageN
   const id = advertisementId.trim();
   if (!/^[a-z0-9_-]+$/i.test(id)) throw new Error("Invalid advertisement id");
   return `advertisements/${id}/${validateManagedImageFileName(imageName)}`;
-}
-
-export function resolveAdvertisementImageObjectKey(advertisementId: string, imageName: string): string {
-  const normalized = imageName.trim().replace(/\\/g, "/");
-  if (normalized.startsWith("advertisements/")) return validateAdvertisementImageObjectKey(normalized);
-  return buildAdvertisementImageObjectKey(advertisementId, normalized);
 }
 
 export function normalizeAdvertisementImages<T extends AdvertisementImageItem>(images: T[]): T[] {

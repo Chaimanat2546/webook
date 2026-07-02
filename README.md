@@ -349,7 +349,8 @@ Supabase stores advertisement image metadata only:
 
 - `advertisements`
 - `advertisement_images`
-- `image_name` keys such as `advertisements/{advertisement_id}/1.webp`
+- filename-only `image_name` values
+- generated `image_path` keys such as `advertisements/{advertisement_id}/1.webp`
 
 Image files are uploaded, deleted, and served through the `webook-media` Cloudflare Worker/R2 bucket. Supabase local does not replace Cloudflare R2; use adapter tests or a deployed Worker for image-file behavior.
 

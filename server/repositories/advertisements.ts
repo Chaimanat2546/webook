@@ -6,6 +6,7 @@ export interface AdvertisementImageRow {
   id: string;
   image_name: string;
   image_order: number;
+  image_path: string;
   updated_at: string | null;
 }
 
@@ -25,7 +26,7 @@ export interface AdvertisementImageInsert {
 }
 
 const advertisementSelect =
-  "id,title,is_active,created_at,updated_at,advertisement_images(id,advertisement_id,image_name,image_order,created_at,updated_at)";
+  "id,title,is_active,created_at,updated_at,advertisement_images(id,advertisement_id,image_name,image_order,image_path,created_at,updated_at)";
 
 export async function getAdvertisements(supabase: SupabaseClient) {
   const { data, error } = await supabase
@@ -52,7 +53,7 @@ export async function getAdvertisementById(supabase: SupabaseClient, id: string)
 export async function getAdvertisementImageById(supabase: SupabaseClient, id: string) {
   const { data, error } = await supabase
     .from("advertisement_images")
-    .select("id,advertisement_id,image_name,image_order,created_at,updated_at")
+    .select("id,advertisement_id,image_name,image_order,image_path,created_at,updated_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -63,7 +64,7 @@ export async function getAdvertisementImageById(supabase: SupabaseClient, id: st
 export async function getAdvertisementImages(supabase: SupabaseClient, advertisementId: string) {
   const { data, error } = await supabase
     .from("advertisement_images")
-    .select("id,advertisement_id,image_name,image_order,created_at,updated_at")
+    .select("id,advertisement_id,image_name,image_order,image_path,created_at,updated_at")
     .eq("advertisement_id", advertisementId)
     .order("image_order", { ascending: true });
 

@@ -10,6 +10,14 @@ function advertisementMigrationSql() {
   return readFileSync(join(dir, file), "utf8");
 }
 
+function allMigrationSql() {
+  const dir = join(process.cwd(), "supabase", "migrations");
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(".sql"))
+    .map((name) => readFileSync(join(dir, name), "utf8"))
+    .join("\n");
+}
+
 describe("advertisement migration", () => {
   it("creates the required tables and RLS policies", () => {
     const sql = advertisementMigrationSql();
@@ -24,13 +32,17 @@ describe("advertisement migration", () => {
   });
 
   it("uses accommodation permission for advertisement management", () => {
-    const sql = readdirSync(new URL("../supabase/migrations", import.meta.url))
-      .filter((file) => file.endsWith(".sql"))
-      .map((file) => readFileSync(join("supabase/migrations", file), "utf8"))
-      .join("\n");
+    const sql = allMigrationSql();
 
     assert.match(sql, /drop policy if exists "Administrators can manage advertisements"/);
     assert.match(sql, /drop policy if exists "Administrators can manage advertisement images"/);
     assert.match(sql, /users\.allow_tools @> '\{"allow_accommodation": true\}'::jsonb/);
+  });
+
+  it("stores advertisement image object paths", () => {
+    const sql = allMigrationSql();
+
+    assert.match(sql, /add column image_path text generated always as/);
+    assert.match(sql, /advertisements\/' \|\| advertisement_id::text \|\| '\/' \|\| image_name/);
   });
 });

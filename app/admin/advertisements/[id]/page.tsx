@@ -23,7 +23,6 @@ import {
   getAdvertisementById,
   type AdvertisementImageRow,
 } from "../../../../server/repositories/advertisements";
-import { resolveAdvertisementImageObjectKey } from "../../../../server/services/advertisements";
 import {
   deleteAdvertisementImageAction,
   updateAdvertisementAction,
@@ -32,10 +31,7 @@ import {
 
 function imageSrc(image: AdvertisementImageRow, workerUrl: string): string | null {
   try {
-    return buildAdvertisementImageUrl(
-      resolveAdvertisementImageObjectKey(image.advertisement_id, image.image_name),
-      workerUrl,
-    );
+    return buildAdvertisementImageUrl(image.image_path, workerUrl);
   } catch {
     return null;
   }

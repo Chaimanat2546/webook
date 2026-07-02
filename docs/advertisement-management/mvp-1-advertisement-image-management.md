@@ -4,7 +4,7 @@
 
 สร้างระบบ admin สำหรับจัดการโฆษณาและรูปภาพโฆษณา
 
-MVP นี้ให้ admin สร้าง แก้ไข เปิด/ปิด และจัดการรูปโฆษณาได้ โดยระบบอื่นจะอ่านข้อมูล active advertisements ผ่าน Supabase API และนำ `image_name` ไปสร้าง URL รูปจาก Cloudflare Worker เอง
+This MVP lets admins create, edit, activate/deactivate, and manage advertisement images. External systems read active advertisements through Supabase API and compose Cloudflare Worker URLs from `image_path`.
 
 ## In Scope
 
@@ -119,6 +119,7 @@ Fields:
 - `id`
 - `advertisement_id`
 - `image_name`
+- `image_path`
 - `image_order`
 - `created_at`
 - `updated_at`
@@ -146,19 +147,20 @@ Business rule:
 ตัวอย่าง query:
 
 ```text
-advertisements?select=id,title,advertisement_images(image_name,image_order)&is_active=eq.true
+advertisements?select=id,title,advertisement_images(image_name,image_path,image_order)&is_active=eq.true
 ```
 
-Supabase API ส่ง `image_name` เท่านั้น ไม่ส่ง full image URL
+Supabase API sends `image_name` and `image_path`, not full image URLs.
 
 ## Image Storage Behavior
 
 Current R2 storage contract:
 
 - Supabase stores filename-only `advertisement_images.image_name` values, not full paths or URLs.
+- Supabase stores generated `advertisement_images.image_path` object keys for direct Worker path composition.
 - New `image_name` values use `YYYYMMDDHHmmss_random10.ext`, for example `20260109220657_60b5a9a545.webp`.
 - The server composes R2 object keys as `advertisements/{advertisement_id}/{image_name}`.
-- Worker URLs are built as `{ADVERTISEMENT_IMAGE_WORKER_URL}/advertisements/{advertisement_id}/{image_name}`.
+- Worker URLs are built as `{ADVERTISEMENT_IMAGE_WORKER_URL}/{image_path}`.
 - Clients and public readers must not treat `image_name` alone as a full object key.
 
 รูปเก็บใน Cloudflare R2 ผ่าน Worker/storage adapter
@@ -279,7 +281,7 @@ Error:
 ## Testing Checklist
 
 - newly selected files append to existing unsaved draft images instead of replacing them
-- new uploads store filename-only `image_name` values and server-side R2 keys under `advertisements/{advertisement_id}/{image_name}`
+- new uploads store filename-only `image_name` values and generated `image_path` keys under `advertisements/{advertisement_id}/{image_name}`
 - newly selected advertisement images are resized to max 1920px and encoded as WebP before upload
 - GIF upload is rejected
 - Administrator เข้าใช้งานได้

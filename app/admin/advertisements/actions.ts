@@ -22,7 +22,6 @@ import {
   getAvailableAdvertisementImageOrders,
   getImageFiles,
   normalizeAdvertisementImages,
-  resolveAdvertisementImageObjectKey,
   validateAdvertisementImageEditCount,
   validateAdvertisementImageCount,
   validateAdvertisementImageFile,
@@ -209,7 +208,7 @@ export async function updateAdvertisementAction(id: string, formData: FormData) 
       await Promise.allSettled(
         imagesToDelete.map((image) =>
           deleteAdvertisementImageObject({
-            objectKey: resolveAdvertisementImageObjectKey(image.advertisement_id, image.image_name),
+            objectKey: image.image_path,
             workerSecret,
             workerUrl,
           }),
@@ -240,7 +239,7 @@ export async function deleteAdvertisementImageAction(imageId: string) {
   if (!image) throw new Error("Advertisement image not found");
 
   const { workerSecret, workerUrl } = getAdvertisementImageEnv();
-  const objectKey = resolveAdvertisementImageObjectKey(image.advertisement_id, image.image_name);
+  const objectKey = image.image_path;
   await deleteAdvertisementImageById(supabase, imageId);
   await normalizeStoredImageOrder(supabase, image.advertisement_id);
 
