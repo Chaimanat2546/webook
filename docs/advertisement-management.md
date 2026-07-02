@@ -2,7 +2,7 @@
 
 ระบบจัดการโฆษณาและรูปภาพโฆษณาสำหรับผู้ใช้ฝั่ง admin เท่านั้น
 
-`webook` stores advertisement metadata and images for admin use only. External systems read active advertisements through Supabase API and compose Cloudflare Worker URLs from `image_path`.
+`webook` stores advertisement metadata and images for admin use only. External systems read active advertisements through Supabase API, filter by the house-listing `zone` when needed, and compose Cloudflare Worker URLs from `image_path`.
 
 ผู้ใช้ที่มีสิทธิ์:
 
@@ -16,6 +16,7 @@
 
 Current advertisement image storage contract:
 
+- `advertisements.zone` stores the house-listing zone key, for example `pattaya`, `bangsean`, or `hua_hin`; `all` means every listing zone. The admin form validates it against the shared listing zone labels.
 - New uploads store filename-only `advertisement_images.image_name` values using `YYYYMMDDHHmmss_random10.ext`, for example `20260109220657_60b5a9a545.webp`.
 - `advertisement_images.image_path` stores the generated R2 object key `advertisements/{advertisement_id}/{image_name}`.
 - External systems should compose display URLs by appending `image_path` to the Worker URL, not by appending `image_name` directly.
@@ -39,6 +40,7 @@ Current advertisement image storage contract:
   - Advertisement image prefix: `advertisements/`
 - Supabase เก็บ `image_name` เป็น source of truth ไม่เก็บ full image URL
 - ระบบอื่นอ่านผ่าน Supabase API ได้เฉพาะ `is_active = true`
+- ระบบอื่นควรเลือก/กรอง `advertisements.zone` เพื่อแสดงโฆษณาตามโซนบ้าน listing และรวม `zone = all` ด้วย
 - `webook` ไม่มี public/customer advertisement page
 
 ## Role Decisions

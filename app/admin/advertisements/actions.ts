@@ -26,6 +26,7 @@ import {
   validateAdvertisementImageCount,
   validateAdvertisementImageFile,
   validateAdvertisementTitle,
+  validateAdvertisementZone,
 } from "../../../server/services/advertisements";
 import {
   deleteAdvertisementImageObject,
@@ -137,6 +138,7 @@ export async function createAdvertisementAction(formData: FormData) {
   assertAuthorized(isAuthorized);
 
   const title = validateAdvertisementTitle(requireString(formData, "title"));
+  const zone = validateAdvertisementZone(requireString(formData, "zone"));
   const isActive = booleanField(formData, "is_active", true);
 
   const advertisementId = crypto.randomUUID();
@@ -145,6 +147,7 @@ export async function createAdvertisementAction(formData: FormData) {
     images: [],
     isActive,
     title,
+    zone,
   });
 
   revalidatePath("/admin/advertisements");
@@ -159,6 +162,7 @@ export async function updateAdvertisementAction(id: string, formData: FormData) 
   if (!advertisement) throw new Error("Advertisement not found");
 
   const title = validateAdvertisementTitle(requireString(formData, "title"));
+  const zone = validateAdvertisementZone(requireString(formData, "zone"));
   const isActive = booleanField(formData, "is_active", false);
   const existingImages = advertisement.advertisement_images ?? [];
   const deletedImageIds = new Set(stringArrayField(formData, "deleted_image_ids"));
@@ -196,7 +200,7 @@ export async function updateAdvertisementAction(id: string, formData: FormData) 
       }
     }
 
-    await updateAdvertisement(supabase, id, { isActive, title });
+    await updateAdvertisement(supabase, id, { isActive, title, zone });
     for (const image of imagesToDelete) {
       await deleteAdvertisementImageById(supabase, image.id);
     }

@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 
 import { resizeToMax } from "../../../lib/advertisement-image-resize";
+import { ZONE_OPTIONS } from "../../../lib/house-zones";
 import { cn } from "../../../lib/utils";
 import { AdminImageCard } from "../image-asset-card";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
@@ -50,6 +51,7 @@ import { Switch } from "../../ui/switch";
 const MAX_IMAGES = 2;
 const RESIZED_IMAGE_TYPE = "image/webp";
 const RESIZED_IMAGE_QUALITY = 0.82;
+const ADVERTISEMENT_ZONE_OPTIONS = ZONE_OPTIONS;
 const supportedAdvertisementInputTypes = new Set([
   "image/avif",
   "image/jpeg",
@@ -322,6 +324,7 @@ export function AdvertisementForm({
   deleteAction,
   defaultIsActive = true,
   defaultTitle = "",
+  defaultZone = "",
   existingImages = [],
   mode,
   uploadAction,
@@ -333,6 +336,7 @@ export function AdvertisementForm({
   deleteAction?: (imageId: string) => Promise<AdvertisementDeleteResult>;
   defaultIsActive?: boolean;
   defaultTitle?: string;
+  defaultZone?: string;
   existingImages?: AdvertisementFormImage[];
   mode: "create" | "edit";
   uploadAction?: (formData: FormData) => Promise<{ uploadedCount: number }>;
@@ -340,6 +344,7 @@ export function AdvertisementForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const titleId = useId();
+  const zoneId = useId();
   const activeId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1047,6 +1052,26 @@ export function AdvertisementForm({
               name="title"
               required
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor={zoneId}>โซนบ้าน</Label>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              defaultValue={defaultZone}
+              id={zoneId}
+              name="zone"
+              required
+            >
+              <option disabled value="">
+                เลือกโซน
+              </option>
+              {ADVERTISEMENT_ZONE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label} ({option.value})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex items-center justify-between gap-4">

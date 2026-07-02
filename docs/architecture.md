@@ -58,6 +58,7 @@ House image storage has two provider classes:
 
 Advertisement management is part of the accommodation admin menu and uses `public.users.allow_tools.allow_accommodation = true`.
 Admin pages write advertisement metadata through server actions and Supabase repositories.
+Advertisement metadata includes `advertisements.zone`, which uses the same house-listing zone keys as `public.listings.location_zone`; `all` is the cross-zone advertisement value.
 Advertisement files are uploaded/deleted through the server-only Worker adapter. Create mode uploads images on create submit after generating an advertisement id; edit mode uploads selected images immediately through a client queue and uses operation-specific delete actions.
 Supabase stores filename-only `advertisement_images.image_name` values plus generated `advertisement_images.image_path` object keys.
 Advertisement R2 object keys use `advertisements/{advertisement_id}/{image_name}` and are exposed as `image_path`.

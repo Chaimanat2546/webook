@@ -17,6 +17,7 @@ export interface AdvertisementRow {
   is_active: boolean;
   title: string;
   updated_at: string | null;
+  zone: string;
 }
 
 export interface AdvertisementImageInsert {
@@ -26,7 +27,7 @@ export interface AdvertisementImageInsert {
 }
 
 const advertisementSelect =
-  "id,title,is_active,created_at,updated_at,advertisement_images(id,advertisement_id,image_name,image_order,image_path,created_at,updated_at)";
+  "id,title,zone,is_active,created_at,updated_at,advertisement_images(id,advertisement_id,image_name,image_order,image_path,created_at,updated_at)";
 
 export async function getAdvertisements(supabase: SupabaseClient) {
   const { data, error } = await supabase
@@ -79,16 +80,18 @@ export async function insertAdvertisementWithImages(
     images,
     isActive,
     title,
+    zone,
   }: {
     id: string;
     images: AdvertisementImageInsert[];
     isActive: boolean;
     title: string;
+    zone: string;
   },
 ) {
   const { error: advertisementError } = await supabase
     .from("advertisements")
-    .insert({ id, is_active: isActive, title });
+    .insert({ id, is_active: isActive, title, zone });
 
   if (advertisementError) throw new Error(advertisementError.message);
 
@@ -104,7 +107,7 @@ export async function insertAdvertisementWithImages(
 export async function updateAdvertisement(
   supabase: SupabaseClient,
   id: string,
-  values: { isActive: boolean; title: string },
+  values: { isActive: boolean; title: string; zone: string },
 ) {
   const { error } = await supabase
     .from("advertisements")
@@ -112,6 +115,7 @@ export async function updateAdvertisement(
       is_active: values.isActive,
       title: values.title,
       updated_at: new Date().toISOString(),
+      zone: values.zone,
     })
     .eq("id", id);
 

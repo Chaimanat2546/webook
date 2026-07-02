@@ -23,6 +23,7 @@ import {
   getAdvertisementById,
   type AdvertisementImageRow,
 } from "../../../../server/repositories/advertisements";
+import { formatAdvertisementZone } from "../../../../server/services/advertisements";
 import {
   deleteAdvertisementImageAction,
   updateAdvertisementAction,
@@ -117,7 +118,7 @@ export default async function AdvertisementDetailPage({
             <StatusBadge active={advertisement.is_active} />
           </div>
           <p className="text-sm text-muted-foreground">
-            จัดการรูปโฆษณา · {existingImages.length}/2 รูป
+            {formatAdvertisementZone(advertisement.zone)} · จัดการรูปโฆษณา · {existingImages.length}/2 รูป
           </p>
         </div>
       </header>
@@ -129,6 +130,7 @@ export default async function AdvertisementDetailPage({
         deleteAction={deleteAdvertisementImageAction}
         defaultIsActive={advertisement.is_active}
         defaultTitle={advertisement.title}
+        defaultZone={advertisement.zone}
         existingImages={existingImages}
         mode="edit"
         uploadAction={uploadAdvertisementImagesAction.bind(null, advertisement.id)}

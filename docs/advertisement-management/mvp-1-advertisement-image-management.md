@@ -4,7 +4,7 @@
 
 สร้างระบบ admin สำหรับจัดการโฆษณาและรูปภาพโฆษณา
 
-This MVP lets admins create, edit, activate/deactivate, and manage advertisement images. External systems read active advertisements through Supabase API and compose Cloudflare Worker URLs from `image_path`.
+This MVP lets admins create, edit, activate/deactivate, assign a house-listing zone, and manage advertisement images. External systems read active advertisements through Supabase API and compose Cloudflare Worker URLs from `image_path`.
 
 ## In Scope
 
@@ -14,8 +14,9 @@ This MVP lets admins create, edit, activate/deactivate, and manage advertisement
 - แสดงรายการโฆษณาทั้งหมดใน admin
 - เรียง `is_active = true` ก่อน `is_active = false`
 - ในกลุ่ม active เดียวกันเรียง `updated_at` ใหม่สุดก่อน
-- สร้างโฆษณาใหม่พร้อม title และรูป 0-2 รูป
+- สร้างโฆษณาใหม่พร้อม title, zone และรูป 0-2 รูป
 - แก้ไข title
+- แก้ไข `zone`
 - เปิด/ปิด `is_active`
 - หน้า create เพิ่มรูปใหม่เป็น draft; ตอนกดสร้างให้สร้าง `advertisements` ก่อน แล้ว client ใช้ id ที่ได้มา upload รูปผ่าน queue ทีละไฟล์
 - หน้า edit เพิ่มรูปใหม่แบบ upload ทันทีผ่าน queue ทีละไฟล์
@@ -47,6 +48,7 @@ This MVP lets admins create, edit, activate/deactivate, and manage advertisement
 ข้อมูลที่แสดง:
 
 - `title`
+- `zone`
 - `is_active`
 - จำนวนรูป
 - `updated_at`
@@ -67,11 +69,13 @@ Rules:
 ข้อมูลที่กรอก:
 
 - `title`
+- `zone`
 - รูป 0-2 รูป
 
 Rules:
 
 - ต้องมี title
+- ต้องมี `zone` ที่อยู่ในโซนบ้าน listing ที่รองรับ หรือ `all` สำหรับทุกโซน
 - มีรูปได้สูงสุด 2 รูป
 - เลือกรูปแล้วอยู่ใน draft ก่อน
 - ยังไม่ upload ไป R2 จนกดบันทึก
@@ -85,13 +89,14 @@ Rules:
 ข้อมูลที่แก้ไขได้:
 
 - `title`
+- `zone`
 - `is_active`
 - รูปโฆษณา
 
 Rules:
 
 - เพิ่มรูปใหม่แล้ว upload ทันทีผ่าน client queue ทีละไฟล์
-- กดบันทึกใช้สำหรับ update metadata เช่น title และ `is_active`
+- กดบันทึกใช้สำหรับ update metadata เช่น title, `zone` และ `is_active`
 - ลบรูปเดิมต้องเปิด confirmation ก่อน แล้วค่อยเรียก delete action
 - bulk delete ใช้ delete queue ฝั่ง client ทีละรูปพร้อมสถานะ `รอลบ`, `กำลังลบ`, `ลบแล้ว`, `ลบไม่สำเร็จ`
 - ถ้าจำนวนรูปจะเกิน 2 รูป ต้อง block operation และแจ้ง error
@@ -108,6 +113,7 @@ Fields:
 
 - `id`
 - `title`
+- `zone`
 - `is_active`
 - `created_at`
 - `updated_at`
@@ -142,12 +148,13 @@ Business rule:
 อ่านได้เฉพาะ:
 
 - `advertisements.is_active = true`
+- optional `advertisements.zone = <listing zone key>` สำหรับแสดงตามโซนบ้าน และควรรวม `zone = all`
 - `advertisement_images` ของ active advertisements เท่านั้น
 
 ตัวอย่าง query:
 
 ```text
-advertisements?select=id,title,advertisement_images(image_name,image_path,image_order)&is_active=eq.true
+advertisements?select=id,title,zone,advertisement_images(image_name,image_path,image_order)&is_active=eq.true&or=(zone.eq.all,zone.eq.pattaya)
 ```
 
 Supabase API sends `image_name` and `image_path`, not full image URLs.
@@ -215,9 +222,10 @@ ADVERTISEMENT_IMAGE_WORKER_SECRET=
 Create:
 
 1. Validate title
-2. Validate image count 0-2
-3. Generate advertisement id
-4. Insert `advertisements`
+2. Validate zone
+3. Validate image count 0-2
+4. Generate advertisement id
+5. Insert `advertisements`
 5. Client uploads selected draft images one file at a time with the returned advertisement id
 6. Each successful upload inserts `advertisement_images`
 7. If an image row write fails during queue upload, best-effort delete the newly uploaded R2 object
@@ -225,8 +233,9 @@ Create:
 Update:
 
 1. Validate title
-2. Update `advertisements`
-3. Image uploads and deletes are handled by separate operation actions in edit mode
+2. Validate zone
+3. Update `advertisements`
+4. Image uploads and deletes are handled by separate operation actions in edit mode
 
 Upload image in edit form:
 
@@ -272,6 +281,7 @@ Error:
 - ไม่มีสิทธิ์เข้าใช้งาน
 - โหลดข้อมูลไม่สำเร็จ
 - title ว่าง
+- zone ว่างหรือไม่อยู่ในรายการที่รองรับ (`all` หรือโซนบ้าน listing)
 - รูปเกิน 2 รูป
 - จำนวนรูปสุดท้ายเกิน 2 รูป
 - upload รูปไม่สำเร็จ
@@ -289,6 +299,7 @@ Error:
 - list แสดง active ก่อน inactive
 - list เรียง `updated_at` ใหม่สุดก่อนในกลุ่มเดียวกัน
 - create ต้องมี title
+- create/update ต้องมี zone ที่ validate ผ่าน (`all` หรือโซนบ้าน listing)
 - create มีรูปได้ 0-2 รูป
 - create ห้ามเกิน 2 รูป
 - create เพิ่มรูปยังไม่ upload จนกดสร้าง จากนั้น client upload ทีละไฟล์หลังได้ advertisement id

@@ -5,7 +5,13 @@
 External systems read active advertisements through Supabase Data API:
 
 ```text
-advertisements?select=id,title,advertisement_images(image_name,image_path,image_order)&is_active=eq.true
+advertisements?select=id,title,zone,advertisement_images(image_name,image_path,image_order)&is_active=eq.true
+```
+
+Filter a specific listing zone and include all-zone advertisements:
+
+```text
+advertisements?select=id,title,zone,advertisement_images(image_name,image_path,image_order)&is_active=eq.true&or=(zone.eq.all,zone.eq.pattaya)
 ```
 
 The API returns `image_path` object keys, not full image URLs. Build display URLs by appending `image_path` to the Worker URL:
@@ -17,6 +23,7 @@ The API returns `image_path` object keys, not full image URLs. Build display URL
 Example values for newly uploaded images:
 
 ```text
+zone: all
 image_name: 20260109220657_60b5a9a545.webp
 image_path: advertisements/{advertisement_id}/20260109220657_60b5a9a545.webp
 ```
