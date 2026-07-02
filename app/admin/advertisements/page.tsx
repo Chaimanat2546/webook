@@ -13,6 +13,7 @@ import {
 import { Input } from "../../../components/ui/input";
 import { canUseAccommodation, requireAdmin } from "../../../server/auth/admin";
 import { getAdvertisements } from "../../../server/repositories/advertisements";
+import { formatAdvertisementZone } from "../../../server/services/advertisements";
 import { normalizePage } from "../../../server/services/houses";
 
 const ADVERTISEMENT_PAGE_SIZE = 8;
@@ -44,7 +45,9 @@ export default async function AdvertisementsPage({
         const query = search.toLowerCase();
         return (
           advertisement.title.toLowerCase().includes(query) ||
-          advertisement.id.toLowerCase().includes(query)
+          advertisement.id.toLowerCase().includes(query) ||
+          advertisement.zone.toLowerCase().includes(query) ||
+          formatAdvertisementZone(advertisement.zone).toLowerCase().includes(query)
         );
       })
     : advertisements;
@@ -70,7 +73,7 @@ export default async function AdvertisementsPage({
           className="min-w-0 flex-1"
           defaultValue={search}
           name="q"
-          placeholder="ค้นหาโฆษณา, ID..."
+          placeholder="ค้นหาโฆษณา, ID, โซน..."
           type="search"
         />
         <Button className="shrink-0" type="submit">

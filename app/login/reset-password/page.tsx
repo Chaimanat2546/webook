@@ -14,6 +14,14 @@ import { AuthMessage } from "../auth-message";
 const invalidLinkMessage =
   "ลิงก์รีเซ็ตรหัสผ่านหมดอายุหรือไม่ถูกต้อง กรุณาขอลิงก์ใหม่อีกครั้ง";
 
+const passwordRuleLabels = {
+  length: "8 ตัวอักษรขึ้นไป",
+  lowercase: "มีตัวพิมพ์เล็ก",
+  uppercase: "มีตัวพิมพ์ใหญ่",
+  number: "มีตัวเลข",
+  symbol: "มีอักขระพิเศษ เช่น ! @ # $ %",
+} as const;
+
 function getPasswordUpdateErrorMessage(message: string) {
   const normalized = message.toLowerCase();
 
@@ -42,6 +50,22 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const passwordStarted = password.length > 0;
+  const confirmStarted = confirmPassword.length > 0;
+  const passwordRequirements = [
+    { label: passwordRuleLabels.length, passed: password.length >= 8 },
+    { label: passwordRuleLabels.lowercase, passed: /[a-z]/.test(password) },
+    { label: passwordRuleLabels.uppercase, passed: /[A-Z]/.test(password) },
+    { label: passwordRuleLabels.number, passed: /\d/.test(password) },
+    { label: passwordRuleLabels.symbol, passed: /[^A-Za-z0-9\s]/.test(password) },
+  ];
+  const remainingPasswordRequirements = passwordRequirements.filter((item) => !item.passed);
+  const passwordsMatch = passwordStarted && confirmStarted && password === confirmPassword;
+  const canSubmit =
+    remainingPasswordRequirements.length === 0 &&
+    password.length <= 128 &&
+    passwordsMatch &&
+    !isSubmitting;
 
   useEffect(() => {
     let active = true;
@@ -89,7 +113,6 @@ export default function ResetPasswordPage() {
     const validationErrors = validateNewPassword({ confirmPassword, password });
 
     if (validationErrors.length > 0) {
-      setErrors(validationErrors);
       return;
     }
 
@@ -148,7 +171,7 @@ export default function ResetPasswordPage() {
           ) : null}
 
           {pageState === "ready" ? (
-            <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            <form autoComplete="off" className="flex flex-col gap-4" onSubmit={handleSubmit}>
               {errors.length > 0 ? (
                 <AuthMessage tone="error">
                   <ul className="list-disc space-y-1 pl-4">
@@ -164,31 +187,64 @@ export default function ResetPasswordPage() {
                   <FieldLabel htmlFor="new-password">รหัสผ่านใหม่</FieldLabel>
                   <Input
                     id="new-password"
-                    autoComplete="new-password"
+                    aria-describedby="password-requirements"
+                    aria-invalid={passwordStarted && passwordRequirements.some((item) => !item.passed)}
+                    autoComplete="off"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
+                    data-lpignore="true"
                     minLength={8}
-                    name="password"
+                    name="newAdminCredential"
                     onChange={(event) => setPassword(event.target.value)}
                     required
                     type="password"
                     value={password}
                   />
+                  <div id="password-requirements" className="space-y-2 text-xs">
+                    {remainingPasswordRequirements.length > 0 ? (
+                      <>
+                        <p className="text-muted-foreground">
+                          ตั้งรหัสผ่านให้ครบตามเงื่อนไขด้านล่าง
+                        </p>
+                        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                          {passwordRequirements.map((item) => (
+                            <li key={item.label}>{item.label}</li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : null}
+                  </div>
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="confirm-password">ยืนยันรหัสผ่านใหม่</FieldLabel>
                   <Input
                     id="confirm-password"
-                    autoComplete="new-password"
+                    aria-describedby="confirm-password-requirement"
+                    aria-invalid={confirmStarted && !passwordsMatch}
+                    autoComplete="off"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
+                    data-lpignore="true"
                     minLength={8}
-                    name="confirmPassword"
+                    name="confirmAdminCredential"
                     onChange={(event) => setConfirmPassword(event.target.value)}
                     required
                     type="password"
                     value={confirmPassword}
                   />
+                  {confirmStarted && !passwordsMatch ? (
+                    <p id="confirm-password-requirement" className="text-xs text-destructive">
+                      รหัสผ่านทั้งสองช่องต้องตรงกัน
+                    </p>
+                  ) : (
+                    <span id="confirm-password-requirement" />
+                  )}
                 </Field>
               </FieldGroup>
 
-              <Button disabled={isSubmitting} type="submit">
+              <Button disabled={!canSubmit} type="submit">
                 {isSubmitting ? "กำลังบันทึก..." : "บันทึกรหัสผ่านใหม่"}
               </Button>
             </form>

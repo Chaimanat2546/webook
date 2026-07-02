@@ -35,6 +35,7 @@ describe("advertisement admin UI", () => {
     assert.match(pageSource, /visibleAdvertisements\.slice/);
     assert.match(pageSource, /<Pagination[\s\S]*?basePath="\/admin\/advertisements"/);
     assert.match(source, /is_active/);
+    assert.match(source, /formatAdvertisementZone\(advertisement\.zone\)/);
     assert.match(source, /advertisement_images/);
     assert.match(pageSource, /\/admin\/advertisements\/new/);
     assert.match(source, /ใช้งานอยู่/);
@@ -43,7 +44,8 @@ describe("advertisement admin UI", () => {
     assert.match(source, /md:block/);
     assert.match(source, /<TableHead[^>]*>ID<\/TableHead>/);
     assert.match(source, /<Table className="table-fixed">/);
-    assert.match(source, /<TableHead className="w-\[42%\]">/);
+    assert.match(source, /<TableHead[^>]*>โซน<\/TableHead>/);
+    assert.match(source, /<TableHead className="w-\[34%\]">/);
     assert.match(source, /<span className="block truncate">/);
     assert.match(source, /<TableCell className="truncate text-muted-foreground">/);
   });
@@ -68,10 +70,15 @@ describe("advertisement admin UI", () => {
       new URL("../components/admin/image-asset-card.tsx", import.meta.url),
       "utf8",
     );
+    const houseZoneSource = readFileSync(new URL("../lib/house-zones.ts", import.meta.url), "utf8");
     assert.match(formSource, /Card/);
     assert.doesNotMatch(formSource, /AspectRatio/);
     assert.match(formSource, /Separator/);
     assert.match(formSource, /Switch/);
+    assert.match(formSource, /ADVERTISEMENT_ZONE_OPTIONS/);
+    assert.match(formSource, /name="zone"/);
+    assert.match(formSource, /defaultValue=\{defaultZone\}/);
+    assert.match(houseZoneSource, /ทุกโซน/);
     assert.match(formSource, /UploadCloudIcon/);
     assert.match(formSource, /URL\.createObjectURL/);
     assert.match(formSource, /URL\.revokeObjectURL/);
@@ -217,6 +224,7 @@ describe("advertisement admin UI", () => {
     assert.match(actionsSource, /deletedId/);
     assert.match(actionsSource, /cleanupWarning/);
     assert.match(actionsSource, /validateAdvertisementImageEditCount/);
+    assert.match(actionsSource, /validateAdvertisementZone/);
     assert.match(actionsSource, /getAvailableAdvertisementImageOrders/);
     assert.doesNotMatch(actionsSource, /deleteAdvertisementImagesAction/);
 
@@ -224,6 +232,7 @@ describe("advertisement admin UI", () => {
     assert.match(detailSource, /deleteAdvertisementImageAction/);
     assert.match(detailSource, /uploadAction=\{uploadAdvertisementImagesAction\.bind\(null, advertisement\.id\)\}/);
     assert.match(detailSource, /deleteAction=\{deleteAdvertisementImageAction\}/);
+    assert.match(detailSource, /defaultZone=\{advertisement\.zone\}/);
     assert.match(newSource, /uploadAdvertisementImagesAction/);
     assert.match(newSource, /createUploadAction=\{uploadAdvertisementImagesAction\}/);
   });

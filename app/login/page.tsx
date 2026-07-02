@@ -54,7 +54,7 @@ export default async function LoginPage({
               sent={sent === "1"}
             />
           ) : (
-            <form action={signIn} className="flex flex-col gap-4">
+            <form action={signIn} autoComplete="off" className="flex flex-col gap-4">
               {error ? (
                 <AuthMessage tone="error">อีเมล/ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</AuthMessage>
               ) : null}
@@ -67,18 +67,22 @@ export default async function LoginPage({
                     name="identifier"
                     type="text"
                     autoCapitalize="none"
-                    autoComplete="username"
+                    autoComplete="off"
                     spellCheck={false}
                     required
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <FieldLabel htmlFor="admin-credential">Password</FieldLabel>
                   <Input
-                    id="password"
-                    name="password"
+                    id="admin-credential"
+                    name="adminCredential"
                     type="password"
-                    autoComplete="current-password"
+                    autoComplete="new-password"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
+                    data-lpignore="true"
                     required
                   />
                 </Field>
