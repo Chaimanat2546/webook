@@ -1,3 +1,5 @@
+import { formatZone } from "../../lib/house-zones.ts";
+
 export const HOUSE_PAGE_SIZE = 8;
 
 export interface HouseListItem {
@@ -9,26 +11,8 @@ export interface HouseListItem {
   title: string | null;
 }
 
-const HOUSE_ZONE_LABELS_TH: Record<string, string> = {
-  bang_saray: "บางเสร่",
-  bang_saen: "บางแสน",
-  bangkok: "กรุงเทพ",
-  bangsaray: "บางเสร่",
-  bangsean: "บางแสน",
-  hua_hin: "หัวหิน",
-  huahin: "หัวหิน",
-  jomtien: "จอมเทียน",
-  khaoyai: "เขาใหญ่",
-  pattaya: "พัทยา",
-  rayong: "ระยอง",
-  sattahip: "สัตหีบ",
-};
-
 export function formatHouseZone(zone: string | null | undefined): string {
-  const trimmed = zone?.trim();
-  if (!trimmed) return "-";
-
-  return HOUSE_ZONE_LABELS_TH[trimmed.toLowerCase()] ?? trimmed;
+  return formatZone(zone);
 }
 
 export function formatHouseActiveStatus(active: boolean | null | undefined): string {

@@ -1,13 +1,19 @@
-import { validateAdvertisementImageObjectKey } from "../../lib/advertisement-image-url.ts";
 import {
   buildManagedImageFileName,
   validateManagedImageFileName,
   type ManagedImageNameOptions,
 } from "./image-file-names.ts";
+import {
+  formatZone,
+  isKnownZone,
+  normalizeZone,
+  ZONE_OPTIONS,
+} from "../../lib/house-zones.ts";
 
 export const ADVERTISEMENT_MIN_IMAGES = 0;
 export const ADVERTISEMENT_MAX_IMAGES = 2;
 export const ADVERTISEMENT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const ADVERTISEMENT_ZONE_OPTIONS = ZONE_OPTIONS;
 
 const supportedAdvertisementImageMimeTypes = new Set([
   "image/avif",
@@ -26,6 +32,17 @@ export function validateAdvertisementTitle(value: string): string {
   const title = value.trim();
   if (!title) throw new Error("Advertisement title is required");
   return title;
+}
+
+export function validateAdvertisementZone(value: string): string {
+  const zone = normalizeZone(value);
+  if (!zone) throw new Error("Advertisement zone is required");
+  if (!isKnownZone(zone)) throw new Error("Invalid advertisement zone");
+  return zone;
+}
+
+export function formatAdvertisementZone(zone: string | null | undefined): string {
+  return formatZone(zone);
 }
 
 export function validateAdvertisementImageCount(count: number): number {
@@ -67,12 +84,6 @@ export function buildAdvertisementImageObjectKey(advertisementId: string, imageN
   const id = advertisementId.trim();
   if (!/^[a-z0-9_-]+$/i.test(id)) throw new Error("Invalid advertisement id");
   return `advertisements/${id}/${validateManagedImageFileName(imageName)}`;
-}
-
-export function resolveAdvertisementImageObjectKey(advertisementId: string, imageName: string): string {
-  const normalized = imageName.trim().replace(/\\/g, "/");
-  if (normalized.startsWith("advertisements/")) return validateAdvertisementImageObjectKey(normalized);
-  return buildAdvertisementImageObjectKey(advertisementId, normalized);
 }
 
 export function normalizeAdvertisementImages<T extends AdvertisementImageItem>(images: T[]): T[] {

@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  ADVERTISEMENT_ZONE_OPTIONS,
   buildAdvertisementImageName,
+  formatAdvertisementZone,
   getAvailableAdvertisementImageOrders,
   getImageFiles,
   normalizeAdvertisementImages,
@@ -10,6 +12,7 @@ import {
   validateAdvertisementImageCount,
   validateAdvertisementImageFile,
   validateAdvertisementTitle,
+  validateAdvertisementZone,
 } from "../server/services/advertisements.ts";
 import { resizeToMax } from "../lib/advertisement-image-resize.ts";
 
@@ -20,6 +23,36 @@ describe("advertisement rules", () => {
     assert.equal(validateAdvertisementImageCount(0), 0);
     assert.throws(() => validateAdvertisementImageCount(-1), /cannot be negative/);
     assert.throws(() => validateAdvertisementImageCount(3), /at most 2 images/);
+  });
+
+  it("uses every house listing zone for advertisements", () => {
+    const zoneLabels = {
+      all: "ทุกโซน",
+      bangkok: "กรุงเทพ",
+      bangsaray: "บางเสร่",
+      bang_saray: "บางเสร่",
+      bangsean: "บางแสน",
+      bang_saen: "บางแสน",
+      hua_hin: "หัวหิน",
+      huahin: "หัวหิน",
+      jomtien: "จอมเทียน",
+      khaoyai: "เขาใหญ่",
+      pattaya: "พัทยา",
+      rayong: "ระยอง",
+      sattahip: "สัตหีบ",
+    };
+
+    assert.deepEqual(
+      ADVERTISEMENT_ZONE_OPTIONS.map((option) => option.value),
+      Object.keys(zoneLabels),
+    );
+    for (const [zone, label] of Object.entries(zoneLabels)) {
+      assert.equal(formatAdvertisementZone(zone), label);
+    }
+    assert.equal(validateAdvertisementZone(" ALL "), "all");
+    assert.equal(validateAdvertisementZone(" BANGSEAN "), "bangsean");
+    assert.throws(() => validateAdvertisementZone(" "), /Advertisement zone is required/);
+    assert.throws(() => validateAdvertisementZone("unknown"), /Invalid advertisement zone/);
   });
 
   it("normalizes image order to 1 and 2", () => {
@@ -38,12 +71,7 @@ describe("advertisement rules", () => {
   it("builds database filenames separately from R2 object keys", async () => {
     const advertisementsModule = await import("../server/services/advertisements.ts");
     assert.equal(typeof advertisementsModule.buildAdvertisementImageObjectKey, "function");
-    assert.equal(typeof advertisementsModule.resolveAdvertisementImageObjectKey, "function");
     const buildAdvertisementImageObjectKey = advertisementsModule.buildAdvertisementImageObjectKey as (
-      advertisementId: string,
-      imageName: string,
-    ) => string;
-    const resolveAdvertisementImageObjectKey = advertisementsModule.resolveAdvertisementImageObjectKey as (
       advertisementId: string,
       imageName: string,
     ) => string;
@@ -58,10 +86,6 @@ describe("advertisement rules", () => {
     assert.equal(
       buildAdvertisementImageObjectKey("ad-1", "20260109220657_60b5a9a545.jpg"),
       "advertisements/ad-1/20260109220657_60b5a9a545.jpg",
-    );
-    assert.equal(
-      resolveAdvertisementImageObjectKey("ad-1", "advertisements/ad-1/1.webp"),
-      "advertisements/ad-1/1.webp",
     );
   });
 
