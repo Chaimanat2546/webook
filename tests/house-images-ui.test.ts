@@ -6,6 +6,10 @@ const source = readFileSync(
   new URL("../components/admin/images/image-zone-viewer.tsx", import.meta.url),
   "utf8",
 );
+const coverSelectSource = readFileSync(
+  new URL("../components/admin/images/cover-select-viewer.tsx", import.meta.url),
+  "utf8",
+);
 const sharedCardPath = new URL(
   "../components/admin/image-asset-card.tsx",
   import.meta.url,
@@ -110,7 +114,7 @@ describe("house image mobile UI", () => {
   });
 
   it("keeps the house list return URL through the image page and zone changes", () => {
-    assert.match(pageSource, /searchParams: Promise<\{ zone\?: string; returnTo\?: string \}>/);
+    assert.match(pageSource, /searchParams: Promise<\{ zone\?: string; returnTo\?: string; mode\?: string \}>/);
     assert.match(pageSource, /value === "\/admin\/houses"/);
     assert.match(pageSource, /value\??\.startsWith\("\/admin\/houses\?"\)/);
     assert.match(pageSource, /const safeReturnTo = getSafeReturnTo\(returnTo\);/);
@@ -160,6 +164,21 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(pageSource, /bulkDeleteAction=/);
     assert.doesNotMatch(pageSource, /updateHouseImagesAction/);
     assert.doesNotMatch(pageSource, /action=\{updateHouseImagesAction\.bind\(null, propertyId\)\}/);
+  });
+
+  it("switches to a cover-select mode on the existing house image route", () => {
+    assert.match(pageSource, /import \{ CoverSelectViewer \}/);
+    assert.match(pageSource, /saveHouseCoverSelectAction/);
+    assert.match(pageSource, /searchParams: Promise<\{ zone\?: string; returnTo\?: string; mode\?: string \}>/);
+    assert.match(pageSource, /const isCoverSelectMode = mode === "cover-select";/);
+    assert.match(pageSource, /isCoverSelectMode \? \(/);
+    assert.match(pageSource, /<CoverSelectViewer/);
+    assert.match(pageSource, /saveAction=\{saveHouseCoverSelectAction\.bind\(null, propertyId\)\}/);
+    assert.match(source, /mode: "cover-select"/);
+  });
+
+  it("adds a dedicated cover selection viewer component", () => {
+    assert.match(coverSelectSource, /export function CoverSelectViewer/);
   });
 
   it("removes the staged save and draft preview flow", () => {

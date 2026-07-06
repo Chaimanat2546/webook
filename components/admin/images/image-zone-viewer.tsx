@@ -122,6 +122,12 @@ function imageZoneHref(propertyId: string, zone: string, returnTo?: string): str
   return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
 }
 
+function coverSelectHref(propertyId: string, returnTo?: string): string {
+  const params = new URLSearchParams({ mode: "cover-select" });
+  if (returnTo) params.set("returnTo", returnTo);
+  return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -810,6 +816,9 @@ export function ImageZoneViewer({
               </>
             ) : (
               <>
+                <Button asChild disabled={isBusy} size="sm" type="button" variant="outline">
+                  <Link href={coverSelectHref(propertyId, returnTo)}>จัดลำดับรูปแสดง</Link>
+                </Button>
                 <Button
                   disabled={deletableImages.length === 0 || isBusy}
                   onClick={() => setIsBulkSelecting(true)}

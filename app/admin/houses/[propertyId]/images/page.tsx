@@ -2,6 +2,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CoverSelectViewer } from "../../../../../components/admin/images/cover-select-viewer";
 import { ImageZoneViewer } from "../../../../../components/admin/images/image-zone-viewer";
 import { Badge } from "../../../../../components/ui/badge";
 import { Button } from "../../../../../components/ui/button";
@@ -20,6 +21,7 @@ import { getListingByPropertyId } from "../../../../../server/repositories/listi
 import { groupImagesByZone } from "../../../../../server/services/images";
 import {
   deleteHouseImageAction,
+  saveHouseCoverSelectAction,
   uploadHouseImagesAction,
 } from "./actions";
 
@@ -36,10 +38,10 @@ export default async function HouseImagesPage({
   searchParams,
 }: {
   params: Promise<{ propertyId: string }>;
-  searchParams: Promise<{ zone?: string; returnTo?: string }>;
+  searchParams: Promise<{ zone?: string; returnTo?: string; mode?: string }>;
 }) {
   const { propertyId } = await params;
-  const { returnTo, zone } = await searchParams;
+  const { mode, returnTo, zone } = await searchParams;
   const safeReturnTo = getSafeReturnTo(returnTo);
   const backHref = safeReturnTo ?? "/admin/houses";
   const { adminUser, supabase } = await requireAdmin();
@@ -63,6 +65,7 @@ export default async function HouseImagesPage({
 
   const images = await getImagesByPropertyId(supabase, propertyId);
   const groups = groupImagesByZone(images);
+  const isCoverSelectMode = mode === "cover-select";
 
   return (
     <div className="flex h-[calc(100dvh-6.5rem)] min-h-0 flex-col gap-4">
@@ -86,14 +89,24 @@ export default async function HouseImagesPage({
         </div>
       </header>
 
-      <ImageZoneViewer
-        deleteAction={deleteHouseImageAction.bind(null, propertyId)}
-        groups={groups}
-        propertyId={propertyId}
-        returnTo={safeReturnTo ?? undefined}
-        selectedZone={zone}
-        uploadAction={uploadHouseImagesAction.bind(null, propertyId)}
-      />
+      {isCoverSelectMode ? (
+        <CoverSelectViewer
+          groups={groups}
+          propertyId={propertyId}
+          returnTo={safeReturnTo ?? undefined}
+          saveAction={saveHouseCoverSelectAction.bind(null, propertyId)}
+          selectedZone={zone}
+        />
+      ) : (
+        <ImageZoneViewer
+          deleteAction={deleteHouseImageAction.bind(null, propertyId)}
+          groups={groups}
+          propertyId={propertyId}
+          returnTo={safeReturnTo ?? undefined}
+          selectedZone={zone}
+          uploadAction={uploadHouseImagesAction.bind(null, propertyId)}
+        />
+      )}
     </div>
   );
 }
