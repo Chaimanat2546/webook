@@ -38,6 +38,7 @@ House and advertisement image cards share `components/admin/image-asset-card.tsx
 The image page uses the `zone` query parameter to select one image category at a time; missing or unknown zones fall back to the first configured zone.
 Known image zones are mapped to Thai display labels and Lucide icon names in `server/services/images.ts`; the setup menu always includes `cover`, `outside`, `parking`, `inside`, `kitchen`, `bedroom`, `bathroom`, and `review` in that order, even when a zone has no images. Unknown zones with existing images keep their raw label and use the fallback image icon after the configured zones.
 House `image_move` values are scoped to `property_id + image_zone`; new uploads calculate the next order number only from the selected zone.
+House card display images use `public.images.cover_select`. This value is independent from zone-scoped `image_move`: `image_move` controls order within an image zone, while `cover_select` controls the 1-10 cross-zone image order used by house cards. Admins edit `cover_select` through `/admin/houses/[propertyId]/images?mode=cover-select`; saving resets unselected images for that house to `0`.
 
 House image storage has two provider classes:
 

@@ -21,6 +21,10 @@ MVP 1 ใช้สิทธิ์รายหมวดจาก `allow_tools` �
 ## Current Admin Flow
 
 - `/admin/houses/[propertyId]/images` is a zone-scoped image manager. The `zone` query value controls the current image zone.
+- `/admin/houses/[propertyId]/images?mode=cover-select` lets admins choose the house-card display images.
+- House-card display order is stored in `images.cover_select` and is independent from `image_move`.
+- Cover selection counts across all image zones. The zone sidebar acts only as a filter while choosing images.
+- Saving cover selection requires 3-10 selected images, resets unselected images for that house to `cover_select = 0`, and does not change physical image files.
 - The zone menu always shows the configured setup zones in this order, even when a zone has no images: รูปปก, ภายนอก, ที่จอดรถ, ภายใน, ห้องครัว, ห้องนอน, ห้องน้ำ, รีวิว. Zone menu items show only the image count, and empty zones render an in-grid empty state.
 - Uploading files starts immediately after the admin chooses files. There is no staged house-image draft and no save button for uploads.
 - Single delete is explicit: R2-backed images show a delete control, clicking it opens a confirmation dialog with the image preview, and confirming deletes that one image.
