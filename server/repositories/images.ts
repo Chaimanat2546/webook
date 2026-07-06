@@ -12,7 +12,7 @@ export interface HouseImageInsert {
 }
 
 const houseImageSelect =
-  "id,property_id,image_name,image_url,image_zone,image_move,created_at,updated_at";
+  "id,property_id,cover_select,image_name,image_url,image_zone,image_move,created_at,updated_at";
 
 export async function getImagesByPropertyId(supabase: SupabaseClient, propertyId: string) {
   const { data, error } = await supabase
@@ -67,4 +67,29 @@ export async function insertHouseImages(supabase: SupabaseClient, images: HouseI
 export async function deleteHouseImageById(supabase: SupabaseClient, id: number) {
   const { error } = await supabase.from("images").delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+export async function updateHouseCoverSelect(
+  supabase: SupabaseClient,
+  propertyId: string,
+  imageIds: number[],
+) {
+  const now = new Date().toISOString();
+
+  const { error: resetError } = await supabase
+    .from("images")
+    .update({ cover_select: 0, updated_at: now })
+    .eq("property_id", propertyId);
+
+  if (resetError) throw new Error(resetError.message);
+
+  for (const [index, id] of imageIds.entries()) {
+    const { error } = await supabase
+      .from("images")
+      .update({ cover_select: index + 1, updated_at: now })
+      .eq("property_id", propertyId)
+      .eq("id", id);
+
+    if (error) throw new Error(error.message);
+  }
 }
