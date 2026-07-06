@@ -182,17 +182,31 @@ describe("house image mobile UI", () => {
     assert.match(coverSelectSource, /import \{ DragDropProvider \} from "@dnd-kit\/react"/);
     assert.match(coverSelectSource, /import \{ move \} from "@dnd-kit\/helpers"/);
     assert.match(coverSelectSource, /import \{ useSortable \} from "@dnd-kit\/react\/sortable"/);
+    assert.match(coverSelectSource, /import \{[\s\S]*Dialog[\s\S]*DialogContent[\s\S]*DialogFooter[\s\S]*DialogHeader[\s\S]*DialogTitle[\s\S]*\} from "\.\.\/\.\.\/ui\/dialog"/);
     assert.match(coverSelectSource, /getHouseCoverSelectedImages/);
     assert.match(coverSelectSource, /HOUSE_COVER_SELECT_MIN/);
     assert.match(coverSelectSource, /HOUSE_COVER_SELECT_MAX/);
     assert.match(coverSelectSource, /selectedIds/);
+    assert.match(coverSelectSource, /บันทึก \(\{selectedIds\.length\}\)/);
+    assert.match(coverSelectSource, /isConfirmDialogOpen/);
+    assert.match(coverSelectSource, /setIsConfirmDialogOpen\(true\)/);
+    assert.match(coverSelectSource, /function confirmSaveSelection\(\)/);
     assert.match(coverSelectSource, /DragDropProvider/);
     assert.match(coverSelectSource, /onDragEnd/);
     assert.match(coverSelectSource, /move\(ids, event\)/);
-    assert.match(coverSelectSource, /selected strip/i);
+    assert.match(coverSelectSource, /grid min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)\] gap-3 p-2/);
+    assert.doesNotMatch(coverSelectSource, /selected strip/i);
+    assert.doesNotMatch(coverSelectSource, /aria-label="selected strip"/);
+    assert.match(coverSelectSource, /<ScrollArea className="w-full min-w-0 overflow-hidden">/);
     assert.match(coverSelectSource, /saveAction\(selectedIds\)/);
+    assert.match(coverSelectSource, /<Dialog\s+open=\{isConfirmDialogOpen\}/);
+    assert.match(coverSelectSource, /max-h-\[calc\(100dvh-1rem\)\][\s\S]*max-w-7xl[\s\S]*sm:max-w-7xl/);
+    assert.match(coverSelectSource, /<DialogTitle>ยืนยันรูปที่เลือก<\/DialogTitle>/);
+    assert.match(coverSelectSource, /onClick=\{confirmSaveSelection\}/);
     assert.match(coverSelectSource, /getSelectedImageZoneGroup/);
     assert.match(coverSelectSource, /mode: "cover-select"/);
+    assert.doesNotMatch(coverSelectSource, /จัดลำดับรูปแสดงใช้บนเดสก์ท็อป/);
+    assert.doesNotMatch(source, /className="hidden lg:inline-flex"/);
   });
 
   it("removes the staged save and draft preview flow", () => {

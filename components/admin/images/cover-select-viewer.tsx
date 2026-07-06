@@ -31,6 +31,14 @@ import {
 import { AdminImageCard } from "../image-asset-card";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../ui/dialog";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
 
 const allZonesKey = "__all__";
@@ -171,6 +179,7 @@ function CoverSelectViewerContent({
 }: CoverSelectViewerContentProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>(initialSelectedIds);
   const imageById = useMemo(() => new Map(allImages.map((image) => [image.id, image])), [allImages]);
   const selectedImages = selectedIds
@@ -221,10 +230,17 @@ function CoverSelectViewerContent({
       return;
     }
 
+    setIsConfirmDialogOpen(true);
+  }
+
+  function confirmSaveSelection() {
+    if (!canSave) return;
+
     startTransition(() => {
       void (async () => {
         try {
           await saveAction(selectedIds);
+          setIsConfirmDialogOpen(false);
           toast.success("บันทึกลำดับรูปแสดงแล้ว");
           router.refresh();
         } catch (error) {
@@ -235,6 +251,7 @@ function CoverSelectViewerContent({
   }
 
   return (
+    <>
     <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-xl border bg-background lg:grid-cols-[220px_1fr] lg:grid-rows-1">
       <aside className="min-h-0 min-w-0 border-b bg-muted/20 lg:grid lg:grid-rows-[auto_minmax(0,1fr)] lg:border-b-0 lg:border-r">
         <div className="border-b px-4 py-3">
@@ -309,49 +326,12 @@ function CoverSelectViewerContent({
               ) : (
                 <SaveIcon data-icon="inline-start" />
               )}
-              บันทึก
+              บันทึก ({selectedIds.length})
             </Button>
           </div>
         </header>
 
-        <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-3 p-2">
-          <section aria-label="selected strip" className="rounded-lg border bg-muted/20 p-3">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium">รูปที่เลือก</p>
-              <Badge variant={canSave ? "secondary" : "outline"}>{selectedCountLabel(selectedIds.length)}</Badge>
-            </div>
-            {selectedImages.length === 0 ? (
-              <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed bg-background text-sm text-muted-foreground">
-                ยังไม่ได้เลือกรูป
-              </div>
-            ) : (
-              <DragDropProvider
-                onDragEnd={(event) => {
-                  if (event.canceled) return;
-                  setSelectedIds((ids) => move(ids, event) as number[]);
-                }}
-              >
-                <ScrollArea className="w-full">
-                  <div className="flex w-max gap-3 pb-3">
-                    {selectedImages.map((image, index) => (
-                      <SortableSelectedImage
-                        canMoveLeft={index > 0}
-                        canMoveRight={index < selectedImages.length - 1}
-                        image={image}
-                        index={index}
-                        key={image.id}
-                        onMoveLeft={() => moveSelectedImage(index, index - 1)}
-                        onMoveRight={() => moveSelectedImage(index, index + 1)}
-                        onRemove={() => removeSelectedImage(image.id)}
-                      />
-                    ))}
-                  </div>
-                  <ScrollBar orientation="horizontal" />
-                </ScrollArea>
-              </DragDropProvider>
-            )}
-          </section>
-
+        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] gap-3 p-2">
           <div className="min-h-0 overflow-y-auto overscroll-contain rounded-lg">
             {visibleImages.length === 0 ? (
               <div className="m-3 flex min-h-60 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 px-4 py-10 text-center">
@@ -388,5 +368,72 @@ function CoverSelectViewerContent({
         </div>
       </section>
     </div>
+
+    <Dialog
+      open={isConfirmDialogOpen}
+      onOpenChange={(open) => {
+        if (!isPending) setIsConfirmDialogOpen(open);
+      }}
+    >
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-0.5rem)] max-w-7xl flex-col overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-7xl">
+        <DialogHeader>
+          <DialogTitle>ยืนยันรูปที่เลือก</DialogTitle>
+          <DialogDescription>
+            ตรวจสอบรายการและจัดลำดับรูปก่อนบันทึกจริง
+          </DialogDescription>
+        </DialogHeader>
+        <div className="min-h-0 overflow-hidden">
+          {selectedImages.length === 0 ? (
+            <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed bg-background text-sm text-muted-foreground">
+              ยังไม่ได้เลือกรูป
+            </div>
+          ) : (
+            <DragDropProvider
+              onDragEnd={(event) => {
+                if (event.canceled) return;
+                setSelectedIds((ids) => move(ids, event) as number[]);
+              }}
+            >
+              <ScrollArea className="w-full min-w-0 overflow-hidden">
+                <div className="flex w-max gap-3 pb-3">
+                  {selectedImages.map((image, index) => (
+                    <SortableSelectedImage
+                      canMoveLeft={index > 0}
+                      canMoveRight={index < selectedImages.length - 1}
+                      image={image}
+                      index={index}
+                      key={image.id}
+                      onMoveLeft={() => moveSelectedImage(index, index - 1)}
+                      onMoveRight={() => moveSelectedImage(index, index + 1)}
+                      onRemove={() => removeSelectedImage(image.id)}
+                    />
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </DragDropProvider>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={isPending}
+            onClick={() => setIsConfirmDialogOpen(false)}
+            type="button"
+            variant="outline"
+          >
+            ยกเลิก
+          </Button>
+          <Button disabled={!canSave} onClick={confirmSaveSelection} type="button">
+            {isPending ? (
+              <Loader2Icon className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <SaveIcon data-icon="inline-start" />
+            )}
+            ยืนยันบันทึก
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
