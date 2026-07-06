@@ -179,6 +179,20 @@ describe("house image mobile UI", () => {
 
   it("adds a dedicated cover selection viewer component", () => {
     assert.match(coverSelectSource, /export function CoverSelectViewer/);
+    assert.match(coverSelectSource, /import \{ DragDropProvider \} from "@dnd-kit\/react"/);
+    assert.match(coverSelectSource, /import \{ move \} from "@dnd-kit\/helpers"/);
+    assert.match(coverSelectSource, /import \{ useSortable \} from "@dnd-kit\/react\/sortable"/);
+    assert.match(coverSelectSource, /getHouseCoverSelectedImages/);
+    assert.match(coverSelectSource, /HOUSE_COVER_SELECT_MIN/);
+    assert.match(coverSelectSource, /HOUSE_COVER_SELECT_MAX/);
+    assert.match(coverSelectSource, /selectedIds/);
+    assert.match(coverSelectSource, /DragDropProvider/);
+    assert.match(coverSelectSource, /onDragEnd/);
+    assert.match(coverSelectSource, /move\(ids, event\)/);
+    assert.match(coverSelectSource, /selected strip/i);
+    assert.match(coverSelectSource, /saveAction\(selectedIds\)/);
+    assert.match(coverSelectSource, /getSelectedImageZoneGroup/);
+    assert.match(coverSelectSource, /mode: "cover-select"/);
   });
 
   it("removes the staged save and draft preview flow", () => {
