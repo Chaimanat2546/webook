@@ -1,10 +1,11 @@
 # Webook
 
-Admin-only web app for managing pool villa images and advertisement images.
+Admin-only web app for managing pool villa images, house data MVPs, and advertisement images.
 
 Current focus:
 
 - House image management
+- House data management MVP
 - Advertisement management MVP
 
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
@@ -36,6 +37,20 @@ House/accommodation menu access currently requires `allow_tools.allow_accommodat
 - Single-image delete opens a confirmation dialog with the image preview before deleting.
 - Bulk delete uses selection mode for the current zone only. `Select all` selects only deletable images visible in that zone, and the admin confirms from a preview list before deletion.
 - AWS/S3-backed legacy house images are included in delete controls when their `image_url` identifies the AWS/S3 provider.
+
+## House Data Admin Flow
+
+- `/admin/houses` uses a per-house overflow menu instead of separate row buttons.
+- The overflow menu links to `/admin/houses/[propertyId]` for house data and `/admin/houses/[propertyId]/images` for images.
+- `/admin/houses/[propertyId]` uses the same section-navigation pattern as the image zone UI.
+- House data management is split into MVP sections: `details`, `prices`, and `facilities`.
+- The `details` section edits approved `listings` fields: title, type, zone, room counts, guest count, insurance fee, check-in/out time, notes, and active status.
+- Check-in/out time uses custom 24-hour hour/minute selects that submit `HH:MM`. Property type and zone use shadcn combobox controls; property type shows Thai labels for `poolvilla` and `condo`.
+- Owner and rating are shown disabled for now and are preserved server-side on save.
+- The `details` section must not edit `property_id`, `description`, `property_tags`, or `sort_order`.
+- `prices` and `facilities` remain separate follow-up MVP sections.
+- This flow does not create or delete houses.
+- RLS for `listings`, `listing_prices`, and `listing_facilities` is intentionally unchanged because the legacy system still uses the existing broad policies. New admin actions must enforce `allow_tools.allow_accommodation = true` and field allowlists server-side.
 
 ## Supabase Feature Workflow
 

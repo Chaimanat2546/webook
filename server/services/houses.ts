@@ -11,6 +11,137 @@ export interface HouseListItem {
   title: string | null;
 }
 
+export const LISTING_DETAIL_EDITABLE_FIELDS = [
+  "title",
+  "bedrooms",
+  "bathrooms",
+  "extra_beds",
+  "insurance_fee",
+  "owner_id",
+  "checkin_time",
+  "checkout_time",
+  "notes",
+  "location_zone",
+  "property_type",
+  "rating",
+  "max_guests",
+  "is_active",
+] as const;
+
+export const LISTING_DETAIL_FORBIDDEN_FIELDS = [
+  "property_id",
+  "description",
+  "property_tags",
+  "sort_order",
+] as const;
+
+type ListingDetailsRawValue = FormDataEntryValue | null | undefined;
+type ListingDetailsFormValues = FormData | Record<string, ListingDetailsRawValue>;
+
+export interface ListingDetailsUpdate {
+  bathrooms: number | null;
+  bedrooms: number | null;
+  checkin_time: string | null;
+  checkout_time: string | null;
+  extra_beds: number | null;
+  insurance_fee: number | null;
+  is_active: boolean;
+  location_zone: string | null;
+  max_guests: number;
+  notes: string | null;
+  owner_id: number | null;
+  property_type: string | null;
+  rating: number | null;
+  title: string | null;
+}
+
+function getListingDetailValue(values: ListingDetailsFormValues, field: string): string {
+  const value =
+    typeof (values as FormData).get === "function"
+      ? (values as FormData).get(field)
+      : (values as Record<string, ListingDetailsRawValue>)[field];
+
+  return typeof value === "string" ? value : "";
+}
+
+function getListingDetailValues(values: ListingDetailsFormValues, field: string): string[] {
+  if (typeof (values as FormData).getAll === "function") {
+    return (values as FormData).getAll(field).filter((value): value is string => typeof value === "string");
+  }
+
+  const value = (values as Record<string, ListingDetailsRawValue>)[field];
+  return typeof value === "string" ? [value] : [];
+}
+
+function nullableTextField(values: ListingDetailsFormValues, field: string): string | null {
+  const value = getListingDetailValue(values, field).trim();
+  return value || null;
+}
+
+function nullableIntegerField(
+  values: ListingDetailsFormValues,
+  field: string,
+  { min = 0 }: { min?: number } = {},
+): number | null {
+  const raw = getListingDetailValue(values, field).trim();
+  if (!raw) return null;
+  if (!/^\d+$/.test(raw)) throw new Error(`${field} must be an integer`);
+
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < min) {
+    throw new Error(`${field} must be at least ${min}`);
+  }
+
+  return value;
+}
+
+function requiredIntegerField(
+  values: ListingDetailsFormValues,
+  field: string,
+  { min = 1 }: { min?: number } = {},
+): number {
+  const value = nullableIntegerField(values, field, { min });
+  if (value === null) throw new Error(`${field} is required`);
+  return value;
+}
+
+function nullableTimeField(values: ListingDetailsFormValues, field: string): string | null {
+  const raw = getListingDetailValue(values, field).trim();
+  if (!raw) return null;
+
+  const match = /^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/.exec(raw);
+  if (!match) throw new Error(`${field} must be a valid time`);
+
+  return `${match[1]}:${match[2]}`;
+}
+
+function booleanField(values: ListingDetailsFormValues, field: string): boolean {
+  return getListingDetailValues(values, field).some((value) =>
+    ["1", "on", "true"].includes(value.trim().toLowerCase()),
+  );
+}
+
+export function normalizeListingDetailsFormValues(
+  values: ListingDetailsFormValues,
+): ListingDetailsUpdate {
+  return {
+    bathrooms: nullableIntegerField(values, "bathrooms"),
+    bedrooms: nullableIntegerField(values, "bedrooms"),
+    checkin_time: nullableTimeField(values, "checkin_time"),
+    checkout_time: nullableTimeField(values, "checkout_time"),
+    extra_beds: nullableIntegerField(values, "extra_beds"),
+    insurance_fee: nullableIntegerField(values, "insurance_fee"),
+    is_active: booleanField(values, "is_active"),
+    location_zone: nullableTextField(values, "location_zone"),
+    max_guests: requiredIntegerField(values, "max_guests", { min: 1 }),
+    notes: nullableTextField(values, "notes"),
+    owner_id: nullableIntegerField(values, "owner_id"),
+    property_type: nullableTextField(values, "property_type"),
+    rating: nullableIntegerField(values, "rating"),
+    title: nullableTextField(values, "title"),
+  };
+}
+
 export function formatHouseZone(zone: string | null | undefined): string {
   return formatZone(zone);
 }

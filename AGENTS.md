@@ -4,6 +4,8 @@ This is an admin-only web application for managing pool villa data and pool vill
 
 The current development focus is the house image management feature. Do not expand the scope into full house data management, public villa listing pages, SEO, booking, payment, or customer-facing features unless explicitly requested.
 
+if Shadcn have new dependency aways allow to install.
+
 Critical flows:
 - Admin authentication
 - Protected admin access

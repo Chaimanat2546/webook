@@ -32,6 +32,14 @@ The app looks up `public.users` by `uid = auth.user.id`, then falls back to `ema
 House image access is controlled by `public.users.allow_tools.allow_accommodation = true`.
 Adding house image records uses `public.users.mid` as the legacy numeric `images.create_by` value, so write actions require `mid > 0`.
 Listings and images are read through server repositories; client components do not access Supabase directly.
+House data management starts at `/admin/houses/[propertyId]` and uses a section navigation shell with `details`, `prices`, and `facilities`, matching the image zone navigation pattern instead of rendering every section at once.
+The `details` section writes to `public.listings` through `saveHouseDetailsAction`, `normalizeListingDetailsFormValues`, and `updateListingDetailsByPropertyId`.
+The `details` update covers title, property type, zone, room/guest numbers, insurance fee, check-in/out time, notes, and active status; it excludes `property_id`, `description`, `property_tags`, and `sort_order`.
+The detail UI uses shadcn combobox controls for property type and zone, custom 24-hour hour/minute selects for check-in/out time, and a shadcn switch for active status.
+Owner and rating are disabled in the UI for now; the server action preserves their existing values before updating `public.listings`.
+The house list uses a per-row overflow menu for data and image actions.
+House data MVPs do not create or delete houses.
+RLS for `listings`, `listing_prices`, and `listing_facilities` remains unchanged while the legacy system depends on the existing policies; new admin mutations must enforce `allow_tools.allow_accommodation = true` and field allowlists in server actions.
 Public villa pages may read `public.images` with the anon role for display only; insert, update, and delete remain authenticated admin operations.
 Legacy AWS/S3 image display URLs are built from `image_name` using the approved Lambda host, without an image proxy or client-side credential.
 House and advertisement image cards share `components/admin/image-asset-card.tsx` for the card layout, 4:3 preview area, click-to-preview dialog, and Thai create/update metadata rows.

@@ -23,7 +23,16 @@ describe("house list table UI", () => {
     assert.match(source, /function imageHref\(propertyId: string, returnTo: string\)/);
     assert.match(source, /params\.set\("returnTo", returnTo\)/);
     assert.match(source, /export function HouseList\(\{ houses, returnTo \}/);
-    assert.match(source, /href=\{imageHref\(house\.property_id, returnTo\)\}/);
+    assert.match(source, /href=\{imageHref\(propertyId, returnTo\)\}/);
+  });
+
+  it("uses a single overflow menu for house row actions", () => {
+    assert.match(source, /EllipsisVerticalIcon/);
+    assert.match(source, /function houseHref\(propertyId: string, returnTo: string\)/);
+    assert.match(source, /function HouseActionsMenu/);
+    assert.match(source, /href=\{houseHref\(propertyId, returnTo\)\}/);
+    assert.match(source, /href=\{imageHref\(propertyId, returnTo\)\}/);
+    assert.doesNotMatch(source, /<Button asChild className="w-full">/);
   });
 
   it("uses Thai display helpers for zone and status values", () => {

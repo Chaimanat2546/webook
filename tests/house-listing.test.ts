@@ -3,10 +3,13 @@ import { describe, it } from "node:test";
 
 import {
   HOUSE_PAGE_SIZE,
+  LISTING_DETAIL_EDITABLE_FIELDS,
+  LISTING_DETAIL_FORBIDDEN_FIELDS,
   formatHouseActiveStatus,
   formatHouseZone,
   getPaginationItems,
   getPageRange,
+  normalizeListingDetailsFormValues,
   normalizeHouseSearch,
   sortActiveFirst,
   toListingPropertyIdSearchValue,
@@ -97,6 +100,91 @@ describe("house listing rules", () => {
     assert.equal(formatHouseActiveStatus(true), "ใช้งานอยู่");
     assert.equal(formatHouseActiveStatus(false), "ปิดใช้งาน");
     assert.equal(formatHouseActiveStatus(null), "ปิดใช้งาน");
+  });
+
+  it("allows updates only for approved listing detail fields", () => {
+    assert.deepEqual(LISTING_DETAIL_EDITABLE_FIELDS, [
+      "title",
+      "bedrooms",
+      "bathrooms",
+      "extra_beds",
+      "insurance_fee",
+      "owner_id",
+      "checkin_time",
+      "checkout_time",
+      "notes",
+      "location_zone",
+      "property_type",
+      "rating",
+      "max_guests",
+      "is_active",
+    ]);
+
+    assert.deepEqual(LISTING_DETAIL_FORBIDDEN_FIELDS, [
+      "property_id",
+      "description",
+      "property_tags",
+      "sort_order",
+    ]);
+  });
+
+  it("normalizes listing detail form values without leaking forbidden fields", () => {
+    const values = normalizeListingDetailsFormValues({
+      bathrooms: "",
+      bedrooms: "4",
+      checkin_time: "14:00",
+      checkout_time: "11:30:00",
+      description: "ignore me",
+      extra_beds: "1",
+      insurance_fee: "5000",
+      is_active: "1",
+      location_zone: " pattaya ",
+      max_guests: "10",
+      notes: "  เงื่อนไขเจ้าของบ้าน  ",
+      owner_id: "12",
+      property_id: "999",
+      property_tags: "{}",
+      property_type: " pool_villa ",
+      rating: "5",
+      sort_order: "1",
+      title: "  Villa A  ",
+    });
+
+    assert.deepEqual(values, {
+      bathrooms: null,
+      bedrooms: 4,
+      checkin_time: "14:00",
+      checkout_time: "11:30",
+      extra_beds: 1,
+      insurance_fee: 5000,
+      is_active: true,
+      location_zone: "pattaya",
+      max_guests: 10,
+      notes: "เงื่อนไขเจ้าของบ้าน",
+      owner_id: 12,
+      property_type: "pool_villa",
+      rating: 5,
+      title: "Villa A",
+    });
+    assert.equal(Object.hasOwn(values, "property_id"), false);
+    assert.equal(Object.hasOwn(values, "description"), false);
+    assert.equal(Object.hasOwn(values, "property_tags"), false);
+    assert.equal(Object.hasOwn(values, "sort_order"), false);
+  });
+
+  it("rejects invalid listing detail numbers and times", () => {
+    assert.throws(
+      () => normalizeListingDetailsFormValues({ max_guests: "0" }),
+      /max_guests/,
+    );
+    assert.throws(
+      () => normalizeListingDetailsFormValues({ checkin_time: "25:00", max_guests: "2" }),
+      /checkin_time/,
+    );
+    assert.throws(
+      () => normalizeListingDetailsFormValues({ bedrooms: "1.5", max_guests: "2" }),
+      /bedrooms/,
+    );
   });
 
   it("collapses long pagination with ellipsis around the current page", () => {

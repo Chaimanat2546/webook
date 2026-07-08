@@ -15,6 +15,7 @@
     "upload:cf": "opennextjs-cloudflare build && opennextjs-cloudflare upload"
   },
   "dependencies": {
+    "@base-ui/react": "^1.6.0",
     "@dnd-kit/helpers": "^0.5.0",
     "@dnd-kit/react": "^0.5.0",
     "@opennextjs/cloudflare": "^1.20.1",

@@ -1,6 +1,41 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getPageRange, toListingSearchFilter } from "../services/houses";
+import {
+  type HouseListItem,
+  type ListingDetailsUpdate,
+  getPageRange,
+  toListingSearchFilter,
+} from "../services/houses";
+
+export interface ListingDetailRow extends HouseListItem {
+  checkin_time: string | null;
+  checkout_time: string | null;
+  extra_beds: number | null;
+  insurance_fee: number | null;
+  max_guests: number;
+  notes: string | null;
+  owner_id: number | null;
+  property_type: string | null;
+  rating: number | null;
+}
+
+const listingDetailSelect = [
+  "property_id",
+  "title",
+  "bedrooms",
+  "bathrooms",
+  "extra_beds",
+  "insurance_fee",
+  "owner_id",
+  "checkin_time",
+  "checkout_time",
+  "notes",
+  "location_zone",
+  "property_type",
+  "rating",
+  "max_guests",
+  "is_active",
+].join(",");
 
 export async function getPaginatedListings(
   supabase: SupabaseClient,
@@ -39,7 +74,7 @@ export async function getPaginatedListings(
 export async function getListingByPropertyId(supabase: SupabaseClient, propertyId: string) {
   const { data, error } = await supabase
     .from("listings")
-    .select("property_id,title,bedrooms,bathrooms,location_zone,is_active")
+    .select(listingDetailSelect)
     .eq("property_id", propertyId)
     .maybeSingle();
 
@@ -47,5 +82,20 @@ export async function getListingByPropertyId(supabase: SupabaseClient, propertyI
     throw new Error(error.message);
   }
 
-  return data;
+  return data as ListingDetailRow | null;
+}
+
+export async function updateListingDetailsByPropertyId(
+  supabase: SupabaseClient,
+  propertyId: string,
+  values: ListingDetailsUpdate,
+) {
+  const { error } = await supabase
+    .from("listings")
+    .update({ ...values, updated_at: new Date().toISOString() })
+    .eq("property_id", propertyId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
