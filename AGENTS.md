@@ -97,6 +97,38 @@ Allowed verification commands:
 - Do not build an entire UI flow in one pass unless the user has already approved the structure.
 - UI must be designed mobile-first and verified across mobile, tablet, laptop, and desktop layouts.
 
+## House workspace shell style gate
+
+Before creating or changing any admin house-related page, first decide whether the House Workspace Shell applies.
+
+Use the shell when:
+
+- The page is under house management, especially `app/admin/houses/[propertyId]/...`.
+- The page is a task workspace for one house.
+- The page has, or should have, a page header, sidebar navigation, and content area.
+- Examples include house details, prices, facilities, image management, and cover image ordering.
+
+Do not use the shell when:
+
+- The page is the house list page.
+- The flow is only a dialog, dropdown, card, or small embedded widget.
+- The page is login, public listing or search, advertisement management, booking, payment, or an unrelated admin module.
+- The requested UI intentionally needs a different layout.
+
+When the shell applies:
+
+- Keep Shell Header fixed: back link, house title, DV badge, current task subtitle.
+- Keep Workspace Shell fixed: rounded border frame, `16rem` desktop sidebar, mobile horizontal sidebar, content-owned scroll.
+- Keep Sidebar Nav Item style fixed: icon, label, optional badge, active state.
+- Keep Content Header structure fixed: icon, title, badge or subtext, and actions.
+- Let Content Body be task-specific.
+
+When the shell does not apply:
+
+- Briefly state why before choosing another layout.
+
+For details, read `docs/superpowers/specs/2026-07-09-house-workspace-shell-design.md`.
+
 ## Coding conventions
 
 - Use TypeScript strict mode.
