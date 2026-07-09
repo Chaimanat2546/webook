@@ -6,10 +6,14 @@ describe("Cloudflare deployment boundary", () => {
   it("configures the Next.js admin app as a separate Cloudflare Worker", () => {
     const configPath = new URL("../wrangler.jsonc", import.meta.url);
     const openNextConfigPath = new URL("../open-next.config.ts", import.meta.url);
+    const nextConfigPath = new URL("../next.config.ts", import.meta.url);
+    const baseUiArrowShimPath = new URL("../lib/base-ui-arrow-middleware.ts", import.meta.url);
     const workflowPath = new URL("../.github/workflows/deploy-admin.yml", import.meta.url);
 
     assert.ok(existsSync(configPath));
     assert.ok(existsSync(openNextConfigPath));
+    assert.ok(existsSync(nextConfigPath));
+    assert.ok(existsSync(baseUiArrowShimPath));
     assert.equal(existsSync(workflowPath), false);
 
     const config = JSON.parse(readFileSync(configPath, "utf8"));
@@ -33,6 +37,18 @@ describe("Cloudflare deployment boundary", () => {
     assert.match(openNextConfig, /r2-incremental-cache/);
     assert.doesNotMatch(openNextConfig, /do-queue/);
     assert.doesNotMatch(openNextConfig, /do-sharded-tag-cache/);
+
+    const nextConfig = readFileSync(nextConfigPath, "utf8");
+    assert.match(nextConfig, /base-ui-arrow-middleware/);
+    assert.match(nextConfig, /\.\.\/floating-ui-react\/middleware\/arrow\.mjs/);
+    assert.match(nextConfig, /\.\.\/floating-ui-react\/middleware\/arrow/);
+
+    const baseUiArrowShim = readFileSync(baseUiArrowShimPath, "utf8");
+    assert.match(baseUiArrowShim, /export function arrow/);
+    assert.match(baseUiArrowShim, /name: middleware\.name/);
+    assert.match(baseUiArrowShim, /fn: middleware\.fn/);
+    assert.match(baseUiArrowShim, /options: \[options, deps\]/);
+    assert.doesNotMatch(baseUiArrowShim, /\.\.\.baseArrow\(options\)/);
 
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
       dependencies?: Record<string, string>;
