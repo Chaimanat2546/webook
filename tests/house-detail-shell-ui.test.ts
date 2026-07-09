@@ -12,6 +12,18 @@ const sectionNavUrl = new URL(
   import.meta.url,
 );
 const activeScrollUrl = new URL("../lib/scroll-active-item.ts", import.meta.url);
+const taskHeaderUrl = new URL(
+  "../components/admin/houses/house-task-header.tsx",
+  import.meta.url,
+);
+const workspaceShellUrl = new URL(
+  "../components/admin/houses/house-workspace-shell.tsx",
+  import.meta.url,
+);
+const navItemUrl = new URL(
+  "../components/admin/houses/house-workspace-nav-item.tsx",
+  import.meta.url,
+);
 
 describe("house detail shell UI", () => {
   it("provides a zone-style section shell for house management", () => {
@@ -27,27 +39,45 @@ describe("house detail shell UI", () => {
     assert.match(source, /HouseDetailSectionNav/);
     assert.match(source, /จัดการข้อมูลบ้านพัก/);
     assert.match(source, /const sectionBadges: Record<HouseDetailSectionKey, string>/);
-    assert.match(source, /lg:grid-cols-\[16rem_minmax\(0,1fr\)\]/);
-    assert.match(source, /\/admin\/houses\/\$\{encodeURIComponent\(propertyId\)\}\/images/);
+    assert.match(source, /HouseWorkspaceShell/);
+    assert.doesNotMatch(source, /imageHref\(propertyId, safeReturnTo\)/);
+  });
+
+  it("uses the shared house workspace shell components", () => {
+    const source = readFileSync(pageUrl, "utf8");
+    const navSource = readFileSync(sectionNavUrl, "utf8");
+
+    assert.equal(existsSync(taskHeaderUrl), true);
+    assert.equal(existsSync(workspaceShellUrl), true);
+    assert.equal(existsSync(navItemUrl), true);
+    assert.match(source, /import \{ HouseTaskHeader \}/);
+    assert.match(source, /import \{ HouseWorkspaceShell \}/);
+    assert.match(source, /<HouseTaskHeader/);
+    assert.match(source, /subtitle="จัดการข้อมูลบ้านพัก"/);
+    assert.match(source, /<HouseWorkspaceShell/);
+    assert.match(source, /sidebarTitle="หมวดข้อมูล"/);
+    assert.match(source, /contentIcon=\{<ActiveSectionIcon aria-hidden \/>\}/);
+    assert.match(source, /contentTitle=\{activeSection\.label\}/);
+    assert.match(source, /contentMeta=\{sectionBadges\[activeSection\.key\]\}/);
+    assert.match(source, /contentActions=\{activeSection\.key === "details" \? ratingAction : undefined\}/);
+    assert.match(navSource, /HouseWorkspaceNavItem/);
   });
 
   it("keeps the mobile house detail shell compact", () => {
     const source = readFileSync(pageUrl, "utf8");
 
     assert.match(source, /className="flex flex-col gap-3 lg:h-\[calc\(100dvh-6\.5rem\)\]/);
-    assert.match(source, /className="text-base font-semibold sm:text-lg lg:text-xl"/);
-    assert.match(source, /className="hidden w-fit lg:inline-flex"/);
-    assert.match(source, /<p className="text-sm text-muted-foreground">จัดการข้อมูลบ้านพัก<\/p>/);
+    assert.match(source, /<HouseTaskHeader/);
+    assert.doesNotMatch(source, /className="hidden w-fit lg:inline-flex"/);
+    assert.match(source, /subtitle="จัดการข้อมูลบ้านพัก"/);
     assert.doesNotMatch(source, /<p className="hidden text-sm text-muted-foreground lg:block">[\s\S]*formatHouseActiveStatus\(house\.is_active\)[\s\S]*activeSection\.label[\s\S]*<\/p>/);
-    assert.match(source, /className="hidden border-b px-4 py-3 lg:block"/);
-    assert.match(source, /className="min-w-0 lg:grid lg:min-h-0 lg:grid-rows-\[auto_minmax\(0,1fr\)\]"/);
-    assert.match(source, /className="hidden border-b bg-muted\/20 px-4 py-3 lg:block"[\s\S]*\{activeSection\.label\}/);
-    assert.match(source, /className="p-4 lg:min-h-0 lg:overflow-y-auto"/);
+    assert.match(source, /<HouseWorkspaceShell/);
     assert.match(source, /className="flex flex-col gap-4 lg:min-h-full"/);
     assert.doesNotMatch(source, /order-first/);
     assert.doesNotMatch(source, /autoFocus=\{isActive\}/);
     assert.doesNotMatch(source, /<h2 className="text-sm font-semibold">หมวดข้อมูล<\/h2>/);
     assert.doesNotMatch(source, /className="flex min-h-full flex-col gap-4"/);
+    assert.doesNotMatch(source, /imageHref\(propertyId, safeReturnTo\)/);
   });
 
   it("scrolls the selected mobile detail section into view without reordering sections", () => {
@@ -57,9 +87,9 @@ describe("house detail shell UI", () => {
     const scrollSource = readFileSync(activeScrollUrl, "utf8");
 
     assert.match(source, /"use client"/);
-    assert.match(source, /import \{ Badge \} from "\.\.\/\.\.\/ui\/badge";/);
     assert.match(source, /import \{ BanknoteIcon, HouseIcon, SparklesIcon \} from "lucide-react";/);
     assert.match(source, /import \{ scrollActiveItemToStart \} from "\.\.\/\.\.\/\.\.\/lib\/scroll-active-item";/);
+    assert.match(source, /import \{ HouseWorkspaceNavItem \} from "\.\/house-workspace-nav-item";/);
     assert.match(source, /const sectionIconByKey: Record<string, LucideIcon>/);
     assert.match(source, /details: HouseIcon/);
     assert.match(source, /prices: BanknoteIcon/);
@@ -77,10 +107,9 @@ describe("house detail shell UI", () => {
       /viewport\.scrollTo\(\{\s*behavior: "smooth",\s*left: viewport\.scrollLeft \+ itemRect\.left - viewportRect\.left,\s*\}\);/,
     );
     assert.doesNotMatch(source, /scrollIntoView/);
-    assert.match(source, /<Badge className="hidden shrink-0 lg:inline-flex" variant=\{isActive \? "secondary" : "outline"\}>/);
-    assert.match(source, /\{item\.badge\}/);
+    assert.match(source, /badge=\{item\.badge\}/);
     assert.match(source, /const SectionIcon = sectionIconByKey\[item\.key\] \?\? HouseIcon;/);
-    assert.match(source, /<SectionIcon aria-hidden className="size-4 shrink-0" \/>/);
+    assert.match(source, /icon=\{<SectionIcon aria-hidden className="size-4 shrink-0" \/>\}/);
     assert.doesNotMatch(source, /order-first/);
   });
 
@@ -106,7 +135,9 @@ describe("house detail shell UI", () => {
     assert.match(source, /5 - ส่งได้เลยบ้านใหม่/);
     assert.match(source, /htmlFor="rating"[\s\S]{0,500}<HouseDetailCombobox/);
     assert.match(source, /id="rating"[\s\S]*name="rating"[\s\S]*disabled=\{!canManageRating\}/);
-    assert.match(source, /htmlFor="rating"[\s\S]*imageHref\(propertyId, safeReturnTo\)/);
+    assert.match(source, /const ratingAction = \(/);
+    assert.match(source, /form=\{HOUSE_DETAILS_FORM_ID\}/);
+    assert.match(source, /contentActions=\{activeSection\.key === "details" \? ratingAction : undefined\}/);
     assert.match(source, /TIME_OPTIONS/);
     assert.match(source, /Array\.from\(\{ length: 48 \}/);
     assert.match(source, /id="title"[\s\S]*name="title"[\s\S]*required/);
@@ -173,7 +204,7 @@ describe("house detail shell UI", () => {
     assert.match(source, /getListingPricesByListingId\(supabase, house\.id\)/);
     assert.match(source, /LISTING_PRICE_DAYS\.map/);
     assert.match(source, /\{day\.label\}/);
-    assert.match(source, /className="grid overflow-hidden rounded-lg border lg:min-h-0 lg:flex-1 lg:grid-cols-\[16rem_minmax\(0,1fr\)\]"/);
+    assert.match(source, /<HouseWorkspaceShell/);
     assert.match(source, /<form action=\{pricesAction\} className="flex flex-col gap-4 lg:min-h-full"/);
     assert.match(source, /className="grid gap-3 md:grid-cols-2"/);
     assert.match(source, /className="flex justify-end border-t pt-4 lg:mt-auto"/);

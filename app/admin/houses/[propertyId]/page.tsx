@@ -1,8 +1,7 @@
-import { ArrowLeftIcon, ImageIcon, SaveIcon } from "lucide-react";
-import Link from "next/link";
+import { BanknoteIcon, HouseIcon, SaveIcon, SparklesIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import {
   Empty,
@@ -13,6 +12,8 @@ import {
 import { HouseDetailCombobox } from "../../../../components/admin/houses/house-detail-combobox";
 import { HouseDetailSectionNav } from "../../../../components/admin/houses/house-detail-section-nav";
 import { HouseDetailSaveNotification } from "../../../../components/admin/houses/house-detail-save-notification";
+import { HouseTaskHeader } from "../../../../components/admin/houses/house-task-header";
+import { HouseWorkspaceShell } from "../../../../components/admin/houses/house-workspace-shell";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { Switch } from "../../../../components/ui/switch";
@@ -73,6 +74,12 @@ const TIME_OPTIONS = [
 
 type HouseDetailSectionKey = (typeof HOUSE_DETAIL_SECTIONS)[number]["key"];
 
+const sectionIconByKey: Record<HouseDetailSectionKey, LucideIcon> = {
+  details: HouseIcon,
+  prices: BanknoteIcon,
+  facilities: SparklesIcon,
+};
+
 function getSafeReturnTo(value?: string): string | null {
   if (value === "/admin/houses" || value?.startsWith("/admin/houses?")) {
     return value;
@@ -85,13 +92,6 @@ function getSelectedSection(value?: string): HouseDetailSectionKey {
   return HOUSE_DETAIL_SECTIONS.some((section) => section.key === value)
     ? (value as HouseDetailSectionKey)
     : "details";
-}
-
-function imageHref(propertyId: string, returnTo?: string | null) {
-  const params = new URLSearchParams();
-  if (returnTo) params.set("returnTo", returnTo);
-  const query = params.toString();
-  return `/admin/houses/${encodeURIComponent(propertyId)}/images${query ? `?${query}` : ""}`;
 }
 
 function saveToastTitle(searchParams: { saved?: string; section?: string }): string | null {
@@ -207,68 +207,49 @@ export default async function HouseDetailPage({
   const pricesAction = saveHousePricesAction.bind(null, propertyId);
   const facilitiesAction = saveHouseFacilitiesAction.bind(null, propertyId);
   const canManageRating = canManageHouseRating(adminUser);
+  const ActiveSectionIcon = sectionIconByKey[activeSection.key];
+  const ratingAction = (
+    <div className="grid gap-1">
+      <Label htmlFor="rating">เรตติ้ง</Label>
+      <HouseDetailCombobox
+        defaultValue={ratingValue(house.rating)}
+        emptyText="ไม่พบเรตติ้ง"
+        form={HOUSE_DETAILS_FORM_ID}
+        id="rating"
+        name="rating"
+        disabled={!canManageRating}
+        options={RATING_OPTIONS}
+        placeholder="เลือกเรตติ้ง"
+      />
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-3 lg:h-[calc(100dvh-6.5rem)] lg:min-h-0 lg:gap-4">
       {toastTitle ? <HouseDetailSaveNotification title={toastTitle} /> : null}
 
-      <header className="flex flex-col gap-3 border-b pb-3 md:flex-row md:items-center md:justify-between lg:pb-4">
-        <div className="flex flex-col gap-2">
-          <Button asChild className="w-fit px-0" size="sm" variant="ghost">
-            <Link href={backHref}>
-              <ArrowLeftIcon data-icon="inline-start" />
-              กลับไปบ้านพัก
-            </Link>
-          </Button>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-base font-semibold sm:text-lg lg:text-xl">{house.title || "ไม่พบชื่อบ้านพัก"}</h1>
-              <Badge variant="secondary">DV-{house.property_id}</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">จัดการข้อมูลบ้านพัก</p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="grid gap-1">
-            <Label htmlFor="rating">เรตติ้ง</Label>
-            <HouseDetailCombobox
-              defaultValue={ratingValue(house.rating)}
-              emptyText="ไม่พบเรตติ้ง"
-              form={HOUSE_DETAILS_FORM_ID}
-              id="rating"
-              name="rating"
-              disabled={!canManageRating}
-              options={RATING_OPTIONS}
-              placeholder="เลือกเรตติ้ง"
-            />
-          </div>
-          <Button asChild className="hidden w-fit lg:inline-flex" size="sm" variant="outline">
-            <Link href={imageHref(propertyId, safeReturnTo)}>
-              <ImageIcon data-icon="inline-start" />
-              จัดการรูป
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <HouseTaskHeader
+        backHref={backHref}
+        propertyId={house.property_id}
+        subtitle="จัดการข้อมูลบ้านพัก"
+        title={house.title || "ไม่พบชื่อบ้านพัก"}
+      />
 
-      <div className="grid overflow-hidden rounded-lg border lg:min-h-0 lg:flex-1 lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <aside className="min-w-0 border-b bg-muted/20 lg:border-b-0 lg:border-r">
-          <div className="hidden border-b px-4 py-3 lg:block">
-            <h2 className="font-semibold text-sm">หมวดข้อมูล</h2>
-          </div>
+      <HouseWorkspaceShell
+        contentActions={activeSection.key === "details" ? ratingAction : undefined}
+        contentIcon={<ActiveSectionIcon aria-hidden />}
+        contentMeta={sectionBadges[activeSection.key]}
+        contentTitle={activeSection.label}
+        sidebar={
           <HouseDetailSectionNav
             propertyId={propertyId}
             returnTo={safeReturnTo}
             sections={detailSections}
             selectedSection={selectedSection}
           />
-        </aside>
-
-        <section className="min-w-0 lg:grid lg:min-h-0 lg:grid-rows-[auto_minmax(0,1fr)]">
-          <header className="hidden border-b bg-muted/20 px-4 py-3 lg:block">
-            <h2 className="text-base font-semibold">{activeSection.label}</h2>
-          </header>
-          <div className="p-4 lg:min-h-0 lg:overflow-y-auto">
+        }
+        sidebarTitle="หมวดข้อมูล"
+      >
             {activeSection.key === "details" ? (
               <form action={detailsAction} className="flex flex-col gap-5" id={HOUSE_DETAILS_FORM_ID}>
                 <input name="returnTo" type="hidden" value={safeReturnTo ?? ""} />
@@ -596,9 +577,7 @@ export default async function HouseDetailPage({
                 ไม่พบหมวดข้อมูลนี้
               </div>
             )}
-          </div>
-        </section>
-      </div>
+      </HouseWorkspaceShell>
     </div>
   );
 }

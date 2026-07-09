@@ -2,13 +2,11 @@
 
 import { BanknoteIcon, HouseIcon, SparklesIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 import { scrollActiveItemToStart } from "../../../lib/scroll-active-item";
-import { cn } from "../../../lib/utils";
-import { Badge } from "../../ui/badge";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
+import { HouseWorkspaceNavItem } from "./house-workspace-nav-item";
 
 interface HouseDetailSection {
   readonly badge?: string;
@@ -61,26 +59,15 @@ export function HouseDetailSectionNav({
           const SectionIcon = sectionIconByKey[item.key] ?? HouseIcon;
 
           return (
-            <Link
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "flex min-w-44 shrink-0 items-center justify-center rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted lg:min-w-0 lg:justify-between lg:gap-3",
-                isActive && "bg-primary text-primary-foreground hover:bg-primary",
-              )}
+            <HouseWorkspaceNavItem
+              active={isActive}
+              badge={item.badge}
               href={sectionHref(propertyId, item.key, returnTo)}
+              icon={<SectionIcon aria-hidden className="size-4 shrink-0" />}
               key={item.key}
+              label={item.label}
               ref={isActive ? activeSectionRef : undefined}
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <SectionIcon aria-hidden className="size-4 shrink-0" />
-                <span className="block min-w-0 truncate font-medium">{item.label}</span>
-              </span>
-              {item.badge ? (
-                <Badge className="hidden shrink-0 lg:inline-flex" variant={isActive ? "secondary" : "outline"}>
-                  {item.badge}
-                </Badge>
-              ) : null}
-            </Link>
+            />
           );
         })}
       </nav>
