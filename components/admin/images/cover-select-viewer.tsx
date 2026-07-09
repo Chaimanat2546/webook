@@ -40,7 +40,6 @@ import {
   type ImageZoneGroup,
 } from "../../../server/services/images";
 import { AdminImageCard } from "../image-asset-card";
-import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import {
   Dialog,
@@ -51,6 +50,8 @@ import {
   DialogTitle,
 } from "../../ui/dialog";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
+import { HouseWorkspaceNavItem } from "../houses/house-workspace-nav-item";
+import { HouseWorkspaceShell } from "../houses/house-workspace-shell";
 
 const allZonesKey = "__all__";
 
@@ -292,151 +293,122 @@ function CoverSelectViewerContent({
     });
   }
 
+  const sidebar = (
+    <ScrollArea className="w-full min-w-0 lg:h-full">
+      <nav
+        aria-label="Cover select image zones"
+        className="flex w-max min-w-full gap-2 p-3 lg:w-auto lg:min-w-0 lg:flex-col"
+      >
+        <HouseWorkspaceNavItem
+          active={!selectedZone}
+          badge={`${allImages.length} รูป`}
+          href={coverSelectHref(propertyId, allZonesKey, returnTo)}
+          icon={<ImageIcon aria-hidden className="size-4" />}
+          label="ทั้งหมด"
+          ref={!selectedZone ? activeZoneRef : undefined}
+        />
+        {groups.map((group) => {
+          const isActive = group.zone === selectedZone;
+          const meta = getImageZoneMeta(group.zone);
+
+          return (
+            <HouseWorkspaceNavItem
+              active={isActive}
+              badge={`${group.images.length} รูป`}
+              href={coverSelectHref(propertyId, group.zone, returnTo)}
+              icon={<ZoneIcon icon={meta.icon} />}
+              key={group.zone}
+              label={meta.label}
+              ref={isActive ? activeZoneRef : undefined}
+              title={group.zone}
+            />
+          );
+        })}
+      </nav>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
+  );
+
+  const contentActions = (
+    <>
+      <Button asChild size="sm" type="button" variant="outline">
+        <Link
+          aria-disabled={isPending}
+          className={cn(isPending && "pointer-events-none opacity-50")}
+          href={normalImageHref(propertyId, returnTo)}
+        >
+          <XIcon data-icon="inline-start" />
+          ยกเลิก
+        </Link>
+      </Button>
+      <Button disabled={!canSort} onClick={openSortDialog} size="sm" type="button" variant="outline">
+        <ArrowLeftRightIcon data-icon="inline-start" />
+        เรียงรูป
+      </Button>
+      <Button disabled={!canSave} onClick={saveSelection} size="sm" type="button">
+        {isPending ? (
+          <Loader2Icon className="animate-spin" data-icon="inline-start" />
+        ) : (
+          <SaveIcon data-icon="inline-start" />
+        )}
+        บันทึก ({selectedIds.length})
+      </Button>
+    </>
+  );
+
   return (
     <>
-    <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-xl border bg-background lg:grid-cols-[220px_1fr] lg:grid-rows-1">
-      <aside className="min-h-0 min-w-0 border-b bg-muted/20 lg:grid lg:grid-rows-[auto_minmax(0,1fr)] lg:border-b-0 lg:border-r">
-        <div className="border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">Zones</h2>
-        </div>
-        <ScrollArea className="w-full min-w-0 lg:h-full">
-          <nav
-            aria-label="Cover select image zones"
-            className="flex w-max min-w-full gap-2 p-3 lg:w-auto lg:min-w-0 lg:flex-col"
-          >
-            <Link
-              className={cn(
-                "flex min-w-36 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted lg:min-w-0",
-                !selectedZone && "bg-primary text-primary-foreground hover:bg-primary",
-              )}
-              href={coverSelectHref(propertyId, allZonesKey, returnTo)}
-              ref={!selectedZone ? activeZoneRef : undefined}
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="flex size-5 shrink-0 items-center justify-center [&>svg]:size-4">
-                  <ImageIcon aria-hidden className="size-4" />
-                </span>
-                <span className="font-medium">ทั้งหมด</span>
-              </span>
-              <Badge className="shrink-0" variant={!selectedZone ? "secondary" : "outline"}>
-                {allImages.length} รูป
-              </Badge>
-            </Link>
-            {groups.map((group) => {
-              const isActive = group.zone === selectedZone;
-              const meta = getImageZoneMeta(group.zone);
+      <HouseWorkspaceShell
+        contentActions={contentActions}
+        contentClassName="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] gap-3 p-2 lg:overflow-hidden"
+        contentIcon={
+          selectedMeta ? <ZoneIcon icon={selectedMeta.icon} /> : <ImageIcon aria-hidden className="size-4" />
+        }
+        contentMeta={`เลือก ${HOUSE_COVER_SELECT_MIN}-${HOUSE_COVER_SELECT_MAX} รูป · ${selectedCountLabel(selectedIds.length)}`}
+        contentTitle="จัดลำดับรูปแสดง"
+        sidebar={sidebar}
+        sidebarTitle="ทำเล"
+      >
+        <div className="min-h-0 overflow-y-auto overscroll-contain rounded-lg">
+          {visibleImages.length === 0 ? (
+            <div className="m-3 flex min-h-60 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 px-4 py-10 text-center">
+              <div className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <ImageIcon aria-hidden />
+              </div>
+              <p className="mt-3 text-sm font-medium">ยังไม่มีรูปในมุมมองนี้</p>
+            </div>
+          ) : null}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
+            {visibleImages.map((image) => {
+              const selectedIndex = selectedIds.indexOf(image.id);
+              const isSelected = selectedIndex !== -1;
+              const zoneMeta = getImageZoneMeta(image.image_zone ?? "");
 
               return (
-                <Link
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "flex min-w-36 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted lg:min-w-0",
-                    isActive && "bg-primary text-primary-foreground hover:bg-primary",
-                  )}
-                  href={coverSelectHref(propertyId, group.zone, returnTo)}
-                  key={group.zone}
-                  ref={isActive ? activeZoneRef : undefined}
-                  title={group.zone}
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="flex size-5 shrink-0 items-center justify-center [&>svg]:size-4">
-                      <ZoneIcon icon={meta.icon} />
-                    </span>
-                    <span className="block min-w-0 truncate font-medium">{meta.label}</span>
-                  </span>
-                  <Badge className="shrink-0" variant={isActive ? "secondary" : "outline"}>
-                    {group.images.length} รูป
-                  </Badge>
-                </Link>
+                <AdminImageCard
+                  alt={image.image_name ?? "house image"}
+                  imageName={image.image_name ?? "-"}
+                  key={image.id}
+                  onSelect={() => toggleImage(image)}
+                  orderLabel={isSelected ? `# ${selectedIndex + 1}` : undefined}
+                  previewEnabled={false}
+                  secondaryLabel={zoneMeta.label}
+                  selected={isSelected}
+                  selectionLabel={`${isSelected ? "เอาออก" : "เลือก"} ${image.image_name ?? image.id}`}
+                  src={displayUrl(image)}
+                />
               );
             })}
-          </nav>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-      </aside>
-
-      <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3">
-          <div className="hidden min-w-0 items-center gap-3 lg:flex">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground [&>svg]:size-4">
-              {selectedMeta ? <ZoneIcon icon={selectedMeta.icon} /> : <ImageIcon aria-hidden className="size-4" />}
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold">จัดลำดับรูปแสดง</h2>
-              <p className="text-xs text-muted-foreground">
-                เลือก {HOUSE_COVER_SELECT_MIN}-{HOUSE_COVER_SELECT_MAX} รูป · {selectedCountLabel(selectedIds.length)}
-              </p>
-            </div>
-          </div>
-          <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
-            <Button asChild size="sm" type="button" variant="outline">
-              <Link
-                aria-disabled={isPending}
-                className={cn(isPending && "pointer-events-none opacity-50")}
-                href={normalImageHref(propertyId, returnTo)}
-              >
-                <XIcon data-icon="inline-start" />
-                ยกเลิก
-              </Link>
-            </Button>
-            <Button disabled={!canSort} onClick={openSortDialog} size="sm" type="button" variant="outline">
-              <ArrowLeftRightIcon data-icon="inline-start" />
-              เรียงรูป
-            </Button>
-            <Button disabled={!canSave} onClick={saveSelection} size="sm" type="button">
-              {isPending ? (
-                <Loader2Icon className="animate-spin" data-icon="inline-start" />
-              ) : (
-                <SaveIcon data-icon="inline-start" />
-              )}
-              บันทึก ({selectedIds.length})
-            </Button>
-          </div>
-        </header>
-
-        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] gap-3 p-2">
-          <div className="min-h-0 overflow-y-auto overscroll-contain rounded-lg">
-            {visibleImages.length === 0 ? (
-              <div className="m-3 flex min-h-60 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 px-4 py-10 text-center">
-                <div className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <ImageIcon aria-hidden />
-                </div>
-                <p className="mt-3 text-sm font-medium">ยังไม่มีรูปในมุมมองนี้</p>
-              </div>
-            ) : null}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
-              {visibleImages.map((image) => {
-                const selectedIndex = selectedIds.indexOf(image.id);
-                const isSelected = selectedIndex !== -1;
-                const zoneMeta = getImageZoneMeta(image.image_zone ?? "");
-
-                return (
-                  <AdminImageCard
-                    alt={image.image_name ?? "house image"}
-                    imageName={image.image_name ?? "-"}
-                    key={image.id}
-                    onSelect={() => toggleImage(image)}
-                    orderLabel={isSelected ? `# ${selectedIndex + 1}` : undefined}
-                    previewEnabled={false}
-                    secondaryLabel={zoneMeta.label}
-                    selected={isSelected}
-                    selectionLabel={`${isSelected ? "เอาออก" : "เลือก"} ${image.image_name ?? image.id}`}
-                    src={displayUrl(image)}
-                  />
-                );
-              })}
-            </div>
           </div>
         </div>
-      </section>
-    </div>
+      </HouseWorkspaceShell>
 
-    <Dialog
-      open={isConfirmDialogOpen}
-      onOpenChange={(open) => {
-        if (!isPending) setIsConfirmDialogOpen(open);
-      }}
-    >
+      <Dialog
+        open={isConfirmDialogOpen}
+        onOpenChange={(open) => {
+          if (!isPending) setIsConfirmDialogOpen(open);
+        }}
+      >
       <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-0.5rem)] max-w-7xl flex-col overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-7xl">
         <DialogHeader>
           <DialogTitle>ยืนยันรูปที่เลือก</DialogTitle>
