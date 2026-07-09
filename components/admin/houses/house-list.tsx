@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BedDouble, EllipsisVerticalIcon, ImageIcon, MapPinHouse, PencilLineIcon, Toilet } from "lucide-react";
 
 import {
   formatHouseActiveStatus,
@@ -9,6 +10,13 @@ import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu";
+import {
   Table,
   TableBody,
   TableCell,
@@ -16,16 +24,49 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
-import { Toilet, BedDouble, MapPinHouse } from "lucide-react";
 
 function StatusBadge({ active }: { active: boolean | null }) {
   return <Badge variant={active ? "default" : "secondary"}>{formatHouseActiveStatus(active)}</Badge>;
+}
+
+function houseHref(propertyId: string, returnTo: string) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnTo);
+  return `/admin/houses/${encodeURIComponent(propertyId)}?${params}`;
 }
 
 function imageHref(propertyId: string, returnTo: string) {
   const params = new URLSearchParams();
   params.set("returnTo", returnTo);
   return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
+}
+
+function HouseActionsMenu({ propertyId, returnTo }: { propertyId: string; returnTo: string }) {
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button aria-label="เปิดเมนูจัดการบ้านพัก" size="icon" type="button" variant="outline">
+          <EllipsisVerticalIcon aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href={houseHref(propertyId, returnTo)}>
+              <PencilLineIcon aria-hidden />
+              จัดการข้อมูล
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={imageHref(propertyId, returnTo)}>
+              <ImageIcon aria-hidden />
+              จัดการรูป
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; returnTo: string }) {
@@ -39,10 +80,13 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                 <CardTitle className="truncate text-sm">{house.title || "-"}</CardTitle>
                 <p className="font-mono text-xs text-muted-foreground">DV-{house.property_id}</p>
               </div>
-              <StatusBadge active={house.is_active} />
+              <div className="flex shrink-0 items-center gap-2">
+                <StatusBadge active={house.is_active} />
+              </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <dl className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+              <div className="grid grid-cols-[1fr_1fr_minmax(0,1fr)_auto] gap-2 text-xs text-muted-foreground">
+                <dl className="contents">
                 <div>
                   <dt>ห้องนอน</dt>
                   <dd className="font-medium text-foreground"><BedDouble className="inline-block h-4 w-4 mr-1" />{house.bedrooms ?? "-"}</dd>
@@ -57,16 +101,17 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                     <MapPinHouse className="inline-block h-4 w-4 mr-1" />{formatHouseZone(house.location_zone)}
                   </dd>
                 </div>
-              </dl>
-              <Button asChild className="w-full">
-                <Link href={imageHref(house.property_id, returnTo)}>จัดการรูป</Link>
-              </Button>
+                </dl>
+                <div className="flex items-end justify-end self-end">
+                  <HouseActionsMenu propertyId={house.property_id} returnTo={returnTo} />
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card className="hidden overflow-hidden p-0 md:block">
+      <Card className="hidden p-0 md:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
@@ -95,9 +140,7 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                   <StatusBadge active={house.is_active} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={imageHref(house.property_id, returnTo)}>จัดการรูป</Link>
-                  </Button>
+                  <HouseActionsMenu propertyId={house.property_id} returnTo={returnTo} />
                 </TableCell>
               </TableRow>
             ))}

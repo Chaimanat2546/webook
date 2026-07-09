@@ -266,6 +266,7 @@ function FailedAdvertisementUploadCard({
         <img
           alt={item.file.name}
           className="h-full w-full object-cover opacity-60 grayscale"
+          loading="lazy"
           src={item.previewSrc}
         />
         <Badge
@@ -1330,7 +1331,6 @@ export function AdvertisementForm({
                       alt={image.image_name}
                       imageName={image.image_name}
                       key={image.id}
-                      loading={index === 0 ? "eager" : "lazy"}
                       onSelect={
                         isBulkDeleteMode && usesOperationImages
                           ? () => toggleBulkDeleteSelection(image.id)
@@ -1410,6 +1410,7 @@ export function AdvertisementForm({
                   <img
                     alt={singleDeleteImage.image_name}
                     className="max-h-80 w-full object-contain"
+                    loading="lazy"
                     src={singleDeleteImage.src}
                   />
                 ) : (

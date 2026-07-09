@@ -9,6 +9,7 @@ import {
 export const UNASSIGNED_IMAGE_ZONE = "ไม่ระบุหมวด";
 
 export interface HouseImageItem {
+  cover_select?: number | null;
   created_at?: string | null;
   id: number;
   image_move: number | null;
@@ -62,6 +63,9 @@ export interface ImageZoneMeta {
 export type HouseImageFileOperation = "create" | "delete" | "replace";
 export type HouseImageStorageProvider = "aws-s3" | "r2" | "unknown";
 
+export const HOUSE_COVER_SELECT_MIN = 3;
+export const HOUSE_COVER_SELECT_MAX = 10;
+
 const HOUSE_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const supportedHouseImageMimeTypes = new Set([
   "image/avif",
@@ -91,6 +95,12 @@ function moveValue(image: HouseImageItem): number {
 function imageMoveForNewOrder(image: HouseImageItem): number {
   return typeof image.image_move === "number" && Number.isFinite(image.image_move)
     ? image.image_move
+    : 0;
+}
+
+function coverSelectValue(image: HouseImageItem): number {
+  return typeof image.cover_select === "number" && Number.isFinite(image.cover_select)
+    ? image.cover_select
     : 0;
 }
 
@@ -212,6 +222,40 @@ export function resolveHouseImageObjectKey(propertyId: string, imageName: string
   const normalized = imageName.trim().replace(/\\/g, "/");
   if (normalized.startsWith("houses/")) return validateHouseImageObjectKey(normalized);
   return buildHouseImageObjectKey(propertyId, normalized);
+}
+
+export function getHouseCoverSelectedImages(images: HouseImageItem[]): HouseImageItem[] {
+  const seenIds = new Set<number>();
+
+  return [...images]
+    .filter((image) => {
+      const value = coverSelectValue(image);
+      if (value < 1 || value > HOUSE_COVER_SELECT_MAX) return false;
+      if (seenIds.has(image.id)) return false;
+      seenIds.add(image.id);
+      return true;
+    })
+    .sort((a, b) => coverSelectValue(a) - coverSelectValue(b) || a.id - b.id)
+    .slice(0, HOUSE_COVER_SELECT_MAX);
+}
+
+export function validateHouseCoverSelectIds(imageIds: number[]): number[] {
+  if (imageIds.length < HOUSE_COVER_SELECT_MIN) {
+    throw new Error(`Select at least ${HOUSE_COVER_SELECT_MIN} images`);
+  }
+
+  if (imageIds.length > HOUSE_COVER_SELECT_MAX) {
+    throw new Error(`Select at most ${HOUSE_COVER_SELECT_MAX} images`);
+  }
+
+  const seenIds = new Set<number>();
+  for (const id of imageIds) {
+    if (!Number.isInteger(id) || id < 1) throw new Error("Invalid image id");
+    if (seenIds.has(id)) throw new Error("Duplicate image id");
+    seenIds.add(id);
+  }
+
+  return imageIds;
 }
 
 export function getImageFiles(formData: FormData, fieldName: string): File[] {

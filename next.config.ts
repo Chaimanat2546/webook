@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
   images: {
@@ -13,6 +14,17 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+  },
+  webpack(config) {
+    const baseUiArrowMiddlewarePath = path.resolve(process.cwd(), "lib/base-ui-arrow-middleware.ts");
+
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "../floating-ui-react/middleware/arrow": baseUiArrowMiddlewarePath,
+      "../floating-ui-react/middleware/arrow.mjs": baseUiArrowMiddlewarePath,
+    };
+
+    return config;
   },
 };
 
