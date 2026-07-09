@@ -16,6 +16,7 @@ In scope:
 - House image management page shell.
 - House cover selection page shell.
 - Shared header, workspace frame, sidebar header, nav item style, and content header pattern.
+- Project agent guidance so future AI chats decide whether this shell applies before creating or changing a house admin workspace page.
 
 Out of scope:
 
@@ -133,6 +134,28 @@ Use a small shared shell with slots:
 
 This keeps the visual system consistent while avoiding a props-heavy component.
 
+## Agent Guidance Gate
+
+Update `AGENTS.md` with a house workspace shell decision gate. Future AI chats must check this gate before creating or changing admin house-related pages.
+
+Use the shell when:
+
+- The page is under house management, especially `app/admin/houses/[propertyId]/...`.
+- The page is a task workspace for one house.
+- The page has, or should have, a page header, sidebar navigation, and content area.
+- Examples include house details, prices, facilities, image management, and cover image ordering.
+
+Do not use the shell when:
+
+- The page is the house list page.
+- The flow is only a dialog, dropdown, card, or small embedded widget.
+- The page is login, public listing or search, advertisement management, booking, payment, or an unrelated admin module.
+- The requested UI intentionally needs a different layout.
+
+When the shell applies, agents should keep the shell header, workspace frame, nav item style, and content header structure consistent, while leaving the content body task-specific.
+
+When the shell does not apply, agents should briefly state why before choosing another layout.
+
 ## Risks
 
 - Moving rating from the shell header into the content header must preserve the current form submission behavior.
@@ -148,6 +171,7 @@ Implementation should update or add UI tests for:
 - Image pages using "ทำเล" for the sidebar header.
 - Content header icon, title, and badge/subtext pattern.
 - Mobile active nav item scroll behavior.
+- `AGENTS.md` includes the house workspace shell decision gate for future AI chats.
 
 Before completion, run:
 
