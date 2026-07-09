@@ -4,19 +4,29 @@ import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
+  ArrowLeftRightIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
+  ArmchairIcon,
+  BathIcon,
+  BedDoubleIcon,
+  CarFrontIcon,
+  CookingPotIcon,
+  DoorClosedIcon,
   ImageIcon,
   Loader2Icon,
+  MessageCircleCodeIcon,
   SaveIcon,
   XIcon,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { buildAwsImageUrl } from "../../../lib/aws-image-url";
+import { scrollActiveItemToStart } from "../../../lib/scroll-active-item";
 import { cn } from "../../../lib/utils";
 import {
   HOUSE_COVER_SELECT_MAX,
@@ -26,6 +36,7 @@ import {
   getImageZoneMeta,
   getSelectedImageZoneGroup,
   type HouseImageItem,
+  type ImageZoneIconName,
   type ImageZoneGroup,
 } from "../../../server/services/images";
 import { AdminImageCard } from "../image-asset-card";
@@ -42,6 +53,23 @@ import {
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
 
 const allZonesKey = "__all__";
+
+const zoneIconByName = {
+  armchair: ArmchairIcon,
+  bath: BathIcon,
+  "bed-double": BedDoubleIcon,
+  "car-front": CarFrontIcon,
+  "cooking-pot": CookingPotIcon,
+  "door-closed": DoorClosedIcon,
+  image: ImageIcon,
+  "message-circle-code": MessageCircleCodeIcon,
+} satisfies Record<ImageZoneIconName, LucideIcon>;
+
+function ZoneIcon({ icon }: { icon: ImageZoneIconName }) {
+  const Icon = zoneIconByName[icon];
+
+  return <Icon aria-hidden />;
+}
 
 function displayUrl(image: HouseImageItem): string | null {
   const provider = getHouseImageStorageProvider(image.image_url);
@@ -178,6 +206,7 @@ function CoverSelectViewerContent({
   selectedZone,
 }: CoverSelectViewerContentProps) {
   const router = useRouter();
+  const activeZoneRef = useRef<HTMLAnchorElement>(null);
   const [isPending, startTransition] = useTransition();
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>(initialSelectedIds);
@@ -186,11 +215,20 @@ function CoverSelectViewerContent({
     .map((id) => imageById.get(id))
     .filter((image): image is HouseImageItem => Boolean(image));
   const selectedGroup = selectedZone ? getSelectedImageZoneGroup(groups, selectedZone) : null;
+  const selectedMeta = selectedZone ? getImageZoneMeta(selectedZone) : null;
   const visibleImages = selectedGroup ? selectedGroup.images : allImages;
   const canSave =
     selectedIds.length >= HOUSE_COVER_SELECT_MIN &&
     selectedIds.length <= HOUSE_COVER_SELECT_MAX &&
     !isPending;
+  const canSort = selectedIds.length > 1 && !isPending;
+
+  useEffect(() => {
+    const activeZone = activeZoneRef.current;
+    if (!activeZone || !window.matchMedia("(max-width: 1023px)").matches) return;
+
+    scrollActiveItemToStart(activeZone);
+  }, [selectedZone]);
 
   function toggleImage(image: HouseImageItem) {
     setSelectedIds((ids) => {
@@ -219,6 +257,10 @@ function CoverSelectViewerContent({
     });
   }
 
+  function openSortDialog() {
+    setIsConfirmDialogOpen(true);
+  }
+
   function saveSelection() {
     if (selectedIds.length < HOUSE_COVER_SELECT_MIN) {
       toast.error(`ต้องเลือกอย่างน้อย ${HOUSE_COVER_SELECT_MIN} รูป`);
@@ -230,7 +272,7 @@ function CoverSelectViewerContent({
       return;
     }
 
-    setIsConfirmDialogOpen(true);
+    openSortDialog();
   }
 
   function confirmSaveSelection() {
@@ -268,8 +310,14 @@ function CoverSelectViewerContent({
                 !selectedZone && "bg-primary text-primary-foreground hover:bg-primary",
               )}
               href={coverSelectHref(propertyId, allZonesKey, returnTo)}
+              ref={!selectedZone ? activeZoneRef : undefined}
             >
-              <span className="font-medium">ทั้งหมด</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="flex size-5 shrink-0 items-center justify-center [&>svg]:size-4">
+                  <ImageIcon aria-hidden className="size-4" />
+                </span>
+                <span className="font-medium">ทั้งหมด</span>
+              </span>
               <Badge className="shrink-0" variant={!selectedZone ? "secondary" : "outline"}>
                 {allImages.length} รูป
               </Badge>
@@ -287,9 +335,15 @@ function CoverSelectViewerContent({
                   )}
                   href={coverSelectHref(propertyId, group.zone, returnTo)}
                   key={group.zone}
+                  ref={isActive ? activeZoneRef : undefined}
                   title={group.zone}
                 >
-                  <span className="block min-w-0 truncate font-medium">{meta.label}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="flex size-5 shrink-0 items-center justify-center [&>svg]:size-4">
+                      <ZoneIcon icon={meta.icon} />
+                    </span>
+                    <span className="block min-w-0 truncate font-medium">{meta.label}</span>
+                  </span>
                   <Badge className="shrink-0" variant={isActive ? "secondary" : "outline"}>
                     {group.images.length} รูป
                   </Badge>
@@ -303,11 +357,16 @@ function CoverSelectViewerContent({
 
       <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">จัดลำดับรูปแสดง</h2>
-            <p className="text-xs text-muted-foreground">
-              เลือก {HOUSE_COVER_SELECT_MIN}-{HOUSE_COVER_SELECT_MAX} รูป · {selectedCountLabel(selectedIds.length)}
-            </p>
+          <div className="hidden min-w-0 items-center gap-3 lg:flex">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground [&>svg]:size-4">
+              {selectedMeta ? <ZoneIcon icon={selectedMeta.icon} /> : <ImageIcon aria-hidden className="size-4" />}
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold">จัดลำดับรูปแสดง</h2>
+              <p className="text-xs text-muted-foreground">
+                เลือก {HOUSE_COVER_SELECT_MIN}-{HOUSE_COVER_SELECT_MAX} รูป · {selectedCountLabel(selectedIds.length)}
+              </p>
+            </div>
           </div>
           <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
             <Button asChild size="sm" type="button" variant="outline">
@@ -319,6 +378,10 @@ function CoverSelectViewerContent({
                 <XIcon data-icon="inline-start" />
                 ยกเลิก
               </Link>
+            </Button>
+            <Button disabled={!canSort} onClick={openSortDialog} size="sm" type="button" variant="outline">
+              <ArrowLeftRightIcon data-icon="inline-start" />
+              เรียงรูป
             </Button>
             <Button disabled={!canSave} onClick={saveSelection} size="sm" type="button">
               {isPending ? (
@@ -342,7 +405,7 @@ function CoverSelectViewerContent({
               </div>
             ) : null}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
-              {visibleImages.map((image, index) => {
+              {visibleImages.map((image) => {
                 const selectedIndex = selectedIds.indexOf(image.id);
                 const isSelected = selectedIndex !== -1;
                 const zoneMeta = getImageZoneMeta(image.image_zone ?? "");
@@ -352,7 +415,6 @@ function CoverSelectViewerContent({
                     alt={image.image_name ?? "house image"}
                     imageName={image.image_name ?? "-"}
                     key={image.id}
-                    loading={index === 0 ? "eager" : "lazy"}
                     onSelect={() => toggleImage(image)}
                     orderLabel={isSelected ? `# ${selectedIndex + 1}` : undefined}
                     previewEnabled={false}

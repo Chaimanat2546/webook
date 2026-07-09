@@ -18,14 +18,18 @@ export interface HouseDetailComboboxOption {
 
 export function HouseDetailCombobox({
   defaultValue,
+  disabled = false,
   emptyText,
+  form,
   id,
   name,
   options,
   placeholder,
 }: {
   defaultValue: string;
+  disabled?: boolean;
   emptyText: string;
+  form?: string;
   id: string;
   name: string;
   options: HouseDetailComboboxOption[];
@@ -38,14 +42,14 @@ export function HouseDetailCombobox({
 
   return (
     <>
-      <input name={name} type="hidden" value={selectedOption?.value ?? ""} />
+      <input name={name} type="hidden" value={selectedOption?.value ?? ""} disabled={disabled} form={form} />
       <Combobox
         itemToStringValue={(option) => option.label}
         items={options}
         onValueChange={setSelectedOption}
         value={selectedOption}
       >
-        <ComboboxInput id={id} placeholder={placeholder} />
+        <ComboboxInput disabled={disabled} form={form} id={id} placeholder={placeholder} />
         <ComboboxContent>
           <ComboboxEmpty>{emptyText}</ComboboxEmpty>
           <ComboboxList>

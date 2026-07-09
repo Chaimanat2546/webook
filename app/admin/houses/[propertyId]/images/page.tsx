@@ -66,6 +66,7 @@ export default async function HouseImagesPage({
   const images = await getImagesByPropertyId(supabase, propertyId);
   const groups = groupImagesByZone(images);
   const isCoverSelectMode = mode === "cover-select";
+  const imageTaskLabel = isCoverSelectMode ? "เรียงลำดับรูป" : "จัดการรูป";
 
   return (
     <div className="flex h-[calc(100dvh-6.5rem)] min-h-0 flex-col gap-4">
@@ -82,9 +83,7 @@ export default async function HouseImagesPage({
               <h1 className="text-xl font-semibold">{house.title || "ไม่พบชื่อบ้านพัก"}</h1>
               <Badge variant="secondary">DV-{house.property_id}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
-              จัดการรูปภาพบ้านพัก · {images.length} รูป
-            </p>
+            <p className="text-sm text-muted-foreground">{imageTaskLabel}</p>
           </div>
         </div>
       </header>

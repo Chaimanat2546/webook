@@ -70,12 +70,20 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(source, /sticky bottom-0/);
   });
 
-  it("keeps the image count in the header details and moves upload to the far right", () => {
+  it("shows the current image task under the house name and moves upload to the far right", () => {
     assert.match(source, /import \{ Button, buttonVariants \} from "\.\.\/\.\.\/ui\/button";/);
     assert.match(source, /buttonVariants\(\{ variant: "outline", size: "sm" \}\)/);
+    assert.match(pageSource, /const imageTaskLabel = isCoverSelectMode \? "เรียงลำดับรูป" : "จัดการรูป";/);
+    assert.match(pageSource, /<p className="text-sm text-muted-foreground">\{imageTaskLabel\}<\/p>/);
+    assert.doesNotMatch(pageSource, /<p className="hidden text-sm text-muted-foreground lg:block">/);
+    assert.doesNotMatch(pageSource, /จัดการรูปภาพบ้านพัก · \{images\.length\} รูป/);
     assert.match(
       source,
       /<p className="text-xs text-muted-foreground">\s*\{visibleImages\.length\} รูป\s*<\/p>/,
+    );
+    assert.match(
+      source,
+      /<div className="hidden min-w-0 items-center gap-3 lg:flex">[\s\S]*<ZoneIcon icon=\{selectedMeta\.icon\} \/>[\s\S]*\{selectedMeta\.label\}[\s\S]*\{visibleImages\.length\}[\s\S]*<\/div>/,
     );
     assert.doesNotMatch(source, /Zone Order/);
     assert.doesNotMatch(source, /orderRangeLabel/);
@@ -103,14 +111,13 @@ describe("house image mobile UI", () => {
   });
 
   it("scrolls the selected mobile zone chip into view without reordering zones", () => {
+    assert.match(source, /import \{ scrollActiveItemToStart \} from "\.\.\/\.\.\/\.\.\/lib\/scroll-active-item";/);
     assert.match(source, /const activeZoneRef = useRef<HTMLAnchorElement>\(null\);/);
     assert.match(source, /window\.matchMedia\("\(max-width: 1023px\)"\)\.matches/);
-    assert.match(
-      source,
-      /activeZone\.scrollIntoView\(\{\s*behavior: "smooth",\s*block: "nearest",\s*inline: "start",\s*\}\);/,
-    );
+    assert.match(source, /scrollActiveItemToStart\(activeZone\);/);
     assert.match(source, /\}, \[selectedGroup\.zone\]\);/);
     assert.match(source, /ref=\{isActive \? activeZoneRef : undefined\}/);
+    assert.doesNotMatch(source, /scrollIntoView/);
   });
 
   it("keeps the house list return URL through the image page and zone changes", () => {
@@ -175,6 +182,7 @@ describe("house image mobile UI", () => {
     assert.match(pageSource, /<CoverSelectViewer/);
     assert.match(pageSource, /saveAction=\{saveHouseCoverSelectAction\.bind\(null, propertyId\)\}/);
     assert.match(source, /mode: "cover-select"/);
+    assert.match(source, /<ImageIcon data-icon="inline-start" \/>[\s\S]*จัดลำดับรูปแสดง/);
   });
 
   it("adds a dedicated cover selection viewer component", () => {
@@ -182,12 +190,31 @@ describe("house image mobile UI", () => {
     assert.match(coverSelectSource, /import \{ DragDropProvider \} from "@dnd-kit\/react"/);
     assert.match(coverSelectSource, /import \{ move \} from "@dnd-kit\/helpers"/);
     assert.match(coverSelectSource, /import \{ useSortable \} from "@dnd-kit\/react\/sortable"/);
+    assert.match(coverSelectSource, /type ImageZoneIconName/);
+    assert.match(coverSelectSource, /satisfies Record<ImageZoneIconName, LucideIcon>/);
+    assert.match(coverSelectSource, /function ZoneIcon\(\{ icon \}: \{ icon: ImageZoneIconName \}\)/);
+    assert.match(coverSelectSource, /import \{ scrollActiveItemToStart \} from "\.\.\/\.\.\/\.\.\/lib\/scroll-active-item";/);
+    assert.match(coverSelectSource, /const activeZoneRef = useRef<HTMLAnchorElement>\(null\);/);
+    assert.match(coverSelectSource, /scrollActiveItemToStart\(activeZone\);/);
+    assert.match(coverSelectSource, /ref=\{!selectedZone \? activeZoneRef : undefined\}/);
+    assert.match(coverSelectSource, /ref=\{isActive \? activeZoneRef : undefined\}/);
     assert.match(coverSelectSource, /import \{[\s\S]*Dialog[\s\S]*DialogContent[\s\S]*DialogFooter[\s\S]*DialogHeader[\s\S]*DialogTitle[\s\S]*\} from "\.\.\/\.\.\/ui\/dialog"/);
     assert.match(coverSelectSource, /getHouseCoverSelectedImages/);
     assert.match(coverSelectSource, /HOUSE_COVER_SELECT_MIN/);
     assert.match(coverSelectSource, /HOUSE_COVER_SELECT_MAX/);
     assert.match(coverSelectSource, /selectedIds/);
+    assert.match(
+      coverSelectSource,
+      /<div className="hidden min-w-0 items-center gap-3 lg:flex">[\s\S]*selectedCountLabel\(selectedIds\.length\)[\s\S]*<\/div>/,
+    );
     assert.match(coverSelectSource, /บันทึก \(\{selectedIds\.length\}\)/);
+    assert.match(coverSelectSource, /ArrowLeftRightIcon/);
+    assert.match(coverSelectSource, /const canSort = selectedIds\.length > 1 && !isPending;/);
+    assert.match(coverSelectSource, /function openSortDialog\(\) \{\s*setIsConfirmDialogOpen\(true\);\s*\}/);
+    assert.match(
+      coverSelectSource,
+      /<Button disabled=\{!canSort\} onClick=\{openSortDialog\} size="sm" type="button" variant="outline">[\s\S]*<ArrowLeftRightIcon data-icon="inline-start" \/>[\s\S]*เรียงรูป[\s\S]*<\/Button>/,
+    );
     assert.match(coverSelectSource, /isConfirmDialogOpen/);
     assert.match(coverSelectSource, /setIsConfirmDialogOpen\(true\)/);
     assert.match(coverSelectSource, /function confirmSaveSelection\(\)/);
@@ -204,6 +231,10 @@ describe("house image mobile UI", () => {
     assert.match(coverSelectSource, /<DialogTitle>ยืนยันรูปที่เลือก<\/DialogTitle>/);
     assert.match(coverSelectSource, /onClick=\{confirmSaveSelection\}/);
     assert.match(coverSelectSource, /getSelectedImageZoneGroup/);
+    assert.match(coverSelectSource, /const selectedMeta = selectedZone \? getImageZoneMeta\(selectedZone\) : null;/);
+    assert.match(coverSelectSource, /<ImageIcon aria-hidden className="size-4" \/>/);
+    assert.match(coverSelectSource, /<ZoneIcon icon=\{meta\.icon\} \/>/);
+    assert.match(coverSelectSource, /selectedMeta \? <ZoneIcon icon=\{selectedMeta\.icon\} \/> : <ImageIcon aria-hidden className="size-4" \/>/);
     assert.match(coverSelectSource, /mode: "cover-select"/);
     assert.doesNotMatch(coverSelectSource, /จัดลำดับรูปแสดงใช้บนเดสก์ท็อป/);
     assert.doesNotMatch(source, /className="hidden lg:inline-flex"/);

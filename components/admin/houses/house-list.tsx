@@ -7,7 +7,15 @@ import {
   type HouseListItem,
 } from "../../../server/services/houses";
 import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -35,30 +43,29 @@ function imageHref(propertyId: string, returnTo: string) {
 
 function HouseActionsMenu({ propertyId, returnTo }: { propertyId: string; returnTo: string }) {
   return (
-    <details className="group relative inline-block text-left">
-      <summary
-        aria-label="เปิดเมนูจัดการบ้านพัก"
-        className="inline-flex size-8 cursor-pointer list-none items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
-      >
-        <EllipsisVerticalIcon aria-hidden className="size-4" />
-      </summary>
-      <div className="absolute right-0 z-30 mt-1 w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
-        <Link
-          className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted"
-          href={houseHref(propertyId, returnTo)}
-        >
-          <PencilLineIcon aria-hidden className="size-4" />
-          จัดการข้อมูล
-        </Link>
-        <Link
-          className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted"
-          href={imageHref(propertyId, returnTo)}
-        >
-          <ImageIcon aria-hidden className="size-4" />
-          จัดการรูป
-        </Link>
-      </div>
-    </details>
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button aria-label="เปิดเมนูจัดการบ้านพัก" size="icon" type="button" variant="outline">
+          <EllipsisVerticalIcon aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href={houseHref(propertyId, returnTo)}>
+              <PencilLineIcon aria-hidden />
+              จัดการข้อมูล
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={imageHref(propertyId, returnTo)}>
+              <ImageIcon aria-hidden />
+              จัดการรูป
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -75,11 +82,11 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <StatusBadge active={house.is_active} />
-                <HouseActionsMenu propertyId={house.property_id} returnTo={returnTo} />
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <dl className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+              <div className="grid grid-cols-[1fr_1fr_minmax(0,1fr)_auto] gap-2 text-xs text-muted-foreground">
+                <dl className="contents">
                 <div>
                   <dt>ห้องนอน</dt>
                   <dd className="font-medium text-foreground"><BedDouble className="inline-block h-4 w-4 mr-1" />{house.bedrooms ?? "-"}</dd>
@@ -94,7 +101,11 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                     <MapPinHouse className="inline-block h-4 w-4 mr-1" />{formatHouseZone(house.location_zone)}
                   </dd>
                 </div>
-              </dl>
+                </dl>
+                <div className="flex items-end justify-end self-end">
+                  <HouseActionsMenu propertyId={house.property_id} returnTo={returnTo} />
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}

@@ -29,7 +29,6 @@ export function AdminImageCard({
   className,
   imageName,
   imageUnavailableText = "Preview unavailable",
-  loading = "lazy",
   metaRows = [],
   onSelect,
   orderLabel,
@@ -48,7 +47,6 @@ export function AdminImageCard({
   className?: string;
   imageName: string;
   imageUnavailableText?: string;
-  loading?: "eager" | "lazy";
   metaRows?: AdminImageCardMetaRow[];
   onSelect?: () => void;
   orderLabel?: string;
@@ -76,7 +74,7 @@ export function AdminImageCard({
       <div className="relative">
         <AspectRatio className="bg-muted" ratio={4 / 3}>
           {src ? (
-            <img alt={alt} className="h-full w-full object-cover" loading={loading} src={src} />
+            <img alt={alt} className="h-full w-full object-cover" loading="lazy" src={src} />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               {imageUnavailableText}
@@ -151,7 +149,7 @@ export function AdminImageCard({
               <DialogDescription>{previewDescription}</DialogDescription>
             </DialogHeader>
             <div className="min-w-0 overflow-hidden rounded-lg bg-muted">
-              <img alt={alt} className="h-auto max-h-[82dvh] w-full object-contain" src={src} />
+              <img alt={alt} className="h-auto max-h-[82dvh] w-full object-contain" loading="lazy" src={src} />
             </div>
           </DialogContent>
         </Dialog>

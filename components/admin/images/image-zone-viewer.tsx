@@ -30,6 +30,7 @@ import {
   resizeHouseImageFile,
   type ResizedHouseImage,
 } from "../../../lib/house-image-resize";
+import { scrollActiveItemToStart } from "../../../lib/scroll-active-item";
 import { cn } from "../../../lib/utils";
 import {
   formatImageMoveLabel,
@@ -205,14 +206,12 @@ function ImageCard({
   image,
   onSelect,
   previewEnabled = true,
-  priority = false,
   selected = false,
 }: {
   action?: ReactNode;
   image: HouseImageItem;
   onSelect?: () => void;
   previewEnabled?: boolean;
-  priority?: boolean;
   selected?: boolean;
 }) {
   const src = displayUrl(image);
@@ -223,7 +222,6 @@ function ImageCard({
       alt={image.image_name ?? "house image"}
       imageName={image.image_name ?? "-"}
       imageUnavailableText="แสดงรูปไม่ได้"
-      loading={priority ? "eager" : "lazy"}
       onSelect={onSelect}
       orderLabel={formatImageMoveLabel(image.image_move)}
       previewDescription="ดูตัวอย่างรูปขนาดใหญ่"
@@ -256,6 +254,7 @@ function FailedUploadCard({
         <img
           alt={item.file.name}
           className="h-full w-full object-cover opacity-60 grayscale"
+          loading="lazy"
           src={item.previewSrc}
         />
         <Badge
@@ -358,11 +357,7 @@ export function ImageZoneViewer({
     const activeZone = activeZoneRef.current;
     if (!activeZone || !window.matchMedia("(max-width: 1023px)").matches) return;
 
-    activeZone.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "start",
-    });
+    scrollActiveItemToStart(activeZone);
   }, [selectedGroup.zone]);
 
   useEffect(() => {
@@ -773,7 +768,7 @@ export function ImageZoneViewer({
 
       <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="hidden min-w-0 items-center gap-3 lg:flex">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <ZoneIcon icon={selectedMeta.icon} />
             </span>
@@ -817,7 +812,10 @@ export function ImageZoneViewer({
             ) : (
               <>
                 <Button asChild disabled={isBusy} size="sm" type="button" variant="outline">
-                  <Link href={coverSelectHref(propertyId, returnTo)}>จัดลำดับรูปแสดง</Link>
+                  <Link href={coverSelectHref(propertyId, returnTo)}>
+                    <ImageIcon data-icon="inline-start" />
+                    จัดลำดับรูปแสดง
+                  </Link>
                 </Button>
                 <Button
                   disabled={deletableImages.length === 0 || isBusy}
@@ -902,7 +900,7 @@ export function ImageZoneViewer({
               </div>
             ) : null}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
-              {visibleImages.map((image, index) => {
+              {visibleImages.map((image) => {
                 const canDelete = isHouseImageFileOperationAllowed(image.image_url, "delete");
                 const isSelected = selectedBulkDeleteIds.has(image.id);
                 const action = canDelete ? (
@@ -942,7 +940,6 @@ export function ImageZoneViewer({
                         : undefined
                     }
                     previewEnabled={!isBulkSelecting}
-                    priority={index === 0}
                     selected={isSelected}
                   />
                 );
@@ -975,6 +972,7 @@ export function ImageZoneViewer({
                   <img
                     alt={singleDeleteImage.image_name ?? "house image"}
                     className="max-h-80 w-full object-contain"
+                    loading="lazy"
                     src={displayUrl(singleDeleteImage) ?? undefined}
                   />
                 ) : (

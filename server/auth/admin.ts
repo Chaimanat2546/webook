@@ -19,6 +19,10 @@ export function canUseAccommodation(user: Pick<AdminUserForAuth, "allow_tools"> 
   return user?.allow_tools?.allow_accommodation === true;
 }
 
+export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | null): boolean {
+  return user?.role_id === 1;
+}
+
 export function pickAdminUser({
   byEmail,
   byUid,

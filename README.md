@@ -45,10 +45,13 @@ House/accommodation menu access currently requires `allow_tools.allow_accommodat
 - `/admin/houses/[propertyId]` uses the same section-navigation pattern as the image zone UI.
 - House data management is split into MVP sections: `details`, `prices`, and `facilities`.
 - The `details` section edits approved `listings` fields: title, type, zone, room counts, guest count, insurance fee, check-in/out time, notes, and active status.
-- Check-in/out time uses custom 24-hour hour/minute selects that submit `HH:MM`. Property type and zone use shadcn combobox controls; property type shows Thai labels for `poolvilla` and `condo`.
-- Owner and rating are shown disabled for now and are preserved server-side on save.
+- Check-in/out time, property type, and zone use shadcn combobox controls; time values submit `HH:MM`, and property type shows Thai labels for `poolvilla` and `condo`.
+- Owner is shown disabled and is preserved server-side on save. Rating is a header combobox; only `role_id = 1` can change it, while other roles see it disabled and the server preserves the existing rating.
+- Saving house data sections redirects back to the selected section and shows a sonner toast confirmation.
 - The `details` section must not edit `property_id`, `description`, `property_tags`, or `sort_order`.
-- `prices` and `facilities` remain separate follow-up MVP sections.
+- The `prices` section edits weekly `listing_prices` rows for `deville_price` and `agency_price`; `day_of_week = 0` is Monday through `6` Sunday.
+- The prices UI labels `deville_price` as `ราคาขาย Deville`, shows Thai day labels without numeric prefixes, lays out two days per row on wider screens, and reserves the same full-height section area as house details.
+- The `facilities` section edits `listing_facilities` rows from the existing `facilities` master list. It manages `value_boolean` for each facility and `message` only for `pets` and `private_pool`; private pool stores `salt` or `chlorine` from Thai combobox labels, `wifi` displays as `Wifi`, and standard facilities are shown in a five-item grid separate from message fields. It does not create, update, or delete rows in `facilities`.
 - This flow does not create or delete houses.
 - RLS for `listings`, `listing_prices`, and `listing_facilities` is intentionally unchanged because the legacy system still uses the existing broad policies. New admin actions must enforce `allow_tools.allow_accommodation = true` and field allowlists server-side.
 

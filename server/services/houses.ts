@@ -1,3 +1,4 @@
+import { normalizePrivatePoolType } from "../../lib/listing-facilities.ts";
 import { formatZone } from "../../lib/house-zones.ts";
 
 export const HOUSE_PAGE_SIZE = 8;
@@ -52,8 +53,37 @@ export interface ListingDetailsUpdate {
   owner_id: number | null;
   property_type: string | null;
   rating: number | null;
-  title: string | null;
+  title: string;
 }
+
+export const LISTING_PRICE_DAYS = [
+  { dayOfWeek: 0, label: "วันจันทร์" },
+  { dayOfWeek: 1, label: "วันอังคาร" },
+  { dayOfWeek: 2, label: "วันพุธ" },
+  { dayOfWeek: 3, label: "วันพฤหัสบดี" },
+  { dayOfWeek: 4, label: "วันศุกร์" },
+  { dayOfWeek: 5, label: "วันเสาร์" },
+  { dayOfWeek: 6, label: "วันอาทิตย์" },
+] as const;
+
+export interface ListingPriceUpdate {
+  agency_price: number | null;
+  day_of_week: (typeof LISTING_PRICE_DAYS)[number]["dayOfWeek"];
+  deville_price: number | null;
+}
+
+export interface ListingFacilityFormOption {
+  id: string;
+  name: string | null;
+}
+
+export interface ListingFacilityUpdate {
+  facility_id: string;
+  message: string | null;
+  value_boolean: boolean;
+}
+
+const LISTING_FACILITY_MESSAGE_NAMES = new Set(["pets", "private_pool"]);
 
 function getListingDetailValue(values: ListingDetailsFormValues, field: string): string {
   const value =
@@ -78,10 +108,16 @@ function nullableTextField(values: ListingDetailsFormValues, field: string): str
   return value || null;
 }
 
+function requiredTextField(values: ListingDetailsFormValues, field: string): string {
+  const value = nullableTextField(values, field);
+  if (value === null) throw new Error(`${field} is required`);
+  return value;
+}
+
 function nullableIntegerField(
   values: ListingDetailsFormValues,
   field: string,
-  { min = 0 }: { min?: number } = {},
+  { max, min = 0 }: { max?: number; min?: number } = {},
 ): number | null {
   const raw = getListingDetailValue(values, field).trim();
   if (!raw) return null;
@@ -90,6 +126,9 @@ function nullableIntegerField(
   const value = Number(raw);
   if (!Number.isSafeInteger(value) || value < min) {
     throw new Error(`${field} must be at least ${min}`);
+  }
+  if (max !== undefined && value > max) {
+    throw new Error(`${field} must be at most ${max}`);
   }
 
   return value;
@@ -137,9 +176,46 @@ export function normalizeListingDetailsFormValues(
     notes: nullableTextField(values, "notes"),
     owner_id: nullableIntegerField(values, "owner_id"),
     property_type: nullableTextField(values, "property_type"),
-    rating: nullableIntegerField(values, "rating"),
-    title: nullableTextField(values, "title"),
+    rating: nullableIntegerField(values, "rating", { max: 5 }),
+    title: requiredTextField(values, "title"),
   };
+}
+
+export function normalizeListingPriceFormValues(
+  values: ListingDetailsFormValues,
+): ListingPriceUpdate[] {
+  return LISTING_PRICE_DAYS.map((day) => ({
+    agency_price: nullableIntegerField(values, `agency_price_${day.dayOfWeek}`),
+    day_of_week: day.dayOfWeek,
+    deville_price: nullableIntegerField(values, `deville_price_${day.dayOfWeek}`),
+  }));
+}
+
+export function canEditListingFacilityMessage(name: string | null | undefined): boolean {
+  return LISTING_FACILITY_MESSAGE_NAMES.has(name ?? "");
+}
+
+export function normalizeListingFacilityFormValues(
+  values: ListingDetailsFormValues,
+  facilities: ListingFacilityFormOption[],
+): ListingFacilityUpdate[] {
+  return facilities.map((facility) => {
+    const value_boolean = booleanField(values, `facility_${facility.id}`);
+    const messageField = `facility_message_${facility.id}`;
+    const message = value_boolean
+      ? facility.name === "private_pool"
+        ? normalizePrivatePoolType(nullableTextField(values, messageField), messageField)
+        : facility.name === "pets"
+          ? nullableTextField(values, messageField)
+          : null
+      : null;
+
+    return {
+      facility_id: facility.id,
+      message,
+      value_boolean,
+    };
+  });
 }
 
 export function formatHouseZone(zone: string | null | undefined): string {
