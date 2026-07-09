@@ -32,12 +32,25 @@ The app looks up `public.users` by `uid = auth.user.id`, then falls back to `ema
 House image access is controlled by `public.users.allow_tools.allow_accommodation = true`.
 Adding house image records uses `public.users.mid` as the legacy numeric `images.create_by` value, so write actions require `mid > 0`.
 Listings and images are read through server repositories; client components do not access Supabase directly.
+House data management starts at `/admin/houses/[propertyId]` and uses a section navigation shell with `details`, `prices`, and `facilities`, matching the image zone navigation pattern instead of rendering every section at once.
+The `details` section writes to `public.listings` through `saveHouseDetailsAction`, `normalizeListingDetailsFormValues`, and `updateListingDetailsByPropertyId`.
+The `details` update covers title, property type, zone, room/guest numbers, insurance fee, check-in/out time, notes, and active status; it excludes `property_id`, `description`, `property_tags`, and `sort_order`.
+The detail UI uses shadcn combobox controls for property type, zone, and check-in/out time, and a shadcn switch for active status.
+Owner is disabled in the UI and preserved server-side. Rating is shown as a header combobox; only `public.users.role_id = 1` can submit rating changes, while other roles see it disabled and the server preserves the existing value.
+Successful house data saves redirect back to the selected section and use the shared admin sonner toaster for confirmation.
+The `prices` section writes weekly `public.listing_prices` values through `saveHousePricesAction`, `normalizeListingPriceFormValues`, and `updateListingPricesByListingId`. It manages only `deville_price` and `agency_price` for `day_of_week` 0 Monday through 6 Sunday.
+The prices UI keeps `day_of_week` hidden from admins, labels `deville_price` as `ราคาขาย Deville`, shows Thai day labels without numeric prefixes, lays out two days per row on wider screens, and reserves the same full-height section area as house details.
+The `facilities` section reads `public.facilities` as the master list and writes `public.listing_facilities` through `saveHouseFacilitiesAction`, `normalizeListingFacilityFormValues`, and `updateListingFacilitiesByListingId`. It manages `value_boolean` for every master facility and stores `message` only for `pets` and `private_pool`; private pool uses Thai combobox labels but saves only `salt` or `chlorine`, `wifi` displays as `Wifi`, and normal facilities render in a five-item grid separate from message fields. It does not mutate `public.facilities` and avoids deleting `listing_facilities` rows under the legacy RLS setup.
+The house list uses a per-row overflow menu for data and image actions.
+House data MVPs do not create or delete houses.
+RLS for `listings`, `listing_prices`, and `listing_facilities` remains unchanged while the legacy system depends on the existing policies; new admin mutations must enforce `allow_tools.allow_accommodation = true` and field allowlists in server actions.
 Public villa pages may read `public.images` with the anon role for display only; insert, update, and delete remain authenticated admin operations.
 Legacy AWS/S3 image display URLs are built from `image_name` using the approved Lambda host, without an image proxy or client-side credential.
 House and advertisement image cards share `components/admin/image-asset-card.tsx` for the card layout, 4:3 preview area, click-to-preview dialog, and Thai create/update metadata rows.
 The image page uses the `zone` query parameter to select one image category at a time; missing or unknown zones fall back to the first configured zone.
 Known image zones are mapped to Thai display labels and Lucide icon names in `server/services/images.ts`; the setup menu always includes `cover`, `outside`, `parking`, `inside`, `kitchen`, `bedroom`, `bathroom`, and `review` in that order, even when a zone has no images. Unknown zones with existing images keep their raw label and use the fallback image icon after the configured zones.
 House `image_move` values are scoped to `property_id + image_zone`; new uploads calculate the next order number only from the selected zone.
+House card display images use `public.images.cover_select`. This value is independent from zone-scoped `image_move`: `image_move` controls order within an image zone, while `cover_select` controls the 1-10 cross-zone image order used by house cards. Admins edit `cover_select` through `/admin/houses/[propertyId]/images?mode=cover-select`; saving resets unselected images for that house to `0`.
 
 House image storage has two provider classes:
 

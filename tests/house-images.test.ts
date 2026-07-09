@@ -2,15 +2,19 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  HOUSE_COVER_SELECT_MAX,
+  HOUSE_COVER_SELECT_MIN,
   UNASSIGNED_IMAGE_ZONE,
   formatImageMoveLabel,
   formatThaiImageDateTime,
   getImageZoneMeta,
   buildHouseImageName,
+  getHouseCoverSelectedImages,
   getImageFiles,
   getNextHouseImageMove,
   getSelectedImageZoneGroup,
   groupImagesByZone,
+  validateHouseCoverSelectIds,
   validateHouseImageFile,
   validateHouseImageZone,
 } from "../server/services/images.ts";
@@ -153,6 +157,19 @@ describe("house image grouping", () => {
       label: "legacy_zone",
     });
   });
+
+  it("normalizes selected card cover images across every image zone", () => {
+    const selected = getHouseCoverSelectedImages([
+      { id: 1, cover_select: 2, image_move: 9, image_name: "inside.webp", image_zone: "inside" },
+      { id: 2, cover_select: 0, image_move: 1, image_name: "cover.webp", image_zone: "cover" },
+      { id: 3, cover_select: 1, image_move: 4, image_name: "outside.webp", image_zone: "outside" },
+      { id: 4, cover_select: 11, image_move: 2, image_name: "bedroom.webp", image_zone: "bedroom" },
+      { id: 1, cover_select: 3, image_move: 9, image_name: "inside-duplicate.webp", image_zone: "inside" },
+    ]);
+
+    assert.deepEqual(selected.map((image) => image.id), [3, 1]);
+    assert.deepEqual(selected.map((image) => image.image_zone), ["outside", "inside"]);
+  });
 });
 
 describe("house image storage policy", () => {
@@ -239,5 +256,18 @@ describe("house image mutation rules", () => {
       /Unsupported image type/,
     );
     assert.throws(() => validateHouseImageZone("living_room"), /Invalid image zone/);
+  });
+
+  it("validates card cover selection ids", () => {
+    assert.equal(HOUSE_COVER_SELECT_MIN, 3);
+    assert.equal(HOUSE_COVER_SELECT_MAX, 10);
+    assert.deepEqual(validateHouseCoverSelectIds([3, 5, 7]), [3, 5, 7]);
+    assert.throws(() => validateHouseCoverSelectIds([1, 2]), /Select at least 3 images/);
+    assert.throws(
+      () => validateHouseCoverSelectIds([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+      /Select at most 10 images/,
+    );
+    assert.throws(() => validateHouseCoverSelectIds([1, 2, 2]), /Duplicate image id/);
+    assert.throws(() => validateHouseCoverSelectIds([1, 2, 0]), /Invalid image id/);
   });
 });

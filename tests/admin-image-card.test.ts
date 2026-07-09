@@ -4,6 +4,10 @@ import { describe, it } from "node:test";
 
 const sharedCardPath = new URL("../components/admin/image-asset-card.tsx", import.meta.url);
 
+function getImageTagsWithoutLazyLoading(source: string) {
+  return Array.from(source.matchAll(/<img\b[^>]*>/g), ([tag]) => tag).filter((tag) => !/\bloading=/.test(tag));
+}
+
 describe("shared admin image card", () => {
   it("centralizes reusable admin image card UI and preview behavior", () => {
     assert.ok(existsSync(sharedCardPath));
@@ -19,11 +23,18 @@ describe("shared admin image card", () => {
     assert.match(source, /onSelect/);
     assert.match(source, /aria-pressed=\{selected\}/);
     assert.match(source, /previewEnabled && src/);
+    assert.doesNotMatch(source, /"eager"/);
+    assert.deepEqual(getImageTagsWithoutLazyLoading(source), []);
   });
 
   it("is used by both house images and advertisement images", () => {
+    const sharedCardSource = readFileSync(sharedCardPath, "utf8");
     const houseSource = readFileSync(
       new URL("../components/admin/images/image-zone-viewer.tsx", import.meta.url),
+      "utf8",
+    );
+    const coverSelectSource = readFileSync(
+      new URL("../components/admin/images/cover-select-viewer.tsx", import.meta.url),
       "utf8",
     );
     const advertisementSource = readFileSync(
@@ -36,5 +47,15 @@ describe("shared admin image card", () => {
     assert.doesNotMatch(houseSource, /ImagePreviewDialog/);
     assert.doesNotMatch(advertisementSource, /AdvertisementImagePreviewDialog/);
     assert.doesNotMatch(advertisementSource, /function ImageSlotCard/);
+
+    for (const [name, source] of [
+      ["shared card", sharedCardSource],
+      ["house images", houseSource],
+      ["cover selection", coverSelectSource],
+      ["advertisement images", advertisementSource],
+    ] as const) {
+      assert.doesNotMatch(source, /"eager"/, `${name} should not opt any images into eager loading`);
+      assert.deepEqual(getImageTagsWithoutLazyLoading(source), [], `${name} should lazy load every image tag`);
+    }
   });
 });

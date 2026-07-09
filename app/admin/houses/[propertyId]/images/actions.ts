@@ -16,6 +16,7 @@ import {
   getImagesByPropertyId,
   insertHouseImages,
   type HouseImageInsert,
+  updateHouseCoverSelect,
 } from "../../../../../server/repositories/images";
 import { getListingByPropertyId } from "../../../../../server/repositories/listings";
 import {
@@ -26,6 +27,7 @@ import {
   getNextHouseImageMove,
   isHouseImageFileOperationAllowed,
   resolveHouseImageObjectKey,
+  validateHouseCoverSelectIds,
   validateHouseImageFile,
   validateHouseImageZone,
 } from "../../../../../server/services/images";
@@ -50,6 +52,10 @@ export interface HouseImageBulkDeleteResult {
   deleted: Array<{ id: number; fileName: string | null }>;
   skipped: Array<{ id: number; reason: string }>;
   storageFailed: Array<{ id: number; fileName: string | null; message: string }>;
+}
+
+export interface HouseCoverSelectSaveResult {
+  savedCount: number;
 }
 
 function requireString(formData: FormData, name: string): string {
@@ -328,4 +334,31 @@ export async function deleteHouseImagesAction(
 
   revalidateHouseImagePaths(propertyId);
   return result;
+}
+
+export async function saveHouseCoverSelectAction(
+  propertyId: string,
+  imageIds: number[],
+): Promise<HouseCoverSelectSaveResult> {
+  const { adminUser, supabase } = await requireAdmin();
+  assertCanUseAccommodation(adminUser);
+
+  const house = await getListingByPropertyId(supabase, propertyId);
+  if (!house) throw new Error("House not found");
+
+  const selectedIds = validateHouseCoverSelectIds(imageIds);
+  const images = await getHouseImagesByIds(supabase, selectedIds);
+
+  if (images.length !== selectedIds.length) {
+    throw new Error("Some selected images were not found");
+  }
+
+  for (const image of images) {
+    assertImageBelongsToProperty(image, propertyId);
+  }
+
+  await updateHouseCoverSelect(supabase, propertyId, selectedIds);
+  revalidateHouseImagePaths(propertyId);
+
+  return { savedCount: selectedIds.length };
 }

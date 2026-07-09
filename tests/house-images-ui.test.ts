@@ -6,6 +6,10 @@ const source = readFileSync(
   new URL("../components/admin/images/image-zone-viewer.tsx", import.meta.url),
   "utf8",
 );
+const coverSelectSource = readFileSync(
+  new URL("../components/admin/images/cover-select-viewer.tsx", import.meta.url),
+  "utf8",
+);
 const sharedCardPath = new URL(
   "../components/admin/image-asset-card.tsx",
   import.meta.url,
@@ -21,11 +25,25 @@ const pageSource = readFileSync(
   new URL("../app/admin/houses/[propertyId]/images/page.tsx", import.meta.url),
   "utf8",
 );
+const taskHeaderPath = new URL(
+  "../components/admin/houses/house-task-header.tsx",
+  import.meta.url,
+);
+const workspaceShellPath = new URL(
+  "../components/admin/houses/house-workspace-shell.tsx",
+  import.meta.url,
+);
+const navItemPath = new URL(
+  "../components/admin/houses/house-workspace-nav-item.tsx",
+  import.meta.url,
+);
 
 describe("house image mobile UI", () => {
   it("bounds the mobile zones scroller and keeps image cards compact", () => {
-    assert.match(source, /grid min-w-0 overflow-hidden/);
-    assert.match(source, /aside className="min-w-0/);
+    assert.equal(existsSync(workspaceShellPath), true);
+    assert.equal(existsSync(navItemPath), true);
+    assert.match(source, /HouseWorkspaceShell/);
+    assert.match(source, /HouseWorkspaceNavItem/);
     assert.match(source, /<ScrollArea className="w-full min-w-0(?: [^"]*)?"/);
     assert.match(source, /<nav\s+className="flex w-max min-w-full/);
     assert.match(source, /grid grid-cols-\[repeat\(auto-fill,minmax\(9rem,9rem\)\)\]/);
@@ -44,40 +62,38 @@ describe("house image mobile UI", () => {
 
   it("keeps the image manager bounded and scrolls only the image grid", () => {
     assert.match(pageSource, /className="flex h-\[calc\(100dvh-6\.5rem\)\] min-h-0 flex-col gap-4"/);
+    assert.match(source, /<HouseWorkspaceShell/);
+    assert.match(source, /sidebarTitle="ทำเล"/);
+    assert.match(source, /contentTitle=\{selectedMeta\.label\}/);
+    assert.match(source, /contentMeta=\{`\$\{visibleImages\.length\} รูป`\}/);
+    assert.match(source, /contentActions=\{contentActions\}/);
     assert.match(
       source,
-      /className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-\[auto_minmax\(0,1fr\)\] rounded-xl border bg-background lg:grid-cols-\[220px_1fr\] lg:grid-rows-1"/,
-    );
-    assert.match(
-      source,
-      /aside className="min-w-0 min-h-0 border-b bg-muted\/20 lg:grid lg:grid-rows-\[auto_minmax\(0,1fr\)\] lg:border-b-0 lg:border-r"/,
-    );
-    assert.match(
-      source,
-      /section className="grid min-h-0 min-w-0 grid-rows-\[auto_minmax\(0,1fr\)\]"/,
-    );
-    assert.match(
-      source,
-      /className="grid min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)\] gap-3 p-2"/,
+      /contentClassName="grid min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)\] gap-3 p-2 lg:overflow-hidden"/,
     );
     assert.match(source, /className="min-h-0 overflow-y-auto overscroll-contain rounded-lg"/);
+    assert.doesNotMatch(source, /lg:grid-cols-\[220px_1fr\]/);
     assert.doesNotMatch(source, /grid-rows-\[minmax\(0,1fr\)_auto\]/);
     assert.doesNotMatch(source, /border-t bg-background px-2 pt-3/);
     assert.doesNotMatch(source, /sticky bottom-0/);
   });
 
-  it("keeps the image count in the header details and moves upload to the far right", () => {
+  it("shows the current image task under the house name and moves upload to the far right", () => {
+    assert.equal(existsSync(taskHeaderPath), true);
     assert.match(source, /import \{ Button, buttonVariants \} from "\.\.\/\.\.\/ui\/button";/);
     assert.match(source, /buttonVariants\(\{ variant: "outline", size: "sm" \}\)/);
-    assert.match(
-      source,
-      /<p className="text-xs text-muted-foreground">\s*\{visibleImages\.length\} รูป\s*<\/p>/,
-    );
+    assert.match(pageSource, /import \{ HouseTaskHeader \}/);
+    assert.match(pageSource, /const imageTaskLabel = isCoverSelectMode \? "เรียงลำดับรูป" : "จัดการรูป";/);
+    assert.match(pageSource, /<HouseTaskHeader/);
+    assert.match(pageSource, /subtitle=\{imageTaskLabel\}/);
+    assert.doesNotMatch(pageSource, /<p className="hidden text-sm text-muted-foreground lg:block">/);
+    assert.doesNotMatch(pageSource, /จัดการรูปภาพบ้านพัก · \{images\.length\} รูป/);
+    assert.match(source, /contentIcon=\{<ZoneIcon icon=\{selectedMeta\.icon\} \/>\}/);
     assert.doesNotMatch(source, /Zone Order/);
     assert.doesNotMatch(source, /orderRangeLabel/);
     assert.match(
       source,
-      /<div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">[\s\S]*<Label[\s\S]*htmlFor="house-images-upload"[\s\S]*<UploadCloudIcon[\s\S]*<input[\s\S]*id="house-images-upload"[\s\S]*name="images"[\s\S]*type="file"[\s\S]*<\/div>/,
+      /const contentActions = \([\s\S]*<Label[\s\S]*htmlFor="house-images-upload"[\s\S]*<UploadCloudIcon[\s\S]*<input[\s\S]*id="house-images-upload"[\s\S]*name="images"[\s\S]*type="file"/,
     );
     assert.doesNotMatch(source, /visibleImages\.length \+ previews\.length/);
     assert.doesNotMatch(source, /<Badge variant="secondary">\{visibleImages\.length \+ previews\.length\} รูป<\/Badge>/);
@@ -87,35 +103,34 @@ describe("house image mobile UI", () => {
 
   it("shows empty configured zones as selectable settings destinations", () => {
     assert.match(source, /const sidebarGroups = groups\.length > 0 \? groups : \[fallbackGroup\];/);
-    assert.match(source, /<Badge className="shrink-0" variant=\{isActive \? "secondary" : "outline"\}>\s*\{group\.images\.length\} รูป\s*<\/Badge>/);
+    assert.match(source, /badge=\{`\$\{group\.images\.length\} รูป`\}/);
     assert.match(source, /visibleImages\.length === 0 && failedUploadItems\.length === 0/);
     assert.match(source, /โซนนี้ยังไม่มีรูป/);
   });
 
   it("changes zones with Next Link so sidebar state is not reset by a full reload", () => {
-    assert.match(source, /import Link from "next\/link"/);
-    assert.match(source, /<Link[\s\S]*href=\{imageZoneHref\(propertyId, group\.zone, returnTo\)\}/);
+    assert.match(source, /import \{ HouseWorkspaceNavItem \} from "\.\.\/houses\/house-workspace-nav-item";/);
+    assert.match(source, /<HouseWorkspaceNavItem[\s\S]*href=\{imageZoneHref\(propertyId, group\.zone, returnTo\)\}/);
     assert.doesNotMatch(source, /<a\b[\s\S]*href=\{imageZoneHref\(propertyId, group\.zone, returnTo\)\}/);
   });
 
   it("scrolls the selected mobile zone chip into view without reordering zones", () => {
+    assert.match(source, /import \{ scrollActiveItemToStart \} from "\.\.\/\.\.\/\.\.\/lib\/scroll-active-item";/);
     assert.match(source, /const activeZoneRef = useRef<HTMLAnchorElement>\(null\);/);
     assert.match(source, /window\.matchMedia\("\(max-width: 1023px\)"\)\.matches/);
-    assert.match(
-      source,
-      /activeZone\.scrollIntoView\(\{\s*behavior: "smooth",\s*block: "nearest",\s*inline: "start",\s*\}\);/,
-    );
+    assert.match(source, /scrollActiveItemToStart\(activeZone\);/);
     assert.match(source, /\}, \[selectedGroup\.zone\]\);/);
     assert.match(source, /ref=\{isActive \? activeZoneRef : undefined\}/);
+    assert.doesNotMatch(source, /scrollIntoView/);
   });
 
   it("keeps the house list return URL through the image page and zone changes", () => {
-    assert.match(pageSource, /searchParams: Promise<\{ zone\?: string; returnTo\?: string \}>/);
+    assert.match(pageSource, /searchParams: Promise<\{ zone\?: string; returnTo\?: string; mode\?: string \}>/);
     assert.match(pageSource, /value === "\/admin\/houses"/);
     assert.match(pageSource, /value\??\.startsWith\("\/admin\/houses\?"\)/);
     assert.match(pageSource, /const safeReturnTo = getSafeReturnTo\(returnTo\);/);
     assert.match(pageSource, /const backHref = safeReturnTo \?\? "\/admin\/houses";/);
-    assert.match(pageSource, /<Link href=\{backHref\}>/);
+    assert.match(pageSource, /backHref=\{backHref\}/);
     assert.match(pageSource, /returnTo=\{safeReturnTo \?\? undefined\}/);
     assert.match(source, /function imageZoneHref\(propertyId: string, zone: string, returnTo\?: string\)/);
     assert.match(source, /if \(returnTo\) params\.set\("returnTo", returnTo\);/);
@@ -160,6 +175,83 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(pageSource, /bulkDeleteAction=/);
     assert.doesNotMatch(pageSource, /updateHouseImagesAction/);
     assert.doesNotMatch(pageSource, /action=\{updateHouseImagesAction\.bind\(null, propertyId\)\}/);
+  });
+
+  it("switches to a cover-select mode on the existing house image route", () => {
+    assert.match(pageSource, /import \{ CoverSelectViewer \}/);
+    assert.match(pageSource, /saveHouseCoverSelectAction/);
+    assert.match(pageSource, /searchParams: Promise<\{ zone\?: string; returnTo\?: string; mode\?: string \}>/);
+    assert.match(pageSource, /const isCoverSelectMode = mode === "cover-select";/);
+    assert.match(pageSource, /isCoverSelectMode \? \(/);
+    assert.match(pageSource, /<CoverSelectViewer/);
+    assert.match(pageSource, /saveAction=\{saveHouseCoverSelectAction\.bind\(null, propertyId\)\}/);
+    assert.match(source, /mode: "cover-select"/);
+    assert.match(source, /<ImageIcon data-icon="inline-start" \/>[\s\S]*จัดลำดับรูปแสดง/);
+  });
+
+  it("adds a dedicated cover selection viewer component", () => {
+    assert.match(coverSelectSource, /export function CoverSelectViewer/);
+    assert.match(coverSelectSource, /import \{ DragDropProvider \} from "@dnd-kit\/react"/);
+    assert.match(coverSelectSource, /import \{ move \} from "@dnd-kit\/helpers"/);
+    assert.match(coverSelectSource, /import \{ useSortable \} from "@dnd-kit\/react\/sortable"/);
+    assert.match(coverSelectSource, /type ImageZoneIconName/);
+    assert.match(coverSelectSource, /satisfies Record<ImageZoneIconName, LucideIcon>/);
+    assert.match(coverSelectSource, /function ZoneIcon\(\{ icon \}: \{ icon: ImageZoneIconName \}\)/);
+    assert.match(coverSelectSource, /import \{ scrollActiveItemToStart \} from "\.\.\/\.\.\/\.\.\/lib\/scroll-active-item";/);
+    assert.match(coverSelectSource, /import \{ HouseWorkspaceNavItem \} from "\.\.\/houses\/house-workspace-nav-item";/);
+    assert.match(coverSelectSource, /import \{ HouseWorkspaceShell \} from "\.\.\/houses\/house-workspace-shell";/);
+    assert.match(coverSelectSource, /const activeZoneRef = useRef<HTMLAnchorElement>\(null\);/);
+    assert.match(coverSelectSource, /scrollActiveItemToStart\(activeZone\);/);
+    assert.match(coverSelectSource, /ref=\{!selectedZone \? activeZoneRef : undefined\}/);
+    assert.match(coverSelectSource, /ref=\{isActive \? activeZoneRef : undefined\}/);
+    assert.match(coverSelectSource, /import \{[\s\S]*Dialog[\s\S]*DialogContent[\s\S]*DialogFooter[\s\S]*DialogHeader[\s\S]*DialogTitle[\s\S]*\} from "\.\.\/\.\.\/ui\/dialog"/);
+    assert.match(coverSelectSource, /getHouseCoverSelectedImages/);
+    assert.match(coverSelectSource, /HOUSE_COVER_SELECT_MIN/);
+    assert.match(coverSelectSource, /HOUSE_COVER_SELECT_MAX/);
+    assert.match(coverSelectSource, /selectedIds/);
+    assert.match(coverSelectSource, /<HouseWorkspaceShell/);
+    assert.match(coverSelectSource, /sidebarTitle="ทำเล"/);
+    assert.match(coverSelectSource, /contentTitle="จัดลำดับรูปแสดง"/);
+    assert.match(
+      coverSelectSource,
+      /contentMeta=\{`เลือก \$\{HOUSE_COVER_SELECT_MIN\}-\$\{HOUSE_COVER_SELECT_MAX\} รูป · \$\{selectedCountLabel\(selectedIds\.length\)\}`\}/,
+    );
+    assert.match(coverSelectSource, /contentActions=\{contentActions\}/);
+    assert.match(coverSelectSource, /บันทึก \(\{selectedIds\.length\}\)/);
+    assert.match(coverSelectSource, /ArrowLeftRightIcon/);
+    assert.match(coverSelectSource, /const canSort = selectedIds\.length > 1 && !isPending;/);
+    assert.match(coverSelectSource, /function openSortDialog\(\) \{\s*setIsConfirmDialogOpen\(true\);\s*\}/);
+    assert.match(
+      coverSelectSource,
+      /<Button disabled=\{!canSort\} onClick=\{openSortDialog\} size="sm" type="button" variant="outline">[\s\S]*<ArrowLeftRightIcon data-icon="inline-start" \/>[\s\S]*เรียงรูป[\s\S]*<\/Button>/,
+    );
+    assert.match(coverSelectSource, /isConfirmDialogOpen/);
+    assert.match(coverSelectSource, /setIsConfirmDialogOpen\(true\)/);
+    assert.match(coverSelectSource, /function confirmSaveSelection\(\)/);
+    assert.match(coverSelectSource, /DragDropProvider/);
+    assert.match(coverSelectSource, /onDragEnd/);
+    assert.match(coverSelectSource, /move\(ids, event\)/);
+    assert.match(
+      coverSelectSource,
+      /contentClassName="grid min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)\] gap-3 p-2 lg:overflow-hidden"/,
+    );
+    assert.doesNotMatch(coverSelectSource, /selected strip/i);
+    assert.doesNotMatch(coverSelectSource, /aria-label="selected strip"/);
+    assert.match(coverSelectSource, /<ScrollArea className="w-full min-w-0 overflow-hidden">/);
+    assert.match(coverSelectSource, /saveAction\(selectedIds\)/);
+    assert.match(coverSelectSource, /<Dialog\s+open=\{isConfirmDialogOpen\}/);
+    assert.match(coverSelectSource, /max-h-\[calc\(100dvh-1rem\)\][\s\S]*max-w-7xl[\s\S]*sm:max-w-7xl/);
+    assert.match(coverSelectSource, /<DialogTitle>ยืนยันรูปที่เลือก<\/DialogTitle>/);
+    assert.match(coverSelectSource, /onClick=\{confirmSaveSelection\}/);
+    assert.match(coverSelectSource, /getSelectedImageZoneGroup/);
+    assert.match(coverSelectSource, /const selectedMeta = selectedZone \? getImageZoneMeta\(selectedZone\) : null;/);
+    assert.match(coverSelectSource, /<HouseWorkspaceNavItem/);
+    assert.match(coverSelectSource, /icon=\{<ImageIcon aria-hidden className="size-4" \/>\}/);
+    assert.match(coverSelectSource, /icon=\{<ZoneIcon icon=\{meta\.icon\} \/>\}/);
+    assert.match(coverSelectSource, /contentIcon=\{\s*selectedMeta \? <ZoneIcon icon=\{selectedMeta\.icon\} \/> : <ImageIcon aria-hidden className="size-4" \/>\s*\}/);
+    assert.match(coverSelectSource, /mode: "cover-select"/);
+    assert.doesNotMatch(coverSelectSource, /จัดลำดับรูปแสดงใช้บนเดสก์ท็อป/);
+    assert.doesNotMatch(source, /className="hidden lg:inline-flex"/);
   });
 
   it("removes the staged save and draft preview flow", () => {

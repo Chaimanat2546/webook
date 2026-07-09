@@ -15,9 +15,11 @@ describe("house image actions", () => {
     assert.match(actionsSource, /export interface HouseImageUploadResult/);
     assert.match(actionsSource, /export interface HouseImageDeleteResult/);
     assert.match(actionsSource, /export interface HouseImageBulkDeleteResult/);
+    assert.match(actionsSource, /export interface HouseCoverSelectSaveResult/);
     assert.match(actionsSource, /export async function uploadHouseImagesAction/);
     assert.match(actionsSource, /export async function deleteHouseImageAction/);
     assert.match(actionsSource, /export async function deleteHouseImagesAction/);
+    assert.match(actionsSource, /export async function saveHouseCoverSelectAction/);
     assert.doesNotMatch(actionsSource, /export async function updateHouseImagesAction/);
     assert.match(actionsSource, /getHouseImageById/);
     assert.match(actionsSource, /getHouseImagesByIds/);
@@ -33,6 +35,9 @@ describe("house image actions", () => {
     assert.match(actionsSource, /\.\.\.awsImageEnv/);
     assert.match(actionsSource, /imageUrl/);
     assert.match(actionsSource, /getHouseImageStorageProvider/);
+    assert.match(actionsSource, /validateHouseCoverSelectIds/);
+    assert.match(actionsSource, /updateHouseCoverSelect/);
+    assert.match(actionsSource, /getListingByPropertyId\(supabase, propertyId\)/);
     assert.match(actionsSource, /uploadedObjectKeys/);
     assert.match(actionsSource, /cleanupUploadedImages/);
     assert.match(actionsSource, /cleanupWarning/);
@@ -56,12 +61,22 @@ describe("house image actions", () => {
     assert.doesNotMatch(actionsSource, /deleted_image_ids/);
     assert.match(actionsSource, /insertHouseImages/);
     assert.match(actionsSource, /deleteHouseImageById/);
+    assert.match(actionsSource, /Image does not belong to this house/);
     assert.match(repositorySource, /const houseImageSelect =/);
+    assert.match(repositorySource, /cover_select/);
     assert.match(repositorySource, /export async function getHouseImageById/);
     assert.match(repositorySource, /\.from\("images"\)[\s\S]*\.select\(houseImageSelect\)[\s\S]*\.eq\("id", id\)[\s\S]*\.maybeSingle\(\)/);
     assert.match(repositorySource, /export async function getHouseImagesByIds/);
     assert.match(repositorySource, /\.from\("images"\)[\s\S]*\.select\(houseImageSelect\)[\s\S]*\.in\("id", ids\)/);
     assert.match(repositorySource, /export async function insertHouseImages/);
     assert.match(repositorySource, /export async function deleteHouseImageById/);
+    assert.match(repositorySource, /export async function updateHouseCoverSelect/);
+    assert.match(repositorySource, /\.update\(\{ cover_select: 0/);
+    assert.match(repositorySource, /cover_select: index \+ 1/);
+
+    const updateCoverSelectSource = repositorySource.slice(
+      repositorySource.indexOf("export async function updateHouseCoverSelect"),
+    );
+    assert.doesNotMatch(updateCoverSelectSource, /image_move/);
   });
 });

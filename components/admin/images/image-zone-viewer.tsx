@@ -30,6 +30,7 @@ import {
   resizeHouseImageFile,
   type ResizedHouseImage,
 } from "../../../lib/house-image-resize";
+import { scrollActiveItemToStart } from "../../../lib/scroll-active-item";
 import { cn } from "../../../lib/utils";
 import {
   formatImageMoveLabel,
@@ -55,6 +56,8 @@ import {
 } from "../../ui/dialog";
 import { Label } from "../../ui/label";
 import { ScrollArea, ScrollBar } from "../../ui/scroll-area";
+import { HouseWorkspaceNavItem } from "../houses/house-workspace-nav-item";
+import { HouseWorkspaceShell } from "../houses/house-workspace-shell";
 
 const fallbackGroup: ImageZoneGroup = {
   images: [],
@@ -118,6 +121,12 @@ function displayUrl(image: HouseImageItem): string | null {
 
 function imageZoneHref(propertyId: string, zone: string, returnTo?: string): string {
   const params = new URLSearchParams({ zone });
+  if (returnTo) params.set("returnTo", returnTo);
+  return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
+}
+
+function coverSelectHref(propertyId: string, returnTo?: string): string {
+  const params = new URLSearchParams({ mode: "cover-select" });
   if (returnTo) params.set("returnTo", returnTo);
   return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
 }
@@ -199,14 +208,12 @@ function ImageCard({
   image,
   onSelect,
   previewEnabled = true,
-  priority = false,
   selected = false,
 }: {
   action?: ReactNode;
   image: HouseImageItem;
   onSelect?: () => void;
   previewEnabled?: boolean;
-  priority?: boolean;
   selected?: boolean;
 }) {
   const src = displayUrl(image);
@@ -217,7 +224,6 @@ function ImageCard({
       alt={image.image_name ?? "house image"}
       imageName={image.image_name ?? "-"}
       imageUnavailableText="แสดงรูปไม่ได้"
-      loading={priority ? "eager" : "lazy"}
       onSelect={onSelect}
       orderLabel={formatImageMoveLabel(image.image_move)}
       previewDescription="ดูตัวอย่างรูปขนาดใหญ่"
@@ -250,6 +256,7 @@ function FailedUploadCard({
         <img
           alt={item.file.name}
           className="h-full w-full object-cover opacity-60 grayscale"
+          loading="lazy"
           src={item.previewSrc}
         />
         <Badge
@@ -352,11 +359,7 @@ export function ImageZoneViewer({
     const activeZone = activeZoneRef.current;
     if (!activeZone || !window.matchMedia("(max-width: 1023px)").matches) return;
 
-    activeZone.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "start",
-    });
+    scrollActiveItemToStart(activeZone);
   }, [selectedGroup.zone]);
 
   useEffect(() => {
@@ -719,140 +722,125 @@ export function ImageZoneViewer({
     processBulkDeleteItems(pendingItems);
   }
 
+  const sidebar = (
+    <ScrollArea className="w-full min-w-0 lg:h-full">
+      <nav
+        className="flex w-max min-w-full gap-2 p-3 lg:w-auto lg:min-w-0 lg:flex-col"
+        aria-label="Image zones"
+      >
+        {sidebarGroups.map((group) => {
+          const isActive = group.zone === selectedGroup.zone;
+          const meta = getImageZoneMeta(group.zone);
+
+          return (
+            <HouseWorkspaceNavItem
+              active={isActive}
+              badge={`${group.images.length} รูป`}
+              href={imageZoneHref(propertyId, group.zone, returnTo)}
+              icon={<ZoneIcon icon={meta.icon} />}
+              key={group.zone}
+              label={meta.label}
+              onClick={clearBulkDeleteSelection}
+              ref={isActive ? activeZoneRef : undefined}
+              title={group.zone}
+            />
+          );
+        })}
+      </nav>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
+  );
+
+  const contentActions = (
+    <>
+      {isBulkSelecting ? (
+        <>
+          <label className="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-xs font-medium">
+            <input
+              aria-label="เลือกทั้งหมดในโซนปัจจุบัน"
+              checked={allCurrentZoneImagesSelected}
+              className="size-4 accent-primary"
+              disabled={deletableImages.length === 0 || isBusy}
+              onChange={(event) => toggleSelectAllInCurrentZone(event.currentTarget.checked)}
+              type="checkbox"
+            />
+            เลือกทั้งหมด
+          </label>
+          <Button
+            disabled={selectedBulkDeleteImages.length === 0 || isBusy}
+            onClick={openBulkDeleteDialog}
+            size="sm"
+            type="button"
+            variant="destructive"
+          >
+            <Trash2Icon data-icon="inline-start" />
+            ลบที่เลือก ({selectedBulkDeleteImages.length})
+          </Button>
+          <Button disabled={isBusy} onClick={clearBulkDeleteSelection} size="sm" type="button" variant="outline">
+            ยกเลิก
+          </Button>
+        </>
+      ) : (
+        <>
+          <Button asChild disabled={isBusy} size="sm" type="button" variant="outline">
+            <Link href={coverSelectHref(propertyId, returnTo)}>
+              <ImageIcon data-icon="inline-start" />
+              จัดลำดับรูปแสดง
+            </Link>
+          </Button>
+          <Button
+            disabled={deletableImages.length === 0 || isBusy}
+            onClick={() => setIsBulkSelecting(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Trash2Icon data-icon="inline-start" />
+            เลือกลบ
+          </Button>
+          <Label
+            aria-disabled={isBusy}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "cursor-pointer text-foreground",
+              isBusy && "pointer-events-none opacity-50",
+            )}
+            htmlFor="house-images-upload"
+          >
+            {isBusy ? (
+              <Loader2Icon className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <UploadCloudIcon data-icon="inline-start" />
+            )}
+            {isBusy ? "กำลังอัปโหลด" : "อัปโหลดรูป"}
+          </Label>
+          <input
+            accept="image/avif,image/jpeg,image/png,image/webp"
+            className="sr-only"
+            disabled={isBusy}
+            id="house-images-upload"
+            multiple
+            name="images"
+            onChange={onFilesChange}
+            ref={inputRef}
+            type="file"
+          />
+        </>
+      )}
+    </>
+  );
+
   return (
     <>
-      <div className="grid min-w-0 overflow-hidden min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-xl border bg-background lg:grid-cols-[220px_1fr] lg:grid-rows-1">
-      <aside className="min-w-0 min-h-0 border-b bg-muted/20 lg:grid lg:grid-rows-[auto_minmax(0,1fr)] lg:border-b-0 lg:border-r">
-        <div className="border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">Zones</h2>
-        </div>
-        <ScrollArea className="w-full min-w-0 lg:h-full">
-          <nav
-            className="flex w-max min-w-full gap-2 p-3 lg:w-auto lg:min-w-0 lg:flex-col"
-            aria-label="Image zones"
-          >
-            {sidebarGroups.map((group) => {
-              const isActive = group.zone === selectedGroup.zone;
-              const meta = getImageZoneMeta(group.zone);
-
-              return (
-                <Link
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "flex min-w-36 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted lg:min-w-0",
-                    isActive && "bg-primary text-primary-foreground hover:bg-primary",
-                  )}
-                  href={imageZoneHref(propertyId, group.zone, returnTo)}
-                  key={group.zone}
-                  onClick={clearBulkDeleteSelection}
-                  ref={isActive ? activeZoneRef : undefined}
-                  title={group.zone}
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="flex size-5 shrink-0 items-center justify-center [&>svg]:size-4">
-                      <ZoneIcon icon={meta.icon} />
-                    </span>
-                    <span className="block min-w-0 truncate font-medium">{meta.label}</span>
-                  </span>
-                  <Badge className="shrink-0" variant={isActive ? "secondary" : "outline"}>
-                    {group.images.length} รูป
-                  </Badge>
-                </Link>
-              );
-            })}
-          </nav>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-      </aside>
-
-      <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <ZoneIcon icon={selectedMeta.icon} />
-            </span>
-            <div className="min-w-0">
-              <h2 className="truncate text-base font-semibold" title={selectedGroup.zone}>
-                {selectedMeta.label}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {visibleImages.length} รูป
-              </p>
-            </div>
-          </div>
-          <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {isBulkSelecting ? (
-              <>
-                <label className="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-xs font-medium">
-                  <input
-                    aria-label="เลือกทั้งหมดในโซนปัจจุบัน"
-                    checked={allCurrentZoneImagesSelected}
-                    className="size-4 accent-primary"
-                    disabled={deletableImages.length === 0 || isBusy}
-                    onChange={(event) => toggleSelectAllInCurrentZone(event.currentTarget.checked)}
-                    type="checkbox"
-                  />
-                  เลือกทั้งหมด
-                </label>
-                <Button
-                  disabled={selectedBulkDeleteImages.length === 0 || isBusy}
-                  onClick={openBulkDeleteDialog}
-                  size="sm"
-                  type="button"
-                  variant="destructive"
-                >
-                  <Trash2Icon data-icon="inline-start" />
-                  ลบที่เลือก ({selectedBulkDeleteImages.length})
-                </Button>
-                <Button disabled={isBusy} onClick={clearBulkDeleteSelection} size="sm" type="button" variant="outline">
-                  ยกเลิก
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  disabled={deletableImages.length === 0 || isBusy}
-                  onClick={() => setIsBulkSelecting(true)}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <Trash2Icon data-icon="inline-start" />
-                  เลือกลบ
-                </Button>
-                <Label
-                  aria-disabled={isBusy}
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "sm" }),
-                    "cursor-pointer text-foreground",
-                    isBusy && "pointer-events-none opacity-50",
-                  )}
-                  htmlFor="house-images-upload"
-                >
-                  {isBusy ? (
-                    <Loader2Icon className="animate-spin" data-icon="inline-start" />
-                  ) : (
-                    <UploadCloudIcon data-icon="inline-start" />
-                  )}
-                  {isBusy ? "กำลังอัปโหลด" : "อัปโหลดรูป"}
-                </Label>
-                <input
-                  accept="image/avif,image/jpeg,image/png,image/webp"
-                  className="sr-only"
-                  disabled={isBusy}
-                  id="house-images-upload"
-                  multiple
-                  name="images"
-                  onChange={onFilesChange}
-                  ref={inputRef}
-                  type="file"
-                />
-              </>
-            )}
-          </div>
-        </header>
-
-        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] gap-3 p-2">
+      <HouseWorkspaceShell
+        contentActions={contentActions}
+        contentClassName="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] gap-3 p-2 lg:overflow-hidden"
+        contentIcon={<ZoneIcon icon={selectedMeta.icon} />}
+        contentMeta={`${visibleImages.length} รูป`}
+        contentTitle={selectedMeta.label}
+        sidebar={sidebar}
+        sidebarTitle="ทำเล"
+      >
           <div className="min-h-0 overflow-y-auto overscroll-contain rounded-lg">
             {failedUploadItems.length > 0 ? (
               <section className="mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-3">
@@ -893,7 +881,7 @@ export function ImageZoneViewer({
               </div>
             ) : null}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,9rem))] items-start justify-center gap-3 p-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,10rem))]">
-              {visibleImages.map((image, index) => {
+              {visibleImages.map((image) => {
                 const canDelete = isHouseImageFileOperationAllowed(image.image_url, "delete");
                 const isSelected = selectedBulkDeleteIds.has(image.id);
                 const action = canDelete ? (
@@ -933,7 +921,6 @@ export function ImageZoneViewer({
                         : undefined
                     }
                     previewEnabled={!isBulkSelecting}
-                    priority={index === 0}
                     selected={isSelected}
                   />
                 );
@@ -949,9 +936,7 @@ export function ImageZoneViewer({
               ))}
             </div>
           </div>
-        </div>
-      </section>
-    </div>
+      </HouseWorkspaceShell>
 
       <Dialog open={singleDeleteImage !== null} onOpenChange={(open) => !open && setSingleDeleteImage(null)}>
         <DialogContent>
@@ -966,6 +951,7 @@ export function ImageZoneViewer({
                   <img
                     alt={singleDeleteImage.image_name ?? "house image"}
                     className="max-h-80 w-full object-contain"
+                    loading="lazy"
                     src={displayUrl(singleDeleteImage) ?? undefined}
                   />
                 ) : (
