@@ -83,8 +83,40 @@ describe("quotation calculator", () => {
         ...baseInput().items[0], id, position: index + 1, quantity: "1", unitPrice: "1.00",
       })),
     }));
-    assert.equal(result.lines.reduce((sum, line) => sum + Number(line.documentDiscountAllocation), 0), 0.01);
+    assert.deepEqual(
+      result.lines.map((line) => line.documentDiscountAllocation),
+      ["0.01", "0.00", "0.00"],
+    );
     assert.equal(result.documentDiscountTotal, "0.01");
+  });
+
+  it("rounds a half-satang quantity-price product up", () => {
+    const result = calculateQuotation(baseInput({
+      items: [{ ...baseInput().items[0], quantity: "0.001", unitPrice: "5.00" }],
+    }));
+    assert.equal(result.subtotal, "0.01");
+  });
+
+  it("rounds a half-satang percent discount up", () => {
+    const result = calculateQuotation(baseInput({
+      documentDiscountType: "percent",
+      documentDiscountValue: "50.00",
+      items: [{ ...baseInput().items[0], quantity: "1", unitPrice: "0.01" }],
+    }));
+    assert.equal(result.documentDiscountTotal, "0.01");
+  });
+
+  it("rounds half-satang VAT at the exclusive and inclusive boundaries", () => {
+    const exclusive = calculateQuotation(baseInput({
+      items: [{ ...baseInput().items[0], quantity: "1", unitPrice: "0.01", vatRate: "50.00" }],
+    }));
+    const inclusive = calculateQuotation(baseInput({
+      items: [{ ...baseInput().items[0], quantity: "1", unitPrice: "0.01", vatRate: "100.00" }],
+      priceMode: "vat_inclusive",
+    }));
+    assert.equal(exclusive.vatTotal, "0.01");
+    assert.equal(inclusive.taxableTotal, "0.01");
+    assert.equal(inclusive.vatTotal, "0.00");
   });
 
   it("distinguishes zero-rated, exempt, and no-VAT lines", () => {

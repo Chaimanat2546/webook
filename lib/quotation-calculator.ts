@@ -190,13 +190,13 @@ function readThaiSixDigits(value: string): string {
   const padded = value.padStart(6, "0");
   let output = "";
   for (let index = 0; index < padded.length; index += 1) {
-    const digit = Number(padded[index]);
-    if (digit === 0) continue;
+    const digit = padded[index]!;
+    if (digit === "0") continue;
     const position = padded.length - index - 1;
-    if (position === 1 && digit === 1) output += "";
-    else if (position === 1 && digit === 2) output += "ยี่";
-    else if (position === 0 && digit === 1 && Number(value) > 10) output += "เอ็ด";
-    else output += THAI_DIGITS[digit];
+    if (position === 1 && digit === "1") output += "";
+    else if (position === 1 && digit === "2") output += "ยี่";
+    else if (position === 0 && digit === "1" && BigInt(value) > BigInt(10)) output += "เอ็ด";
+    else output += THAI_DIGITS["0123456789".indexOf(digit)]!;
     output += THAI_POSITIONS[position];
   }
   return output;
@@ -208,7 +208,7 @@ function readThaiInteger(value: string): string {
   if (normalized.length <= 6) return readThaiSixDigits(normalized);
   const head = normalized.slice(0, -6);
   const tail = normalized.slice(-6);
-  return `${readThaiInteger(head)}ล้าน${Number(tail) === 0 ? "" : readThaiSixDigits(tail)}`;
+  return `${readThaiInteger(head)}ล้าน${BigInt(tail) === ZERO ? "" : readThaiSixDigits(tail)}`;
 }
 
 export function formatThaiBahtText(value: string): string {
