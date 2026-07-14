@@ -90,4 +90,44 @@ describe("quotation service", () => {
     assert.equal(payload.validUntil, "2026-07-29");
     assert.equal(payload.items.length, 1);
   });
+
+  it("rejects percent discounts over 100 while keeping amount discounts monetary", () => {
+    const payload = validPayload();
+    payload.items[0]!.discountType = "percent";
+    payload.items[0]!.discountValue = "100.01";
+    payload.documentDiscountType = "percent";
+    payload.documentDiscountValue = "101";
+    assert.throws(() => prepareQuotationPayload(payload), (error) => {
+      assert.equal(error instanceof QuotationValidationError, true);
+      if (!(error instanceof QuotationValidationError)) return false;
+      assert.ok(error.fieldErrors["items.0.discountValue"]);
+      assert.ok(error.fieldErrors.documentDiscountValue);
+      return true;
+    });
+  });
+
+  it("returns field errors for malformed nested customer, seller, and item values", () => {
+    for (const [field, payload] of [
+      ["customer", { ...validPayload(), customer: null }],
+      ["seller", { ...validPayload(), seller: null }],
+      ["items.0", { ...validPayload(), items: [null] }],
+    ] as const) {
+      assert.throws(() => prepareQuotationPayload(payload), (error) => {
+        assert.equal(error instanceof QuotationValidationError, true);
+        return error instanceof QuotationValidationError && Boolean(error.fieldErrors[field]);
+      });
+    }
+  });
+
+  it("rejects non-array, empty, and oversized items before parsing them", () => {
+    for (const items of [null, [], Array.from({ length: 101 }, () => validPayload().items[0])]) {
+      assert.throws(() => prepareQuotationPayload({ ...validPayload(), items }), (error) =>
+        error instanceof QuotationValidationError && Boolean(error.fieldErrors.items),
+      );
+    }
+  });
+
+  it("rejects calendar additions beyond the four-digit ISO year", () => {
+    assert.throws(() => addQuotationCalendarDays("9999-12-31", 1), /Invalid quotation date or validity days/);
+  });
 });

@@ -18,5 +18,7 @@ export function addQuotationCalendarDays(value: string, days: number): string {
     throw new Error("Invalid quotation date or validity days");
   }
   date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
+  const result = date.toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(result)) throw new Error("Invalid quotation date or validity days");
+  return result;
 }

@@ -1,3 +1,5 @@
+import "server-only";
+
 import {
   calculateQuotation,
   formatThaiBahtText,
@@ -89,7 +91,8 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   const errors: Record<string, string> = {};
   let seller: SellerSnapshot;
   try { seller = prepareSellerSnapshot(source.seller); } catch (error) { if (error instanceof QuotationValidationError) Object.assign(errors, error.fieldErrors); else errors.seller = "ข้อมูลผู้ขายไม่ถูกต้อง"; seller = { address: "", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "", officeType: "head_office", phone: "", taxId: "", website: "" }; }
-  const customerSource = objectValue(source.customer, "customer");
+  let customerSource: Record<string, unknown>;
+  try { customerSource = objectValue(source.customer, "customer"); } catch { errors.customer = "Invalid customer"; customerSource = {}; }
   const customer: CustomerSnapshot = { address: bounded(stringValue(customerSource, "address"), 2_000, "customer.address", errors), branchNumber: bounded(stringValue(customerSource, "branchNumber"), 200, "customer.branchNumber", errors), contactName: bounded(stringValue(customerSource, "contactName"), 200, "customer.contactName", errors), email: bounded(stringValue(customerSource, "email"), 200, "customer.email", errors), name: bounded(stringValue(customerSource, "name"), 200, "customer.name", errors), officeType: enumValue(customerSource.officeType, ["branch", "head_office"], "customer.officeType", errors, "head_office"), phone: bounded(stringValue(customerSource, "phone"), 200, "customer.phone", errors), serviceLocation: bounded(stringValue(customerSource, "serviceLocation"), 2_000, "customer.serviceLocation", errors), shippingAddress: bounded(stringValue(customerSource, "shippingAddress"), 2_000, "customer.shippingAddress", errors), taxId: bounded(stringValue(customerSource, "taxId"), 200, "customer.taxId", errors) };
   if (!customer.name) errors["customer.name"] = REQUIRED_MESSAGES.customerName;
   if (!customer.address) errors["customer.address"] = REQUIRED_MESSAGES.customerAddress;
@@ -98,11 +101,19 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   const issueDate = stringValue(source, "issueDate"); if (!validDate(issueDate)) errors.issueDate = "วันที่ออกเอกสารไม่ถูกต้อง";
   const validityDays = stringValue(source, "validityDays"); if (validityDays && (!/^\d+$/.test(validityDays) || Number(validityDays) > 36_500)) errors.validityDays = "จำนวนวันใช้ได้ไม่ถูกต้อง";
   let validUntil = stringValue(source, "validUntil");
-  if (validityDays && validDate(issueDate) && !errors.validityDays) validUntil = addQuotationCalendarDays(issueDate, Number(validityDays));
+  if (validityDays && validDate(issueDate) && !errors.validityDays) {
+    try { validUntil = addQuotationCalendarDays(issueDate, Number(validityDays)); } catch { errors.validUntil = "Invalid valid-until date"; }
+  }
   else if (!validDate(validUntil) || (validDate(issueDate) && validUntil < issueDate)) errors.validUntil = "วันที่ใช้ได้ถึงต้องไม่น้อยกว่าวันที่ออกเอกสาร";
   const itemsValue = source.items;
-  const items: QuotationItemInput[] = Array.isArray(itemsValue) ? itemsValue.map((value, index) => {
-    const item = objectValue(value, `items.${index}`); const prefix = `items.${index}`; const itemId = stringValue(item, "id");
+  if (source.documentDiscountType === "percent") numeric(stringValue(source, "documentDiscountValue"), PERCENT, "documentDiscountValue", errors, true);
+  if (!Array.isArray(itemsValue) || itemsValue.length < 1 || itemsValue.length > 100) errors.items = "Invalid item count";
+  const items: QuotationItemInput[] = Array.isArray(itemsValue) && itemsValue.length >= 1 && itemsValue.length <= 100 ? itemsValue.map((value, index) => {
+    const prefix = `items.${index}`;
+    let item: Record<string, unknown>;
+    try { item = objectValue(value, prefix); } catch { errors[prefix] = "Invalid item"; item = {}; }
+    const itemId = stringValue(item, "id");
+    if (item.discountType === "percent") numeric(stringValue(item, "discountValue"), PERCENT, `${prefix}.discountValue`, errors, true);
     if (!UUID.test(itemId)) errors[`${prefix}.id`] = "รหัสรายการไม่ถูกต้อง";
     const name = bounded(stringValue(item, "name"), 200, `${prefix}.name`, errors); if (!name) errors[`${prefix}.name`] = REQUIRED_MESSAGES.itemName;
     const unit = bounded(stringValue(item, "unit"), 200, `${prefix}.unit`, errors); if (!unit) errors[`${prefix}.unit`] = REQUIRED_MESSAGES.itemUnit;
