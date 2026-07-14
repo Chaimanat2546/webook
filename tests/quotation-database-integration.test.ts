@@ -9,7 +9,9 @@ const anonKey = process.env.LOCAL_SUPABASE_ANON_KEY ?? "";
 const serviceRoleKey = process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY ?? "";
 const password = "Quotation-local-test-2026!";
 const issueDate = "2099-12-31";
-const otherDate = "2099-12-30";
+const otherDate = new Date(
+  Date.UTC(2100, 0, 1) + (Number.parseInt(crypto.randomUUID().slice(0, 8), 16) % 36525) * 86_400_000,
+).toISOString().slice(0, 10);
 const seller = { name: "Seller", address: "Seller address", taxId: "0100000000000" };
 
 function payload(id: string | null, date = issueDate, sellerSnapshot = seller) {
@@ -70,7 +72,7 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal((await save(allowed, payload(first.id, otherDate))).document_number, first.document_number);
     const otherDay = await Promise.all([save(allowed, payload(null, otherDate)), save(allowed, payload(null, otherDate))]);
     const otherDayNumbers = otherDay.map(({ document_number }) => Number(document_number.slice(document_number.lastIndexOf("-") + 1))).sort((left, right) => left - right);
-    assert.deepEqual(otherDayNumbers, [otherDayNumbers[0], otherDayNumbers[0] + 1]);
+    assert.deepEqual(otherDayNumbers, [1, 2]);
     assert.equal((await allowed.rpc("soft_delete_quotation", { p_id: first.id })).error, null);
     assert.equal((await allowed.from("quotations").select("id").eq("id", first.id)).data?.length, 0);
     const nextDocumentNumber = (await save(allowed, payload(null))).document_number;
