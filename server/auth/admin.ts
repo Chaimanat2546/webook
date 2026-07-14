@@ -2,6 +2,7 @@ import { cache } from "react";
 
 export interface AdminAllowTools {
   allow_accommodation?: boolean;
+  allow_quotation?: boolean;
 }
 
 export interface AdminUserForAuth {
@@ -17,6 +18,10 @@ export interface AuthUserIdentity {
 
 export function canUseAccommodation(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
   return user?.allow_tools?.allow_accommodation === true;
+}
+
+export function canUseQuotation(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_quotation === true;
 }
 
 export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | null): boolean {

@@ -1,6 +1,6 @@
 "use client";
 
-import { HouseIcon, LogOutIcon, MegaphoneIcon } from "lucide-react";
+import { FileTextIcon, HouseIcon, LogOutIcon, MegaphoneIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -20,8 +20,10 @@ import {
 import { TooltipProvider } from "../ui/tooltip";
 
 export function AdminDesktopSidebar({
+  canUseQuotation,
   signOutAction,
 }: {
+  canUseQuotation: boolean;
   signOutAction: () => Promise<void>;
 }) {
   const pathname = usePathname();
@@ -90,6 +92,20 @@ export function AdminDesktopSidebar({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                {canUseQuotation ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith("/admin/quotations")}
+                      tooltip="ใบเสนอราคา"
+                    >
+                      <Link href="/admin/quotations" onClick={closeMobileSidebar}>
+                        <FileTextIcon data-icon="inline-start" />
+                        <span>ใบเสนอราคา</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) : null}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
