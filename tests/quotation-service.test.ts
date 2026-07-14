@@ -7,6 +7,7 @@ import {
 } from "../lib/quotation-dates.ts";
 import {
   prepareQuotationPayload,
+  prepareSellerSnapshot,
   QuotationValidationError,
   emptyQuotationPayload,
 } from "../server/services/quotations.ts";
@@ -129,5 +130,27 @@ describe("quotation service", () => {
 
   it("rejects calendar additions beyond the four-digit ISO year", () => {
     assert.throws(() => addQuotationCalendarDays("9999-12-31", 1), /Invalid quotation date or validity days/);
+  });
+
+  it("returns seller field errors instead of raw errors for malformed seller snapshots", () => {
+    for (const seller of [null, [], "seller"]) {
+      assert.throws(() => prepareSellerSnapshot(seller), (error) =>
+        error instanceof QuotationValidationError && Boolean(error.fieldErrors.seller),
+      );
+    }
+  });
+
+  it("returns a user-safe field error for a malformed root payload", () => {
+    assert.throws(() => prepareQuotationPayload(null), (error) =>
+      error instanceof QuotationValidationError && Boolean(error.fieldErrors._form),
+    );
+  });
+
+  it("rejects arbitrarily long zero-padded validity days", () => {
+    const payload = validPayload();
+    payload.validityDays = `${"0".repeat(100_000)}1`;
+    assert.throws(() => prepareQuotationPayload(payload), (error) =>
+      error instanceof QuotationValidationError && Boolean(error.fieldErrors.validityDays),
+    );
   });
 });

@@ -61,7 +61,9 @@ function discountTypeValue(value: unknown, field: string, errors: Record<string,
 function numeric(value: string, expression: RegExp, field: string, errors: Record<string, string>, percentage = false): string { if (!expression.test(value) || (percentage && Number(value) > 100)) errors[field] = "ตัวเลขไม่ถูกต้อง"; return value; }
 
 export function prepareSellerSnapshot(value: unknown): SellerSnapshot {
-  const source = objectValue(value, "seller");
+  let source: Record<string, unknown>;
+  try { source = objectValue(value, "seller"); }
+  catch { throw new QuotationValidationError({ seller: "Invalid seller" }); }
   const errors: Record<string, string> = {};
   const seller: SellerSnapshot = {
     address: bounded(stringValue(source, "address"), 2_000, "seller.address", errors), branchNumber: bounded(stringValue(source, "branchNumber"), 200, "seller.branchNumber", errors), contactEmail: bounded(stringValue(source, "contactEmail"), 200, "seller.contactEmail", errors), contactName: bounded(stringValue(source, "contactName"), 200, "seller.contactName", errors), contactPhone: bounded(stringValue(source, "contactPhone"), 200, "seller.contactPhone", errors), email: bounded(stringValue(source, "email"), 200, "seller.email", errors), logoUrl: bounded(stringValue(source, "logoUrl"), 2_048, "seller.logoUrl", errors), name: bounded(stringValue(source, "name"), 200, "seller.name", errors), officeType: enumValue(source.officeType, ["branch", "head_office"], "seller.officeType", errors, "head_office"), phone: bounded(stringValue(source, "phone"), 200, "seller.phone", errors), taxId: bounded(stringValue(source, "taxId"), 200, "seller.taxId", errors), website: bounded(stringValue(source, "website"), 2_048, "seller.website", errors),
@@ -87,8 +89,13 @@ export function emptyQuotationPayload(seller: SellerSnapshot, now: Date): Quotat
 }
 
 export function prepareQuotationPayload(value: unknown): PreparedQuotation {
-  const source = objectValue(value, "quotation");
+  let source: Record<string, unknown>;
+  try { source = objectValue(value, "quotation"); }
+  catch { throw new QuotationValidationError({ _form: "Invalid quotation" }); }
   const errors: Record<string, string> = {};
+  if (typeof source.validityDays === "string" && source.validityDays.trim().length > 5) {
+    throw new QuotationValidationError({ validityDays: "Invalid validity days" });
+  }
   let seller: SellerSnapshot;
   try { seller = prepareSellerSnapshot(source.seller); } catch (error) { if (error instanceof QuotationValidationError) Object.assign(errors, error.fieldErrors); else errors.seller = "ข้อมูลผู้ขายไม่ถูกต้อง"; seller = { address: "", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "", officeType: "head_office", phone: "", taxId: "", website: "" }; }
   let customerSource: Record<string, unknown>;
