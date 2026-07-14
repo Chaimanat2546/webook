@@ -10,9 +10,10 @@ const serviceRoleKey = process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY ?? "";
 const password = "Quotation-local-test-2026!";
 const issueDate = "2099-12-31";
 const otherDate = "2099-12-30";
+const seller = { name: "Seller", address: "Seller address", taxId: "0100000000000" };
 
-function payload(id: string | null, date = issueDate) {
-  return { id, currency: "THB", customer_snapshot: { name: "Customer", address: "Customer address" }, document_discount_type: null, document_discount_value: "0.00", internal_notes: "", issue_date: date, items: [{ position: 1, sku: "", name: "Item", description: "", quantity: "1.000", unit: "งาน", unit_price: "100.00", discount_type: null, discount_value: "0.00", gross_amount: "100.00", discount_amount: "0.00", document_discount_allocation: "0.00", vat_treatment: "taxable", vat_rate: "7.00", taxable_amount: "100.00", vat_amount: "7.00", line_total: "107.00" }], price_mode: "vat_exclusive", public_notes: "", reference: "", seller_snapshot: { name: "Seller", address: "Seller address", taxId: "0100000000000" }, subject: "Integration test", totals: { subtotal: "100.00", itemDiscountTotal: "0.00", documentDiscountTotal: "0.00", taxableTotal: "100.00", vatTotal: "7.00", grandTotal: "107.00" }, valid_until: date, validity_days: 0 };
+function payload(id: string | null, date = issueDate, sellerSnapshot = seller) {
+  return { id, currency: "THB", customer_snapshot: { name: "Customer", address: "Customer address" }, document_discount_type: null, document_discount_value: "0.00", internal_notes: "", issue_date: date, items: [{ position: 1, sku: "", name: "Item", description: "", quantity: "1.000", unit: "งาน", unit_price: "100.00", discount_type: null, discount_value: "0.00", gross_amount: "100.00", discount_amount: "0.00", document_discount_allocation: "0.00", vat_treatment: "taxable", vat_rate: "7.00", taxable_amount: "100.00", vat_amount: "7.00", line_total: "107.00" }], price_mode: "vat_exclusive", public_notes: "", reference: "", seller_snapshot: sellerSnapshot, subject: "Integration test", totals: { subtotal: "100.00", itemDiscountTotal: "0.00", documentDiscountTotal: "0.00", taxableTotal: "100.00", vatTotal: "7.00", grandTotal: "107.00" }, valid_until: date, validity_days: 0 };
 }
 
 async function save(client: SupabaseClient, value: ReturnType<typeof payload>) {
@@ -29,6 +30,7 @@ describe("quotation local database integration", { skip: !enabled }, () => {
   const denied = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   let allowedId = "";
   let deniedId = "";
+  let originalProfile: Record<string, unknown> | null = null;
 
   before(async () => {
     assert.ok(url && anonKey && serviceRoleKey, "local Supabase environment is required");
@@ -41,12 +43,17 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     allowedId = allowedCreated.data.user!.id; deniedId = deniedCreated.data.user!.id;
     const usersInsert = await service.from("users").insert([{ allow_tools: { allow_quotation: true }, email: allowedEmail, uid: allowedId }, { allow_tools: {}, email: deniedEmail, uid: deniedId }]);
     assert.equal(usersInsert.error, null, usersInsert.error?.message);
+    const profile = await service.from("quotation_company_profiles").select().eq("id", 1).maybeSingle();
+    assert.equal(profile.error, null, profile.error?.message);
+    originalProfile = profile.data;
     assert.equal((await allowed.auth.signInWithPassword({ email: allowedEmail, password })).error, null);
     assert.equal((await denied.auth.signInWithPassword({ email: deniedEmail, password })).error, null);
   });
 
   after(async () => {
     await service.from("quotations").delete().in("issue_date", [issueDate, otherDate]);
+    if (originalProfile) await service.from("quotation_company_profiles").upsert(originalProfile);
+    else await service.from("quotation_company_profiles").delete().eq("id", 1);
     if (allowedId) await service.from("users").delete().eq("uid", allowedId);
     if (deniedId) await service.from("users").delete().eq("uid", deniedId);
     if (allowedId) await service.auth.admin.deleteUser(allowedId);
@@ -57,13 +64,29 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     const deniedSave = await denied.rpc("save_quotation", { p_payload: payload(null) });
     assert.equal(deniedSave.error?.code, "42501");
     const created = await Promise.all(Array.from({ length: 12 }, () => save(allowed, payload(null))));
-    assert.deepEqual(created.map((row) => row.document_number).sort(), Array.from({ length: 12 }, (_, index) => `QO-20991231-${String(index + 1).padStart(4, "0")}`));
-    const first = created.find((row) => row.document_number.endsWith("-0001"))!;
-    assert.equal((await save(allowed, payload(first.id, otherDate))).document_number, "QO-20991231-0001");
-    assert.equal((await save(allowed, payload(null, otherDate))).document_number, "QO-20991230-0001");
+    const dailyNumbers = created.map(({ document_number }) => Number(document_number.slice(document_number.lastIndexOf("-") + 1))).sort((left, right) => left - right);
+    assert.deepEqual(dailyNumbers, Array.from({ length: 12 }, (_, index) => dailyNumbers[0] + index));
+    const first = created[0];
+    assert.equal((await save(allowed, payload(first.id, otherDate))).document_number, first.document_number);
+    const otherDay = await Promise.all([save(allowed, payload(null, otherDate)), save(allowed, payload(null, otherDate))]);
+    const otherDayNumbers = otherDay.map(({ document_number }) => Number(document_number.slice(document_number.lastIndexOf("-") + 1))).sort((left, right) => left - right);
+    assert.deepEqual(otherDayNumbers, [otherDayNumbers[0], otherDayNumbers[0] + 1]);
     assert.equal((await allowed.rpc("soft_delete_quotation", { p_id: first.id })).error, null);
     assert.equal((await allowed.from("quotations").select("id").eq("id", first.id)).data?.length, 0);
-    assert.equal((await save(allowed, payload(null))).document_number, "QO-20991231-0013");
+    const nextDocumentNumber = (await save(allowed, payload(null))).document_number;
+    assert.equal(Number(nextDocumentNumber.slice(nextDocumentNumber.lastIndexOf("-") + 1)), dailyNumbers.at(-1)! + 1);
     assert.deepEqual((await denied.from("quotations").select("id")).data, []);
+  });
+
+  it("keeps a saved seller snapshot after the company profile changes", async () => {
+    const originalSeller = { ...seller, name: "Snapshot seller" };
+    const profileSave = await allowed.from("quotation_company_profiles").upsert({ id: 1, seller_name: originalSeller.name, address: originalSeller.address, tax_id: originalSeller.taxId });
+    assert.equal(profileSave.error, null, profileSave.error?.message);
+    const created = await save(allowed, payload(null, issueDate, originalSeller));
+    const profileChange = await allowed.from("quotation_company_profiles").update({ seller_name: "Changed company profile" }).eq("id", 1);
+    assert.equal(profileChange.error, null, profileChange.error?.message);
+    const quotation = await allowed.from("quotations").select("seller_snapshot").eq("id", created.id).single();
+    assert.equal(quotation.error, null, quotation.error?.message);
+    assert.deepEqual(quotation.data.seller_snapshot, originalSeller);
   });
 });
