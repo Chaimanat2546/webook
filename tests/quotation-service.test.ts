@@ -46,6 +46,27 @@ describe("quotation service", () => {
     assert.equal(result.amountInWords, "หนึ่งหมื่นเจ็ดร้อยบาทถ้วน");
   });
 
+  it("trims enum and currency strings before validation", () => {
+    const payload = validPayload();
+    const input = {
+      ...payload,
+      currency: " THB ",
+      customer: { ...payload.customer, officeType: " branch " },
+      documentDiscountType: " amount ",
+      items: [{ ...payload.items[0]!, discountType: " percent ", discountValue: "10", vatTreatment: " exempt " }],
+      priceMode: " vat_inclusive ",
+      seller: { ...payload.seller, officeType: " branch " },
+    };
+    const result = prepareQuotationPayload(input);
+    assert.equal(result.payload.currency, "THB");
+    assert.equal(result.payload.seller.officeType, "branch");
+    assert.equal(result.payload.customer.officeType, "branch");
+    assert.equal(result.payload.priceMode, "vat_inclusive");
+    assert.equal(result.payload.documentDiscountType, "amount");
+    assert.equal(result.payload.items[0]!.discountType, "percent");
+    assert.equal(result.payload.items[0]!.vatTreatment, "exempt");
+  });
+
   it("requires seller, customer, dates, and at least one valid item", () => {
     const payload = validPayload();
     payload.seller.name = "";

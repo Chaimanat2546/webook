@@ -49,6 +49,7 @@ function objectValue(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 function stringValue(object: Record<string, unknown>, key: string): string { const value = object[key]; return typeof value === "string" ? value.trim() : ""; }
+function trimValue(value: unknown): unknown { return typeof value === "string" ? value.trim() : value; }
 function optionalEmail(value: string, field: string, message: string, errors: Record<string, string>) { if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) errors[field] = message; }
 function validDate(value: string): boolean { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const date = new Date(`${value}T00:00:00.000Z`); return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value; }
 function bounded(value: string, max: number, field: string, errors: Record<string, string>) { if (value.length > max) errors[field] = "ข้อมูลยาวเกินกำหนด"; return value; }
@@ -64,6 +65,7 @@ export function prepareSellerSnapshot(value: unknown): SellerSnapshot {
   let source: Record<string, unknown>;
   try { source = objectValue(value, "seller"); }
   catch { throw new QuotationValidationError({ seller: "Invalid seller" }); }
+  source.officeType = trimValue(source.officeType);
   const errors: Record<string, string> = {};
   const seller: SellerSnapshot = {
     address: bounded(stringValue(source, "address"), 2_000, "seller.address", errors), branchNumber: bounded(stringValue(source, "branchNumber"), 200, "seller.branchNumber", errors), contactEmail: bounded(stringValue(source, "contactEmail"), 200, "seller.contactEmail", errors), contactName: bounded(stringValue(source, "contactName"), 200, "seller.contactName", errors), contactPhone: bounded(stringValue(source, "contactPhone"), 200, "seller.contactPhone", errors), email: bounded(stringValue(source, "email"), 200, "seller.email", errors), logoUrl: bounded(stringValue(source, "logoUrl"), 2_048, "seller.logoUrl", errors), name: bounded(stringValue(source, "name"), 200, "seller.name", errors), officeType: enumValue(source.officeType, ["branch", "head_office"], "seller.officeType", errors, "head_office"), phone: bounded(stringValue(source, "phone"), 200, "seller.phone", errors), taxId: bounded(stringValue(source, "taxId"), 200, "seller.taxId", errors), website: bounded(stringValue(source, "website"), 2_048, "seller.website", errors),
@@ -92,6 +94,9 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   let source: Record<string, unknown>;
   try { source = objectValue(value, "quotation"); }
   catch { throw new QuotationValidationError({ _form: "Invalid quotation" }); }
+  source.currency = trimValue(source.currency);
+  source.documentDiscountType = trimValue(source.documentDiscountType);
+  source.priceMode = trimValue(source.priceMode);
   const errors: Record<string, string> = {};
   if (typeof source.validityDays === "string" && source.validityDays.trim().length > 5) {
     throw new QuotationValidationError({ validityDays: "Invalid validity days" });
@@ -100,6 +105,7 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   try { seller = prepareSellerSnapshot(source.seller); } catch (error) { if (error instanceof QuotationValidationError) Object.assign(errors, error.fieldErrors); else errors.seller = "ข้อมูลผู้ขายไม่ถูกต้อง"; seller = { address: "", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "", officeType: "head_office", phone: "", taxId: "", website: "" }; }
   let customerSource: Record<string, unknown>;
   try { customerSource = objectValue(source.customer, "customer"); } catch { errors.customer = "Invalid customer"; customerSource = {}; }
+  customerSource.officeType = trimValue(customerSource.officeType);
   const customer: CustomerSnapshot = { address: bounded(stringValue(customerSource, "address"), 2_000, "customer.address", errors), branchNumber: bounded(stringValue(customerSource, "branchNumber"), 200, "customer.branchNumber", errors), contactName: bounded(stringValue(customerSource, "contactName"), 200, "customer.contactName", errors), email: bounded(stringValue(customerSource, "email"), 200, "customer.email", errors), name: bounded(stringValue(customerSource, "name"), 200, "customer.name", errors), officeType: enumValue(customerSource.officeType, ["branch", "head_office"], "customer.officeType", errors, "head_office"), phone: bounded(stringValue(customerSource, "phone"), 200, "customer.phone", errors), serviceLocation: bounded(stringValue(customerSource, "serviceLocation"), 2_000, "customer.serviceLocation", errors), shippingAddress: bounded(stringValue(customerSource, "shippingAddress"), 2_000, "customer.shippingAddress", errors), taxId: bounded(stringValue(customerSource, "taxId"), 200, "customer.taxId", errors) };
   if (!customer.name) errors["customer.name"] = REQUIRED_MESSAGES.customerName;
   if (!customer.address) errors["customer.address"] = REQUIRED_MESSAGES.customerAddress;
@@ -119,6 +125,8 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
     const prefix = `items.${index}`;
     let item: Record<string, unknown>;
     try { item = objectValue(value, prefix); } catch { errors[prefix] = "Invalid item"; item = {}; }
+    item.discountType = trimValue(item.discountType);
+    item.vatTreatment = trimValue(item.vatTreatment);
     const itemId = stringValue(item, "id");
     if (item.discountType === "percent") numeric(stringValue(item, "discountValue"), PERCENT, `${prefix}.discountValue`, errors, true);
     if (!UUID.test(itemId)) errors[`${prefix}.id`] = "รหัสรายการไม่ถูกต้อง";
