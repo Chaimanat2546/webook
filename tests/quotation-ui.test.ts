@@ -113,6 +113,12 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /lg:grid-cols-\[minmax\(0,1fr\)_24rem\]/);
   });
 
+  it("disables save and close while a save is pending", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /<DropdownMenuItem disabled=\{isPending\} onSelect=\{onSaveAndClose\}/);
+    assert.equal(editor.match(/isPending=\{isPending\}/g)?.length, 2);
+  });
+
   it("uses consistent native select geometry", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.doesNotMatch(editor, /minmax\(36px,1fr\)/);
