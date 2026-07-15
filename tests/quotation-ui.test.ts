@@ -81,4 +81,15 @@ describe("quotation UI", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.doesNotMatch(editor, /accepted|rejected|approval|publicToken|qrCode/i);
   });
+
+  it("keeps invalid dates editable and exposes office and field-error controls", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /function recalculateValidUntil/);
+    assert.match(editor, /data-field="seller\.officeType"/);
+    assert.match(editor, /field="seller\.branchNumber"/);
+    assert.match(editor, /data-field="customer\.officeType"/);
+    assert.match(editor, /field="customer\.branchNumber"/);
+    assert.match(editor, /aria-invalid/);
+    assert.match(editor, /focusableFieldErrors/);
+  });
 });
