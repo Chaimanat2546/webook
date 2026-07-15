@@ -124,11 +124,33 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /minmax\(36px,1fr\)/);
     assert.match(editor, /data-customer-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
     assert.match(editor, /data-document-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
-    assert.match(editor, /const selectClassName = "h-8 rounded-md/);
+    assert.match(editor, /const selectClassName = "h-8 rounded-lg/);
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="customer\.officeType"/);
     assert.match(editor, /className=\{selectClassName\} data-field="seller\.officeType"/);
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="documentDiscountType"/);
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="priceMode"/);
+  });
+
+  it("marks every editable native error control as invalid", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    for (const [field, binding] of [
+      ["seller\\.address", 'fieldErrors\\["seller\\.address"\\]'],
+      ["seller\\.officeType", 'fieldErrors\\["seller\\.officeType"\\]'],
+      ["customer\\.address", 'fieldErrors\\["customer\\.address"\\]'],
+      ["customer\\.officeType", 'fieldErrors\\["customer\\.officeType"\\]'],
+      ["issueDate", "fieldErrors\\.issueDate"],
+      ["validUntil", "fieldErrors\\.validUntil"],
+      ["priceMode", "fieldErrors\\.priceMode"],
+      ["publicNotes", "fieldErrors\\.publicNotes"],
+      ["internalNotes", "fieldErrors\\.internalNotes"],
+      ["documentDiscountType", "fieldErrors\\.documentDiscountType"],
+    ]) {
+      assert.match(editor, new RegExp(`<(?:Input|Textarea|select)[^>]*aria-invalid=\\{Boolean\\(${binding}\\)\\}[^>]*data-field="${field}"`));
+    }
+    assert.match(editor, /<select[^>]*aria-invalid=\{Boolean\(error\("discountType"\)\)\}[^>]*data-field=\{`items\.\$\{index\}\.discountType`\}/);
+    assert.match(editor, /<select[^>]*aria-invalid=\{Boolean\(error\("vatTreatment"\)\)\}[^>]*data-field=\{`items\.\$\{index\}\.vatTreatment`\}/);
+    assert.match(editor, /const selectClassName = "[^"]*disabled:bg-input\/50[^"]*aria-invalid:border-destructive[^"]*aria-invalid:ring-destructive\/20/);
+    assert.doesNotMatch(editor, /const selectClassName = "[^"]*appearance-none/);
   });
 
   it("uses the approved fixed ledger and responsive item cards", () => {
