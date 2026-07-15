@@ -126,9 +126,8 @@ describe("quotation UI", () => {
     assert.match(editor, /data-document-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
     assert.match(editor, /const selectClassName = "h-8 rounded-md/);
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="customer\.officeType"/);
-    for (const field of ["seller.officeType", "documentDiscountType"]) {
-      assert.match(editor, new RegExp(`className=\\{selectClassName\\} data-field="${field.replace(".", "\\.")}"`));
-    }
+    assert.match(editor, /className=\{selectClassName\} data-field="seller\.officeType"/);
+    assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="documentDiscountType"/);
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="priceMode"/);
   });
 
@@ -144,6 +143,16 @@ describe("quotation UI", () => {
     assert.match(editor, /data-item-cards[^>]*xl:hidden/);
     assert.match(editor, /data-item-detail-grid[^>]*grid-cols-2[^>]*sm:grid-cols-3[^>]*lg:grid-cols-5/);
     assert.doesNotMatch(editor, /data-item-actions/);
+  });
+
+  it("finishes the workbench with ruled notes and aligned totals", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /data-workbench-completion[^>]*lg:grid-cols-\[minmax\(0,1fr\)_18rem\]/);
+    assert.match(editor, /data-notes-grid[^>]*lg:grid-cols-2/);
+    assert.match(editor, /data-quotation-totals[^>]*border-t-2/);
+    assert.ok(editor.indexOf('data-field="publicNotes"') < editor.indexOf('data-field="internalNotes"'));
+    assert.ok(editor.indexOf('data-field="internalNotes"') < editor.indexOf("data-quotation-totals"));
+    assert.doesNotMatch(editor, /data-internal-notes[^>]*rounded-xl/);
   });
 
   it("clears branch numbers when head office is selected", () => {

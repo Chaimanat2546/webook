@@ -16,10 +16,14 @@ WHT, installments, Public Share, QR, or PDF generator.
 
 ## Editor Rules
 
-- Create/Edit is full-width responsive; Preview/Print is A4.
-- Customer appears left and document data right on desktop; sections stack on mobile.
+- Create/Edit uses the Document Workbench layout; Preview/Print remains A4.
+- Large desktop uses a 7/5 customer/document metadata grid and a fixed-column item ledger. Below `xl`, items become responsive editable cards.
+- Controls use semantic width roles based on value type; only item name/description is fluid in the desktop ledger.
+- Notes and totals use a ruled fluid-left/`18rem`-right completion grid and stack on smaller screens.
 - Reference is optional and belongs to document data. There is no job-title field.
 - Branch number is required only for Branch and is cleared for Head office.
+- Customer data does not include a shipping address or service location in the editor or document.
+- Villa service items use a name and optional description; SKU is not shown in the editor.
 - Quantity is required and greater than zero. Unit is optional.
 - VAT is configured per item. Price mode appears above the item list.
 - Share and Download are disabled future actions.
