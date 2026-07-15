@@ -65,20 +65,40 @@ describe("quotation UI", () => {
     assert.match(editPage, /canUseQuotation\(adminUser\)/);
   });
 
-  it("uses one inline A4 payload for editing and calculation", () => {
+  it("uses the approved full-width responsive quotation editor", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /"use client"/);
     assert.match(editor, /useState<QuotationPayload>/);
     assert.match(editor, /calculateQuotation/);
     assert.match(editor, /saveQuotationAction/);
-    assert.match(editor, /quotation-paper/);
-    assert.match(editor, /data-field="seller\.name"/);
-    assert.match(editor, /data-field="customer\.name"/);
+    assert.match(editor, /data-quotation-editor/);
+    assert.match(editor, /data-seller-actions/);
+    assert.match(editor, /data-customer-section/);
+    assert.match(editor, /data-document-section/);
+    assert.match(editor, /data-item-table/);
+    assert.match(editor, /data-item-cards/);
+    assert.match(editor, /data-quotation-totals/);
+    assert.match(editor, /md:hidden/);
+    assert.match(editor, /hidden[^\"]*md:block/);
+    assert.doesNotMatch(editor, /quotation-paper|min-h-\[297mm\]|w-\[210mm\]/);
+    assert.doesNotMatch(editor, /field="subject"|data-field="subject"/);
+    assert.ok(editor.indexOf("data-document-section") < editor.indexOf('field="reference"'));
+    assert.ok(editor.indexOf('field="priceMode"') < editor.indexOf("data-item-table"));
     assert.match(editor, /data-field="issueDate"/);
     assert.match(editor, /data-field=\{`items\./);
     assert.match(editor, /documentDiscountValue/);
     assert.match(editor, /publicNotes/);
     assert.match(editor, /internalNotes/);
+  });
+
+  it("clears branch numbers when head office is selected", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /function updateSellerOfficeType/);
+    assert.match(editor, /branchNumber: officeType === "branch" \? current\.seller\.branchNumber : ""/);
+    assert.match(editor, /function updateCustomerOfficeType/);
+    assert.match(editor, /branchNumber: officeType === "branch" \? current\.customer\.branchNumber : ""/);
+    assert.match(editor, /payload\.seller\.officeType === "branch"/);
+    assert.match(editor, /payload\.customer\.officeType === "branch"/);
   });
 
   it("does not add out-of-scope quotation workflow", () => {
@@ -103,10 +123,8 @@ describe("quotation UI", () => {
       "seller.email", "seller.website", "customer.taxId", "customer.contactName", "customer.phone", "customer.email",
       "priceMode", "documentDiscountType",
     ]) assert.ok(editor.includes(`fieldErrors[\"${field}\"]`) || editor.includes(`fieldErrors.${field}`));
-    for (const field of ["sku", "description", "unit", "discountType", "discountValue", "vatTreatment", "vatRate"]) {
-      assert.ok(editor.includes(`fieldErrors[\`items.\${index}.${field}\`]`));
-    }
-    assert.ok(editor.indexOf('data-field="seller.officeType"') < editor.indexOf('data-field="customer.name"'));
-    assert.ok(editor.indexOf('data-field="customer.officeType"') < editor.indexOf('data-field={`items.${index}.sku`}'));
+    assert.match(editor, /const error = \(field: string\) => errors\[`items\.\$\{index\}\.\$\{field\}`\]/);
+    assert.ok(editor.indexOf('data-field="seller.officeType"') < editor.indexOf("data-customer-section"));
+    assert.ok(editor.indexOf('data-field="customer.officeType"') < editor.indexOf("data-item-table"));
   });
 });
