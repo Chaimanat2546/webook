@@ -2,236 +2,308 @@
 
 **Date:** 2026-07-15
 
-**Status:** Approved direction; awaiting written-spec review
+**Status:** Approved design; awaiting written-spec review
 
-**Selected direction:** A — Document Workbench
+**Selected direction:** A — Document Workbench with inline totals
 
 ## Visual Thesis
 
-A precise quotation workbench built on a visible document grid: customer and
-document metadata stay compact, line items own the page, monetary totals remain
-easy to find, and every control is sized by the kind of value it accepts.
+The quotation editor is a full-width working document, not an A4 simulation.
+Fields sit near the position where their values appear in the finished
+quotation, but controls are sized for the value they accept instead of
+stretching across unused space. A4 is reserved for Preview and Print.
 
-The editor is not an A4 simulation. A4 remains exclusive to Preview and Print.
+The visual language follows the existing Gridgeist direction: a visible grid,
+quiet rules, restrained color, compact typography, and a dominant item ledger.
 
 ## Scope
 
-This redesign changes the composition and responsive behavior of
-`QuotationEditor` only. It preserves:
+This revision covers:
 
-- existing quotation payload, validation, calculation, save, delete, Preview,
-  and Print behavior;
-- seller and customer snapshots;
-- conditional branch-number behavior;
-- item VAT and discount behavior;
-- current Admin Shell, shadcn primitives, keyboard behavior, and field-error
-  focus behavior.
+- the customer, document metadata, item ledger, and totals composition;
+- responsive Create and Edit behavior;
+- item drag-and-drop ordering;
+- per-item and document-level discounts;
+- per-item VAT and document-level withholding tax;
+- customer snapshot cleanup across UI, validation, API/service types, stored
+  JSON snapshots, Preview/Print, and Public Read-only;
+- consistent display of the currency as `บาท`.
 
-It does not add workflow, status, Public Share, PDF generation, payment,
-withholding tax, installments, or new dependencies.
+Existing seller snapshot, save, delete, Preview, Print, and Public Share flows
+remain. Public Share is available only after a quotation has been saved and
+continues to show the latest saved version, never unsaved editor state.
+
+This revision does not add document workflow, approval, acceptance, payment,
+installments, revision history, or new dependencies.
 
 ## Page Hierarchy
 
-The editor uses four visible horizontal regions:
+The editor retains four horizontal regions:
 
-1. **Document command bar** — page title and document number on the left;
-   Close, Preview, Print, More, and Save on the right.
-2. **Seller strip** — logo, seller identity, office type, tax ID, and
-   `แก้ไขเฉพาะใบ` in one quiet row.
-3. **Document workspace** — customer metadata, document metadata, and the item
-   ledger.
-4. **Completion area** — public/internal notes on the left and totals on the
+1. **Command bar** — title and document number on the left; Close and Save on
+   the right.
+2. **Seller strip** — logo and seller identity with the existing per-document
+   snapshot editing behavior on the left; Share, Print/Preview, Download, and
+   More form a separate document-action group on the right.
+3. **Document workspace** — `01 ลูกค้า`, `02 ข้อมูลเอกสาร`, and the full-width
+   `03 รายการ` ledger.
+4. **Completion area** — notes on the left and compact inline totals on the
    right.
 
-Save remains the dominant action. Share and Download remain disabled future
-actions under the existing document menu.
+Save remains the dominant action. Share, Print/Preview, Download, and More stay
+aligned with the seller strip rather than being merged into the page-level Save
+header. The Print action retains the A4 Preview/Print flow.
 
-## Grid And Geometry
-
-### Outer grid
+## Grid And Field Geometry
 
 - The editor fills the Admin Shell content width with no A4 frame.
-- Large desktop metadata uses a 12-column grid: customer spans 7 columns and
-  document metadata spans 5 columns.
-- The two metadata groups use top rules and section labels instead of rounded
-  cards around every group.
-- The item ledger spans all 12 columns and is the dominant area.
-- Notes and totals use a fluid-left/fixed-right grid; totals occupy `18rem` and
-  align with the ledger's right edge.
+- Customer and document metadata share the upper workspace on wide screens and
+  stack on smaller screens.
+- Controls use intrinsic maximum widths and wrap; spare section width is not
+  distributed equally between fields.
+- Single-line values do not become wide merely because a section has spare
+  room.
+- Address and item-description controls may grow vertically.
+- On mobile, controls become full-width where that improves touch entry.
 
-### Field size roles
+Semantic field sizes:
 
-Controls use shared semantic size roles rather than one-off width decisions:
-
-| Role | Intended values | Desktop maximum |
+| Role | Examples | Desktop maximum |
 |---|---|---:|
-| Compact | quantity, rate, validity days | `7rem` |
-| Date | issue and valid-until dates | `10rem` |
-| Identifier | tax ID, branch number, reference | `16rem` |
-| Person | contact name, phone | `18rem` |
-| Name | customer or seller legal name | `28rem` |
-| Address | postal address | `40rem` |
-| Contact channel | email and website | `22rem` |
+| Compact | quantity, percentage, validity days | `7rem` |
+| Date | issue date, valid-until date | `10rem` |
+| Identifier | tax ID, branch number, reference | `14rem` |
+| Money | unit price, totals | `8rem` |
+| Name | customer legal name, subject | `24rem` |
+| Address | customer postal address | `36rem` |
 
-All roles remain `width: 100%` below their maximum so they do not overflow on
-small screens. Address fields may grow vertically; single-line values must not
-grow merely because the section has spare space.
+Inputs, native selects, and date controls share one height, label rhythm,
+border, focus ring, and disabled treatment. Native select indicators must stay
+visible.
 
-Inputs, native selects, and date controls share the same height, border,
-radius, focus ring, disabled treatment, and label rhythm. The native select
-indicator must remain visible.
+## 01 ลูกค้า
 
-## Metadata Composition
+The customer section contains only information used on the quotation:
 
-### Customer
+- customer or legal name;
+- address;
+- tax ID;
+- office type: `สำนักงานใหญ่` or `สาขา`;
+- branch number, shown and required only when `สาขา` is selected.
 
-- Legal name and address appear first because they are required.
-- Name uses the Name role and address uses the Address role; neither stretches
-  to the full 7-column section when its role maximum is reached.
-- Tax ID, office type, contact name, phone, and email use a compact two-column
-  field grid.
-- Branch number is inserted beside office type only when `สาขา` is selected.
-- No shipping address or service location is shown.
+The following fields are removed from the complete quotation flow:
 
-### Document metadata
+- contact name;
+- phone;
+- email;
+- shipping address;
+- service location.
 
-- Issue date, validity days, valid-until date, currency, and reference use a
-  two-column field grid.
-- Currency stays read-only.
-- Reference remains optional.
-- Price mode is not part of document metadata; it sits in the item ledger
-  heading because it controls item calculations.
+Changing office type from branch to head office clears the branch number.
 
-## Item Ledger
+## 02 ข้อมูลเอกสาร
 
-### Large desktop
+The document section contains:
 
-The desktop editor uses a semantic table with a fixed column system:
+- issue date;
+- validity mode and validity days/date;
+- valid-until date;
+- reference number, optional;
+- `เรื่อง / ชื่องาน`, optional.
 
-| Column | Width behavior |
+There is no currency selector. The internal ISO currency remains `THB`, while
+all user-facing editor, Preview, Print, PDF, and Public Read-only copy uses the
+word `บาท`.
+
+There is no visible inclusive/exclusive price-mode selector. New quotations use
+the existing VAT-exclusive calculation mode. Stored legacy mode data may remain
+internally for backward-compatible reads, but it is not an editable UI concept.
+VAT treatment is selected per item.
+
+## 03 รายการ
+
+### Desktop ledger
+
+The desktop ledger uses these columns:
+
+| Column | Behavior |
 |---|---|
-| Row/action | `2.5rem` |
-| Item name and description | the only fluid column |
-| Quantity | `5rem` |
-| Unit | `5rem` |
-| Unit price | `7.5rem` |
-| Discount type/value | `9rem`, controls stacked |
-| VAT treatment/rate | `9rem`, controls stacked |
-| Line total | `8.5rem`, right-aligned |
+| Drag handle | compact `⋮⋮` handle; does not drag from editable controls |
+| Item | the only fluid column; name plus optional description |
+| Quantity | required numeric input |
+| Unit | optional compact text input |
+| Unit price | right-aligned money input |
+| Item discount | type (`%` or `บาท`) plus value |
+| VAT | per-item treatment/rate selector |
+| Total | right-aligned calculated value before VAT |
+| Delete | compact destructive action at the row end |
 
-The fluid item column keeps a `16rem` minimum. The table uses
-`table-layout: fixed` plus a `colgroup`; the browser must not
-redistribute spare width equally across quantity, price, discount, and VAT.
-The minimum ledger width may scroll horizontally only at widths where the card
-layout has not yet taken over.
+SKU is not shown or accepted from the editor.
 
-Item actions use one compact overflow menu beside the row number. Move up, move
-down, and delete remain available without taking a separate row above the item
-fields.
+The Total column is:
 
-### Laptop, tablet, and mobile
+```text
+quantity × unit price − item discount
+```
 
-Below the large-desktop breakpoint, items become editable cards rather than a
-squeezed table:
+It includes the item discount, does not include document discount, and does not
+include VAT.
 
-- row number, item name, and overflow actions form the card header;
+The former leading overflow menu and move-up/move-down controls are removed.
+Dragging updates local editor order; the resulting `position` values persist
+only when the document is saved. The existing installed drag-and-drop package
+and project pattern must be reused. The handle must remain keyboard operable
+and expose an accessible name.
+
+`+ เพิ่มรายการ` is a real button at the lower-left inside the item section.
+
+### Tablet and mobile
+
+Below the desktop ledger breakpoint, every item becomes a compact editable
+block:
+
+- handle, item number/name, and delete action form the header;
 - description occupies its own row;
-- quantity, unit, price, discount, and VAT use a responsive detail grid;
-- line total is visually anchored at the lower-right edge;
-- narrow mobile uses two detail columns; tablet may use three or four.
+- quantity, unit, price, discount, and VAT use a two-column detail grid on
+  narrow screens and may expand to more columns on tablet;
+- Total is anchored at the lower-right;
+- there is no page-level horizontal overflow.
 
-The mobile order matches the desktop reading order. No duplicate visible
-controls or horizontal page overflow is allowed.
+The reading and focus order matches the desktop order.
 
-## Notes And Totals
+## Totals
 
-- Public notes and internal notes sit side by side on large desktop and stack
-  below that breakpoint.
-- Totals use aligned label/value pairs with quiet spacing.
-- The grand total receives a strong top rule and heavier type; intermediate
-  totals remain visually secondary.
-- Amount-in-words stays directly below the grand total.
-- The totals section is not sticky; it must not cover editable fields or create
-  a second scroll container.
+Totals are placed below the item ledger at the right edge and use aligned
+label/control/value rows:
 
-## Visual System
+```text
+รวมเป็นเงิน                         0.00
+☐ ส่วนลด   [ประเภท] [0.00]         0.00
+ราคาหลังหักส่วนลด                  0.00
+VAT                                0.00
+จำนวนเงินรวมทั้งสิ้น                0.00
+──────────────────────────────────────
+☐ หักภาษี ณ ที่จ่าย [0.00] %       0.00
+ยอดชำระ                            0.00
+```
 
-- **Structure:** Swiss grid and visible rules.
-- **Expression:** technical minimalism with restrained editorial numbering
-  (`01 ลูกค้า`, `02 ข้อมูลเอกสาร`, `03 รายการ`).
-- **Product-native motif:** a working quotation ledger using real labels,
-  values, totals, and document actions.
-- **Color:** existing neutral theme plus one controlled blue accent for document
-  IDs, edit links, and add actions. Save remains the existing dark primary.
-- **Borders:** quiet 1px rules explain adjacency and sequence. Inputs retain a
-  clear border; large rounded container cards are removed.
-- **Radius:** small and consistent on interactive controls; sections themselves
-  rely on rules, not rounded boxes.
-- **Shadow:** none in the editor body.
-- **Typography:** existing sans font; document number may use mono. Hierarchy is
-  created primarily with weight, alignment, and spacing.
+- The document discount row is always visible.
+- Its type and value controls are disabled until the checkbox is selected.
+- The type supports `%` and `บาท`.
+- The label is only `ส่วนลด`; there is no `รวมส่วนลดเอกสาร` row.
+- The withholding row is always visible and its percentage input is disabled
+  until selected.
+- Turning either checkbox off excludes that value from calculation and
+  persistence.
+- Values are right-aligned and use two decimal places. Monetary suffixes and
+  supporting copy use `บาท`, never `THB`.
 
-## Responsive Rules
+## Calculation Rules
 
-### Large desktop (`xl`, 1280px and wider)
+For each item:
 
-- Customer/document metadata: 7/5 tracks.
-- Item ledger: full semantic table.
-- Notes/totals: fluid left and fixed right.
+```text
+gross amount = quantity × unit price
+item discount = gross amount × percentage, or entered amount
+item total = gross amount − item discount
+```
 
-### Laptop (`lg`, 1024–1279px)
+For the document:
 
-- Metadata remains a 7/5 two-track grid.
-- Item editing uses cards because the Admin Sidebar leaves insufficient ledger
-  width for the `62.5rem` desktop table.
-- Header actions may move non-primary actions into More; Save remains visible.
+```text
+subtotal = sum(item total)
+document discount = subtotal × percentage, or entered amount
+after document discount = subtotal − document discount
+VAT = sum(each item's VAT after proportional document-discount allocation)
+grand total = after document discount + VAT
+withholding tax = after document discount × withholding percentage
+amount due = grand total − withholding tax
+```
 
-### Tablet (`sm` through `md`, 640–1023px)
+Document discount is allocated proportionally across items before VAT so mixed
+VAT rates remain correct. The final allocation absorbs any rounding remainder
+so allocated discounts equal the document discount exactly.
 
-- Customer and document metadata stack.
-- Their internal field grids remain two columns where labels fit.
-- Items use cards and totals follow notes.
+All calculations use decimal-safe money utilities. Stored calculation values
+retain the precision required by the existing schema; displayed money uses two
+decimal places.
 
-### Mobile (below 640px)
+## Data And Migration
 
-- All metadata fields use one column, while compact item details use two.
-- Seller strip wraps without truncating the seller identity beyond recognition.
-- Header exposes Close and Save; Preview, Print, and future actions move to
-  More.
-- Touch actions meet the existing shadcn button target behavior.
+`CustomerSnapshot` is reduced to:
+
+- `name`;
+- `address`;
+- `taxId`;
+- `officeType`;
+- `branchNumber`.
+
+Customer snapshots are stored as JSON, so there are no individual contact
+columns to drop. A new migration must sanitize existing `customer_snapshot`
+JSON by removing both camelCase and legacy snake_case keys for contact name,
+phone, email, shipping address, and service location. New writes serialize only
+the reduced snapshot shape. Existing migrations must not be edited and the
+database must not be reset.
+
+The new migration also adds the minimum stored values required for withholding
+tax and amount due, updates quotation persistence functions, and backfills
+existing quotations with zero withholding and `amount due = grand total`.
+
+No separate boolean is required for document discount: a null discount type
+means disabled. Withholding follows the same minimal persistence rule through a
+zero or null rate as selected by the final schema implementation.
+
+The internal `currency = 'THB'` constraint remains. Only its user-facing label
+changes to `บาท`.
 
 ## Validation And Errors
 
-- Existing server field errors remain adjacent to the relevant control.
-- Error summary links continue to focus controls through their existing
-  `data-field` attributes.
-- Invalid controls keep `aria-invalid` and a visible non-color-only indicator.
-- Conditional fields retain their current value-clearing rules.
-- Redesign work must not alter payload normalization or calculator behavior.
+- At least one item is required.
+- Quantity must be greater than zero.
+- Unit may be empty.
+- Unit price cannot be negative.
+- Percentage discounts and withholding must be between `0` and `100`.
+- An amount discount cannot exceed its calculation base.
+- Document discount cannot exceed the subtotal.
+- Disabled document discount and withholding controls do not contribute stale
+  values.
+- Field errors remain adjacent to their controls and retain `aria-invalid`.
+- The error summary continues to focus the relevant field.
+- A save failure preserves all unsaved editor values and the local item order.
+- Public Share continues to expose only the latest successfully saved data.
 
 ## Implementation Boundary
 
-Use existing React, Tailwind, shadcn components, Lucide icons, and native table
-and form behavior. No dependency or global theme change is required.
+Reuse existing React, Tailwind, shadcn components, Lucide icons, decimal money
+utilities, and the already-installed drag-and-drop package. Do not add a new
+dependency, global theme, workflow abstraction, or parallel quotation model.
 
-The primary implementation file remains
-`components/admin/quotations/quotation-editor.tsx`. Keep small internal
-components or shared class maps inside that file and use them only to remove
-repeated geometry or keep mobile/desktop item composition understandable. Do
-not refactor server logic or unrelated admin screens.
+Expected change areas are limited to the quotation editor/document components,
+quotation types/calculator/service/repository/action flow, the quotation RPC
+migration, focused tests, and this specification.
 
 ## Verification
 
 Automated checks must cover:
 
-- semantic field-size roles and the customer/document grid;
-- fixed desktop ledger columns and responsive item cards;
-- item action availability and ordering;
-- conditional branch number behavior;
-- field error placement and focus markers;
-- unchanged Preview/Print/save/delete behavior.
+- removed customer fields are absent from editor, Preview/Print, Public
+  Read-only, payload normalization, and newly stored snapshots;
+- existing snapshots are sanitized by the new migration;
+- branch number remains conditional and clears for head office;
+- no currency or price-mode selector is visible and user-facing copy says
+  `บาท`;
+- item drag-and-drop changes order and saved `position` values;
+- unit remains optional while quantity remains required;
+- per-item `%` and amount discounts;
+- document-discount disabled/enabled behavior for both types;
+- per-item VAT after proportional document-discount allocation;
+- withholding disabled/enabled behavior and amount-due calculation;
+- share remains unavailable before first save and Public Read-only shows only
+  the latest saved version;
+- responsive item layout and keyboard-accessible drag handle;
+- failed saves retain unsaved state.
 
 Before completion run typecheck, lint, all tests, production build, and
-`git diff --check`. Inspect the authenticated editor at narrow mobile, wide
-mobile, tablet, laptop, and large desktop widths using realistic Thai content,
-including long names and addresses.
+`git diff --check`. Visually inspect authenticated Create and Edit screens at
+mobile, tablet, laptop, and large desktop widths, then inspect Preview/Print and
+Public Read-only output with realistic Thai data.
