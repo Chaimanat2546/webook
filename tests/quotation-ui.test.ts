@@ -75,15 +75,15 @@ describe("quotation UI", () => {
     assert.match(editor, /data-seller-strip/);
     assert.match(editor, /data-customer-section/);
     assert.match(editor, /data-document-section/);
-    assert.match(editor, /data-item-table/);
+    assert.match(editor, /data-item-ledger/);
     assert.match(editor, /data-item-cards/);
     assert.match(editor, /data-quotation-totals/);
-    assert.match(editor, /md:hidden/);
-    assert.match(editor, /hidden[^\"]*md:block/);
+    assert.match(editor, /xl:hidden/);
+    assert.match(editor, /hidden[^\"]*xl:block/);
     assert.doesNotMatch(editor, /quotation-paper|min-h-\[297mm\]|w-\[210mm\]/);
     assert.doesNotMatch(editor, /field="subject"|data-field="subject"/);
     assert.ok(editor.indexOf("data-document-section") < editor.indexOf('field="reference"'));
-    assert.ok(editor.indexOf('field="priceMode"') < editor.indexOf("data-item-table"));
+    assert.ok(editor.indexOf('field="priceMode"') < editor.indexOf("data-item-ledger"));
     assert.match(editor, /data-field="issueDate"/);
     assert.match(editor, /data-field=\{`items\./);
     assert.match(editor, /documentDiscountValue/);
@@ -126,19 +126,24 @@ describe("quotation UI", () => {
     assert.match(editor, /data-document-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
     assert.match(editor, /const selectClassName = "h-8 rounded-md/);
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="customer\.officeType"/);
-    for (const field of ["seller.officeType", "priceMode", "documentDiscountType"]) {
+    for (const field of ["seller.officeType", "documentDiscountType"]) {
       assert.match(editor, new RegExp(`className=\\{selectClassName\\} data-field="${field.replace(".", "\\.")}"`));
     }
+    assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="priceMode"/);
   });
 
-  it("keeps item row actions beside the fields and uses icons for actions", () => {
+  it("uses the approved fixed ledger and responsive item cards", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /data-item-details[^>]*grid-cols-\[minmax\(0,1fr\)_auto\]/);
-    assert.match(editor, /data-item-actions/);
-    assert.ok(editor.indexOf('data-field={`items.${index}.description`}') < editor.indexOf("data-item-actions"));
-    for (const icon of ["ArrowDown", "ArrowUp", "Download", "Eye", "MoreHorizontal", "Printer", "Save", "Share2", "Trash2", "X"]) {
-      assert.match(editor, new RegExp(`\\b${icon}\\b`));
+    assert.match(editor, /function ItemActionMenu/);
+    assert.match(editor, /data-item-ledger[^>]*hidden[^>]*xl:block/);
+    assert.match(editor, /min-w-\[62\.5rem\][^\"]*table-fixed/);
+    assert.match(editor, /<colgroup>/);
+    for (const width of ["w-10", "w-20", "w-[7.5rem]", "w-36", "w-[8.5rem]"]) {
+      assert.match(editor, new RegExp(width.replace("[", "\\[").replace("]", "\\]")));
     }
+    assert.match(editor, /data-item-cards[^>]*xl:hidden/);
+    assert.match(editor, /data-item-detail-grid[^>]*grid-cols-2[^>]*sm:grid-cols-3[^>]*lg:grid-cols-5/);
+    assert.doesNotMatch(editor, /data-item-actions/);
   });
 
   it("clears branch numbers when head office is selected", () => {
@@ -167,6 +172,12 @@ describe("quotation UI", () => {
     assert.match(editor, /focusableFieldErrors/);
   });
 
+  it("focuses the visible copy of responsive item controls", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /querySelectorAll<HTMLElement>/);
+    assert.match(editor, /offsetParent !== null/);
+  });
+
   it("shows server field errors beside all editable quotation controls in paper order", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     for (const field of [
@@ -175,15 +186,16 @@ describe("quotation UI", () => {
     ]) assert.ok(editor.includes(`fieldErrors[\"${field}\"]`) || editor.includes(`fieldErrors.${field}`));
     assert.match(editor, /const error = \(field: string\) => errors\[`items\.\$\{index\}\.\$\{field\}`\]/);
     assert.ok(editor.indexOf('data-field="seller.officeType"') < editor.indexOf("data-customer-section"));
-    assert.ok(editor.indexOf('data-field="customer.officeType"') < editor.indexOf("data-item-table"));
+    assert.ok(editor.indexOf('data-field="customer.officeType"') < editor.indexOf("data-item-ledger"));
   });
 
   it("keeps desktop item inputs in their matching table columns", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    for (const control of ["ItemQuantityControls", "ItemPriceControls", "ItemDiscountControls", "ItemVatControls"]) {
+    for (const control of ["ItemQuantityControl", "ItemUnitControl", "ItemPriceControls", "ItemDiscountControls", "ItemVatControls"]) {
       assert.match(editor, new RegExp(`<${control}`));
     }
-    assert.match(editor, /<td className="p-2"><ItemQuantityControls/);
+    assert.match(editor, /<td className="p-2"><ItemQuantityControl/);
+    assert.match(editor, /<td className="p-2"><ItemUnitControl/);
     assert.match(editor, /<td className="p-2"><ItemPriceControls/);
     assert.match(editor, /<td className="p-2"><ItemDiscountControls/);
     assert.match(editor, /<td className="p-2"><ItemVatControls/);
