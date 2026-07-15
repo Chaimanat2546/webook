@@ -51,11 +51,11 @@ describe("quotation service", () => {
     const input = {
       ...payload,
       currency: " THB ",
-      customer: { ...payload.customer, officeType: " branch " },
+      customer: { ...payload.customer, branchNumber: "002", officeType: " branch " },
       documentDiscountType: " amount ",
       items: [{ ...payload.items[0]!, discountType: " percent ", discountValue: "10", vatTreatment: " exempt " }],
       priceMode: " vat_inclusive ",
-      seller: { ...payload.seller, officeType: " branch " },
+      seller: { ...payload.seller, branchNumber: "001", officeType: " branch " },
     };
     const result = prepareQuotationPayload(input);
     assert.equal(result.payload.currency, "THB");
@@ -173,5 +173,49 @@ describe("quotation service", () => {
     assert.throws(() => prepareQuotationPayload(payload), (error) =>
       error instanceof QuotationValidationError && Boolean(error.fieldErrors.validityDays),
     );
+  });
+
+  it("requires quantity but permits an empty unit", () => {
+    const withEmptyUnit = validPayload();
+    withEmptyUnit.items[0]!.unit = "";
+    const prepared = prepareQuotationPayload(withEmptyUnit);
+    assert.equal(prepared.payload.items[0]!.unit, "");
+    assert.equal(prepared.rpcPayload.items[0]!.unit, null);
+
+    const withoutQuantity = validPayload();
+    withoutQuantity.items[0]!.quantity = "";
+    assert.throws(
+      () => prepareQuotationPayload(withoutQuantity),
+      (error) => error instanceof QuotationValidationError && Boolean(error.fieldErrors["items.0.quantity"]),
+    );
+  });
+
+  it("requires branch numbers only for branch offices", () => {
+    const branch = validPayload();
+    branch.seller.officeType = "branch";
+    branch.seller.branchNumber = "";
+    branch.customer.officeType = "branch";
+    branch.customer.branchNumber = "";
+    assert.throws(() => prepareQuotationPayload(branch), (error) => {
+      assert.equal(error instanceof QuotationValidationError, true);
+      return error instanceof QuotationValidationError
+        && Boolean(error.fieldErrors["seller.branchNumber"])
+        && Boolean(error.fieldErrors["customer.branchNumber"]);
+    });
+
+    const headOffice = validPayload();
+    headOffice.seller.branchNumber = "99999";
+    headOffice.customer.branchNumber = "88888";
+    const prepared = prepareQuotationPayload(headOffice);
+    assert.equal(prepared.payload.seller.branchNumber, "");
+    assert.equal(prepared.payload.customer.branchNumber, "");
+  });
+
+  it("keeps the legacy subject empty", () => {
+    const payload = validPayload();
+    payload.subject = "must not be saved";
+    const prepared = prepareQuotationPayload(payload);
+    assert.equal(prepared.payload.subject, "");
+    assert.equal(prepared.rpcPayload.subject, "");
   });
 });

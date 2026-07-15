@@ -14,8 +14,8 @@ const otherDate = new Date(
 ).toISOString().slice(0, 10);
 const seller = { name: "Seller", address: "Seller address", taxId: "0100000000000" };
 
-function payload(id: string | null, date = issueDate, sellerSnapshot = seller) {
-  return { id, currency: "THB", customer_snapshot: { name: "Customer", address: "Customer address" }, document_discount_type: null, document_discount_value: "0.00", internal_notes: "", issue_date: date, items: [{ position: 1, sku: "", name: "Item", description: "", quantity: "1.000", unit: "งาน", unit_price: "100.00", discount_type: null, discount_value: "0.00", gross_amount: "100.00", discount_amount: "0.00", document_discount_allocation: "0.00", vat_treatment: "taxable", vat_rate: "7.00", taxable_amount: "100.00", vat_amount: "7.00", line_total: "107.00" }], price_mode: "vat_exclusive", public_notes: "", reference: "", seller_snapshot: sellerSnapshot, subject: "Integration test", totals: { subtotal: "100.00", itemDiscountTotal: "0.00", documentDiscountTotal: "0.00", taxableTotal: "100.00", vatTotal: "7.00", grandTotal: "107.00" }, valid_until: date, validity_days: 0 };
+function payload(id: string | null, date = issueDate, sellerSnapshot = seller, unit: string | null = "งาน") {
+  return { id, currency: "THB", customer_snapshot: { name: "Customer", address: "Customer address" }, document_discount_type: null, document_discount_value: "0.00", internal_notes: "", issue_date: date, items: [{ position: 1, sku: "", name: "Item", description: "", quantity: "1.000", unit, unit_price: "100.00", discount_type: null, discount_value: "0.00", gross_amount: "100.00", discount_amount: "0.00", document_discount_allocation: "0.00", vat_treatment: "taxable", vat_rate: "7.00", taxable_amount: "100.00", vat_amount: "7.00", line_total: "107.00" }], price_mode: "vat_exclusive", public_notes: "", reference: "", seller_snapshot: sellerSnapshot, subject: "", totals: { subtotal: "100.00", itemDiscountTotal: "0.00", documentDiscountTotal: "0.00", taxableTotal: "100.00", vatTotal: "7.00", grandTotal: "107.00" }, valid_until: date, validity_days: 0 };
 }
 
 async function save(client: SupabaseClient, value: ReturnType<typeof payload>) {
@@ -90,5 +90,13 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     const quotation = await allowed.from("quotations").select("seller_snapshot").eq("id", created.id).single();
     assert.equal(quotation.error, null, quotation.error?.message);
     assert.deepEqual(quotation.data.seller_snapshot, originalSeller);
+  });
+
+  it("persists a null unit while quantity remains required", async () => {
+    const created = await save(allowed, payload(null, issueDate, seller, null));
+    const item = await allowed.from("quotation_items").select("quantity,unit").eq("quotation_id", created.id).single();
+    assert.equal(item.error, null, item.error?.message);
+    assert.equal(item.data.quantity, 1);
+    assert.equal(item.data.unit, null);
   });
 });

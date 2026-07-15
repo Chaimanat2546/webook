@@ -9,6 +9,13 @@ const sql = readFileSync(
   new URL(`../supabase/migrations/${migrationName}`, import.meta.url),
   "utf8",
 );
+const refinementName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_mvp1_editor_refinement.sql"));
+assert.ok(refinementName, "quotation editor refinement migration must exist");
+const refinementSql = readFileSync(
+  new URL(`../supabase/migrations/${refinementName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
   it("creates the MVP 1 tables without later-MVP scope", () => {
@@ -42,5 +49,11 @@ describe("quotation migration", () => {
     assert.match(sql, /create function public\.list_quotations/i);
     assert.match(sql, /count\(\*\) over \(\)/i);
     assert.match(sql, /limit least\(greatest\(p_page_size, 1\), 100\)/i);
+  });
+
+  it("allows quotation item units to be empty without changing quantity", () => {
+    assert.match(refinementSql, /alter table public\.quotation_items\s+alter column unit drop not null/i);
+    assert.doesNotMatch(refinementSql, /alter column quantity drop not null/i);
+    assert.doesNotMatch(refinementSql, /drop column subject/i);
   });
 });

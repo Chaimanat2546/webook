@@ -37,7 +37,7 @@ export interface PreparedQuotation {
   payload: QuotationPayload;
   rpcPayload: {
     currency: "THB"; customer_snapshot: CustomerSnapshot; document_discount_type: DiscountType; document_discount_value: string; id: string | null; internal_notes: string; issue_date: string;
-    items: Array<{ description: string; discount_amount: string; discount_type: DiscountType; discount_value: string; document_discount_allocation: string; gross_amount: string; id: string; line_total: string; name: string; position: number; quantity: string; sku: string; taxable_amount: string; unit: string; unit_price: string; vat_amount: string; vat_rate: string; vat_treatment: VatTreatment }>;
+    items: Array<{ description: string; discount_amount: string; discount_type: DiscountType; discount_value: string; document_discount_allocation: string; gross_amount: string; id: string; line_total: string; name: string; position: number; quantity: string; sku: string; taxable_amount: string; unit: string | null; unit_price: string; vat_amount: string; vat_rate: string; vat_treatment: VatTreatment }>;
     price_mode: PriceMode; public_notes: string; reference: string; seller_snapshot: SellerSnapshot; subject: string;
     totals: Pick<QuotationCalculation, "documentDiscountTotal" | "grandTotal" | "itemDiscountTotal" | "subtotal" | "taxableTotal" | "vatTotal">;
     valid_until: string; validity_days: number | null;
@@ -59,6 +59,12 @@ function discountTypeValue(value: unknown, field: string, errors: Record<string,
   errors[field] = "ค่าที่เลือกไม่ถูกต้อง";
   return null;
 }
+function branchNumber(source: Record<string, unknown>, officeType: "branch" | "head_office", field: string, errors: Record<string, string>): string {
+  if (officeType === "head_office") return "";
+  const value = bounded(stringValue(source, "branchNumber"), 200, field, errors);
+  if (!value) errors[field] = "กรุณากรอกเลขสาขา";
+  return value;
+}
 function numeric(value: string, expression: RegExp, field: string, errors: Record<string, string>, percentage = false): string { if (!expression.test(value) || (percentage && Number(value) > 100)) errors[field] = "ตัวเลขไม่ถูกต้อง"; return value; }
 
 export function prepareSellerSnapshot(value: unknown): SellerSnapshot {
@@ -67,8 +73,9 @@ export function prepareSellerSnapshot(value: unknown): SellerSnapshot {
   catch { throw new QuotationValidationError({ seller: "Invalid seller" }); }
   source.officeType = trimValue(source.officeType);
   const errors: Record<string, string> = {};
+  const office = enumValue(source.officeType, ["branch", "head_office"], "seller.officeType", errors, "head_office");
   const seller: SellerSnapshot = {
-    address: bounded(stringValue(source, "address"), 2_000, "seller.address", errors), branchNumber: bounded(stringValue(source, "branchNumber"), 200, "seller.branchNumber", errors), contactEmail: bounded(stringValue(source, "contactEmail"), 200, "seller.contactEmail", errors), contactName: bounded(stringValue(source, "contactName"), 200, "seller.contactName", errors), contactPhone: bounded(stringValue(source, "contactPhone"), 200, "seller.contactPhone", errors), email: bounded(stringValue(source, "email"), 200, "seller.email", errors), logoUrl: bounded(stringValue(source, "logoUrl"), 2_048, "seller.logoUrl", errors), name: bounded(stringValue(source, "name"), 200, "seller.name", errors), officeType: enumValue(source.officeType, ["branch", "head_office"], "seller.officeType", errors, "head_office"), phone: bounded(stringValue(source, "phone"), 200, "seller.phone", errors), taxId: bounded(stringValue(source, "taxId"), 200, "seller.taxId", errors), website: bounded(stringValue(source, "website"), 2_048, "seller.website", errors),
+    address: bounded(stringValue(source, "address"), 2_000, "seller.address", errors), branchNumber: branchNumber(source, office, "seller.branchNumber", errors), contactEmail: bounded(stringValue(source, "contactEmail"), 200, "seller.contactEmail", errors), contactName: bounded(stringValue(source, "contactName"), 200, "seller.contactName", errors), contactPhone: bounded(stringValue(source, "contactPhone"), 200, "seller.contactPhone", errors), email: bounded(stringValue(source, "email"), 200, "seller.email", errors), logoUrl: bounded(stringValue(source, "logoUrl"), 2_048, "seller.logoUrl", errors), name: bounded(stringValue(source, "name"), 200, "seller.name", errors), officeType: office, phone: bounded(stringValue(source, "phone"), 200, "seller.phone", errors), taxId: bounded(stringValue(source, "taxId"), 200, "seller.taxId", errors), website: bounded(stringValue(source, "website"), 2_048, "seller.website", errors),
   };
   if (!seller.name) errors["seller.name"] = REQUIRED_MESSAGES.sellerName;
   if (!seller.address) errors["seller.address"] = REQUIRED_MESSAGES.sellerAddress;
@@ -85,7 +92,7 @@ export function emptyQuotationPayload(seller: SellerSnapshot, now: Date): Quotat
   return {
     currency: "THB", customer: { address: "", branchNumber: "", contactName: "", email: "", name: "", officeType: "head_office", phone: "", serviceLocation: "", shippingAddress: "", taxId: "" },
     documentDiscountType: null, documentDiscountValue: "0", id: null, internalNotes: "", issueDate,
-    items: [{ description: "", discountType: null, discountValue: "0", id: crypto.randomUUID(), name: "", position: 1, quantity: "1", sku: "", unit: "งาน", unitPrice: "0.00", vatRate: "7.00", vatTreatment: "taxable" }],
+    items: [{ description: "", discountType: null, discountValue: "0", id: crypto.randomUUID(), name: "", position: 1, quantity: "1", sku: "", unit: "", unitPrice: "0.00", vatRate: "7.00", vatTreatment: "taxable" }],
     priceMode: "vat_exclusive", publicNotes: "", reference: "", seller, subject: "", validUntil: addQuotationCalendarDays(issueDate, Number(validityDays)), validityDays,
   };
 }
@@ -97,6 +104,7 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   source.currency = trimValue(source.currency);
   source.documentDiscountType = trimValue(source.documentDiscountType);
   source.priceMode = trimValue(source.priceMode);
+  source.subject = "";
   const errors: Record<string, string> = {};
   if (typeof source.validityDays === "string" && source.validityDays.trim().length > 5) {
     throw new QuotationValidationError({ validityDays: "Invalid validity days" });
@@ -106,7 +114,8 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   let customerSource: Record<string, unknown>;
   try { customerSource = objectValue(source.customer, "customer"); } catch { errors.customer = "Invalid customer"; customerSource = {}; }
   customerSource.officeType = trimValue(customerSource.officeType);
-  const customer: CustomerSnapshot = { address: bounded(stringValue(customerSource, "address"), 2_000, "customer.address", errors), branchNumber: bounded(stringValue(customerSource, "branchNumber"), 200, "customer.branchNumber", errors), contactName: bounded(stringValue(customerSource, "contactName"), 200, "customer.contactName", errors), email: bounded(stringValue(customerSource, "email"), 200, "customer.email", errors), name: bounded(stringValue(customerSource, "name"), 200, "customer.name", errors), officeType: enumValue(customerSource.officeType, ["branch", "head_office"], "customer.officeType", errors, "head_office"), phone: bounded(stringValue(customerSource, "phone"), 200, "customer.phone", errors), serviceLocation: bounded(stringValue(customerSource, "serviceLocation"), 2_000, "customer.serviceLocation", errors), shippingAddress: bounded(stringValue(customerSource, "shippingAddress"), 2_000, "customer.shippingAddress", errors), taxId: bounded(stringValue(customerSource, "taxId"), 200, "customer.taxId", errors) };
+  const customerOffice = enumValue(customerSource.officeType, ["branch", "head_office"], "customer.officeType", errors, "head_office");
+  const customer: CustomerSnapshot = { address: bounded(stringValue(customerSource, "address"), 2_000, "customer.address", errors), branchNumber: branchNumber(customerSource, customerOffice, "customer.branchNumber", errors), contactName: bounded(stringValue(customerSource, "contactName"), 200, "customer.contactName", errors), email: bounded(stringValue(customerSource, "email"), 200, "customer.email", errors), name: bounded(stringValue(customerSource, "name"), 200, "customer.name", errors), officeType: customerOffice, phone: bounded(stringValue(customerSource, "phone"), 200, "customer.phone", errors), serviceLocation: bounded(stringValue(customerSource, "serviceLocation"), 2_000, "customer.serviceLocation", errors), shippingAddress: bounded(stringValue(customerSource, "shippingAddress"), 2_000, "customer.shippingAddress", errors), taxId: bounded(stringValue(customerSource, "taxId"), 200, "customer.taxId", errors) };
   if (!customer.name) errors["customer.name"] = REQUIRED_MESSAGES.customerName;
   if (!customer.address) errors["customer.address"] = REQUIRED_MESSAGES.customerAddress;
   optionalEmail(customer.email, "customer.email", "รูปแบบอีเมลลูกค้าไม่ถูกต้อง", errors);
@@ -131,7 +140,7 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
     if (item.discountType === "percent") numeric(stringValue(item, "discountValue"), PERCENT, `${prefix}.discountValue`, errors, true);
     if (!UUID.test(itemId)) errors[`${prefix}.id`] = "รหัสรายการไม่ถูกต้อง";
     const name = bounded(stringValue(item, "name"), 200, `${prefix}.name`, errors); if (!name) errors[`${prefix}.name`] = REQUIRED_MESSAGES.itemName;
-    const unit = bounded(stringValue(item, "unit"), 200, `${prefix}.unit`, errors); if (!unit) errors[`${prefix}.unit`] = REQUIRED_MESSAGES.itemUnit;
+    const unit = bounded(stringValue(item, "unit"), 200, `${prefix}.unit`, errors);
     return { description: bounded(stringValue(item, "description"), 2_000, `${prefix}.description`, errors), discountType: discountTypeValue(item.discountType, `${prefix}.discountType`, errors), discountValue: numeric(stringValue(item, "discountValue"), MONEY, `${prefix}.discountValue`, errors), id: itemId, name, position: index + 1, quantity: numeric(stringValue(item, "quantity"), QUANTITY, `${prefix}.quantity`, errors), sku: bounded(stringValue(item, "sku"), 200, `${prefix}.sku`, errors), unit, unitPrice: numeric(stringValue(item, "unitPrice"), MONEY, `${prefix}.unitPrice`, errors), vatRate: numeric(stringValue(item, "vatRate"), PERCENT, `${prefix}.vatRate`, errors, true), vatTreatment: enumValue(item.vatTreatment, ["exempt", "none", "taxable"], `${prefix}.vatTreatment`, errors, "taxable") };
   }) : [];
   if (items.length < 1 || items.length > 100) errors.items = "ต้องมีรายการ 1 ถึง 100 รายการ";
@@ -144,5 +153,5 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
     const field = message.startsWith("Document") ? "documentDiscountValue" : /Quantity|Unit price|VAT|item/.test(message) ? "items" : "_form";
     throw new QuotationValidationError({ [field]: message });
   }
-  return { amountInWords: formatThaiBahtText(calculation.grandTotal), calculation, payload, rpcPayload: { currency: "THB", customer_snapshot: customer, document_discount_type: payload.documentDiscountType, document_discount_value: payload.documentDiscountValue, id, internal_notes: payload.internalNotes, issue_date: issueDate, items: calculation.lines.map((line) => ({ description: line.description, discount_amount: line.discountAmount, discount_type: line.discountType, discount_value: line.discountValue, document_discount_allocation: line.documentDiscountAllocation, gross_amount: line.grossAmount, id: line.id, line_total: line.lineTotal, name: line.name, position: line.position, quantity: line.quantity, sku: line.sku, taxable_amount: line.taxableAmount, unit: line.unit, unit_price: line.unitPrice, vat_amount: line.vatAmount, vat_rate: line.vatRate, vat_treatment: line.vatTreatment })), price_mode: payload.priceMode, public_notes: payload.publicNotes, reference: payload.reference, seller_snapshot: seller, subject: payload.subject, totals: { documentDiscountTotal: calculation.documentDiscountTotal, grandTotal: calculation.grandTotal, itemDiscountTotal: calculation.itemDiscountTotal, subtotal: calculation.subtotal, taxableTotal: calculation.taxableTotal, vatTotal: calculation.vatTotal }, valid_until: validUntil, validity_days: validityDays ? Number(validityDays) : null } };
+  return { amountInWords: formatThaiBahtText(calculation.grandTotal), calculation, payload, rpcPayload: { currency: "THB", customer_snapshot: customer, document_discount_type: payload.documentDiscountType, document_discount_value: payload.documentDiscountValue, id, internal_notes: payload.internalNotes, issue_date: issueDate, items: calculation.lines.map((line) => ({ description: line.description, discount_amount: line.discountAmount, discount_type: line.discountType, discount_value: line.discountValue, document_discount_allocation: line.documentDiscountAllocation, gross_amount: line.grossAmount, id: line.id, line_total: line.lineTotal, name: line.name, position: line.position, quantity: line.quantity, sku: line.sku, taxable_amount: line.taxableAmount, unit: line.unit || null, unit_price: line.unitPrice, vat_amount: line.vatAmount, vat_rate: line.vatRate, vat_treatment: line.vatTreatment })), price_mode: payload.priceMode, public_notes: payload.publicNotes, reference: payload.reference, seller_snapshot: seller, subject: "", totals: { documentDiscountTotal: calculation.documentDiscountTotal, grandTotal: calculation.grandTotal, itemDiscountTotal: calculation.itemDiscountTotal, subtotal: calculation.subtotal, taxableTotal: calculation.taxableTotal, vatTotal: calculation.vatTotal }, valid_until: validUntil, validity_days: validityDays ? Number(validityDays) : null } };
 }
