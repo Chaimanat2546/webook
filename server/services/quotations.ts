@@ -10,7 +10,7 @@ import {
   type VatTreatment,
 } from "../../lib/quotation-calculator.ts";
 import { addQuotationCalendarDays, getBangkokCalendarDate } from "../../lib/quotation-dates.ts";
-import type { CustomerSnapshot, OfficeType, QuotationPayload, SellerSnapshot } from "../../lib/quotation-types.ts";
+import type { CustomerSnapshot, QuotationPayload, SellerSnapshot } from "../../lib/quotation-types.ts";
 
 const REQUIRED_MESSAGES = {
   customerAddress: "กรุณากรอกที่อยู่ลูกค้า", customerName: "กรุณากรอกชื่อลูกค้า", itemName: "กรุณากรอกชื่อรายการ", itemUnit: "กรุณากรอกหน่วยนับ",
@@ -85,7 +85,7 @@ export function emptyQuotationPayload(seller: SellerSnapshot, now: Date): Quotat
   return {
     currency: "THB", customer: { address: "", branchNumber: "", contactName: "", email: "", name: "", officeType: "head_office", phone: "", serviceLocation: "", shippingAddress: "", taxId: "" },
     documentDiscountType: null, documentDiscountValue: "0", id: null, internalNotes: "", issueDate,
-    items: [{ description: "", discountType: null, discountValue: "0", id: "00000000-0000-4000-8000-000000000000", name: "", position: 1, quantity: "1", sku: "", unit: "", unitPrice: "0.00", vatRate: "7.00", vatTreatment: "taxable" }],
+    items: [{ description: "", discountType: null, discountValue: "0", id: crypto.randomUUID(), name: "", position: 1, quantity: "1", sku: "", unit: "งาน", unitPrice: "0.00", vatRate: "7.00", vatTreatment: "taxable" }],
     priceMode: "vat_exclusive", publicNotes: "", reference: "", seller, subject: "", validUntil: addQuotationCalendarDays(issueDate, Number(validityDays)), validityDays,
   };
 }

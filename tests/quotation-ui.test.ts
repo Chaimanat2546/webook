@@ -50,4 +50,35 @@ describe("quotation UI", () => {
     assert.match(list, /\?print=1/);
     assert.doesNotMatch(list, /สถานะ/);
   });
+  it("loads create and edit routes through server repositories", () => {
+    const createPage = source("../app/admin/quotations/new/page.tsx");
+    const editPage = source("../app/admin/quotations/[id]/page.tsx");
+    assert.match(createPage, /getQuotationCompanyProfile\(supabase\)/);
+    assert.match(createPage, /emptyQuotationPayload/);
+    assert.match(editPage, /getQuotationById\(supabase, id\)/);
+    assert.match(editPage, /notFound\(\)/);
+    assert.match(createPage, /canUseQuotation\(adminUser\)/);
+    assert.match(editPage, /canUseQuotation\(adminUser\)/);
+  });
+
+  it("uses one inline A4 payload for editing and calculation", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /"use client"/);
+    assert.match(editor, /useState<QuotationPayload>/);
+    assert.match(editor, /calculateQuotation/);
+    assert.match(editor, /saveQuotationAction/);
+    assert.match(editor, /quotation-paper/);
+    assert.match(editor, /data-field="seller\.name"/);
+    assert.match(editor, /data-field="customer\.name"/);
+    assert.match(editor, /data-field="issueDate"/);
+    assert.match(editor, /data-field=\{`items\./);
+    assert.match(editor, /documentDiscountValue/);
+    assert.match(editor, /publicNotes/);
+    assert.match(editor, /internalNotes/);
+  });
+
+  it("does not add out-of-scope quotation workflow", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.doesNotMatch(editor, /accepted|rejected|approval|publicToken|qrCode/i);
+  });
 });
