@@ -35,6 +35,10 @@ export function getHouseImageEnv() {
   return getAdvertisementImageEnv();
 }
 
+export function getQuotationAssetEnv() {
+  return getAdvertisementImageEnv();
+}
+
 export function getAwsS3ImageEnv() {
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
   const bucket = process.env.AWS_BUCKET;

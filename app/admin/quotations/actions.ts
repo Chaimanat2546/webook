@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { validateQuotationAssetUrl } from "../../../lib/quotation-assets";
+import { getQuotationAssetEnv } from "../../../lib/env";
 import { canUseQuotation, requireAdmin } from "../../../server/auth/admin";
 import {
   saveQuotation,
@@ -30,6 +32,17 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
 
   try {
     const prepared = prepareQuotationPayload(value);
+    if (prepared.payload.seller.logoUrl) {
+      try {
+        validateQuotationAssetUrl(prepared.payload.seller.logoUrl, getQuotationAssetEnv().workerUrl);
+      } catch {
+        return {
+          fieldErrors: { "seller.logoUrl": "โลโก้ผู้ขายต้องมาจากพื้นที่จัดเก็บของระบบ" },
+          formError: "",
+          ok: false,
+        };
+      }
+    }
     const saved = await saveQuotation(supabase, prepared.rpcPayload);
     revalidatePath("/admin/quotations");
     revalidatePath(`/admin/quotations/${encodeURIComponent(saved.id)}`);

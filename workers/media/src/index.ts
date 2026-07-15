@@ -20,6 +20,7 @@ interface Env {
 }
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_KEY_PREFIXES = ["advertisements/", "houses/", "quotations/assets/"] as const;
 const ALLOWED_CONTENT_TYPES = new Set([
   "image/avif",
   "image/gif",
@@ -34,7 +35,7 @@ function keyFromRequest(request: Request): string {
   const parts = key.split("/");
 
   if (
-    (!key.startsWith("advertisements/") && !key.startsWith("houses/")) ||
+    !ALLOWED_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
     key.includes("://") ||
     parts.some((part) => !part || part === "." || part === "..")
   ) {
