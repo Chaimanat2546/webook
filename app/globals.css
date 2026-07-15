@@ -146,8 +146,6 @@
   }
 }
 
-@page { size: A4; margin: 0; }
-
 @media print {
   html.quotation-printing body * { visibility: hidden !important; }
   html.quotation-printing [data-quotation-print], html.quotation-printing [data-quotation-print] * { visibility: visible !important; }
