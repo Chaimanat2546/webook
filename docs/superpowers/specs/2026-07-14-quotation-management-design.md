@@ -8,15 +8,21 @@
 2. เพิ่มค่าใช้จ่าย ช่องทางชำระเงิน ภาษีหัก ณ ที่จ่าย เงินมัดจำ ลายเซ็น และตราประทับ
 3. เพิ่มการแบ่งชำระตามงวด
 
-ระบบนี้ไม่มีสถานะเอกสาร, Workflow อนุมัติ, การตอบรับลูกค้า, Public QR, PDF generator หรือสถานะการชำระเงิน
+ระบบนี้ไม่มีสถานะเอกสาร, Workflow อนุมัติ, การตอบรับลูกค้า, Public QR, PDF generator หรือสถานะการชำระเงิน โดยสงวนตำแหน่งเมนูสำหรับ Public Share ในอนาคต แต่ยังไม่รวมการพัฒนาไว้ใน MVP 1-3
 
 ## Approved Product Decisions
 
 - ใช้ Webook Admin, Supabase Auth, Supabase PostgreSQL และ Cloudflare Media Worker/R2 ที่มีอยู่
 - เพิ่มสิทธิ์ `public.users.allow_tools.allow_quotation`; ห้ามใช้ `allow_accommodation` แทน
 - ใช้ Admin Shell ปกติ ไม่ใช้ House Workspace Shell เพราะใบเสนอราคาไม่ใช่ task workspace ของบ้านหนึ่งหลัง
-- รูปแบบหลักเป็น Inline A4 Editor: ฟิลด์ส่วนใหญ่อยู่ตรงตำแหน่งที่จะพิมพ์จริง
-- บนมือถือให้แสดงกระดาษแบบ fit-width; เมื่อแตะฟิลด์ให้เปิดช่องกรอกขนาดใหญ่แบบ bottom sheet แล้วกลับไปยังตำแหน่งเดิม
+- หน้าสร้างและแก้ไขเป็น Full-width Responsive Editor ไม่จำลองขนาดกระดาษ A4
+- ตำแหน่งข้อมูลยังอิงเอกสารจริงเพื่อให้เข้าใจง่าย แต่ใช้ความกว้างหน้าจออย่างเหมาะสม; A4 ใช้เฉพาะ Preview/Print
+- ข้อมูลลูกค้าอยู่ซ้ายกว้างไม่เกินประมาณ 520px และข้อมูลเอกสารอยู่ขวากว้างไม่เกินประมาณ 430px โดยมีพื้นที่ยืดหยุ่นตรงกลาง; เมื่อหน้าจอแคบให้ลดเป็นสัดส่วนประมาณ 55/45 และเรียงซ้อนบนมือถือ
+- Header หลักมีชื่อ/เลขเอกสารและปุ่มปิด/บันทึก แถวถัดไปมีข้อมูลบริษัทผู้ขายทางซ้ายและเมนูเอกสารทางขวา
+- ไม่มีฟิลด์เรื่องหรือชื่องาน; `reference` อยู่ในกลุ่มข้อมูลเอกสาร
+- `branch_number` แสดงและบังคับเฉพาะเมื่อเลือกสำนักงานประเภทสาขา ทั้งผู้ขายและลูกค้า; เมื่อเปลี่ยนเป็นสำนักงานใหญ่ให้ซ่อนและล้างค่า
+- VAT กำหนดแยกแต่ละรายการ ส่วน price mode อยู่เหนือรายการสินค้า ไม่อยู่ในกลุ่มข้อมูลเอกสาร
+- ยอดรวมแสดงเฉพาะสรุปด้านขวาล่าง ไม่แสดงยอดซ้ำในข้อมูลเอกสาร
 - Preview ใช้ draft ปัจจุบันได้ก่อนบันทึก
 - Print ทำได้หลังบันทึกครั้งแรกและมีเลขเอกสารแล้ว
 - Print ใช้ browser `window.print()` และ print CSS; ไม่เพิ่ม PDF dependency หรือ server-side PDF generator
@@ -35,11 +41,11 @@
 - ข้อมูลผู้ขายหลักหนึ่งชุดและโลโก้
 - หน้ารายการและค้นหาใบเสนอราคา
 - สร้าง ดู แก้ไข และ soft delete
-- Inline A4 Editor แบบ responsive
-- ข้อมูลผู้ขาย ลูกค้า วันที่ อ้างอิง และหัวข้อเอกสาร
+- Full-width Responsive Editor โดยใช้ A4 เฉพาะ Preview/Print
+- ข้อมูลผู้ขาย ลูกค้า วันที่ และเลขอ้างอิง
 - รายการสินค้า/บริการหลายรายการ
 - ส่วนลดต่อรายการและส่วนลดท้ายเอกสาร
-- ราคาก่อน VAT หรือรวม VAT
+- ราคาก่อน VAT หรือรวม VAT โดยเลือกจาก control เหนือตารางรายการ
 - VAT หลาย treatment/rate ในเอกสารเดียว
 - ยอดรวมและจำนวนเงินเป็นตัวอักษร
 - หมายเหตุบนเอกสารและหมายเหตุภายใน
@@ -69,10 +75,10 @@
 
 ## Planning Boundary
 
-เอกสารนี้เป็น blueprint ร่วมของทั้ง 3 MVP แต่ implementation ต้องทำและตรวจทีละรอบ:
+เอกสารนี้เป็น blueprint ร่วมของทั้ง 3 MVP แต่ implementation ต้องทำและตรวจทีละรอบ ปัจจุบันมี MVP 1 พื้นฐานแล้ว จึงใช้ขอบเขตต่อไปนี้:
 
-- แผน implementation ถัดไปครอบคลุม MVP 1 เท่านั้น
-- MVP 2 เริ่มหลัง MVP 1 ผ่าน Definition of Done และต้องมี implementation plan แยก
+- แผน implementation ถัดไปครอบคลุม MVP 1 refinement เท่านั้น: แก้ข้อมูลผู้ขายหลัก, Full-width Editor, ตำแหน่ง field/action, เงื่อนไขเลขสาขา, ตัดชื่องานออกจาก UI, ย้ายเลขอ้างอิง และทำ `unit` ให้เว้นว่างได้
+- MVP 2 รวมภาษีหัก ณ ที่จ่ายและ Payment/Certification เริ่มหลัง MVP 1 refinement ผ่าน Definition of Done และต้องมี implementation plan แยก
 - MVP 3 เริ่มหลัง MVP 2 ผ่าน Definition of Done และต้องมี implementation plan แยก
 - ห้ามสร้างตาราง, UI หรือ abstraction ของ MVP ถัดไปไว้ล่วงหน้าใน MVP ปัจจุบัน
 
@@ -165,6 +171,8 @@ Required fields:
 - `address`
 - `tax_id`
 
+`branch_number` ต้องมีค่าเฉพาะเมื่อ `office_type = branch`; เมื่อเลือก `head_office` ให้เก็บเป็น `null`
+
 เมื่อสร้างใบเสนอราคา ระบบคัดลอกข้อมูลทั้งหมดเป็น `seller_snapshot` ผู้ใช้แก้ snapshot เฉพาะใบได้ การแก้ profile ภายหลังห้ามเปลี่ยนใบเก่า
 
 ### `public.quotations`
@@ -188,11 +196,12 @@ Snapshots:
 Document fields:
 
 - `reference text null`
-- `subject text null`
 - `currency text not null default 'THB'`
 - `price_mode text`: `vat_exclusive` หรือ `vat_inclusive`
 - `public_notes text null`
 - `internal_notes text null`
+
+ฐานข้อมูลปัจจุบันมี legacy column `subject` อยู่แล้ว แต่ requirement ใหม่ไม่มีชื่องาน จึงไม่แสดงใน Editor/Preview/Print และไม่รับเป็น active form field การ refinement รอบนี้ไม่ drop column หรือแก้ migration เดิม; การลบ physical column ต้องเป็น migration แยกเมื่อมีเหตุผลและได้รับอนุมัติ
 
 Document discount:
 
@@ -251,6 +260,8 @@ Required customer fields:
 
 ฟิลด์ลูกค้าอื่นไม่บังคับและซ่อนจาก Preview/Print เมื่อไม่มีค่า
 
+Customer snapshot ไม่มีฟิลด์เรื่องหรือชื่องาน และใช้กติกา `branchNumber` แบบเดียวกับผู้ขาย: บังคับเฉพาะสาขาและเป็น `null` สำหรับสำนักงานใหญ่
+
 ### `public.quotation_items`
 
 - `id uuid primary key`
@@ -260,7 +271,7 @@ Required customer fields:
 - `name text not null`
 - `description text null`
 - `quantity numeric(12,3) not null`
-- `unit text not null`
+- `unit text null`
 - `unit_price numeric(14,2) not null`
 - `discount_type text null`: `percent` หรือ `amount`
 - `discount_value numeric(14,4) not null default 0`
@@ -282,6 +293,10 @@ Constraints:
 - VAT rate อยู่ระหว่าง `0` และ `100`
 - unique `(quotation_id, position)`
 - ใบเสนอราคาต้องมีอย่างน้อยหนึ่งรายการ; service และ transactional save function enforce กติกานี้
+
+`quantity` เป็นข้อมูลบังคับและห้ามว่าง ส่วน `unit` ไม่บังคับ; เมื่อไม่มีหน่วยให้เว้นว่างทั้ง Editor และ Preview/Print โดยไม่กระทบสูตรคำนวณ
+
+เนื่องจาก schema ปัจจุบันกำหนด `unit not null`, refinement ต้องสร้าง migration ใหม่เพื่อ drop เฉพาะ `NOT NULL` constraint ห้ามแก้ migration เดิม
 
 VAT meaning:
 
@@ -465,18 +480,26 @@ Delete:
 
 Header toolbar:
 
-- back to list
-- title `ใบเสนอราคาใหม่` หรือ document number
-- unsaved-changes indicator ซึ่งเป็น UI state ไม่ใช่ business status
-- Preview
-- Save
-- Print หลังบันทึกแล้ว
-- Delete เฉพาะ edit page
+- Header หลัก: title `สร้างใบเสนอราคา`/`แก้ไขใบเสนอราคา`, document number เมื่อมีแล้ว, `ปิดหน้าต่าง` และ split button `บันทึกเอกสาร`
+- แถวข้อมูลผู้ขาย: โลโก้ ชื่อบริษัท ประเภทสำนักงาน เลขผู้เสียภาษี และ action `แก้ไขเฉพาะใบ` ทางซ้าย
+- เมนูเอกสารอยู่ทางขวาของแถวข้อมูลผู้ขาย: `ดูตัวอย่าง`, `แชร์`, `พิมพ์`, `ดาวน์โหลด`, `เพิ่มเติม`
+- `ดูตัวอย่าง` ใช้ draft ปัจจุบันได้; `แชร์`, `พิมพ์` และ `ดาวน์โหลด` ใช้ได้เฉพาะใบที่บันทึกแล้วตามขอบเขตของแต่ละ MVP
+- `แชร์` และ `ดาวน์โหลด` เป็นตำแหน่งสำหรับ capability อนาคตใน MVP 1-3; ห้ามผูก action ปลอมหรือสร้าง Public API ล่วงหน้า
+- Delete อยู่ใน `เพิ่มเติม` เฉพาะ edit page และต้องยืนยันก่อนลบ
+- unsaved-changes indicator เป็น UI state ไม่ใช่ business status
 
-A4 editor behavior:
+Full-width editor behavior:
 
-- กระดาษอยู่กึ่งกลางบน desktop/laptop
-- Field ปกติมีหน้าตาใกล้เอกสารจริง
+- ไม่สร้างกรอบหรือพื้นที่ว่างตามสัดส่วน A4 ในหน้าสร้าง/แก้ไข
+- ใช้ตำแหน่งข้อมูลคล้ายเอกสารจริง: ลูกค้าซ้าย ข้อมูลเอกสารขวา รายการอยู่เต็มความกว้าง และยอดสรุปอยู่ขวาล่าง
+- กลุ่มข้อมูลลูกค้าและข้อมูลเอกสารไม่ยืดเต็มจอเกินความยาวข้อมูลที่คาดไว้
+- ข้อมูลเอกสารประกอบด้วยวันที่ออก, วิธี/จำนวนวันใช้ได้, วันที่ใช้ได้ถึง, สกุลเงิน และเลขอ้างอิงที่ไม่บังคับ
+- ไม่มีช่อง `เรื่อง / ชื่องาน`
+- เลขสาขาแสดงเฉพาะเมื่อ office type เป็น `สาขา`; เลือก `สำนักงานใหญ่` แล้วต้องซ่อนและล้างค่า
+- VAT treatment/rate อยู่ต่อรายการสินค้า และ price mode (`ราคายังไม่รวม VAT`/`ราคารวม VAT แล้ว`) อยู่เหนือรายการ
+- `quantity` ต้องกรอกและมากกว่า 0; `unit` เป็นช่องไม่บังคับ
+- ยอดรวมไม่แสดงในกลุ่มข้อมูลเอกสาร เพราะมีสรุปที่ด้านขวาล่างแล้ว
+- Field ปกติมีหน้าตาใกล้ตำแหน่งบนเอกสารจริง
 - แสดง outline/background ที่ชัดขึ้นเมื่อ hover, focus, invalid หรือ editable area ต้องค้นพบได้
 - required fields มี label/indicator ที่เข้าถึงได้ ไม่พึ่งสีอย่างเดียว
 - computed totals เป็น read-only
@@ -487,11 +510,11 @@ A4 editor behavior:
 
 Mobile behavior:
 
-- กระดาษ fit-width
-- แตะ field ที่ตำแหน่งจริงแล้วเปิด bottom sheet editor
-- text, address, date, VAT, discount และ item row ใช้ editor ที่เหมาะกับข้อมูล
+- ใช้ form responsive ปกติ ไม่ย่อกระดาษ A4 และไม่ต้องเปิด bottom sheet สำหรับ field ทั่วไป
+- ข้อมูลลูกค้าและข้อมูลเอกสารเรียงซ้อนกัน
+- ตารางรายการเปลี่ยนเป็น editable cards บนมือถือเพื่อไม่บีบ input จนใช้งานไม่ได้
+- เมนูเอกสารรวมไว้ใต้ `เพิ่มเติม` โดยคงปุ่มบันทึกใน Header
 - ปุ่มมี touch target ที่เหมาะสม
-- ปิด sheet แล้ว focus กลับตำแหน่งเดิม
 - ยอดรวมและ action bar ต้องเข้าถึงได้โดยไม่บัง field ที่กำลังกรอก
 
 Preview and Print:
@@ -503,6 +526,16 @@ Preview and Print:
 - Print CSS ซ่อน Admin Shell, toolbar, validation, add/delete controls และ field outlines
 - รองรับเนื้อหาหลายหน้าโดยไม่ตัด row หรือ signature block กลางส่วนเมื่อ CSS หลีกเลี่ยงได้
 - Print output ใช้ขนาด A4 และตรวจด้วย browser print preview
+
+### Future Public Share Contract (Not In MVP 1-3)
+
+- แชร์ได้เฉพาะใบที่บันทึกและมี document number แล้ว
+- หน้า Public เป็น read-only และไม่ต้องเข้าสู่ระบบ
+- ใช้ random unguessable token; ห้ามใช้ document number เป็น public URL
+- แสดงเฉพาะข้อมูลล่าสุดที่บันทึกแล้ว ไม่แสดง draft ที่ยังไม่ได้บันทึก
+- ผู้ดู Public พิมพ์และดาวน์โหลดได้ แต่แก้ไข ตอบรับ ปฏิเสธ เปลี่ยนสถานะ หรือลงนามออนไลน์ไม่ได้
+- Admin ต้อง revoke หรือ rotate token ได้ และ soft delete ต้องทำให้ลิงก์เปิดไม่ได้ทันที
+- Public route, token schema, rate limiting และ security tests ต้องออกแบบใน implementation plan ของ feature นี้ภายหลัง ห้าม scaffold ใน MVP ปัจจุบัน
 
 ## Logo And Asset Storage
 
@@ -594,6 +627,7 @@ Master data ถูก copy เป็น quotation snapshot และแก้เ
 
 - `withholding_tax_type`: null, `percent`, `amount`
 - `withholding_tax_value`
+- `withholding_tax_base`
 - `withholding_tax_amount`
 - `deposit_amount`
 - `amount_due`
@@ -608,6 +642,16 @@ Certification rules:
 - ช่องผู้รับเอกสารเป็นพื้นที่ว่างใน Preview/Print ไม่เก็บการตอบรับออนไลน์
 - ไม่มี approve/reject action และไม่มี approval history
 
+Withholding tax UI and validation:
+
+- ด้านขวาล่างมี checkbox `หัก ณ ที่จ่าย`; ค่าเริ่มต้นเป็นปิด
+- เมื่อติ๊กเปิด ให้แสดง numeric input สำหรับเปอร์เซ็นต์ ค่าเริ่มต้น `3.00` แต่ผู้ใช้แก้ได้
+- รับค่า `0-100` และทศนิยมไม่เกิน 2 ตำแหน่ง
+- ยอดหักคำนวณและแสดงทันที พร้อมคำนวณ `amount_due` ใหม่
+- ปุ่มแก้ไขข้างยอดรองรับการปรับฐานคำนวณสำหรับเอกสารที่มีสินค้าและบริการผสมกัน หรือเปลี่ยนเป็นจำนวนเงินคงที่
+- ค่า percentage ใช้ `withholding_tax_base`; ค่าเริ่มต้นของฐานคือ pre-VAT total หลังส่วนลด และผู้ใช้ override ได้ไม่เกิน pre-VAT total
+- เมื่อเอา checkbox ออก ให้ type/base/value/amount กลับเป็น `null`/ศูนย์ตาม payload contract และไม่หักจากยอดชำระ
+
 MVP 2 calculation order:
 
 ```text
@@ -620,7 +664,7 @@ VAT = item VAT + additional charge VAT
 grand total = pre-VAT total + VAT
 
 withholding tax:
-  percent -> pre-VAT total × rate
+  percent -> withholding tax base × rate
   amount  -> entered fixed amount
 
 amount due = grand total − withholding tax − deposit
@@ -724,12 +768,12 @@ Due-date rules:
 - soft delete hides quotation and preserves document number
 - seller snapshot remains unchanged when company profile changes
 - logo storage path/MIME/size validation
-- page source/behavior tests for list, inline editor, mobile sheet, preview and print controls where practical
+- page source/behavior tests for list, full-width responsive editor, conditional branch number, required quantity, optional unit, Preview และ Print controls where practical
 
 ### MVP 2 automated tests
 
 - additional charge VAT and totals
-- withholding tax percentage and fixed amount
+- withholding tax checkbox, editable percentage, default/overridden base and fixed amount
 - deposit and amount due validation
 - payment method snapshot independence
 - signer/stamp snapshot independence
@@ -771,7 +815,7 @@ MVP 2 and MVP 3 update the same feature document with their actual behavior. `do
 - Business status such as draft, sent, accepted, rejected, expired or cancelled
 - Approval workflow or approval history
 - Customer acceptance/rejection/request changes
-- Public quotation page or public QR/token
+- Public quotation page or public QR/token (สงวน action และ contract ไว้สำหรับ feature อนาคต แต่ไม่ implement ใน MVP 1-3)
 - PDF download or server-side PDF generation
 - Email sending
 - Revision/version workflow
