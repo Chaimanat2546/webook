@@ -145,3 +145,12 @@
     cursor: not-allowed;
   }
 }
+
+@page { size: A4; margin: 0; }
+
+@media print {
+  html.quotation-printing body * { visibility: hidden !important; }
+  html.quotation-printing [data-quotation-print], html.quotation-printing [data-quotation-print] * { visibility: visible !important; }
+  html.quotation-printing [data-quotation-print] { display: block !important; position: absolute; inset: 0; width: 210mm; min-height: 297mm; }
+  [data-quotation-document] tr, [data-quotation-document] section { break-inside: avoid; }
+}

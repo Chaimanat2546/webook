@@ -144,4 +144,34 @@ describe("quotation UI", () => {
     assert.match(editor, /const typeControl = labelled \? <Field error=\{error\("discountType"\)[\s\S]*?\{error\("discountType"\) \? <span className="text-xs text-destructive">\{error\("discountType"\)\}/);
     assert.match(editor, /const treatmentControl = labelled \? <Field error=\{error\("vatTreatment"\)[\s\S]*?\{error\("vatTreatment"\) \? <span className="text-xs text-destructive">\{error\("vatTreatment"\)\}/);
   });
+
+  it("keeps preview current while printing only the saved quotation document", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+    assert.match(editor, /lastSavedPayload/);
+    assert.match(editor, /setLastSavedPayload\(payload\)/);
+    assert.match(editor, /window\.print\(\)/);
+    assert.match(editor, /data-quotation-print/);
+    assert.match(editor, /QuotationDocument/);
+    assert.match(document, /data-quotation-document/);
+    assert.doesNotMatch(document, /internalNotes/);
+    assert.doesNotMatch(document, /subject/);
+  });
+
+  it("guards dirty editor navigation and supports saved quotation deletion", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /beforeunload/);
+    assert.match(editor, /deleteQuotationAction/);
+    assert.match(editor, /window\.confirm/);
+    assert.match(editor, /router\.push\("\/admin\/quotations"\)/);
+  });
+
+  it("loads an edit quotation with a one-time print option and isolates print CSS", () => {
+    const page = source("../app/admin/quotations/[id]/page.tsx");
+    const css = source("../app/globals.css");
+    assert.match(page, /searchParams: Promise<\{ print\?: string \}>/);
+    assert.match(page, /printOnLoad=\{print === "1"\}/);
+    assert.match(css, /html\.quotation-printing \[data-quotation-print\]/);
+    assert.match(css, /\[data-quotation-document\] tr/);
+  });
 });
