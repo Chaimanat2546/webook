@@ -14,6 +14,7 @@ import { Textarea } from "../../ui/textarea";
 
 export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSnapshot }) {
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [isConverting, setIsConverting] = useState(false);
   const [logoUrl, setLogoUrl] = useState(initialSeller.logoUrl);
@@ -48,6 +49,7 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setFieldErrors({});
     setMessage("");
     const formData = new FormData(event.currentTarget);
     const file = formData.get("logo");
@@ -65,10 +67,12 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
     startTransition(async () => {
       const result = await saveCompanyProfileAction(formData);
       if (result.ok) {
+        setFieldErrors({});
         setLogoUrl(result.logoUrl);
         setLogoUnavailable(false);
         setMessage("Seller profile saved");
       } else {
+        setFieldErrors(result.fieldErrors);
         setError(result.formError || Object.values(result.fieldErrors)[0] || "Unable to save seller profile");
       }
     });
@@ -77,20 +81,20 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
   const disabled = pending || isConverting;
   return <form className="grid gap-4" onSubmit={submit}>
     <Card><CardHeader><CardTitle>Legal identity</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
-      <Field label="Company name" name="name" required value={initialSeller.name} />
-      <Field label="Tax ID" name="taxId" required value={initialSeller.taxId} />
-      <div className="grid gap-2"><Label htmlFor="officeType">Office type</Label><select className="h-9 rounded-md border bg-transparent px-3 text-sm" defaultValue={officeType} id="officeType" name="officeType" onChange={(event) => setOfficeType(event.target.value === "branch" ? "branch" : "head_office")}><option value="head_office">Head office</option><option value="branch">Branch</option></select></div>
-      {officeType === "branch" ? <Field label="Branch number" name="branchNumber" value={initialSeller.branchNumber} /> : <input name="branchNumber" type="hidden" value="" />}
+      <Field error={fieldErrors.name} label="Company name" name="name" required value={initialSeller.name} />
+      <Field error={fieldErrors.taxId} label="Tax ID" name="taxId" required value={initialSeller.taxId} />
+      <div className="grid gap-2"><Label htmlFor="officeType">Office type</Label><select aria-invalid={Boolean(fieldErrors.officeType)} className="h-9 rounded-md border bg-transparent px-3 text-sm" defaultValue={officeType} id="officeType" name="officeType" onChange={(event) => setOfficeType(event.target.value === "branch" ? "branch" : "head_office")}><option value="head_office">Head office</option><option value="branch">Branch</option></select>{fieldErrors.officeType ? <p className="text-sm text-destructive">{fieldErrors.officeType}</p> : null}</div>
+      {officeType === "branch" ? <Field error={fieldErrors.branchNumber} label="Branch number" name="branchNumber" required value={initialSeller.branchNumber} /> : <input name="branchNumber" type="hidden" value="" />}
     </CardContent></Card>
-    <Card><CardHeader><CardTitle>Address</CardTitle></CardHeader><CardContent><div className="grid gap-2"><Label htmlFor="address">Address</Label><Textarea defaultValue={initialSeller.address} id="address" name="address" required /></div></CardContent></Card>
-    <Card><CardHeader><CardTitle>Company contact</CardTitle></CardHeader><CardContent className="grid gap-4 lg:grid-cols-3"><Field label="Phone" name="phone" value={initialSeller.phone} /><Field label="Email" name="email" type="email" value={initialSeller.email} /><Field label="Website" name="website" type="url" value={initialSeller.website} /></CardContent></Card>
-    <Card><CardHeader><CardTitle>Sales contact</CardTitle></CardHeader><CardContent className="grid gap-4 lg:grid-cols-3"><Field label="Contact name" name="contactName" value={initialSeller.contactName} /><Field label="Contact phone" name="contactPhone" value={initialSeller.contactPhone} /><Field label="Contact email" name="contactEmail" type="email" value={initialSeller.contactEmail} /></CardContent></Card>
+    <Card><CardHeader><CardTitle>Address</CardTitle></CardHeader><CardContent><div className="grid gap-2"><Label htmlFor="address">Address</Label><Textarea aria-invalid={Boolean(fieldErrors.address)} defaultValue={initialSeller.address} id="address" name="address" required />{fieldErrors.address ? <p className="text-sm text-destructive">{fieldErrors.address}</p> : null}</div></CardContent></Card>
+    <Card><CardHeader><CardTitle>Company contact</CardTitle></CardHeader><CardContent className="grid gap-4 lg:grid-cols-3"><Field error={fieldErrors.phone} label="Phone" name="phone" value={initialSeller.phone} /><Field error={fieldErrors.email} label="Email" name="email" type="email" value={initialSeller.email} /><Field error={fieldErrors.website} label="Website" name="website" type="url" value={initialSeller.website} /></CardContent></Card>
+    <Card><CardHeader><CardTitle>Sales contact</CardTitle></CardHeader><CardContent className="grid gap-4 lg:grid-cols-3"><Field error={fieldErrors.contactName} label="Contact name" name="contactName" value={initialSeller.contactName} /><Field error={fieldErrors.contactPhone} label="Contact phone" name="contactPhone" value={initialSeller.contactPhone} /><Field error={fieldErrors.contactEmail} label="Contact email" name="contactEmail" type="email" value={initialSeller.contactEmail} /></CardContent></Card>
     <Card><CardHeader><CardTitle>Logo</CardTitle></CardHeader><CardContent className="grid gap-3">{logoUrl && !logoUnavailable ? <img alt="Current seller logo" className="max-h-32 max-w-48 object-contain" onError={() => setLogoUnavailable(true)} src={logoUrl} /> : <p className="text-sm text-muted-foreground">ไม่สามารถแสดงโลโก้</p>}<div className="grid gap-2"><Label htmlFor="logo">Replace logo</Label><Input accept="image/png,image/jpeg,image/webp" id="logo" name="logo" type="file" /><p className="text-sm text-muted-foreground">PNG, JPEG, or WebP; max 10 MB</p></div></CardContent></Card>
     <p aria-live="polite" className={error ? "text-destructive" : "text-muted-foreground"}>{error || message}</p>
     <Button disabled={disabled} type="submit">{disabled ? "Saving" : "Save"}</Button>
   </form>;
 }
 
-function Field({ label, name, required, type = "text", value }: { label: string; name: string; required?: boolean; type?: string; value: string }) {
-  return <div className="grid gap-2"><Label htmlFor={name}>{label}</Label><Input defaultValue={value} id={name} name={name} required={required} type={type} /></div>;
+function Field({ error, label, name, required, type = "text", value }: { error?: string; label: string; name: string; required?: boolean; type?: string; value: string }) {
+  return <div className="grid gap-2"><Label htmlFor={name}>{label}</Label><Input aria-invalid={Boolean(error)} defaultValue={value} id={name} name={name} required={required} type={type} />{error ? <p className="text-sm text-destructive">{error}</p> : null}</div>;
 }

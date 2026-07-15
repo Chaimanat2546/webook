@@ -25,6 +25,10 @@ describe("quotation UI", () => {
     assert.match(form, /resizeQuotationImageToMax/);
     assert.match(form, /image\/webp/);
     assert.match(form, /10 \* 1024 \* 1024/);
+    assert.match(form, /officeType === "branch"[\s\S]*name="branchNumber"[\s\S]*required/);
+    assert.match(form, /name="branchNumber" type="hidden" value=""/);
+    assert.match(form, /error=\{fieldErrors\.branchNumber\}/);
+    assert.match(form, /aria-invalid=\{Boolean\(error\)\}/);
   });
 
   it("keeps the old asset after a successful profile replacement", () => {

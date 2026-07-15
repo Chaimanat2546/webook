@@ -105,4 +105,10 @@ describe("quotation assets", () => {
     assert.match(source, /canvas\.toBlob/);
     assert.match(source, /"image\/webp"/);
   });
+
+  it("keeps quotation logo uploads optional for the seller profile", () => {
+    const source = readFileSync("app/admin/quotations/actions.ts", "utf8");
+    assert.match(source, /const logo = value instanceof File && value\.size > 0/);
+    assert.ok(source.indexOf("if (logo)") < source.indexOf("saveQuotationCompanyProfile(supabase, seller)"));
+  });
 });
