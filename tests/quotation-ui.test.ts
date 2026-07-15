@@ -92,4 +92,17 @@ describe("quotation UI", () => {
     assert.match(editor, /aria-invalid/);
     assert.match(editor, /focusableFieldErrors/);
   });
+
+  it("shows server field errors beside all editable quotation controls in paper order", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    for (const field of [
+      "seller.email", "seller.website", "customer.taxId", "customer.contactName", "customer.phone", "customer.email",
+      "priceMode", "documentDiscountType",
+    ]) assert.ok(editor.includes(`fieldErrors[\"${field}\"]`) || editor.includes(`fieldErrors.${field}`));
+    for (const field of ["sku", "description", "unit", "discountType", "discountValue", "vatTreatment", "vatRate"]) {
+      assert.ok(editor.includes(`fieldErrors[\`items.\${index}.${field}\`]`));
+    }
+    assert.ok(editor.indexOf('data-field="seller.officeType"') < editor.indexOf('data-field="customer.name"'));
+    assert.ok(editor.indexOf('data-field="customer.officeType"') < editor.indexOf('data-field={`items.${index}.sku`}'));
+  });
 });
