@@ -127,4 +127,15 @@ describe("quotation UI", () => {
     assert.ok(editor.indexOf('data-field="seller.officeType"') < editor.indexOf("data-customer-section"));
     assert.ok(editor.indexOf('data-field="customer.officeType"') < editor.indexOf("data-item-table"));
   });
+
+  it("keeps desktop item inputs in their matching table columns", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    for (const control of ["ItemQuantityControls", "ItemPriceControls", "ItemDiscountControls", "ItemVatControls"]) {
+      assert.match(editor, new RegExp(`<${control}`));
+    }
+    assert.match(editor, /<td className="p-2"><ItemQuantityControls/);
+    assert.match(editor, /<td className="p-2"><ItemPriceControls/);
+    assert.match(editor, /<td className="p-2"><ItemDiscountControls/);
+    assert.match(editor, /<td className="p-2"><ItemVatControls/);
+  });
 });
