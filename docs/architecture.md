@@ -12,6 +12,27 @@
 
 Admin UI -> Server Component / Server Action -> Server Service -> Repository / Storage Adapter -> Supabase / External API
 
+## Quotation data flow
+
+```text
+Quotation Editor
+  -> Server Action permission/validation
+  -> shared quotation calculator
+  -> transactional Supabase RPC
+  -> quotations + quotation_items
+
+Seller logo
+  -> browser WebP normalization
+  -> server storage adapter
+  -> authenticated Media Worker
+  -> R2 quotations/assets/<uuid>.webp
+```
+
+Quotation access is enforced by `users.allow_tools.allow_quotation` in pages,
+Server Actions, RLS policies, and private database functions. The editor saves
+seller and customer snapshots, so later seller-profile changes do not modify
+saved quotations.
+
 ## Deployment
 
 The Next.js admin app deploys to Cloudflare Workers through OpenNext using the root `wrangler.jsonc`.

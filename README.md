@@ -7,9 +7,24 @@ Current focus:
 - House image management
 - House data management MVP
 - Advertisement management MVP
+- Quotation management MVP 1
 
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
 House/accommodation menu access currently requires `allow_tools.allow_accommodation = true`.
+
+## Quotation management MVP 1
+
+Quotation management is an explicitly added admin module. Users need
+`allow_tools.allow_quotation = true` to use its routes:
+
+- `/admin/quotations` — list, search, print, and soft delete
+- `/admin/quotations/new` — create from the current seller profile
+- `/admin/quotations/[id]` — edit a saved quotation
+- `/admin/quotations/settings/company` — manage the seller profile
+
+Preview uses the current draft; browser print uses the latest saved quotation.
+See [quotation management](docs/quotation-management.md) for behavior and
+verification details.
 
 ## Tech Stack
 
