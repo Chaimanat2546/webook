@@ -57,7 +57,7 @@ export function QuotationEditor({ documentNumber: initialDocumentNumber, initial
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const autoPrintStarted = useRef(false);
-  const canPrint = Boolean(documentNumber && lastSavedPayload && !isDirty && !isPending);
+  const canPrint = Boolean(documentNumber && lastSavedPayload && !isPending);
   const calculationResult = useMemo(() => { try { return { calculation: calculateQuotation(payload), calculationError: "" }; } catch (error) { return { calculation: null, calculationError: error instanceof Error ? error.message : "คำนวณยอดไม่ได้" }; } }, [payload]);
   const { calculation, calculationError } = calculationResult;
   const savedCalculation = useMemo(() => lastSavedPayload ? calculateQuotation(lastSavedPayload) : null, [lastSavedPayload]);

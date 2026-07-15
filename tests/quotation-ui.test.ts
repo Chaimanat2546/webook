@@ -175,10 +175,10 @@ describe("quotation UI", () => {
     assert.match(css, /\[data-quotation-document\] tr/);
   });
 
-  it("only prints a clean, saved quotation and keeps A4 page styling transient", () => {
+  it("prints the last saved quotation while a newer draft is dirty", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const css = source("../app/globals.css");
-    assert.match(editor, /const canPrint = Boolean\(documentNumber && lastSavedPayload && !isDirty && !isPending\)/);
+    assert.match(editor, /const canPrint = Boolean\(documentNumber && lastSavedPayload && !isPending\)/);
     assert.match(editor, /if \(!canPrint\) return/);
     assert.match(editor, /printStyle\.textContent = "@page \{ size: A4; margin: 0; \}"/);
     assert.match(editor, /printStyle\.remove\(\)/);
