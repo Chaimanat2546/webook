@@ -34,4 +34,20 @@ describe("quotation UI", () => {
     assert.match(actions, /cleanup newly uploaded quotation logo/i);
     assert.doesNotMatch(actions, /deleteQuotationAssetObject\([^)]*existing/i);
   });
+
+  it("lists quotations with server search and pagination", () => {
+    const page = source("../app/admin/quotations/page.tsx");
+    const list = source("../components/admin/quotations/quotation-list.tsx");
+    assert.match(page, /listQuotations\(supabase/);
+    assert.match(page, /pageSize: 20/);
+    assert.match(page, /name="q"/);
+    assert.match(page, /href="\/admin\/quotations\/new"/);
+    assert.match(page, /href="\/admin\/quotations\/settings\/company"/);
+    assert.match(list, /"use client"/);
+    assert.match(list, /md:hidden/);
+    assert.match(list, /hidden[^"']*md:block/);
+    assert.match(list, /deleteQuotationAction/);
+    assert.match(list, /\?print=1/);
+    assert.doesNotMatch(list, /สถานะ/);
+  });
 });
