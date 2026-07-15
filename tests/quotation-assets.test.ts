@@ -45,12 +45,13 @@ describe("quotation assets", () => {
     assert.throws(() => validateQuotationAssetUrl("https://tracker.example/quotations/assets/123e4567-e89b-42d3-a456-426614174000.webp", "https://media.example"));
   });
 
-  it("requires a WebP payload no larger than 10 MB", () => {
-    const valid = new File([new Uint8Array([1])], "logo.webp", { type: "image/webp" });
-    assert.equal(validateQuotationAssetFile(valid), valid);
-    assert.throws(() => validateQuotationAssetFile(new File(["x"], "logo.png", { type: "image/webp" })), /WEBP/);
+  it("accepts PNG, JPEG, and WebP sources no larger than 10 MB", () => {
+    for (const [name, type] of [["logo.png", "image/png"], ["logo.jpg", "image/jpeg"], ["logo.webp", "image/webp"]]) {
+      const valid = new File([new Uint8Array([1])], name, { type });
+      assert.equal(validateQuotationAssetFile(valid), valid);
+    }
     assert.throws(() => validateQuotationAssetFile(new File(["x"], "logo.svg", { type: "image/svg+xml" })), /WEBP/);
-    assert.throws(() => validateQuotationAssetFile(new File([new Uint8Array(10 * 1024 * 1024 + 1)], "large.webp", { type: "image/webp" })), /10 MB/);
+    assert.throws(() => validateQuotationAssetFile(new File([new Uint8Array(10 * 1024 * 1024 + 1)], "large.png", { type: "image/png" })), /10 MB/);
   });
 
   it("limits the largest image side to 1600 pixels", () => {
@@ -58,11 +59,24 @@ describe("quotation assets", () => {
     assert.deepEqual(resizeQuotationImageToMax(400, 300), { height: 300, width: 400 });
   });
 
-  it("allows the exact quotation prefix in the Media Worker", async () => {
-    const response = await worker.fetch(new Request("https://media.example/quotations/assets/logo.webp", {
+  it("allows a UUID WebP quotation key in the Media Worker", async () => {
+    const response = await worker.fetch(new Request("https://media.example/quotations/assets/123e4567-e89b-42d3-a456-426614174000.webp", {
       body: new Uint8Array([1]), headers: { authorization: "Bearer secret", "content-type": "image/webp" }, method: "PUT",
     }), workerEnv());
     assert.equal(response.status, 200);
+  });
+
+  it("rejects non-UUID quotation keys for Worker PUT and DELETE", async () => {
+    const bucket = { deleted: false, async delete() { this.deleted = true; }, async get() { return null; }, async put(key: string) { return { key }; } };
+    const env = { ADVERTISEMENT_IMAGE_WORKER_SECRET: "secret", MEDIA_BUCKET: bucket };
+    for (const method of ["PUT", "DELETE"]) {
+      const response = await worker.fetch(new Request("https://media.example/quotations/assets/logo.webp", {
+        body: method === "PUT" ? new Uint8Array([1]) : undefined,
+        headers: { authorization: "Bearer secret", "content-type": "image/webp" }, method,
+      }), env);
+      assert.equal(response.status, 400);
+    }
+    assert.equal(bucket.deleted, false);
   });
 
   it("uses bearer auth and preserves a useful Worker error", async () => {
@@ -81,5 +95,14 @@ describe("quotation assets", () => {
   it("validates trusted logo URLs before saving quotations", () => {
     const source = readFileSync("app/admin/quotations/actions.ts", "utf8");
     assert.ok(source.indexOf("validateQuotationAssetUrl") < source.indexOf("saveQuotation(supabase"));
+  });
+
+  it("normalizes selected logo files before upload", () => {
+    const source = readFileSync("components/admin/quotations/company-profile-form.tsx", "utf8");
+    assert.match(source, /validateQuotationAssetFile\(file\)/);
+    assert.match(source, /createImageBitmap\(file\)/);
+    assert.match(source, /resizeQuotationImageToMax\(bitmap\.width, bitmap\.height\)/);
+    assert.match(source, /canvas\.toBlob/);
+    assert.match(source, /"image\/webp"/);
   });
 });

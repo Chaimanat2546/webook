@@ -21,6 +21,7 @@ interface Env {
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_KEY_PREFIXES = ["advertisements/", "houses/", "quotations/assets/"] as const;
+const QUOTATION_ASSET_KEY = /^quotations\/assets\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/i;
 const ALLOWED_CONTENT_TYPES = new Set([
   "image/avif",
   "image/gif",
@@ -36,6 +37,7 @@ function keyFromRequest(request: Request): string {
 
   if (
     !ALLOWED_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
+    (key.startsWith("quotations/assets/") && !QUOTATION_ASSET_KEY.test(key)) ||
     key.includes("://") ||
     parts.some((part) => !part || part === "." || part === "..")
   ) {

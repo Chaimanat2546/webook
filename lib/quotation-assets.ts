@@ -42,8 +42,8 @@ export function validateQuotationAssetUrl(value: string, workerUrl: string): str
 }
 
 export function validateQuotationAssetFile(file: File): File {
-  if (file.type !== "image/webp" || !file.name.toLowerCase().endsWith(".webp")) {
-    throw new Error("โลโก้ต้องถูกแปลงเป็นไฟล์ WEBP");
+  if (!new Set(["image/png", "image/jpeg", "image/webp"]).has(file.type)) {
+    throw new Error("ไฟล์โลโก้ต้องเป็น PNG, JPEG หรือ WEBP");
   }
   if (file.size === 0) throw new Error("ไฟล์โลโก้ว่างเปล่า");
   if (file.size > MAX_BYTES) throw new Error("ไฟล์โลโก้ต้องมีขนาดไม่เกิน 10 MB");
