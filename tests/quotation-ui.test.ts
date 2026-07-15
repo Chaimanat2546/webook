@@ -72,7 +72,7 @@ describe("quotation UI", () => {
     assert.match(editor, /calculateQuotation/);
     assert.match(editor, /saveQuotationAction/);
     assert.match(editor, /data-quotation-editor/);
-    assert.match(editor, /data-seller-actions/);
+    assert.match(editor, /data-seller-strip/);
     assert.match(editor, /data-customer-section/);
     assert.match(editor, /data-document-section/);
     assert.match(editor, /data-item-table/);
@@ -89,6 +89,50 @@ describe("quotation UI", () => {
     assert.match(editor, /documentDiscountValue/);
     assert.match(editor, /publicNotes/);
     assert.match(editor, /internalNotes/);
+  });
+
+  it("keeps quotation-specific customer and item fields focused on villa services", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+    assert.doesNotMatch(editor, /customer\.shippingAddress|customer\.serviceLocation/);
+    assert.doesNotMatch(editor, /items\.\$\{index\}\.sku|aria-label="SKU"|placeholder="SKU"/);
+    assert.doesNotMatch(document, /customer\.shippingAddress|customer\.serviceLocation/);
+  });
+
+  it("composes the approved document workbench shell and semantic field sizes", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /type FieldSize = "fluid" \| "compact" \| "date" \| "identifier" \| "person" \| "name" \| "address" \| "contact"/);
+    for (const value of ["max-w-28", "max-w-40", "max-w-64", "max-w-72", "max-w-md", "max-w-[40rem]", "max-w-[22rem]"]) {
+      assert.match(editor, new RegExp(value.replace("[", "\\[").replace("]", "\\]")));
+    }
+    assert.match(editor, /data-workbench-command-bar/);
+    assert.match(editor, /data-seller-strip/);
+    assert.match(editor, /data-workbench-metadata[^>]*lg:grid-cols-12/);
+    assert.match(editor, /data-customer-section[^>]*lg:col-span-7/);
+    assert.match(editor, /data-document-section[^>]*lg:col-span-5/);
+    assert.doesNotMatch(editor, /lg:grid-cols-\[minmax\(0,1fr\)_24rem\]/);
+  });
+
+  it("uses consistent native select geometry", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.doesNotMatch(editor, /minmax\(36px,1fr\)/);
+    assert.match(editor, /data-customer-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
+    assert.match(editor, /data-document-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
+    assert.match(editor, /const selectClassName = "h-8 rounded-md/);
+    assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="customer\.officeType"/);
+    for (const field of ["seller.officeType", "priceMode", "documentDiscountType"]) {
+      assert.match(editor, new RegExp(`className=\\{selectClassName\\} data-field="${field.replace(".", "\\.")}"`));
+    }
+  });
+
+  it("keeps item row actions beside the fields and uses icons for actions", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /data-item-details[^>]*grid-cols-\[minmax\(0,1fr\)_auto\]/);
+    assert.match(editor, /data-item-actions/);
+    assert.ok(editor.indexOf('data-field={`items.${index}.description`}') < editor.indexOf("data-item-actions"));
+    for (const icon of ["ArrowDown", "ArrowUp", "Download", "Eye", "MoreHorizontal", "Printer", "Save", "Share2", "Trash2", "X"]) {
+      assert.match(editor, new RegExp(`\\b${icon}\\b`));
+    }
   });
 
   it("clears branch numbers when head office is selected", () => {
