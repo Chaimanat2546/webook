@@ -138,4 +138,10 @@ describe("quotation UI", () => {
     assert.match(editor, /<td className="p-2"><ItemDiscountControls/);
     assert.match(editor, /<td className="p-2"><ItemVatControls/);
   });
+
+  it("shows desktop select errors beside discount and VAT controls", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /const typeControl = labelled \? <Field error=\{error\("discountType"\)[\s\S]*?\{error\("discountType"\) \? <span className="text-xs text-destructive">\{error\("discountType"\)\}/);
+    assert.match(editor, /const treatmentControl = labelled \? <Field error=\{error\("vatTreatment"\)[\s\S]*?\{error\("vatTreatment"\) \? <span className="text-xs text-destructive">\{error\("vatTreatment"\)\}/);
+  });
 });
