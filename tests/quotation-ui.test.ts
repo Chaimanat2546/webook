@@ -232,6 +232,12 @@ describe("quotation UI", () => {
     assert.match(editor, /<td className="p-2"><ItemVatControls/);
   });
 
+  it("surfaces optional item unit validation errors", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /function ItemUnitControl\(\{ errors, index, item, onUpdate, labelled \}: Pick<ItemProps, "errors" \| "index" \| "item" \| "onUpdate">/);
+    assert.match(editor, /<TextInput error=\{errors\[`items\.\$\{index\}\.unit`\]\} field=\{`items\.\$\{index\}\.unit`\} label=\{labelled \? "หน่วย" : undefined\} onChange=\{\(value\) => onUpdate\("unit", value\)\} size="compact" value=\{item\.unit\} \/>/);
+  });
+
   it("shows desktop select errors beside discount and VAT controls", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const typeControl = labelled \? <Field error=\{error\("discountType"\)[\s\S]*?\{error\("discountType"\) \? <span className="text-xs text-destructive">\{error\("discountType"\)\}/);
