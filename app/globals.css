@@ -147,8 +147,21 @@
 }
 
 @media print {
-  html.quotation-printing body * { visibility: hidden !important; }
-  html.quotation-printing [data-quotation-print], html.quotation-printing [data-quotation-print] * { visibility: visible !important; }
-  html.quotation-printing [data-quotation-print] { display: block !important; position: absolute; inset: 0; width: 210mm; min-height: 297mm; }
-  [data-quotation-document] tr, [data-quotation-document] section { break-inside: avoid; }
+  html.quotation-printing body > :not([data-quotation-print]) {
+    display: none !important;
+  }
+  html.quotation-printing [data-quotation-print] {
+    display: block !important;
+    width: 210mm;
+    margin: 0;
+  }
+  [data-quotation-document] {
+    margin: 0 !important;
+  }
+  [data-quotation-document] thead { display: table-header-group; }
+  [data-quotation-document] tr,
+  [data-quotation-document] section,
+  [data-document-summary] {
+    break-inside: avoid;
+  }
 }

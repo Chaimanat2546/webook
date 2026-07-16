@@ -8,6 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { createPortal } from "react-dom";
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
@@ -601,6 +602,7 @@ export function QuotationEditor({
     );
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const autoPrintStarted = useRef(false);
   const canPrint = Boolean(documentNumber && lastSavedPayload && !isPending);
   const calculationResult = useMemo(() => {
@@ -836,18 +838,35 @@ export function QuotationEditor({
   }
   const printSaved = useCallback(() => {
     if (!canPrint) return;
+    setIsPrinting(true);
+  }, [canPrint]);
+  useEffect(() => {
+    if (!isPrinting) return;
+    let finished = false;
     const printStyle = document.createElement("style");
     printStyle.textContent = "@page { size: A4; margin: 0; }";
+    function cleanup() {
+      if (finished) return;
+      finished = true;
+      document.documentElement.classList.remove("quotation-printing");
+      printStyle.remove();
+      setIsPrinting(false);
+    }
+
     document.head.append(printStyle);
     document.documentElement.classList.add("quotation-printing");
-    const cleanup = () => {
+    window.addEventListener("afterprint", cleanup, { once: true });
+    const frame = window.requestAnimationFrame(() => window.print());
+    const timeout = window.setTimeout(cleanup, 1_000);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+      window.removeEventListener("afterprint", cleanup);
       document.documentElement.classList.remove("quotation-printing");
       printStyle.remove();
     };
-    window.addEventListener("afterprint", cleanup, { once: true });
-    window.print();
-    window.setTimeout(cleanup, 1_000);
-  }, [canPrint]);
+  }, [isPrinting]);
   useEffect(() => {
     if (!printOnLoad || !canPrint || autoPrintStarted.current) return;
     autoPrintStarted.current = true;
@@ -1477,15 +1496,18 @@ export function QuotationEditor({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {lastSavedPayload && savedCalculation ? (
-        <div className="hidden" data-quotation-print>
-          <QuotationDocument
-            calculation={savedCalculation}
-            documentNumber={documentNumber}
-            payload={lastSavedPayload}
-          />
-        </div>
-      ) : null}
+      {isPrinting && lastSavedPayload && savedCalculation
+        ? createPortal(
+            <div data-quotation-print>
+              <QuotationDocument
+                calculation={savedCalculation}
+                documentNumber={documentNumber}
+                payload={lastSavedPayload}
+              />
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

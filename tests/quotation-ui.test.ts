@@ -407,13 +407,24 @@ describe("quotation UI", () => {
     assert.match(editor, /grid-cols-\[minmax\(0,1fr\)_minmax\(0,1fr\)\]/);
   });
 
-  it("keeps preview current while printing only the saved quotation document", () => {
+  it("prints the saved document through an isolated body-level portal", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const css = source("../app/globals.css");
     const document = source("../components/admin/quotations/quotation-document.tsx");
+
+    assert.match(editor, /import \{ createPortal \} from "react-dom"/);
+    assert.match(editor, /const \[isPrinting, setIsPrinting\] = useState\(false\)/);
+    assert.match(editor, /setIsPrinting\(true\)/);
+    assert.match(editor, /createPortal\([\s\S]*data-quotation-print[\s\S]*document\.body/);
+    assert.match(editor, /window\.addEventListener\("afterprint", cleanup/);
+    assert.match(editor, /setIsPrinting\(false\)/);
+    assert.match(css, /body > :not\(\[data-quotation-print\]\)/);
+    assert.match(css, /display: none !important/);
+    assert.match(css, /thead \{ display: table-header-group/);
+    assert.doesNotMatch(css, /body \* \{ visibility: hidden/);
+    assert.doesNotMatch(css, /height: 297mm|overflow: hidden/);
     assert.match(editor, /lastSavedPayload/);
     assert.match(editor, /setLastSavedPayload\(payload\)/);
-    assert.match(editor, /window\.print\(\)/);
-    assert.match(editor, /data-quotation-print/);
     assert.match(editor, /QuotationDocument/);
     assert.match(document, /data-quotation-document/);
     assert.doesNotMatch(document, /internalNotes/);
@@ -439,11 +450,11 @@ describe("quotation UI", () => {
 
   it("prints the last saved quotation while a newer draft is dirty", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    const css = source("../app/globals.css");
     assert.match(editor, /const canPrint = Boolean\(documentNumber && lastSavedPayload && !isPending\)/);
     assert.match(editor, /if \(!canPrint\) return/);
+    assert.match(editor, /calculation=\{savedCalculation\}/);
+    assert.match(editor, /payload=\{lastSavedPayload\}/);
     assert.match(editor, /printStyle\.textContent = "@page \{ size: A4; margin: 0; \}"/);
     assert.match(editor, /printStyle\.remove\(\)/);
-    assert.doesNotMatch(css, /@page\s*\{/);
   });
 });
