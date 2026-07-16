@@ -1,7 +1,7 @@
 # Quotation Item Options And Schema Cleanup Design
 
 **Date:** 2026-07-16
-**Status:** Approved design pending written-spec review
+**Status:** Approved for implementation
 
 ## Goal
 
