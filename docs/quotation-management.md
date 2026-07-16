@@ -2,43 +2,59 @@
 
 ## Scope
 
-Admin users with `allow_tools.allow_quotation = true` can manage one seller
-profile and create, edit, preview, print, search, and soft-delete quotations.
-MVP 1 has no business status, approval, customer acceptance, payment tracking,
-WHT, installments, Public Share, QR, or PDF generator.
+Admins with `allow_tools.allow_quotation = true` manage the seller profile and
+create, edit, preview, print, search, soft-delete, and share quotations. The
+customer snapshot deliberately contains only name, address, tax ID, office
+type, and branch number; it never stores customer contact details, a shipping
+address, or a service location.
+
+MVP 1 does not include download/PDF generation, workflow or approval,
+customer acceptance, payment or installments, or revision history.
 
 ## Routes
 
-- `/admin/quotations` — list, search, print, and soft delete
+- `/admin/quotations` — list, search, print, and soft-delete
 - `/admin/quotations/new` — create from the current seller profile snapshot
-- `/admin/quotations/[id]` — edit the saved snapshot
-- `/admin/quotations/settings/company` — create or replace the singleton seller profile
+- `/admin/quotations/[id]` — edit a saved quotation
+- `/admin/quotations/settings/company` — manage the singleton seller profile
+- `/q/[token]` — no-login, read-only public view of a saved quotation
 
 ## Editor Rules
 
 - Create/Edit uses the Document Workbench layout; Preview/Print remains A4.
-- Large desktop uses a 7/5 customer/document metadata grid and a fixed-column item ledger. Below `xl`, items become responsive editable cards.
-- Controls use semantic width roles based on value type; only item name/description is fluid in the desktop ledger.
-- Notes and totals use a ruled fluid-left/`18rem`-right completion grid and stack on smaller screens.
-- Reference is optional and belongs to document data. There is no job-title field.
-- Branch number is required only for Branch and is cleared for Head office.
-- Customer data does not include a shipping address or service location in the editor or document.
-- Villa service items use a name and optional description; SKU is not shown in the editor.
-- Quantity is required and greater than zero. Unit is optional.
-- VAT is configured per item. Price mode appears above the item list.
-- Share and Download are disabled future actions.
+- Reference is optional. Subject is labelled `เรื่อง / ชื่องาน` in the document.
+- All user-visible currency copy uses `บาท`.
+- Quantity is required and greater than zero; unit is optional.
+- Each item has its own discount and VAT treatment/rate. Drag and drop changes
+  item order, and that order is persisted on save.
+- Document discount and withholding tax are enabled by their own checkboxes.
+- Internal notes are admin-only; public notes may appear in the document.
 
-## Save And Snapshot Behavior
+## Calculation And Totals
 
-Seller and customer values are copied into each quotation. Changing the seller
-profile does not rewrite saved quotations. The server validates and recalculates
-all money before the transactional RPC replaces the quotation and its items.
+The server recalculates money before saving. The approved order is: item gross
+amount; item discount; document discount allocated across items; taxable amount
+and VAT per item; grand total; withholding tax on the taxable total; then amount
+due. The document displays these seven total labels in this order:
 
-## Preview And Print
+1. `รวมเป็นเงิน`
+2. `ส่วนลด`
+3. `ราคาหลังหักส่วนลด`
+4. `VAT`
+5. `จำนวนเงินรวมทั้งสิ้น`
+6. `หักภาษี ณ ที่จ่าย`
+7. `ยอดชำระ`
 
-Preview uses the current draft. Print is available only after the first
-successful save and uses the latest saved payload. Browser print CSS isolates
-the read-only A4 document from Admin navigation and edit controls.
+## Save, Preview, Print, And Share
+
+Seller and customer values are copied into each quotation, so later seller
+profile edits do not change saved documents. Preview renders the current draft.
+Print is available only after the first successful save and uses the latest
+saved payload in the read-only A4 document.
+
+Share is saved-only. `/q/[token]` uses the latest saved row, never includes
+internal notes or customer contacts, and returns 404 after the quotation is
+soft-deleted. It is public read-only; it does not allow editing or saving.
 
 ## Asset Behavior
 
@@ -53,11 +69,12 @@ authenticated Media Worker adapter.
 - Branch number is required only for Branch.
 - At least one item is required.
 - Item name and quantity are required; unit is optional.
-- Dates, discounts, VAT, emails, and trusted logo URLs are validated server-side.
+- Dates, discounts, VAT, withholding, emails, and trusted logo URLs are
+  validated server-side.
 - Save failures preserve the current draft and focus the first invalid field.
 
 ## Verification
 
 Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`.
 Verify Create/Edit and Preview/Print at mobile, tablet, laptop, and desktop
-widths.
+widths. Verify the public view without a login and after soft deletion.

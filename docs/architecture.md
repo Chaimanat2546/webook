@@ -26,12 +26,22 @@ Seller logo
   -> server storage adapter
   -> authenticated Media Worker
   -> R2 quotations/assets/<uuid>.webp
+
+Public /q/[token]
+  -> anon Supabase client
+  -> public security-invoker RPC
+  -> private token-scoped security-definer function
+  -> active quotation + items only
+  -> shared QuotationDocument
 ```
 
 Quotation access is enforced by `users.allow_tools.allow_quotation` in pages,
 Server Actions, RLS policies, and private database functions. The editor saves
 seller and customer snapshots, so later seller-profile changes do not modify
-saved quotations.
+saved quotations. Public sharing uses no anon table policy or service-role
+client: the exposed RPC is security invoker and calls the private,
+fixed-search-path security-definer function that returns only the active row's
+document fields and items.
 
 ## Deployment
 

@@ -22,7 +22,9 @@ Quotation management is an explicitly added admin module. Users need
 - `/admin/quotations/[id]` — edit a saved quotation
 - `/admin/quotations/settings/company` — manage the seller profile
 
-Preview uses the current draft; browser print uses the latest saved quotation.
+Preview uses the current draft; browser print and Share use the latest saved
+quotation. Share is available only after saving at `/q/[token]` and excludes
+internal notes.
 See [quotation management](docs/quotation-management.md) for behavior and
 verification details.
 
