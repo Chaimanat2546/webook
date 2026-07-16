@@ -114,6 +114,24 @@ Money calculations continue to use the existing decimal-safe calculator and
 two-decimal display formatting. Prices remain VAT-exclusive and the only
 user-facing currency is `บาท`.
 
+### Mobile Long-Amount Reflow
+
+The editor must continue to show exact monetary values when a valid quantity
+and unit price produce a long total. It must not truncate, use scientific
+notation, reduce the font size, or lower the existing server-side 12-digit
+money limit.
+
+Item pre-tax values, summary rows, withholding tax, and amount due use adaptive
+wrapping on narrow screens. A normal value remains on the same row as its label.
+When the value no longer fits, it moves to the next line, stays right-aligned,
+and may wrap within the available width without overflowing its item or summary
+container. Labels keep their readable width instead of being compressed into a
+vertical stack of Thai words. Numeric output uses tabular figures.
+
+Desktop alignment and the current summary order remain unchanged. Verification
+must cover a narrow viewport with a valid long unit price and quantity, plus a
+normal-value regression case.
+
 ## Payload And Validation
 
 `QuotationPayload` no longer carries currency, price mode, document-discount
