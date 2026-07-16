@@ -77,6 +77,10 @@ item total including VAT = pre-tax item amount + item VAT
 The ledger displays `pre-tax item amount`, not `item total including VAT`.
 Preview, Print, and Public Read-only use the same label and value. Their discount
 and VAT columns are shown only when the saved item data uses those features.
+Within those document views, each item name keeps its existing medium-weight
+primary text. The item description keeps the same font size but uses
+`text-slate-500` so it reads as secondary information without becoming faint in
+print. No truncation or opacity treatment is used.
 
 The summary block becomes:
 
