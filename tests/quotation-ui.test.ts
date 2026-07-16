@@ -37,6 +37,24 @@ describe("quotation UI", () => {
     );
   });
 
+  it("contains long valid item quantities and money inside fixed table cells", () => {
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const containedNumericCell = String.raw`className="max-w-0 p-2 text-right tabular-nums \[overflow-wrap:anywhere\]"`;
+
+    assert.match(
+      document,
+      new RegExp(`<td ${containedNumericCell}>\\{item\\.quantity\\}</td>`),
+    );
+    for (const field of ["unitPrice", "discountAmount", "preTaxAmount"]) {
+      assert.match(
+        document,
+        new RegExp(
+          `<td ${containedNumericCell}>\\s*\\{formatMoney\\(item\\.${field}\\)\\}\\s*</td>`,
+        ),
+      );
+    }
+  });
+
   it("protects and renders the single seller profile page", () => {
     const page = source("../app/admin/quotations/settings/company/page.tsx");
     assert.match(page, /canUseQuotation\(adminUser\)/);

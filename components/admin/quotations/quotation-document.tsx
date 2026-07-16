@@ -153,13 +153,13 @@ export function QuotationDocument({
                   <p className="whitespace-pre-line text-slate-500 [overflow-wrap:anywhere]">{item.description}</p>
                 ) : null}
               </td>
-              <td className="p-2 text-right tabular-nums">{item.quantity}</td>
+              <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">{item.quantity}</td>
               <td className="p-2 [overflow-wrap:anywhere]">{item.unit}</td>
-              <td className="p-2 text-right tabular-nums">
+              <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">
                 {formatMoney(item.unitPrice)}
               </td>
               {showItemDiscount ? (
-                <td className="p-2 text-right tabular-nums">
+                <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">
                   {formatMoney(item.discountAmount)}
                 </td>
               ) : null}
@@ -172,7 +172,7 @@ export function QuotationDocument({
                       : "-"}
                 </td>
               ) : null}
-              <td className="p-2 text-right tabular-nums">
+              <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">
                 {formatMoney(item.preTaxAmount)}
               </td>
             </tr>
