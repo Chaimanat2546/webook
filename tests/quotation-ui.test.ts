@@ -82,7 +82,7 @@ describe("quotation UI", () => {
     assert.ok(editor.indexOf("data-document-section") < editor.indexOf('field="reference"'));
     assert.match(editor, /data-field="issueDate"/);
     assert.match(editor, /data-field=\{`items\./);
-    assert.match(editor, /documentDiscountValue/);
+    assert.match(editor, /discountAmount/);
     assert.match(editor, /publicNotes/);
     assert.match(editor, /internalNotes/);
   });
@@ -97,7 +97,7 @@ describe("quotation UI", () => {
 
   it("composes the approved document workbench shell and semantic field sizes", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /type FieldSize = "fluid" \| "compact" \| "date" \| "identifier" \| "money" \| "name" \| "address"/);
+    assert.match(editor, /type FieldSize =[\s\S]*?\| "address";/);
     for (const value of ["max-w-28", "max-w-40", "max-w-56", "max-w-32", "max-w-96", "max-w-[36rem]"]) {
       assert.match(editor, new RegExp(value.replace("[", "\\[").replace("]", "\\]")));
     }
@@ -120,10 +120,9 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /minmax\(36px,1fr\)/);
     assert.match(editor, /data-customer-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
     assert.match(editor, /data-document-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
-    assert.match(editor, /const selectClassName = "h-8 rounded-lg/);
-    assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="customer\.officeType"/);
-    assert.match(editor, /className=\{selectClassName\} data-field="seller\.officeType"/);
-    assert.match(editor, /className=\{controlClassName\("compact", selectClassName\)\} data-field="documentDiscountType"/);
+    assert.match(editor, /const selectClassName =[\s\S]*?"h-8 rounded-lg/);
+    assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\}[\s\S]*?data-field="customer\.officeType"/);
+    assert.match(editor, /className=\{selectClassName\}[\s\S]*?data-field="seller\.officeType"/);
   });
 
   it("marks every editable native error control as invalid", () => {
@@ -137,14 +136,12 @@ describe("quotation UI", () => {
       ["validUntil", "fieldErrors\\.validUntil"],
       ["publicNotes", "fieldErrors\\.publicNotes"],
       ["internalNotes", "fieldErrors\\.internalNotes"],
-      ["documentDiscountType", "fieldErrors\\.documentDiscountType"],
     ]) {
       assert.match(editor, new RegExp(`<(?:Input|Textarea|select)[^>]*aria-invalid=\\{Boolean\\(${binding}\\)\\}[^>]*data-field="${field}"`));
     }
-    assert.match(editor, /<select[^>]*aria-invalid=\{Boolean\(error\("discountType"\)\)\}[^>]*data-field=\{`items\.\$\{index\}\.discountType`\}/);
     assert.match(editor, /<select[^>]*aria-invalid=\{Boolean\(error\("vatTreatment"\)\)\}[^>]*data-field=\{`items\.\$\{index\}\.vatTreatment`\}/);
-    assert.match(editor, /const selectClassName = "[^"]*disabled:bg-input\/50[^"]*aria-invalid:border-destructive[^"]*aria-invalid:ring-destructive\/20/);
-    assert.doesNotMatch(editor, /const selectClassName = "[^"]*appearance-none/);
+    assert.match(editor, /const selectClassName =[\s\S]*?disabled:bg-input\/50[^";]*aria-invalid:border-destructive[^";]*aria-invalid:ring-destructive\/20/);
+    assert.doesNotMatch(editor, /const selectClassName =[\s\S]*?appearance-none[^";]*";/);
   });
 
   it("uses compact metadata and one sortable responsive item ledger", () => {
@@ -161,7 +158,7 @@ describe("quotation UI", () => {
     assert.match(editor, /data-sortable-item/);
     assert.equal(editor.match(/data-item-details/g)?.length, 1);
     assert.ok(editor.indexOf("data-sortable-items") < editor.indexOf("เพิ่มรายการ"));
-    assert.match(editor, /calculation\?\.lines\[index\]\?\.netAmount/);
+    assert.match(editor, /calculation\?\.lines\[index\]\?\.preTaxAmount/);
     assert.match(editor, /data-item-detail-grid[^>]*grid-cols-2[^>]*sm:grid-cols-3[^>]*lg:grid-cols-5/);
   });
 
@@ -175,37 +172,33 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /data-internal-notes[^>]*rounded-xl/);
   });
 
-  it("uses approved baht totals in the editor, preview, print, and list", () => {
+  it("offers transient item discount and VAT document settings", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /ตั้งค่าเอกสาร/);
+    assert.match(editor, /DropdownMenuCheckboxItem/);
+    assert.match(editor, /ส่วนลดเฉพาะรายการ/);
+    assert.match(editor, /VAT เฉพาะรายการ/);
+    assert.match(editor, /items\.some\(\(item\) => Number\(item\.discountAmount\) > 0\)/);
+    assert.match(editor, /items\.some\(\(item\) => item\.vatTreatment !== "none"\)/);
+    assert.match(editor, /window\.confirm/);
+  });
+
+  it("uses fixed item discounts and pre-tax item values", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const document = source("../components/admin/quotations/quotation-document.tsx");
-    const list = source("../components/admin/quotations/quotation-list.tsx");
-    for (const label of [
-      "รวมเป็นเงิน",
-      "ส่วนลด",
-      "ราคาหลังหักส่วนลด",
-      "VAT",
-      "จำนวนเงินรวมทั้งสิ้น",
-      "หักภาษี ณ ที่จ่าย",
-      "ยอดชำระ",
-    ]) assert.match(editor, new RegExp(label));
-    assert.match(editor, /type="checkbox"[\s\S]*documentDiscountType/);
-    assert.match(editor, /disabled=\{payload\.documentDiscountType === null\}/);
-    assert.match(editor, /type="checkbox"[\s\S]*withholdingTaxRate/);
-    assert.match(editor, /disabled=\{payload\.withholdingTaxRate === null\}/);
-    assert.doesNotMatch(editor, /รวมก่อนส่วนลด|ส่วนลดรายการ|ส่วนลดเอกสาร|ยอดรวมสุทธิ \(THB\)/);
-    assert.match(document, /item\.netAmount/);
-    assert.doesNotMatch(document, /customer\.(?:contactName|phone|email)/);
-    assert.match(document, /เรื่อง \/ ชื่องาน/);
-    assert.doesNotMatch(editor + document + list, /THB — บาท|ยอดรวมสุทธิ \(THB\)|style:\s*"currency"/);
-    assert.match(list, /บาท/);
+    assert.match(editor, /field=\{`items\.\$\{index\}\.discountAmount`\}/);
+    assert.match(editor, /calculation\?\.lines\[index\]\?\.preTaxAmount/);
+    assert.match(editor + document, /มูลค่าก่อนภาษี/);
+    assert.doesNotMatch(editor + document, /documentDiscount|discountType|discountValue/);
+    assert.doesNotMatch(editor, /<option value="percent">%<\/option>/);
   });
 
   it("clears branch numbers when head office is selected", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /function updateSellerOfficeType/);
-    assert.match(editor, /branchNumber: officeType === "branch" \? current\.seller\.branchNumber : ""/);
+    assert.match(editor, /branchNumber:[\s\S]*?officeType === "branch" \? current\.seller\.branchNumber : ""/);
     assert.match(editor, /function updateCustomerOfficeType/);
-    assert.match(editor, /branchNumber: officeType === "branch" \? current\.customer\.branchNumber : ""/);
+    assert.match(editor, /branchNumber:[\s\S]*?officeType === "branch" \? current\.customer\.branchNumber : ""/);
     assert.match(editor, /payload\.seller\.officeType === "branch"/);
     assert.match(editor, /payload\.customer\.officeType === "branch"/);
   });
@@ -219,12 +212,12 @@ describe("quotation UI", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const commandBar = editor.slice(editor.indexOf("data-workbench-command-bar"), editor.indexOf("data-seller-strip"));
     const sellerStrip = editor.slice(editor.indexOf("data-seller-strip"), editor.indexOf("data-seller-edit"));
-    assert.match(commandBar, /<Button onClick=\{closeEditor\} type="button" variant="outline">[^<]+<\/Button>/);
-    assert.match(commandBar, /onClick=\{\(\) => save\(\)\} type="button">\{isPending \? [^<]+<\/Button>/);
+    assert.match(commandBar, /<Button[\s\S]*?onClick=\{closeEditor\}[\s\S]*?variant="outline"/);
+    assert.match(commandBar, /onClick=\{\(\) => save\(\)\}[\s\S]*?\{isPending \?/);
     assert.doesNotMatch(commandBar, /<X|<Save/);
     assert.match(sellerStrip, /data-document-actions[\s\S]*<Share2[\s\S]*<Printer[\s\S]*<Download[\s\S]*<DocumentMore/);
     assert.match(editor, /<DropdownMenuItem onSelect=\{onPreview\}/);
-    assert.match(sellerStrip, /<Button disabled size="sm" title=/);
+    assert.match(sellerStrip, /<Button[\s\S]*?disabled[\s\S]*?size="sm"[\s\S]*?title=/);
     assert.doesNotMatch(sellerStrip, /<Button disabled title=.*<Share2/);
   });
 
@@ -249,7 +242,6 @@ describe("quotation UI", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     for (const field of [
       "seller.email", "seller.website", "customer.taxId",
-      "documentDiscountType",
     ]) assert.ok(editor.includes(`fieldErrors[\"${field}\"]`) || editor.includes(`fieldErrors.${field}`));
     assert.match(editor, /const error = \(field: string\) => errors\[`items\.\$\{index\}\.\$\{field\}`\]/);
     assert.ok(editor.indexOf('data-field="seller.officeType"') < editor.indexOf("data-customer-section"));
@@ -267,14 +259,19 @@ describe("quotation UI", () => {
 
   it("surfaces optional item unit validation errors", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /function ItemUnitControl\(\{ errors, index, item, onUpdate, labelled \}: Pick<ItemProps, "errors" \| "index" \| "item" \| "onUpdate">/);
-    assert.match(editor, /<TextInput error=\{errors\[`items\.\$\{index\}\.unit`\]\} field=\{`items\.\$\{index\}\.unit`\} label=\{labelled \? "หน่วย" : undefined\} onChange=\{\(value\) => onUpdate\("unit", value\)\} size="compact" value=\{item\.unit\} \/>/);
+    assert.match(editor, /function ItemUnitControl\([\s\S]*?errors\[`items\.\$\{index\}\.unit`\]/);
+    assert.match(editor, /field=\{`items\.\$\{index\}\.unit`\}[\s\S]*?onUpdate\("unit", value\)[\s\S]*?value=\{item\.unit\}/);
   });
 
-  it("shows desktop select errors beside discount and VAT controls", () => {
+  it("shows desktop select errors beside VAT controls", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /const typeControl = labelled \? <Field error=\{error\("discountType"\)[\s\S]*?\{error\("discountType"\) \? <span className="text-xs text-destructive">\{error\("discountType"\)\}/);
-    assert.match(editor, /const treatmentControl = labelled \? <Field error=\{error\("vatTreatment"\)[\s\S]*?\{error\("vatTreatment"\) \? <span className="text-xs text-destructive">\{error\("vatTreatment"\)\}/);
+    assert.match(editor, /const treatmentControl = labelled \?[\s\S]*?error=\{error\("vatTreatment"\)\}[\s\S]*?\{error\("vatTreatment"\) \?/);
+  });
+
+  it("keeps two-up item controls within their grid columns", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /className=\{cn\("w-full min-w-0", selectClassName\)\}/);
+    assert.match(editor, /grid-cols-\[minmax\(0,1fr\)_minmax\(0,1fr\)\]/);
   });
 
   it("keeps preview current while printing only the saved quotation document", () => {

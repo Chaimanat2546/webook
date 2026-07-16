@@ -15,15 +15,11 @@ import type { QuotationPayload } from "../lib/quotation-types.ts";
 
 function validPayload(): QuotationPayload {
   return {
-    currency: "THB",
     customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "" },
-    documentDiscountType: null,
-    documentDiscountValue: "0",
     id: null,
     internalNotes: "",
     issueDate: "2026-07-14",
-    items: [{ description: "", discountType: null, discountValue: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "Service", position: 1, quantity: "1", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
-    priceMode: "vat_exclusive",
+    items: [{ description: "", discountAmount: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "Service", position: 1, quantity: "1", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
     publicNotes: "",
     reference: "",
     seller: { address: "Seller address", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "seller@example.com", logoUrl: "", name: "Seller", officeType: "head_office", phone: "020000001", taxId: "0100000000000", website: "" },
@@ -47,24 +43,17 @@ describe("quotation service", () => {
     assert.equal(result.amountInWords, "หนึ่งหมื่นเจ็ดร้อยบาทถ้วน");
   });
 
-  it("trims enum and currency strings before validation", () => {
+  it("trims office and VAT enum strings before validation", () => {
     const payload = validPayload();
     const input = {
       ...payload,
-      currency: " THB ",
       customer: { ...payload.customer, branchNumber: "002", officeType: " branch " },
-      documentDiscountType: " amount ",
-      items: [{ ...payload.items[0]!, discountType: " percent ", discountValue: "10", vatTreatment: " exempt " }],
-      priceMode: " vat_inclusive ",
+      items: [{ ...payload.items[0]!, vatRate: "0", vatTreatment: " exempt " }],
       seller: { ...payload.seller, branchNumber: "001", officeType: " branch " },
     };
     const result = prepareQuotationPayload(input);
-    assert.equal(result.payload.currency, "THB");
     assert.equal(result.payload.seller.officeType, "branch");
     assert.equal(result.payload.customer.officeType, "branch");
-    assert.equal(result.payload.priceMode, "vat_inclusive");
-    assert.equal(result.payload.documentDiscountType, "amount");
-    assert.equal(result.payload.items[0]!.discountType, "percent");
     assert.equal(result.payload.items[0]!.vatTreatment, "exempt");
   });
 
@@ -106,26 +95,38 @@ describe("quotation service", () => {
     assert.equal(result.calculation.grandTotal, "10700.00");
   });
 
-  it("creates a Bangkok-dated empty payload", () => {
+  it("creates discount-off and VAT-off item defaults", () => {
     const payload = emptyQuotationPayload(validPayload().seller, new Date("2026-07-13T18:00:00.000Z"));
     assert.equal(payload.issueDate, "2026-07-14");
     assert.equal(payload.validUntil, "2026-07-29");
-    assert.equal(payload.items.length, 1);
+    assert.equal(payload.items[0]!.discountAmount, "0");
+    assert.equal(payload.items[0]!.vatTreatment, "none");
+    assert.equal(payload.items[0]!.vatRate, "0");
   });
 
-  it("rejects percent discounts over 100 while keeping amount discounts monetary", () => {
-    const payload = validPayload();
-    payload.items[0]!.discountType = "percent";
-    payload.items[0]!.discountValue = "100.01";
-    payload.documentDiscountType = "percent";
-    payload.documentDiscountValue = "101";
-    assert.throws(() => prepareQuotationPayload(payload), (error) => {
-      assert.equal(error instanceof QuotationValidationError, true);
-      if (!(error instanceof QuotationValidationError)) return false;
-      assert.ok(error.fieldErrors["items.0.discountValue"]);
-      assert.ok(error.fieldErrors.documentDiscountValue);
-      return true;
-    });
+  it("accepts only a fixed item discount not above gross", () => {
+    const valid = validPayload();
+    valid.items[0]!.discountAmount = "500.00";
+    assert.equal(prepareQuotationPayload(valid).payload.items[0]!.discountAmount, "500.00");
+
+    valid.items[0]!.discountAmount = "10000.01";
+    assert.throws(
+      () => prepareQuotationPayload(valid),
+      (error) => error instanceof QuotationValidationError
+        && Boolean(error.fieldErrors["items.0.discountAmount"]),
+    );
+  });
+
+  it("requires a zero rate for exempt and no-VAT items", () => {
+    for (const vatTreatment of ["exempt", "none"] as const) {
+      const value = validPayload();
+      value.items[0] = { ...value.items[0]!, vatRate: "7", vatTreatment };
+      assert.throws(
+        () => prepareQuotationPayload(value),
+        (error) => error instanceof QuotationValidationError
+          && Boolean(error.fieldErrors["items.0.vatRate"]),
+      );
+    }
   });
 
   it("returns field errors for malformed nested customer, seller, and item values", () => {

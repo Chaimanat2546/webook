@@ -1,11 +1,8 @@
-export type DiscountType = "amount" | "percent" | null;
-export type PriceMode = "vat_exclusive" | "vat_inclusive";
 export type VatTreatment = "exempt" | "none" | "taxable";
 
 export interface QuotationItemInput {
   description: string;
-  discountType: DiscountType;
-  discountValue: string;
+  discountAmount: string;
   id: string;
   name: string;
   position: number;
@@ -17,40 +14,24 @@ export interface QuotationItemInput {
 }
 
 export interface QuotationCalculationInput {
-  documentDiscountType: DiscountType;
-  documentDiscountValue: string;
   items: QuotationItemInput[];
-  priceMode: PriceMode;
   withholdingTaxRate: string | null;
 }
 
 export interface QuotationLineCalculation extends QuotationItemInput {
-  discountAmount: string;
-  documentDiscountAllocation: string;
   grossAmount: string;
   lineTotal: string;
-  netAmount: string;
-  taxableAmount: string;
+  preTaxAmount: string;
   vatAmount: string;
-}
-
-export interface VatSummaryLine {
-  taxableAmount: string;
-  vatAmount: string;
-  vatRate: string;
-  vatTreatment: VatTreatment;
 }
 
 export interface QuotationCalculation {
   amountDue: string;
-  documentDiscountTotal: string;
+  discountTotal: string;
   grandTotal: string;
-  itemDiscountTotal: string;
+  grossTotal: string;
   lines: QuotationLineCalculation[];
-  netSubtotal: string;
-  subtotal: string;
-  taxableTotal: string;
-  vatSummary: VatSummaryLine[];
+  preTaxTotal: string;
   vatTotal: string;
   withholdingTaxTotal: string;
 }
@@ -59,7 +40,6 @@ const MONEY_SCALE = 2;
 const QUANTITY_SCALE = 3;
 const PERCENT_SCALE = 2;
 const ZERO = BigInt(0);
-const ONE = BigInt(1);
 const TWO = BigInt(2);
 const PERCENT_DENOMINATOR = BigInt(10_000);
 
@@ -88,115 +68,64 @@ function roundDiv(numerator: bigint, denominator: bigint): bigint {
   return (numerator + denominator / TWO) / denominator;
 }
 
-function discountAmount(type: DiscountType, value: string, base: bigint): bigint {
-  if (type === null) return ZERO;
-  if (type === "amount") return parseScaled(value || "0", MONEY_SCALE, "Discount");
-  const rate = parseScaled(value || "0", PERCENT_SCALE, "Discount percent");
-  if (rate > PERCENT_DENOMINATOR) throw new Error("Discount percent must be between 0 and 100");
-  return roundDiv(base * rate, PERCENT_DENOMINATOR);
-}
-
-function allocateProportionally(total: bigint, weights: bigint[]): bigint[] {
-  const weightTotal = weights.reduce((sum, weight) => sum + weight, ZERO);
-  if (total === ZERO) return weights.map(() => ZERO);
-  if (weightTotal === ZERO) throw new Error("Cannot allocate discount across zero-value items");
-
-  const rows = weights.map((weight, index) => {
-    const product = total * weight;
-    return { allocation: product / weightTotal, index, remainder: product % weightTotal };
-  });
-  let remaining = total - rows.reduce((sum, row) => sum + row.allocation, ZERO);
-  const order = [...rows].sort((left, right) =>
-    left.remainder === right.remainder ? left.index - right.index : left.remainder > right.remainder ? -1 : 1,
-  );
-  for (const row of order) {
-    if (remaining === ZERO) break;
-    rows[row.index]!.allocation += ONE;
-    remaining -= ONE;
-  }
-  return rows.map((row) => row.allocation);
-}
-
-export function calculateQuotation(input: QuotationCalculationInput): QuotationCalculation {
+export function calculateQuotation(
+  input: QuotationCalculationInput,
+): QuotationCalculation {
   if (input.items.length === 0) throw new Error("Quotation requires at least one item");
   const withholdingRate = input.withholdingTaxRate === null
     ? ZERO
     : parseScaled(input.withholdingTaxRate, PERCENT_SCALE, "Withholding tax rate");
-  if (withholdingRate > PERCENT_DENOMINATOR) throw new Error("Withholding tax rate must be between 0 and 100");
+  if (withholdingRate > PERCENT_DENOMINATOR) {
+    throw new Error("Withholding tax rate must be between 0 and 100");
+  }
 
-  const prepared = input.items.map((item) => {
+  const lines = input.items.map((item, index) => {
     const quantity = parseScaled(item.quantity, QUANTITY_SCALE, "Quantity");
     if (quantity <= ZERO) throw new Error("Quantity must be greater than zero");
-    const gross = roundDiv(quantity * parseScaled(item.unitPrice, MONEY_SCALE, "Unit price"), tenPow(QUANTITY_SCALE));
-    const itemDiscount = discountAmount(item.discountType, item.discountValue, gross);
-    if (itemDiscount > gross) throw new Error("Discount cannot exceed item gross");
-    return { afterItemDiscount: gross - itemDiscount, gross, item, itemDiscount };
-  });
-  const discountBase = prepared.reduce((sum, item) => sum + item.afterItemDiscount, ZERO);
-  const documentDiscount = discountAmount(input.documentDiscountType, input.documentDiscountValue, discountBase);
-  if (documentDiscount > discountBase) throw new Error("Document discount cannot exceed subtotal");
-  const allocations = allocateProportionally(documentDiscount, prepared.map((item) => item.afterItemDiscount));
-  const lines = prepared.map((preparedItem, index) => {
-    const allocation = allocations[index] ?? ZERO;
-    const adjusted = preparedItem.afterItemDiscount - allocation;
-    const rate = preparedItem.item.vatTreatment === "taxable"
-      ? parseScaled(preparedItem.item.vatRate, PERCENT_SCALE, "VAT rate") : ZERO;
-    if (rate > PERCENT_DENOMINATOR) throw new Error("VAT rate must be between 0 and 100");
-    const netAmount = input.priceMode === "vat_inclusive" && preparedItem.item.vatTreatment === "taxable" && rate > ZERO
-      ? roundDiv(preparedItem.afterItemDiscount * PERCENT_DENOMINATOR, PERCENT_DENOMINATOR + rate)
-      : preparedItem.afterItemDiscount;
-    let taxable = adjusted;
-    let vat = ZERO;
-    let total = adjusted;
-    if (preparedItem.item.vatTreatment === "taxable" && rate > ZERO) {
-      if (input.priceMode === "vat_exclusive") {
-        vat = roundDiv(taxable * rate, PERCENT_DENOMINATOR);
-        total = taxable + vat;
-      } else {
-        taxable = roundDiv(adjusted * PERCENT_DENOMINATOR, PERCENT_DENOMINATOR + rate);
-        vat = adjusted - taxable;
-      }
+    const gross = roundDiv(
+      quantity * parseScaled(item.unitPrice, MONEY_SCALE, "Unit price"),
+      tenPow(QUANTITY_SCALE),
+    );
+    const discount = parseScaled(item.discountAmount || "0", MONEY_SCALE, "Discount");
+    if (discount > gross) {
+      throw new Error(`Discount cannot exceed item gross for item ${index + 1}`);
     }
+    const preTax = gross - discount;
+    const rate = item.vatTreatment === "taxable"
+      ? parseScaled(item.vatRate, PERCENT_SCALE, "VAT rate")
+      : ZERO;
+    if (rate > PERCENT_DENOMINATOR) throw new Error("VAT rate must be between 0 and 100");
+    const vat = item.vatTreatment === "taxable"
+      ? roundDiv(preTax * rate, PERCENT_DENOMINATOR)
+      : ZERO;
     return {
-      ...preparedItem.item,
-      discountAmount: formatScaled(preparedItem.itemDiscount, MONEY_SCALE),
-      documentDiscountAllocation: formatScaled(allocation, MONEY_SCALE),
-      grossAmount: formatScaled(preparedItem.gross, MONEY_SCALE),
-      lineTotal: formatScaled(total, MONEY_SCALE),
-      netAmount: formatScaled(netAmount, MONEY_SCALE),
-      taxableAmount: formatScaled(taxable, MONEY_SCALE),
+      ...item,
+      grossAmount: formatScaled(gross, MONEY_SCALE),
+      lineTotal: formatScaled(preTax + vat, MONEY_SCALE),
+      preTaxAmount: formatScaled(preTax, MONEY_SCALE),
       vatAmount: formatScaled(vat, MONEY_SCALE),
     };
   });
-  const sum = (field: "discountAmount" | "grossAmount" | "lineTotal" | "netAmount" | "taxableAmount" | "vatAmount") =>
-    lines.reduce((total, line) => total + parseScaled(line[field], MONEY_SCALE, field), ZERO);
-  const vatGroups = new Map<string, { taxableAmount: bigint; vatAmount: bigint; vatRate: string; vatTreatment: VatTreatment }>();
-  for (const line of lines) {
-    const key = `${line.vatTreatment}:${line.vatRate}`;
-    const current = vatGroups.get(key) ?? { taxableAmount: ZERO, vatAmount: ZERO, vatRate: line.vatRate, vatTreatment: line.vatTreatment };
-    current.taxableAmount += parseScaled(line.taxableAmount, MONEY_SCALE, "Taxable amount");
-    current.vatAmount += parseScaled(line.vatAmount, MONEY_SCALE, "VAT amount");
-    vatGroups.set(key, current);
-  }
+
+  const sum = (field: "discountAmount" | "grossAmount" | "lineTotal" | "preTaxAmount" | "vatAmount") =>
+    lines.reduce(
+      (total, line) => total + parseScaled(line[field], MONEY_SCALE, field),
+      ZERO,
+    );
+  const grossTotal = sum("grossAmount");
+  const discountTotal = sum("discountAmount");
+  const preTaxTotal = sum("preTaxAmount");
+  const vatTotal = sum("vatAmount");
   const grandTotal = sum("lineTotal");
-  const taxableTotal = sum("taxableAmount");
-  const withholdingTax = roundDiv(taxableTotal * withholdingRate, PERCENT_DENOMINATOR);
+  const withholdingTax = roundDiv(preTaxTotal * withholdingRate, PERCENT_DENOMINATOR);
   return {
     amountDue: formatScaled(grandTotal - withholdingTax, MONEY_SCALE),
-    documentDiscountTotal: formatScaled(documentDiscount, MONEY_SCALE),
+    discountTotal: formatScaled(discountTotal, MONEY_SCALE),
     grandTotal: formatScaled(grandTotal, MONEY_SCALE),
-    itemDiscountTotal: formatScaled(sum("discountAmount"), MONEY_SCALE),
+    grossTotal: formatScaled(grossTotal, MONEY_SCALE),
     lines,
-    netSubtotal: formatScaled(sum("netAmount"), MONEY_SCALE),
-    subtotal: formatScaled(sum("grossAmount"), MONEY_SCALE),
-    taxableTotal: formatScaled(taxableTotal, MONEY_SCALE),
-    vatSummary: [...vatGroups.values()].map((row) => ({
-      taxableAmount: formatScaled(row.taxableAmount, MONEY_SCALE),
-      vatAmount: formatScaled(row.vatAmount, MONEY_SCALE),
-      vatRate: row.vatRate,
-      vatTreatment: row.vatTreatment,
-    })),
-    vatTotal: formatScaled(sum("vatAmount"), MONEY_SCALE),
+    preTaxTotal: formatScaled(preTaxTotal, MONEY_SCALE),
+    vatTotal: formatScaled(vatTotal, MONEY_SCALE),
     withholdingTaxTotal: formatScaled(withholdingTax, MONEY_SCALE),
   };
 }

@@ -1,4 +1,4 @@
-import type { DiscountType, PriceMode, QuotationItemInput } from "./quotation-calculator.ts";
+import type { QuotationItemInput } from "./quotation-calculator.ts";
 
 export type OfficeType = "branch" | "head_office";
 
@@ -26,15 +26,11 @@ export interface CustomerSnapshot {
 }
 
 export interface QuotationPayload {
-  currency: "THB";
   customer: CustomerSnapshot;
-  documentDiscountType: DiscountType;
-  documentDiscountValue: string;
   id: string | null;
   internalNotes: string;
   issueDate: string;
   items: QuotationItemInput[];
-  priceMode: PriceMode;
   publicNotes: string;
   reference: string;
   seller: SellerSnapshot;

@@ -1,19 +1,161 @@
-import { formatThaiBahtText, type QuotationCalculation } from "../../../lib/quotation-calculator";
+import {
+  formatThaiBahtText,
+  type QuotationCalculation,
+} from "../../../lib/quotation-calculator";
 import type { QuotationPayload } from "../../../lib/quotation-types";
 
-export function QuotationDocument({ calculation, documentNumber, payload }: { calculation: QuotationCalculation; documentNumber: string | null; payload: QuotationPayload }) {
+export function QuotationDocument({
+  calculation,
+  documentNumber,
+  payload,
+}: {
+  calculation: QuotationCalculation;
+  documentNumber: string | null;
+  payload: QuotationPayload;
+}) {
   const money = (value: string) => `${value} บาท`;
-  return <article className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[12mm] text-[11px] text-slate-900" data-quotation-document>
-    <header className="grid grid-cols-2 gap-8 border-b pb-4"><div>
-      {payload.seller.logoUrl ? <img alt="โลโก้ผู้ขาย" className="mb-2 max-h-16 max-w-40 object-contain" src={payload.seller.logoUrl} /> : null}
-      <p className="font-semibold">{payload.seller.name}</p><p className="whitespace-pre-line">{payload.seller.address}</p><p>เลขผู้เสียภาษี {payload.seller.taxId}</p><p>{office(payload.seller)}</p>
-      {payload.seller.phone ? <p>โทร {payload.seller.phone}</p> : null}{payload.seller.email ? <p>{payload.seller.email}</p> : null}{payload.seller.website ? <p>{payload.seller.website}</p> : null}
-    </div><div className="text-right"><h1 className="text-2xl font-bold">ใบเสนอราคา</h1><p>{documentNumber ?? "เลขที่ออกเมื่อบันทึก"}</p><p>วันที่ออก {payload.issueDate}</p><p>ใช้ได้ถึง {payload.validUntil}</p><p>เลขอ้างอิง {payload.reference || "-"}</p>{payload.subject ? <p>เรื่อง / ชื่องาน: {payload.subject}</p> : null}</div></header>
-    <section className="mt-4 max-w-[105mm]"><p className="font-semibold">ลูกค้า: {payload.customer.name}</p><p className="whitespace-pre-line">{payload.customer.address}</p>{payload.customer.taxId ? <p>เลขผู้เสียภาษี {payload.customer.taxId}</p> : null}<p>{office(payload.customer)}</p></section>
-    <table className="mt-5 w-full border-collapse"><thead><tr className="border-y bg-slate-100 text-left"><th className="p-2">#</th><th className="p-2">รายการ</th><th className="p-2 text-right">จำนวน</th><th className="p-2">หน่วย</th><th className="p-2 text-right">ราคา (บาท)</th><th className="p-2 text-right">ส่วนลด</th><th className="p-2 text-right">VAT</th><th className="p-2 text-right">รวม (บาท)</th></tr></thead><tbody>{calculation.lines.map((item) => <tr className="border-b align-top" key={item.id}><td className="p-2">{item.position}</td><td className="p-2"><p className="font-medium">{item.name}</p>{item.description ? <p className="whitespace-pre-line">{item.description}</p> : null}</td><td className="p-2 text-right">{item.quantity}</td><td className="p-2">{item.unit}</td><td className="p-2 text-right">{item.unitPrice}</td><td className="p-2 text-right">{item.discountAmount}</td><td className="p-2 text-right">{item.vatTreatment === "taxable" ? `${item.vatRate}%` : item.vatTreatment === "exempt" ? "ยกเว้น" : "-"}</td><td className="p-2 text-right">{item.netAmount}</td></tr>)}</tbody></table>
-    <div className="mt-5 grid grid-cols-[1fr_80mm] gap-8"><div>{payload.publicNotes ? <><p className="font-semibold">หมายเหตุ</p><p className="whitespace-pre-line">{payload.publicNotes}</p></> : null}</div><div className="space-y-1"><Total label="รวมเป็นเงิน" value={money(calculation.netSubtotal)} /><Total label="ส่วนลด" value={money(calculation.documentDiscountTotal)} /><Total label="ราคาหลังหักส่วนลด" value={money(calculation.taxableTotal)} /><Total label="VAT" value={money(calculation.vatTotal)} /><Total bold label="จำนวนเงินรวมทั้งสิ้น" value={money(calculation.grandTotal)} /><Total label="หักภาษี ณ ที่จ่าย" value={money(calculation.withholdingTaxTotal)} /><Total bold label="ยอดชำระ" value={money(calculation.amountDue)} /><p className="pt-2 text-right">{formatThaiBahtText(calculation.amountDue)}</p></div></div>
-  </article>;
+  const showItemDiscount = payload.items.some((item) => Number(item.discountAmount) > 0);
+  const showItemVat = payload.items.some((item) => item.vatTreatment !== "none");
+  return (
+    <article
+      className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[12mm] text-[11px] text-slate-900"
+      data-quotation-document
+    >
+      <header className="grid grid-cols-2 gap-8 border-b pb-4">
+        <div>
+          {payload.seller.logoUrl ? (
+            <img
+              alt="โลโก้ผู้ขาย"
+              className="mb-2 max-h-16 max-w-40 object-contain"
+              src={payload.seller.logoUrl}
+            />
+          ) : null}
+          <p className="font-semibold">{payload.seller.name}</p>
+          <p className="whitespace-pre-line">{payload.seller.address}</p>
+          <p>เลขผู้เสียภาษี {payload.seller.taxId}</p>
+          <p>{office(payload.seller)}</p>
+          {payload.seller.phone ? <p>โทร {payload.seller.phone}</p> : null}
+          {payload.seller.email ? <p>{payload.seller.email}</p> : null}
+          {payload.seller.website ? <p>{payload.seller.website}</p> : null}
+        </div>
+        <div className="text-right">
+          <h1 className="text-2xl font-bold">ใบเสนอราคา</h1>
+          <p>{documentNumber ?? "เลขที่ออกเมื่อบันทึก"}</p>
+          <p>วันที่ออก {payload.issueDate}</p>
+          <p>ใช้ได้ถึง {payload.validUntil}</p>
+          <p>เลขอ้างอิง {payload.reference || "-"}</p>
+          {payload.subject ? <p>เรื่อง / ชื่องาน: {payload.subject}</p> : null}
+        </div>
+      </header>
+      <section className="mt-4 max-w-[105mm]">
+        <p className="font-semibold">ลูกค้า: {payload.customer.name}</p>
+        <p className="whitespace-pre-line">{payload.customer.address}</p>
+        {payload.customer.taxId ? (
+          <p>เลขผู้เสียภาษี {payload.customer.taxId}</p>
+        ) : null}
+        <p>{office(payload.customer)}</p>
+      </section>
+      <table className="mt-5 w-full border-collapse">
+        <thead>
+          <tr className="border-y bg-slate-100 text-left">
+            <th className="p-2">#</th>
+            <th className="p-2">รายการ</th>
+            <th className="p-2 text-right">จำนวน</th>
+            <th className="p-2">หน่วย</th>
+            <th className="p-2 text-right">ราคา (บาท)</th>
+            {showItemDiscount ? <th className="p-2 text-right">ส่วนลด</th> : null}
+            {showItemVat ? <th className="p-2 text-right">VAT</th> : null}
+            <th className="p-2 text-right">มูลค่าก่อนภาษี (บาท)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {calculation.lines.map((item) => (
+            <tr className="border-b align-top" key={item.id}>
+              <td className="p-2">{item.position}</td>
+              <td className="p-2">
+                <p className="font-medium">{item.name}</p>
+                {item.description ? (
+                  <p className="whitespace-pre-line">{item.description}</p>
+                ) : null}
+              </td>
+              <td className="p-2 text-right">{item.quantity}</td>
+              <td className="p-2">{item.unit}</td>
+              <td className="p-2 text-right">{item.unitPrice}</td>
+              {showItemDiscount ? <td className="p-2 text-right">{item.discountAmount}</td> : null}
+              {showItemVat ? <td className="p-2 text-right">
+                {item.vatTreatment === "taxable"
+                  ? `${item.vatRate}%`
+                  : item.vatTreatment === "exempt"
+                    ? "ยกเว้น"
+                    : "-"}
+              </td> : null}
+              <td className="p-2 text-right">{item.preTaxAmount}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="mt-5 grid grid-cols-[1fr_80mm] gap-8">
+        <div>
+          {payload.publicNotes ? (
+            <>
+              <p className="font-semibold">หมายเหตุ</p>
+              <p className="whitespace-pre-line">{payload.publicNotes}</p>
+            </>
+          ) : null}
+        </div>
+        <div className="space-y-1">
+          <Total label="รวมก่อนส่วนลด" value={money(calculation.grossTotal)} />
+          {calculation.discountTotal !== "0.00" ? (
+            <Total label="ส่วนลด" value={money(calculation.discountTotal)} />
+          ) : null}
+          <Total label="มูลค่าก่อนภาษี" value={money(calculation.preTaxTotal)} />
+          <Total label="VAT" value={money(calculation.vatTotal)} />
+          <Total
+            bold
+            label="จำนวนเงินรวมทั้งสิ้น"
+            value={money(calculation.grandTotal)}
+          />
+          <Total
+            label="หักภาษี ณ ที่จ่าย"
+            value={money(calculation.withholdingTaxTotal)}
+          />
+          <Total bold label="ยอดชำระ" value={money(calculation.amountDue)} />
+          <p className="pt-2 text-right">
+            {formatThaiBahtText(calculation.amountDue)}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
 }
 
-function office(snapshot: { branchNumber: string; officeType: "branch" | "head_office" }) { return snapshot.officeType === "branch" ? `สาขา ${snapshot.branchNumber}` : "สำนักงานใหญ่"; }
-function Total({ bold, label, value }: { bold?: boolean; label: string; value: string }) { return <div className={bold ? "flex justify-between border-t pt-2 font-semibold" : "flex justify-between"}><span>{label}</span><span>{value}</span></div>; }
+function office(snapshot: {
+  branchNumber: string;
+  officeType: "branch" | "head_office";
+}) {
+  return snapshot.officeType === "branch"
+    ? `สาขา ${snapshot.branchNumber}`
+    : "สำนักงานใหญ่";
+}
+function Total({
+  bold,
+  label,
+  value,
+}: {
+  bold?: boolean;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      className={
+        bold
+          ? "flex justify-between border-t pt-2 font-semibold"
+          : "flex justify-between"
+      }
+    >
+      <span>{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}

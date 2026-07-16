@@ -3,8 +3,6 @@ import "server-only";
 import {
   calculateQuotation,
   formatThaiBahtText,
-  type DiscountType,
-  type PriceMode,
   type QuotationCalculation,
   type QuotationItemInput,
   type VatTreatment,
@@ -36,10 +34,10 @@ export interface PreparedQuotation {
   calculation: QuotationCalculation;
   payload: QuotationPayload;
   rpcPayload: {
-    currency: "THB"; customer_snapshot: CustomerSnapshot; document_discount_type: DiscountType; document_discount_value: string; id: string | null; internal_notes: string; issue_date: string;
-    items: Array<{ description: string; discount_amount: string; discount_type: DiscountType; discount_value: string; document_discount_allocation: string; gross_amount: string; id: string; line_total: string; name: string; position: number; quantity: string; sku: string; taxable_amount: string; unit: string | null; unit_price: string; vat_amount: string; vat_rate: string; vat_treatment: VatTreatment }>;
-    price_mode: PriceMode; public_notes: string; reference: string; seller_snapshot: SellerSnapshot; subject: string; withholding_tax_rate: string | null;
-    totals: Pick<QuotationCalculation, "amountDue" | "documentDiscountTotal" | "grandTotal" | "itemDiscountTotal" | "subtotal" | "taxableTotal" | "vatTotal" | "withholdingTaxTotal">;
+    customer_snapshot: CustomerSnapshot; id: string | null; internal_notes: string; issue_date: string;
+    items: Array<{ description: string; discount_amount: string; name: string; position: number; quantity: string; unit: string | null; unit_price: string; vat_rate: string; vat_treatment: VatTreatment }>;
+    public_notes: string; reference: string; seller_snapshot: SellerSnapshot; subject: string; withholding_tax_rate: string | null;
+    totals: Pick<QuotationCalculation, "amountDue" | "discountTotal" | "grandTotal" | "grossTotal" | "preTaxTotal" | "vatTotal" | "withholdingTaxTotal">;
     valid_until: string; validity_days: number | null;
   };
 }
@@ -54,11 +52,6 @@ function optionalEmail(value: string, field: string, message: string, errors: Re
 function validDate(value: string): boolean { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const date = new Date(`${value}T00:00:00.000Z`); return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value; }
 function bounded(value: string, max: number, field: string, errors: Record<string, string>) { if (value.length > max) errors[field] = "ข้อมูลยาวเกินกำหนด"; return value; }
 function enumValue<T extends string>(value: unknown, values: readonly T[], field: string, errors: Record<string, string>, fallback: T): T { if (typeof value === "string" && values.includes(value as T)) return value as T; errors[field] = "ค่าที่เลือกไม่ถูกต้อง"; return fallback; }
-function discountTypeValue(value: unknown, field: string, errors: Record<string, string>): DiscountType {
-  if (value === null || value === "amount" || value === "percent") return value;
-  errors[field] = "ค่าที่เลือกไม่ถูกต้อง";
-  return null;
-}
 function branchNumber(source: Record<string, unknown>, officeType: "branch" | "head_office", field: string, errors: Record<string, string>): string {
   if (officeType === "head_office") return "";
   const value = bounded(stringValue(source, "branchNumber"), 200, field, errors);
@@ -90,10 +83,10 @@ export function emptyQuotationPayload(seller: SellerSnapshot, now: Date): Quotat
   const issueDate = getBangkokCalendarDate(now);
   const validityDays = "15";
   return {
-    currency: "THB", customer: { address: "", branchNumber: "", name: "", officeType: "head_office", taxId: "" },
-    documentDiscountType: null, documentDiscountValue: "0", id: null, internalNotes: "", issueDate,
-    items: [{ description: "", discountType: null, discountValue: "0", id: crypto.randomUUID(), name: "", position: 1, quantity: "1", unit: "", unitPrice: "0.00", vatRate: "7.00", vatTreatment: "taxable" }],
-    priceMode: "vat_exclusive", publicNotes: "", reference: "", seller, subject: "", validUntil: addQuotationCalendarDays(issueDate, Number(validityDays)), validityDays, withholdingTaxRate: null,
+    customer: { address: "", branchNumber: "", name: "", officeType: "head_office", taxId: "" },
+    id: null, internalNotes: "", issueDate,
+    items: [{ description: "", discountAmount: "0", id: crypto.randomUUID(), name: "", position: 1, quantity: "1", unit: "", unitPrice: "0.00", vatRate: "0", vatTreatment: "none" }],
+    publicNotes: "", reference: "", seller, subject: "", validUntil: addQuotationCalendarDays(issueDate, Number(validityDays)), validityDays, withholdingTaxRate: null,
   };
 }
 
@@ -101,9 +94,6 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   let source: Record<string, unknown>;
   try { source = objectValue(value, "quotation"); }
   catch { throw new QuotationValidationError({ _form: "Invalid quotation" }); }
-  source.currency = trimValue(source.currency);
-  source.documentDiscountType = trimValue(source.documentDiscountType);
-  source.priceMode = trimValue(source.priceMode);
   const errors: Record<string, string> = {};
   if (typeof source.validityDays === "string" && source.validityDays.trim().length > 5) {
     throw new QuotationValidationError({ validityDays: "Invalid validity days" });
@@ -126,33 +116,39 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   }
   else if (!validDate(validUntil) || (validDate(issueDate) && validUntil < issueDate)) errors.validUntil = "วันที่ใช้ได้ถึงต้องไม่น้อยกว่าวันที่ออกเอกสาร";
   const itemsValue = source.items;
-  const documentDiscountType = discountTypeValue(source.documentDiscountType, "documentDiscountType", errors);
-  const documentDiscountValue = documentDiscountType === null ? "0" : numeric(stringValue(source, "documentDiscountValue"), documentDiscountType === "percent" ? PERCENT : MONEY, "documentDiscountValue", errors, documentDiscountType === "percent");
   const withholdingTaxRate = source.withholdingTaxRate == null ? null : numeric(stringValue(source, "withholdingTaxRate"), PERCENT, "withholdingTaxRate", errors, true);
   if (!Array.isArray(itemsValue) || itemsValue.length < 1 || itemsValue.length > 100) errors.items = "Invalid item count";
   const items: QuotationItemInput[] = Array.isArray(itemsValue) && itemsValue.length >= 1 && itemsValue.length <= 100 ? itemsValue.map((value, index) => {
     const prefix = `items.${index}`;
     let item: Record<string, unknown>;
     try { item = objectValue(value, prefix); } catch { errors[prefix] = "Invalid item"; item = {}; }
-    item.discountType = trimValue(item.discountType);
     item.vatTreatment = trimValue(item.vatTreatment);
     const itemId = stringValue(item, "id");
-    const discountType = discountTypeValue(item.discountType, `${prefix}.discountType`, errors);
-    const discountValue = discountType === null ? "0" : numeric(stringValue(item, "discountValue"), discountType === "percent" ? PERCENT : MONEY, `${prefix}.discountValue`, errors, discountType === "percent");
+    const discountAmount = numeric(stringValue(item, "discountAmount") || "0", MONEY, `${prefix}.discountAmount`, errors);
+    const vatTreatment = enumValue(item.vatTreatment, ["exempt", "none", "taxable"], `${prefix}.vatTreatment`, errors, "none");
+    const vatRate = numeric(stringValue(item, "vatRate") || "0", PERCENT, `${prefix}.vatRate`, errors, true);
+    if (vatTreatment !== "taxable" && Number(vatRate) !== 0) {
+      errors[`${prefix}.vatRate`] = "รายการที่ยกเว้นหรือไม่คิด VAT ต้องใช้อัตรา 0";
+    }
     if (!UUID.test(itemId)) errors[`${prefix}.id`] = "รหัสรายการไม่ถูกต้อง";
     const name = bounded(stringValue(item, "name"), 200, `${prefix}.name`, errors); if (!name) errors[`${prefix}.name`] = REQUIRED_MESSAGES.itemName;
     const unit = bounded(stringValue(item, "unit"), 200, `${prefix}.unit`, errors);
-    return { description: bounded(stringValue(item, "description"), 2_000, `${prefix}.description`, errors), discountType, discountValue, id: itemId, name, position: index + 1, quantity: numeric(stringValue(item, "quantity"), QUANTITY, `${prefix}.quantity`, errors), unit, unitPrice: numeric(stringValue(item, "unitPrice"), MONEY, `${prefix}.unitPrice`, errors), vatRate: numeric(stringValue(item, "vatRate"), PERCENT, `${prefix}.vatRate`, errors, true), vatTreatment: enumValue(item.vatTreatment, ["exempt", "none", "taxable"], `${prefix}.vatTreatment`, errors, "taxable") };
+    return { description: bounded(stringValue(item, "description"), 2_000, `${prefix}.description`, errors), discountAmount, id: itemId, name, position: index + 1, quantity: numeric(stringValue(item, "quantity"), QUANTITY, `${prefix}.quantity`, errors), unit, unitPrice: numeric(stringValue(item, "unitPrice"), MONEY, `${prefix}.unitPrice`, errors), vatRate, vatTreatment };
   }) : [];
   if (items.length < 1 || items.length > 100) errors.items = "ต้องมีรายการ 1 ถึง 100 รายการ";
   if (new Set(items.map((item) => item.id)).size !== items.length) errors.items = "รหัสรายการต้องไม่ซ้ำกัน";
-  const payload: QuotationPayload = { currency: source.currency === "THB" ? "THB" : (errors.currency = "สกุลเงินไม่ถูกต้อง", "THB"), customer, documentDiscountType, documentDiscountValue, id, internalNotes: bounded(stringValue(source, "internalNotes"), 5_000, "internalNotes", errors), issueDate, items, priceMode: enumValue(source.priceMode, ["vat_exclusive", "vat_inclusive"], "priceMode", errors, "vat_exclusive"), publicNotes: bounded(stringValue(source, "publicNotes"), 5_000, "publicNotes", errors), reference: bounded(stringValue(source, "reference"), 200, "reference", errors), seller, subject: bounded(stringValue(source, "subject"), 200, "subject", errors), validUntil, validityDays, withholdingTaxRate };
+  const payload: QuotationPayload = { customer, id, internalNotes: bounded(stringValue(source, "internalNotes"), 5_000, "internalNotes", errors), issueDate, items, publicNotes: bounded(stringValue(source, "publicNotes"), 5_000, "publicNotes", errors), reference: bounded(stringValue(source, "reference"), 200, "reference", errors), seller, subject: bounded(stringValue(source, "subject"), 200, "subject", errors), validUntil, validityDays, withholdingTaxRate };
   if (Object.keys(errors).length) throw new QuotationValidationError(errors);
   let calculation: QuotationCalculation;
   try { calculation = calculateQuotation(payload); } catch (error) {
     const message = error instanceof Error ? error.message : "ไม่สามารถคำนวณใบเสนอราคาได้";
-    const field = message.startsWith("Document") ? "documentDiscountValue" : /Quantity|Unit price|VAT|item/.test(message) ? "items" : "_form";
+    const discountItem = /Discount cannot exceed item gross for item (\d+)/.exec(message);
+    const field = discountItem
+      ? `items.${Number(discountItem[1]) - 1}.discountAmount`
+      : /Quantity|Unit price|VAT|item/.test(message)
+        ? "items"
+        : "_form";
     throw new QuotationValidationError({ [field]: message });
   }
-  return { amountInWords: formatThaiBahtText(calculation.amountDue), calculation, payload, rpcPayload: { currency: "THB", customer_snapshot: customer, document_discount_type: payload.documentDiscountType, document_discount_value: payload.documentDiscountValue, id, internal_notes: payload.internalNotes, issue_date: issueDate, items: calculation.lines.map((line) => ({ description: line.description, discount_amount: line.discountAmount, discount_type: line.discountType, discount_value: line.discountValue, document_discount_allocation: line.documentDiscountAllocation, gross_amount: line.grossAmount, id: line.id, line_total: line.lineTotal, name: line.name, position: line.position, quantity: line.quantity, sku: "", taxable_amount: line.taxableAmount, unit: line.unit || null, unit_price: line.unitPrice, vat_amount: line.vatAmount, vat_rate: line.vatRate, vat_treatment: line.vatTreatment })), price_mode: payload.priceMode, public_notes: payload.publicNotes, reference: payload.reference, seller_snapshot: seller, subject: payload.subject, totals: { amountDue: calculation.amountDue, documentDiscountTotal: calculation.documentDiscountTotal, grandTotal: calculation.grandTotal, itemDiscountTotal: calculation.itemDiscountTotal, subtotal: calculation.subtotal, taxableTotal: calculation.taxableTotal, vatTotal: calculation.vatTotal, withholdingTaxTotal: calculation.withholdingTaxTotal }, valid_until: validUntil, validity_days: validityDays ? Number(validityDays) : null, withholding_tax_rate: payload.withholdingTaxRate } };
+  return { amountInWords: formatThaiBahtText(calculation.amountDue), calculation, payload, rpcPayload: { customer_snapshot: customer, id, internal_notes: payload.internalNotes, issue_date: issueDate, items: calculation.lines.map((line) => ({ description: line.description, discount_amount: line.discountAmount, name: line.name, position: line.position, quantity: line.quantity, unit: line.unit || null, unit_price: line.unitPrice, vat_rate: line.vatRate, vat_treatment: line.vatTreatment })), public_notes: payload.publicNotes, reference: payload.reference, seller_snapshot: seller, subject: payload.subject, totals: { amountDue: calculation.amountDue, discountTotal: calculation.discountTotal, grandTotal: calculation.grandTotal, grossTotal: calculation.grossTotal, preTaxTotal: calculation.preTaxTotal, vatTotal: calculation.vatTotal, withholdingTaxTotal: calculation.withholdingTaxTotal }, valid_until: validUntil, validity_days: validityDays ? Number(validityDays) : null, withholding_tax_rate: payload.withholdingTaxRate } };
 }

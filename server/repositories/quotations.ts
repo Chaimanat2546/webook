@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { DiscountType, VatTreatment } from "../../lib/quotation-calculator.ts";
+import type { VatTreatment } from "../../lib/quotation-calculator.ts";
 import type {
   CustomerSnapshot,
   QuotationPayload,
@@ -52,24 +52,22 @@ export interface SavedQuotation {
 }
 
 const quotationSelect = `
-  id,document_number,issue_date,valid_until,validity_days,reference,subject,currency,price_mode,
-  seller_snapshot,customer_snapshot,document_discount_type,document_discount_value,public_token,withholding_tax_rate,
+  id,document_number,issue_date,valid_until,validity_days,reference,subject,
+  seller_snapshot,customer_snapshot,public_token,withholding_tax_rate,
   public_notes,internal_notes,
   quotation_items(
-    id,position,sku,name,description,quantity,unit,unit_price,discount_type,
-    discount_value,vat_treatment,vat_rate
+    id,position,name,description,quantity,unit,unit_price,
+    discount_amount,vat_treatment,vat_rate
   )
 `;
 
 type DatabaseQuotationItem = {
   description: unknown;
-  discount_type: unknown;
-  discount_value: unknown;
+  discount_amount: unknown;
   id: unknown;
   name: unknown;
   position: unknown;
   quantity: unknown;
-  sku: unknown;
   unit: unknown;
   unit_price: unknown;
   vat_rate: unknown;
@@ -77,14 +75,10 @@ type DatabaseQuotationItem = {
 };
 
 type DatabaseQuotationRow = {
-  currency: unknown;
   customer_snapshot: unknown;
-  document_discount_type: unknown;
-  document_discount_value: unknown;
   id: unknown;
   internal_notes: unknown;
   issue_date: unknown;
-  price_mode: unknown;
   public_notes: unknown;
   public_token: unknown;
   quotation_items: DatabaseQuotationItem[] | null;
@@ -114,12 +108,8 @@ function officeType(value: unknown): "branch" | "head_office" {
   return value === "branch" ? "branch" : "head_office";
 }
 
-function discountType(value: unknown): DiscountType {
-  return value === "amount" || value === "percent" ? value : null;
-}
-
 function vatTreatment(value: unknown): VatTreatment {
-  return value === "exempt" || value === "none" ? value : "taxable";
+  return value === "taxable" || value === "exempt" ? value : "none";
 }
 
 export function companyProfileToSeller(row: QuotationCompanyProfileRow): SellerSnapshot {
@@ -169,21 +159,15 @@ function customerSnapshot(value: unknown): CustomerSnapshot {
 }
 
 export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPayload {
-  if (row.currency !== "THB") throw new Error("Unsupported quotation currency");
-
   return {
-    currency: "THB",
     customer: customerSnapshot(row.customer_snapshot),
-    documentDiscountType: discountType(row.document_discount_type),
-    documentDiscountValue: stringValue(row.document_discount_value),
     id: stringValue(row.id),
     internalNotes: stringValue(row.internal_notes),
     issueDate: stringValue(row.issue_date),
     items: (row.quotation_items ?? [])
       .map((item) => ({
         description: stringValue(item.description),
-        discountType: discountType(item.discount_type),
-        discountValue: stringValue(item.discount_value),
+        discountAmount: stringValue(item.discount_amount),
         id: stringValue(item.id),
         name: stringValue(item.name),
         position: Number(item.position),
@@ -194,7 +178,6 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
         vatTreatment: vatTreatment(item.vat_treatment),
       }))
       .sort((left, right) => left.position - right.position),
-    priceMode: row.price_mode === "vat_inclusive" ? "vat_inclusive" : "vat_exclusive",
     publicNotes: stringValue(row.public_notes),
     reference: stringValue(row.reference),
     seller: sellerSnapshot(row.seller_snapshot),

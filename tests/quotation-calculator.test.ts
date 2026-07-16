@@ -7,14 +7,13 @@ import {
   type QuotationCalculationInput,
 } from "../lib/quotation-calculator.ts";
 
-function baseInput(overrides: Partial<QuotationCalculationInput> = {}): QuotationCalculationInput {
+function baseInput(
+  overrides: Partial<QuotationCalculationInput> = {},
+): QuotationCalculationInput {
   return {
-    documentDiscountType: null,
-    documentDiscountValue: "0",
     items: [{
       description: "",
-      discountType: null,
-      discountValue: "0",
+      discountAmount: "500.00",
       id: "123e4567-e89b-42d3-a456-426614174000",
       name: "บริการ",
       position: 1,
@@ -24,64 +23,49 @@ function baseInput(overrides: Partial<QuotationCalculationInput> = {}): Quotatio
       vatRate: "7.00",
       vatTreatment: "taxable",
     }],
-    priceMode: "vat_exclusive",
     withholdingTaxRate: null,
     ...overrides,
   };
 }
 
 describe("quotation calculator", () => {
-  it("calculates VAT-exclusive item totals", () => {
+  it("calculates fixed item discount, pre-tax value, VAT, and grand total", () => {
     const result = calculateQuotation(baseInput());
-    assert.equal(result.subtotal, "20000.00");
-    assert.equal(result.taxableTotal, "20000.00");
-    assert.equal(result.vatTotal, "1400.00");
-    assert.equal(result.grandTotal, "21400.00");
+    assert.equal(result.lines[0]!.grossAmount, "20000.00");
+    assert.equal(result.lines[0]!.preTaxAmount, "19500.00");
+    assert.equal(result.lines[0]!.vatAmount, "1365.00");
+    assert.equal(result.lines[0]!.lineTotal, "20865.00");
+    assert.equal(result.grossTotal, "20000.00");
+    assert.equal(result.discountTotal, "500.00");
+    assert.equal(result.preTaxTotal, "19500.00");
+    assert.equal(result.vatTotal, "1365.00");
+    assert.equal(result.grandTotal, "20865.00");
   });
 
-  it("extracts VAT from VAT-inclusive prices", () => {
-    const result = calculateQuotation(baseInput({
-      items: [{ ...baseInput().items[0], quantity: "1", unitPrice: "10700.00" }],
-      priceMode: "vat_inclusive",
-    }));
-    assert.equal(result.taxableTotal, "10000.00");
-    assert.equal(result.vatTotal, "700.00");
-    assert.equal(result.grandTotal, "10700.00");
+  it("calculates withholding from the pre-tax total", () => {
+    const result = calculateQuotation(baseInput({ withholdingTaxRate: "3.00" }));
+    assert.equal(result.withholdingTaxTotal, "585.00");
+    assert.equal(result.amountDue, "20280.00");
   });
 
-  it("supports item and document percent discounts", () => {
+  it("keeps exempt and no-VAT items at zero VAT", () => {
     const result = calculateQuotation(baseInput({
-      documentDiscountType: "percent",
-      documentDiscountValue: "10",
-      items: [{ ...baseInput().items[0], discountType: "percent", discountValue: "10" }],
+      items: [
+        { ...baseInput().items[0]!, id: "exempt", vatRate: "0", vatTreatment: "exempt" },
+        { ...baseInput().items[0]!, id: "none", vatRate: "0", vatTreatment: "none" },
+      ],
     }));
-    assert.equal(result.itemDiscountTotal, "2000.00");
-    assert.equal(result.documentDiscountTotal, "1800.00");
-    assert.equal(result.taxableTotal, "16200.00");
-    assert.equal(result.vatTotal, "1134.00");
-    assert.equal(result.grandTotal, "17334.00");
+    assert.equal(result.vatTotal, "0.00");
+    assert.deepEqual(result.lines.map((line) => line.preTaxAmount), ["19500.00", "19500.00"]);
   });
 
-  it("keeps line totals before VAT and calculates withholding after discounts", () => {
-    const result = calculateQuotation(baseInput({
-      documentDiscountType: "percent",
-      documentDiscountValue: "10",
-      items: [{
-        ...baseInput().items[0],
-        discountType: "percent",
-        discountValue: "10",
-      }],
-      withholdingTaxRate: "3.00",
-    }));
-
-    assert.equal(result.lines[0]!.netAmount, "18000.00");
-    assert.equal(result.netSubtotal, "18000.00");
-    assert.equal(result.documentDiscountTotal, "1800.00");
-    assert.equal(result.taxableTotal, "16200.00");
-    assert.equal(result.vatTotal, "1134.00");
-    assert.equal(result.grandTotal, "17334.00");
-    assert.equal(result.withholdingTaxTotal, "486.00");
-    assert.equal(result.amountDue, "16848.00");
+  it("rejects a fixed discount above the item gross", () => {
+    assert.throws(
+      () => calculateQuotation(baseInput({
+        items: [{ ...baseInput().items[0]!, discountAmount: "20000.01" }],
+      })),
+      /Discount cannot exceed item gross/,
+    );
   });
 
   it("ignores withholding when its rate is null", () => {
@@ -90,96 +74,25 @@ describe("quotation calculator", () => {
     assert.equal(result.amountDue, result.grandTotal);
   });
 
-  it("supports fixed item and document discounts", () => {
-    const result = calculateQuotation(baseInput({
-      documentDiscountType: "amount",
-      documentDiscountValue: "500.00",
-      items: [{ ...baseInput().items[0], discountType: "amount", discountValue: "500.00" }],
-    }));
-    assert.equal(result.itemDiscountTotal, "500.00");
-    assert.equal(result.documentDiscountTotal, "500.00");
-    assert.equal(result.taxableTotal, "19000.00");
-    assert.equal(result.vatTotal, "1330.00");
-    assert.equal(result.grandTotal, "20330.00");
-  });
-
-  it("allocates a fixed discount without losing a satang", () => {
-    const result = calculateQuotation(baseInput({
-      documentDiscountType: "amount",
-      documentDiscountValue: "0.01",
-      items: ["a", "b", "c"].map((id, index) => ({
-        ...baseInput().items[0], id, position: index + 1, quantity: "1", unitPrice: "1.00",
-      })),
-    }));
-    assert.deepEqual(
-      result.lines.map((line) => line.documentDiscountAllocation),
-      ["0.01", "0.00", "0.00"],
-    );
-    assert.equal(result.documentDiscountTotal, "0.01");
-  });
-
   it("rounds a half-satang quantity-price product up", () => {
     const result = calculateQuotation(baseInput({
-      items: [{ ...baseInput().items[0], quantity: "0.001", unitPrice: "5.00" }],
+      items: [{ ...baseInput().items[0]!, discountAmount: "0", quantity: "0.001", unitPrice: "5.00" }],
     }));
-    assert.equal(result.subtotal, "0.01");
+    assert.equal(result.grossTotal, "0.01");
   });
 
-  it("rounds a half-satang percent discount up", () => {
+  it("rounds half-satang VAT at the exclusive boundary", () => {
     const result = calculateQuotation(baseInput({
-      documentDiscountType: "percent",
-      documentDiscountValue: "50.00",
-      items: [{ ...baseInput().items[0], quantity: "1", unitPrice: "0.01" }],
+      items: [{ ...baseInput().items[0]!, discountAmount: "0", quantity: "1", unitPrice: "0.01", vatRate: "50.00" }],
     }));
-    assert.equal(result.documentDiscountTotal, "0.01");
+    assert.equal(result.vatTotal, "0.01");
   });
 
-  it("rounds half-satang VAT at the exclusive and inclusive boundaries", () => {
-    const exclusive = calculateQuotation(baseInput({
-      items: [{ ...baseInput().items[0], quantity: "1", unitPrice: "0.01", vatRate: "50.00" }],
-    }));
-    const inclusive = calculateQuotation(baseInput({
-      items: [{ ...baseInput().items[0], quantity: "1", unitPrice: "0.01", vatRate: "100.00" }],
-      priceMode: "vat_inclusive",
-    }));
-    assert.equal(exclusive.vatTotal, "0.01");
-    assert.equal(inclusive.taxableTotal, "0.01");
-    assert.equal(inclusive.vatTotal, "0.00");
-  });
-
-  it("distinguishes zero-rated, exempt, and no-VAT lines", () => {
-    const result = calculateQuotation(baseInput({
-      items: [
-        { ...baseInput().items[0], id: "zero", position: 1, vatRate: "0.00" },
-        { ...baseInput().items[0], id: "exempt", position: 2, vatRate: "0.00", vatTreatment: "exempt" },
-        { ...baseInput().items[0], id: "none", position: 3, vatRate: "0.00", vatTreatment: "none" },
-      ],
-    }));
-    assert.equal(result.vatTotal, "0.00");
-    assert.deepEqual(result.lines.map((line) => line.vatTreatment), ["taxable", "exempt", "none"]);
-    assert.deepEqual(result.vatSummary.map((row) => `${row.vatTreatment}:${row.vatRate}`), [
-      "taxable:0.00", "exempt:0.00", "none:0.00",
-    ]);
-  });
-
-  it("summarizes mixed VAT rates separately", () => {
-    const result = calculateQuotation(baseInput({
-      items: [
-        { ...baseInput().items[0], id: "seven", position: 1, quantity: "1", unitPrice: "100.00" },
-        { ...baseInput().items[0], id: "zero", position: 2, quantity: "1", unitPrice: "200.00", vatRate: "0.00" },
-      ],
-    }));
-    assert.deepEqual(result.vatSummary, [
-      { taxableAmount: "100.00", vatAmount: "7.00", vatRate: "7.00", vatTreatment: "taxable" },
-      { taxableAmount: "200.00", vatAmount: "0.00", vatRate: "0.00", vatTreatment: "taxable" },
-    ]);
-  });
-
-  it("rejects invalid money and discounts", () => {
-    assert.throws(() => calculateQuotation(baseInput({ items: [{ ...baseInput().items[0], quantity: "0" }] })), /Quantity must be greater than zero/);
-    assert.throws(() => calculateQuotation(baseInput({ items: [{
-      ...baseInput().items[0], discountType: "amount", discountValue: "30000",
-    }] })), /Discount cannot exceed item gross/);
+  it("rejects invalid numeric values", () => {
+    assert.throws(
+      () => calculateQuotation(baseInput({ items: [{ ...baseInput().items[0]!, quantity: "0" }] })),
+      /Quantity must be greater than zero/,
+    );
   });
 
   it("formats Thai baht text", () => {
