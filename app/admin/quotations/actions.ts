@@ -27,7 +27,7 @@ import {
 } from "../../../server/storage/quotation-assets";
 
 export type QuotationActionResult =
-  | { documentNumber: string; id: string; ok: true }
+  | { documentNumber: string; id: string; ok: true; publicToken: string }
   | { fieldErrors: Record<string, string>; formError: string; ok: false };
 
 export type CompanyProfileActionResult =
@@ -67,6 +67,7 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
     const saved = await saveQuotation(supabase, prepared.rpcPayload);
     revalidatePath("/admin/quotations");
     revalidatePath(`/admin/quotations/${encodeURIComponent(saved.id)}`);
+    revalidatePath(`/q/${encodeURIComponent(saved.publicToken)}`);
     return { ...saved, ok: true };
   } catch (error) {
     if (error instanceof QuotationValidationError) {

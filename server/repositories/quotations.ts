@@ -48,11 +48,12 @@ export interface QuotationListResult {
 export interface SavedQuotation {
   documentNumber: string;
   id: string;
+  publicToken: string;
 }
 
 const quotationSelect = `
   id,document_number,issue_date,valid_until,validity_days,reference,subject,currency,price_mode,
-  seller_snapshot,customer_snapshot,document_discount_type,document_discount_value,
+  seller_snapshot,customer_snapshot,document_discount_type,document_discount_value,public_token,withholding_tax_rate,
   public_notes,internal_notes,
   quotation_items(
     id,position,sku,name,description,quantity,unit,unit_price,discount_type,
@@ -85,12 +86,14 @@ type DatabaseQuotationRow = {
   issue_date: unknown;
   price_mode: unknown;
   public_notes: unknown;
+  public_token: unknown;
   quotation_items: DatabaseQuotationItem[] | null;
   reference: unknown;
   seller_snapshot: unknown;
   subject: unknown;
   valid_until: unknown;
   validity_days: unknown;
+  withholding_tax_rate: unknown;
 };
 
 function stringValue(value: unknown): string {
@@ -198,7 +201,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
     subject: stringValue(row.subject),
     validUntil: stringValue(row.valid_until),
     validityDays: row.validity_days == null ? "" : stringValue(row.validity_days),
-    withholdingTaxRate: null,
+    withholdingTaxRate: row.withholding_tax_rate == null ? null : stringValue(row.withholding_tax_rate),
   };
 }
 
@@ -269,7 +272,7 @@ export async function listQuotations(
 export async function getQuotationById(
   supabase: SupabaseClient,
   id: string,
-): Promise<{ documentNumber: string; payload: QuotationPayload } | null> {
+): Promise<{ documentNumber: string; payload: QuotationPayload; publicToken: string } | null> {
   const { data, error } = await supabase
     .from("quotations")
     .select(quotationSelect)
@@ -279,7 +282,27 @@ export async function getQuotationById(
   if (error) throw new Error(error.message);
   if (!data) return null;
   const row = data as DatabaseQuotationRow & { document_number: unknown };
-  return { documentNumber: stringValue(row.document_number), payload: quotationRowToPayload(row) };
+  return {
+    documentNumber: stringValue(row.document_number),
+    payload: quotationRowToPayload(row),
+    publicToken: stringValue(row.public_token),
+  };
+}
+
+export async function getPublicQuotationByToken(
+  supabase: SupabaseClient,
+  token: string,
+): Promise<{ documentNumber: string; payload: QuotationPayload } | null> {
+  const { data, error } = await supabase.rpc("get_public_quotation", {
+    p_token: token,
+  });
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const row = data as DatabaseQuotationRow & { document_number: unknown };
+  return {
+    documentNumber: stringValue(row.document_number),
+    payload: quotationRowToPayload({ ...row, internal_notes: "" }),
+  };
 }
 
 export async function saveQuotation(
@@ -290,7 +313,16 @@ export async function saveQuotation(
   if (error) throw new Error(error.message);
   const row = (data as Array<{ document_number: string; id: string }> | null)?.[0];
   if (!row) throw new Error("Quotation save returned no row");
-  return { documentNumber: row.document_number, id: row.id };
+  const { data: saved, error: tokenError } = await supabase
+    .from("quotations")
+    .select("public_token")
+    .eq("id", row.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (tokenError) throw new Error(tokenError.message);
+  const publicToken = stringValue((saved as { public_token?: unknown } | null)?.public_token);
+  if (!publicToken) throw new Error("Quotation save returned no public token");
+  return { documentNumber: row.document_number, id: row.id, publicToken };
 }
 
 export async function softDeleteQuotation(supabase: SupabaseClient, id: string) {

@@ -16,6 +16,13 @@ const refinementSql = readFileSync(
   new URL(`../supabase/migrations/${refinementName}`, import.meta.url),
   "utf8",
 );
+const workbenchName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_workbench_totals_public_share.sql"));
+assert.ok(workbenchName, "quotation workbench migration must be created by the Supabase CLI");
+const workbenchSql = readFileSync(
+  new URL(`../supabase/migrations/${workbenchName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
   it("creates the MVP 1 tables without later-MVP scope", () => {
@@ -55,5 +62,22 @@ describe("quotation migration", () => {
     assert.match(refinementSql, /alter table public\.quotation_items\s+alter column unit drop not null/i);
     assert.doesNotMatch(refinementSql, /alter column quantity drop not null/i);
     assert.doesNotMatch(refinementSql, /drop column subject/i);
+  });
+
+  it("persists public totals and exposes only a token-scoped public read", () => {
+    assert.match(workbenchSql, /public_token uuid not null default gen_random_uuid\(\)/i);
+    assert.match(workbenchSql, /withholding_tax_rate numeric\(5,2\)/i);
+    assert.match(workbenchSql, /withholding_tax_total numeric\(14,2\)/i);
+    assert.match(workbenchSql, /amount_due numeric\(14,2\)/i);
+    assert.match(workbenchSql, /customer_snapshot\s*=\s*customer_snapshot\s*-\s*array\[/i);
+    assert.match(workbenchSql, /private\.get_public_quotation/i);
+    assert.match(workbenchSql, /public\.get_public_quotation/i);
+    assert.match(workbenchSql, /grant execute on function public\.get_public_quotation\(uuid\) to anon, authenticated/i);
+    assert.doesNotMatch(workbenchSql, /grant select on (?:public\.)?(?:quotations|quotation_items) to anon/i);
+    const publicReadSql = workbenchSql.slice(
+      workbenchSql.indexOf("create or replace function private.get_public_quotation"),
+      workbenchSql.indexOf("create or replace function public.get_public_quotation"),
+    );
+    assert.doesNotMatch(publicReadSql, /internal_notes/i);
   });
 });

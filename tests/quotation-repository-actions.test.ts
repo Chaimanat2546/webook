@@ -19,6 +19,13 @@ describe("quotation repository and actions", () => {
     assert.doesNotMatch(repository, /\.from\("quotation_items"\)\.insert/);
   });
 
+  it("loads public quotations only through the token RPC", () => {
+    assert.match(repository, /\.rpc\("get_public_quotation"/);
+    assert.match(repository, /publicToken/);
+    assert.match(repository, /public_token/);
+    assert.doesNotMatch(repository, /serviceRole/i);
+  });
+
   it("checks the quotation permission before every action mutation", () => {
     assert.match(actions, /canUseQuotation\(adminUser\)/);
     assert.match(actions, /prepareQuotationPayload\(value\)/);

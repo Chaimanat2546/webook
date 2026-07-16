@@ -15,7 +15,7 @@ const otherDate = new Date(
 const seller = { name: "Seller", address: "Seller address", taxId: "0100000000000" };
 
 function payload(id: string | null, date = issueDate, sellerSnapshot = seller, unit: string | null = "งาน") {
-  return { id, currency: "THB", customer_snapshot: { name: "Customer", address: "Customer address" }, document_discount_type: null, document_discount_value: "0.00", internal_notes: "", issue_date: date, items: [{ position: 1, sku: "", name: "Item", description: "", quantity: "1.000", unit, unit_price: "100.00", discount_type: null, discount_value: "0.00", gross_amount: "100.00", discount_amount: "0.00", document_discount_allocation: "0.00", vat_treatment: "taxable", vat_rate: "7.00", taxable_amount: "100.00", vat_amount: "7.00", line_total: "107.00" }], price_mode: "vat_exclusive", public_notes: "", reference: "", seller_snapshot: sellerSnapshot, subject: "", totals: { subtotal: "100.00", itemDiscountTotal: "0.00", documentDiscountTotal: "0.00", taxableTotal: "100.00", vatTotal: "7.00", grandTotal: "107.00" }, valid_until: date, validity_days: 0 };
+  return { id, currency: "THB", customer_snapshot: { name: "Customer", address: "Customer address" }, document_discount_type: null, document_discount_value: "0.00", internal_notes: "", issue_date: date, items: [{ position: 1, sku: "", name: "Item", description: "", quantity: "1.000", unit, unit_price: "100.00", discount_type: null, discount_value: "0.00", gross_amount: "100.00", discount_amount: "0.00", document_discount_allocation: "0.00", vat_treatment: "taxable", vat_rate: "7.00", taxable_amount: "100.00", vat_amount: "7.00", line_total: "107.00" }], price_mode: "vat_exclusive", public_notes: "", reference: "", seller_snapshot: sellerSnapshot, subject: "", totals: { subtotal: "100.00", itemDiscountTotal: "0.00", documentDiscountTotal: "0.00", taxableTotal: "100.00", vatTotal: "7.00", grandTotal: "107.00", withholdingTaxTotal: "3.00", amountDue: "104.00" }, valid_until: date, validity_days: 0, withholding_tax_rate: "3.00" };
 }
 
 async function save(client: SupabaseClient, value: ReturnType<typeof payload>) {
@@ -30,6 +30,7 @@ describe("quotation local database integration", { skip: !enabled }, () => {
   const service = createClient(url || "http://127.0.0.1:54321", serviceRoleKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   const allowed = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   const denied = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
+  const anonymous = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   let allowedId = "";
   let deniedId = "";
   let originalProfile: Record<string, unknown> | null = null;
@@ -98,5 +99,42 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal(item.error, null, item.error?.message);
     assert.equal(item.data.quantity, 1);
     assert.equal(item.data.unit, null);
+  });
+
+  it("persists withholding and exposes only saved public data", async () => {
+    const created = await save(allowed, payload(null));
+    const stored = await allowed
+      .from("quotations")
+      .select("public_token,withholding_tax_rate,withholding_tax_total,amount_due")
+      .eq("id", created.id)
+      .single();
+    assert.equal(stored.error, null, stored.error?.message);
+    assert.equal(stored.data.withholding_tax_rate, 3);
+    assert.equal(stored.data.withholding_tax_total, 3);
+    assert.equal(stored.data.amount_due, 104);
+
+    const publicRead = await anonymous.rpc("get_public_quotation", {
+      p_token: stored.data.public_token,
+    });
+    assert.equal(publicRead.error, null, publicRead.error?.message);
+    assert.equal(publicRead.data.document_number, created.document_number);
+    assert.equal("internal_notes" in publicRead.data, false);
+    assert.deepEqual(Object.keys(publicRead.data.customer_snapshot).sort(), [
+      "address", "branchNumber", "name", "officeType", "taxId",
+    ]);
+
+    const updated = payload(created.id);
+    updated.reference = "LATEST-SAVED";
+    await save(allowed, updated);
+    const latest = await anonymous.rpc("get_public_quotation", {
+      p_token: stored.data.public_token,
+    });
+    assert.equal(latest.data.reference, "LATEST-SAVED");
+
+    await allowed.rpc("soft_delete_quotation", { p_id: created.id });
+    const deleted = await anonymous.rpc("get_public_quotation", {
+      p_token: stored.data.public_token,
+    });
+    assert.equal(deleted.data, null);
   });
 });
