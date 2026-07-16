@@ -75,15 +75,11 @@ describe("quotation UI", () => {
     assert.match(editor, /data-seller-strip/);
     assert.match(editor, /data-customer-section/);
     assert.match(editor, /data-document-section/);
-    assert.match(editor, /data-item-ledger/);
-    assert.match(editor, /data-item-cards/);
+    assert.match(editor, /data-sortable-items/);
     assert.match(editor, /data-quotation-totals/);
-    assert.match(editor, /xl:hidden/);
-    assert.match(editor, /hidden[^\"]*xl:block/);
     assert.doesNotMatch(editor, /quotation-paper|min-h-\[297mm\]|w-\[210mm\]/);
-    assert.doesNotMatch(editor, /field="subject"|data-field="subject"/);
+    assert.match(editor, /field="subject"[\s\S]*label="เรื่อง \/ ชื่องาน"/);
     assert.ok(editor.indexOf("data-document-section") < editor.indexOf('field="reference"'));
-    assert.ok(editor.indexOf('field="priceMode"') < editor.indexOf("data-item-ledger"));
     assert.match(editor, /data-field="issueDate"/);
     assert.match(editor, /data-field=\{`items\./);
     assert.match(editor, /documentDiscountValue/);
@@ -101,8 +97,8 @@ describe("quotation UI", () => {
 
   it("composes the approved document workbench shell and semantic field sizes", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /type FieldSize = "fluid" \| "compact" \| "date" \| "identifier" \| "person" \| "name" \| "address" \| "contact"/);
-    for (const value of ["max-w-28", "max-w-40", "max-w-64", "max-w-72", "max-w-md", "max-w-[40rem]", "max-w-[22rem]"]) {
+    assert.match(editor, /type FieldSize = "fluid" \| "compact" \| "date" \| "identifier" \| "money" \| "name" \| "address"/);
+    for (const value of ["max-w-28", "max-w-40", "max-w-56", "max-w-32", "max-w-96", "max-w-[36rem]"]) {
       assert.match(editor, new RegExp(value.replace("[", "\\[").replace("]", "\\]")));
     }
     assert.match(editor, /data-workbench-command-bar/);
@@ -128,7 +124,6 @@ describe("quotation UI", () => {
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="customer\.officeType"/);
     assert.match(editor, /className=\{selectClassName\} data-field="seller\.officeType"/);
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="documentDiscountType"/);
-    assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="priceMode"/);
   });
 
   it("marks every editable native error control as invalid", () => {
@@ -140,7 +135,6 @@ describe("quotation UI", () => {
       ["customer\\.officeType", 'fieldErrors\\["customer\\.officeType"\\]'],
       ["issueDate", "fieldErrors\\.issueDate"],
       ["validUntil", "fieldErrors\\.validUntil"],
-      ["priceMode", "fieldErrors\\.priceMode"],
       ["publicNotes", "fieldErrors\\.publicNotes"],
       ["internalNotes", "fieldErrors\\.internalNotes"],
       ["documentDiscountType", "fieldErrors\\.documentDiscountType"],
@@ -153,18 +147,22 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /const selectClassName = "[^"]*appearance-none/);
   });
 
-  it("uses the approved fixed ledger and responsive item cards", () => {
+  it("uses compact metadata and one sortable responsive item ledger", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /function ItemActionMenu/);
-    assert.match(editor, /data-item-ledger[^>]*hidden[^>]*xl:block/);
-    assert.match(editor, /min-w-\[62\.5rem\][^\"]*table-fixed/);
-    assert.match(editor, /<colgroup>/);
-    for (const width of ["w-10", "w-20", "w-[7.5rem]", "w-36", "w-[8.5rem]"]) {
-      assert.match(editor, new RegExp(width.replace("[", "\\[").replace("]", "\\]")));
-    }
-    assert.match(editor, /data-item-cards[^>]*xl:hidden/);
+    assert.doesNotMatch(editor, /customer\.contactName|customer\.phone|customer\.email/);
+    assert.doesNotMatch(editor, /field="currency"|data-field="currency"|THB — บาท/);
+    assert.doesNotMatch(editor, /field="priceMode"|data-field="priceMode"/);
+    assert.match(editor, /DragDropProvider/);
+    assert.match(editor, /useSortable/);
+    assert.match(editor, /handleRef/);
+    assert.match(editor, /move\(current\.items, event\)/);
+    assert.match(editor, /aria-label=\{`ลากเพื่อจัดลำดับรายการ/);
+    assert.doesNotMatch(editor, /ItemActionMenu|ArrowUp|ArrowDown|เลื่อนขึ้น|เลื่อนลง/);
+    assert.match(editor, /data-sortable-item/);
+    assert.equal(editor.match(/data-item-details/g)?.length, 1);
+    assert.ok(editor.indexOf("data-sortable-items") < editor.indexOf("เพิ่มรายการ"));
+    assert.match(editor, /calculation\?\.lines\[index\]\?\.netAmount/);
     assert.match(editor, /data-item-detail-grid[^>]*grid-cols-2[^>]*sm:grid-cols-3[^>]*lg:grid-cols-5/);
-    assert.doesNotMatch(editor, /data-item-actions/);
   });
 
   it("finishes the workbench with ruled notes and aligned totals", () => {
@@ -213,23 +211,20 @@ describe("quotation UI", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     for (const field of [
       "seller.email", "seller.website", "customer.taxId",
-      "priceMode", "documentDiscountType",
+      "documentDiscountType",
     ]) assert.ok(editor.includes(`fieldErrors[\"${field}\"]`) || editor.includes(`fieldErrors.${field}`));
     assert.match(editor, /const error = \(field: string\) => errors\[`items\.\$\{index\}\.\$\{field\}`\]/);
     assert.ok(editor.indexOf('data-field="seller.officeType"') < editor.indexOf("data-customer-section"));
-    assert.ok(editor.indexOf('data-field="customer.officeType"') < editor.indexOf("data-item-ledger"));
+    assert.ok(editor.indexOf('data-field="customer.officeType"') < editor.indexOf("data-sortable-items"));
   });
 
-  it("keeps desktop item inputs in their matching table columns", () => {
+  it("keeps each item control in the one responsive sortable item", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     for (const control of ["ItemQuantityControl", "ItemUnitControl", "ItemPriceControls", "ItemDiscountControls", "ItemVatControls"]) {
       assert.match(editor, new RegExp(`<${control}`));
     }
-    assert.match(editor, /<td className="p-2"><ItemQuantityControl/);
-    assert.match(editor, /<td className="p-2"><ItemUnitControl/);
-    assert.match(editor, /<td className="p-2"><ItemPriceControls/);
-    assert.match(editor, /<td className="p-2"><ItemDiscountControls/);
-    assert.match(editor, /<td className="p-2"><ItemVatControls/);
+    assert.match(editor, /function SortableQuotationItem/);
+    assert.doesNotMatch(editor, /<td className="p-2"><Item/);
   });
 
   it("surfaces optional item unit validation errors", () => {

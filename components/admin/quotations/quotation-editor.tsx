@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, Download, Eye, MoreHorizontal, Printer, Save, Share2, Trash2, X } from "lucide-react";
+import { move } from "@dnd-kit/helpers";
+import { DragDropProvider } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { Download, Eye, GripVertical, MoreHorizontal, Printer, Save, Share2, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -20,18 +23,17 @@ import { QuotationDocument } from "./quotation-document";
 
 export interface QuotationEditorProps { documentNumber: string | null; initialPayload: QuotationPayload; printOnLoad?: boolean; }
 type FieldProps = { children: React.ReactNode; error?: string; field: string; label: string };
-type ItemProps = { calculation?: ReturnType<typeof calculateQuotation>; errors: Record<string, string>; index: number; item: QuotationItemInput; onMove: (direction: -1 | 1) => void; onRemove: () => void; onUpdate: <K extends keyof QuotationItemInput>(key: K, value: QuotationItemInput[K]) => void; totalItems: number };
-type FieldSize = "fluid" | "compact" | "date" | "identifier" | "person" | "name" | "address" | "contact";
+type ItemProps = { calculation?: ReturnType<typeof calculateQuotation>; errors: Record<string, string>; index: number; item: QuotationItemInput; onRemove: () => void; onUpdate: <K extends keyof QuotationItemInput>(key: K, value: QuotationItemInput[K]) => void; totalItems: number };
+type FieldSize = "fluid" | "compact" | "date" | "identifier" | "money" | "name" | "address";
 
 const fieldSizeClassNames = {
   fluid: "w-full",
   compact: "w-full sm:max-w-28",
   date: "w-full sm:max-w-40",
-  identifier: "w-full sm:max-w-64",
-  person: "w-full sm:max-w-72",
-  name: "w-full sm:max-w-md",
-  address: "w-full sm:max-w-[40rem]",
-  contact: "w-full sm:max-w-[22rem]",
+  identifier: "w-full sm:max-w-56",
+  money: "w-full sm:max-w-32",
+  name: "w-full sm:max-w-96",
+  address: "w-full sm:max-w-[36rem]",
 } satisfies Record<FieldSize, string>;
 
 const selectClassName = "h-8 rounded-lg border border-input bg-transparent px-2.5 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40";
@@ -47,17 +49,28 @@ function Totals({ bold, label, value }: { bold?: boolean; label: string; value: 
 function positions(items: QuotationItemInput[]) { return items.map((item, index) => ({ ...item, position: index + 1 })); }
 function DocumentMore({ deleteEnabled, isPending, onDelete, onPreview, onPrint, onSaveAndClose, printEnabled, showPreviewAndPrint }: { deleteEnabled: boolean; isPending: boolean; onDelete: () => void; onPreview: () => void; onPrint: () => void; onSaveAndClose: () => void; printEnabled: boolean; showPreviewAndPrint: boolean }) { return <DropdownMenu><DropdownMenuTrigger asChild><Button type="button" variant="outline"><MoreHorizontal aria-hidden="true" className="size-4" />เพิ่มเติม</Button></DropdownMenuTrigger><DropdownMenuContent align="end">{showPreviewAndPrint ? <><DropdownMenuItem onSelect={onPreview}><Eye aria-hidden="true" className="size-4" />ดูตัวอย่าง</DropdownMenuItem>{printEnabled ? <DropdownMenuItem onSelect={onPrint}><Printer aria-hidden="true" className="size-4" />พิมพ์</DropdownMenuItem> : <DropdownMenuItem disabled><Printer aria-hidden="true" className="size-4" />พิมพ์</DropdownMenuItem>}</> : null}<DropdownMenuItem disabled={isPending} onSelect={onSaveAndClose}><Save aria-hidden="true" className="size-4" />บันทึกและปิด</DropdownMenuItem><DropdownMenuItem disabled title="ยังไม่รองรับใน MVP นี้"><Share2 aria-hidden="true" className="size-4" />แชร์</DropdownMenuItem><DropdownMenuItem disabled title="ยังไม่รองรับใน MVP นี้"><Download aria-hidden="true" className="size-4" />ดาวน์โหลด</DropdownMenuItem>{deleteEnabled ? <DropdownMenuItem onSelect={onDelete} variant="destructive"><Trash2 aria-hidden="true" className="size-4" />ลบ</DropdownMenuItem> : null}</DropdownMenuContent></DropdownMenu>; }
 
-function ItemActionMenu({ index, onMove, onRemove, totalItems }: Pick<ItemProps, "index" | "onMove" | "onRemove" | "totalItems">) {
-  return <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button aria-label={`จัดการรายการ ${index + 1}`} size="icon-xs" type="button" variant="ghost"><MoreHorizontal aria-hidden="true" className="size-4" /></Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem disabled={index === 0} onSelect={() => onMove(-1)}><ArrowUp aria-hidden="true" className="size-4" />เลื่อนขึ้น</DropdownMenuItem>
-      <DropdownMenuItem disabled={index === totalItems - 1} onSelect={() => onMove(1)}><ArrowDown aria-hidden="true" className="size-4" />เลื่อนลง</DropdownMenuItem>
-      <DropdownMenuItem disabled={totalItems === 1} onSelect={onRemove} variant="destructive"><Trash2 aria-hidden="true" className="size-4" />ลบรายการ</DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>;
+function SortableQuotationItem(props: ItemProps) {
+  const { index, item, onRemove } = props;
+  const { handleRef, isDragging, ref } = useSortable({ group: "quotation-items", id: item.id, index });
+
+  return <article className={cn("rounded-md border p-3 xl:grid xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_9rem_8.5rem_2.5rem] xl:items-start xl:gap-2 xl:rounded-none xl:border-x-0 xl:border-t-0 xl:px-0 xl:py-2", isDragging && "opacity-60")} data-sortable-item ref={ref}>
+    <header className="mb-3 flex items-center justify-between xl:contents">
+      <div className="flex items-center gap-1 xl:col-start-1 xl:row-start-1">
+        <Button aria-label={`ลากเพื่อจัดลำดับรายการ ${index + 1}`} ref={handleRef} size="icon-xs" type="button" variant="ghost"><GripVertical aria-hidden="true" /></Button>
+        <span className="font-mono text-xs text-muted-foreground xl:sr-only">{index + 1}</span>
+      </div>
+      <Button aria-label={`ลบรายการ ${index + 1}`} className="xl:col-start-9 xl:row-start-1" disabled={props.totalItems === 1} onClick={onRemove} size="icon-xs" type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button>
+    </header>
+    <div className="xl:col-start-2 xl:row-start-1"><ItemDetailsControls {...props} /></div>
+    <div data-item-detail-grid className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:contents">
+      <div className="xl:col-start-3 xl:row-start-1"><ItemQuantityControl {...props} labelled /></div>
+      <div className="xl:col-start-4 xl:row-start-1"><ItemUnitControl {...props} labelled /></div>
+      <div className="xl:col-start-5 xl:row-start-1"><ItemPriceControls {...props} labelled /></div>
+      <div className="xl:col-start-6 xl:row-start-1"><ItemDiscountControls {...props} labelled /></div>
+      <div className="xl:col-start-7 xl:row-start-1"><ItemVatControls {...props} labelled /></div>
+    </div>
+    <p className="mt-3 border-t pt-2 text-right font-medium xl:col-start-8 xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2"><span className="xl:sr-only">รวม </span>{props.calculation?.lines[index]?.netAmount ?? "—"}</p>
+  </article>;
 }
 
 function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
@@ -72,9 +85,9 @@ function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
 
 function ItemQuantityControl({ errors, index, item, onUpdate, labelled }: Pick<ItemProps, "errors" | "index" | "item" | "onUpdate"> & { labelled?: boolean }) { return <Numeric error={errors[`items.${index}.quantity`]} field={`items.${index}.quantity`} label={labelled ? "จำนวน" : undefined} onChange={(value) => onUpdate("quantity", value)} size="compact" value={item.quantity} />; }
 function ItemUnitControl({ errors, index, item, onUpdate, labelled }: Pick<ItemProps, "errors" | "index" | "item" | "onUpdate"> & { labelled?: boolean }) { return <TextInput error={errors[`items.${index}.unit`]} field={`items.${index}.unit`} label={labelled ? "หน่วย" : undefined} onChange={(value) => onUpdate("unit", value)} size="compact" value={item.unit} />; }
-function ItemPriceControls({ errors, index, item, onUpdate, labelled }: Pick<ItemProps, "errors" | "index" | "item" | "onUpdate"> & { labelled?: boolean }) { return <Numeric error={errors[`items.${index}.unitPrice`]} field={`items.${index}.unitPrice`} label={labelled ? "ราคา" : undefined} onChange={(value) => onUpdate("unitPrice", value)} value={item.unitPrice} />; }
-function ItemDiscountControls({ errors, index, item, onUpdate, labelled }: Pick<ItemProps, "errors" | "index" | "item" | "onUpdate"> & { labelled?: boolean }) { const error = (field: string) => errors[`items.${index}.${field}`]; const select = <select aria-invalid={Boolean(error("discountType"))} aria-label={`items.${index}.discountType`} className={selectClassName} data-field={`items.${index}.discountType`} onChange={(event) => onUpdate("discountType", event.target.value === "amount" || event.target.value === "percent" ? event.target.value : null)} value={item.discountType ?? ""}><option value="">ไม่มี</option><option value="amount">บาท</option><option value="percent">%</option></select>; const typeControl = labelled ? <Field error={error("discountType")} field={`items.${index}.discountType`} label="ส่วนลด">{select}</Field> : <>{select}{error("discountType") ? <span className="text-xs text-destructive">{error("discountType")}</span> : null}</>; return <div className={labelled ? "grid grid-cols-2 gap-2" : "grid gap-1"}>{typeControl}<Numeric error={error("discountValue")} field={`items.${index}.discountValue`} label={labelled ? "มูลค่า" : undefined} onChange={(value) => onUpdate("discountValue", value)} value={item.discountValue} /></div>; }
-function ItemVatControls({ errors, index, item, onUpdate, labelled }: Pick<ItemProps, "errors" | "index" | "item" | "onUpdate"> & { labelled?: boolean }) { const error = (field: string) => errors[`items.${index}.${field}`]; const select = <select aria-invalid={Boolean(error("vatTreatment"))} aria-label={`items.${index}.vatTreatment`} className={selectClassName} data-field={`items.${index}.vatTreatment`} onChange={(event) => onUpdate("vatTreatment", event.target.value as QuotationItemInput["vatTreatment"])} value={item.vatTreatment}><option value="taxable">VAT</option><option value="exempt">ยกเว้น VAT</option><option value="none">ไม่คิด VAT</option></select>; const treatmentControl = labelled ? <Field error={error("vatTreatment")} field={`items.${index}.vatTreatment`} label="VAT">{select}</Field> : <>{select}{error("vatTreatment") ? <span className="text-xs text-destructive">{error("vatTreatment")}</span> : null}</>; return <div className={labelled ? "grid grid-cols-2 gap-2" : "grid gap-1"}>{treatmentControl}<Numeric error={error("vatRate")} field={`items.${index}.vatRate`} label={labelled ? "อัตรา" : undefined} onChange={(value) => onUpdate("vatRate", value)} value={item.vatRate} /></div>; }
+function ItemPriceControls({ errors, index, item, onUpdate, labelled }: Pick<ItemProps, "errors" | "index" | "item" | "onUpdate"> & { labelled?: boolean }) { return <Numeric error={errors[`items.${index}.unitPrice`]} field={`items.${index}.unitPrice`} label={labelled ? "ราคา" : undefined} onChange={(value) => onUpdate("unitPrice", value)} size="money" value={item.unitPrice} />; }
+function ItemDiscountControls({ errors, index, item, onUpdate, labelled }: Pick<ItemProps, "errors" | "index" | "item" | "onUpdate"> & { labelled?: boolean }) { const error = (field: string) => errors[`items.${index}.${field}`]; const select = <select aria-invalid={Boolean(error("discountType"))} aria-label={`items.${index}.discountType`} className={selectClassName} data-field={`items.${index}.discountType`} onChange={(event) => onUpdate("discountType", event.target.value === "amount" || event.target.value === "percent" ? event.target.value : null)} value={item.discountType ?? ""}><option value="">ไม่มี</option><option value="amount">บาท</option><option value="percent">%</option></select>; const typeControl = labelled ? <Field error={error("discountType")} field={`items.${index}.discountType`} label="ส่วนลด">{select}</Field> : <>{select}{error("discountType") ? <span className="text-xs text-destructive">{error("discountType")}</span> : null}</>; return <div className={labelled ? "grid grid-cols-2 gap-2" : "grid gap-1"}>{typeControl}<Numeric error={error("discountValue")} field={`items.${index}.discountValue`} label={labelled ? "มูลค่า" : undefined} onChange={(value) => onUpdate("discountValue", value)} size="money" value={item.discountValue} /></div>; }
+function ItemVatControls({ errors, index, item, onUpdate, labelled }: Pick<ItemProps, "errors" | "index" | "item" | "onUpdate"> & { labelled?: boolean }) { const error = (field: string) => errors[`items.${index}.${field}`]; const select = <select aria-invalid={Boolean(error("vatTreatment"))} aria-label={`items.${index}.vatTreatment`} className={selectClassName} data-field={`items.${index}.vatTreatment`} onChange={(event) => onUpdate("vatTreatment", event.target.value as QuotationItemInput["vatTreatment"])} value={item.vatTreatment}><option value="taxable">VAT</option><option value="exempt">ยกเว้น VAT</option><option value="none">ไม่คิด VAT</option></select>; const treatmentControl = labelled ? <Field error={error("vatTreatment")} field={`items.${index}.vatTreatment`} label="VAT">{select}</Field> : <>{select}{error("vatTreatment") ? <span className="text-xs text-destructive">{error("vatTreatment")}</span> : null}</>; return <div className={labelled ? "grid grid-cols-2 gap-2" : "grid gap-1"}>{treatmentControl}<Numeric error={error("vatRate")} field={`items.${index}.vatRate`} label={labelled ? "อัตรา" : undefined} onChange={(value) => onUpdate("vatRate", value)} size="money" value={item.vatRate} /></div>; }
 
 export function QuotationEditor({ documentNumber: initialDocumentNumber, initialPayload, printOnLoad = false }: QuotationEditorProps) {
   const router = useRouter();
@@ -104,7 +117,6 @@ export function QuotationEditor({ documentNumber: initialDocumentNumber, initial
   function updateItem<K extends keyof QuotationItemInput>(index: number, key: K, value: QuotationItemInput[K]) { changed(`items.${index}.${String(key)}`); setPayload((current) => ({ ...current, items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item) })); }
   function addItem() { changed("items"); setPayload((current) => ({ ...current, items: positions([...current.items, { description: "", discountType: null, discountValue: "0", id: crypto.randomUUID(), name: "", position: 0, quantity: "1", unit: "", unitPrice: "0.00", vatRate: "7.00", vatTreatment: "taxable" }]) })); }
   function removeItem(index: number) { if (payload.items.length > 1) { changed("items"); setPayload((current) => ({ ...current, items: positions(current.items.filter((_, itemIndex) => itemIndex !== index)) })); } }
-  function moveItem(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= payload.items.length) return; changed("items"); setPayload((current) => { const items = [...current.items]; [items[index], items[target]] = [items[target]!, items[index]!]; return { ...current, items: positions(items) }; }); }
   function recalculateValidUntil(issueDate: string, validityDays: string, validUntil: string) { try { return addQuotationCalendarDays(issueDate, Number(validityDays)); } catch { return validUntil; } }
   function updateIssueDate(value: string) { changed("issueDate"); setPayload((current) => ({ ...current, issueDate: value, validUntil: current.validityDays ? recalculateValidUntil(value, current.validityDays, current.validUntil) : current.validUntil })); }
   function updateValidityDays(value: string) { changed("validityDays"); setPayload((current) => ({ ...current, validityDays: value, validUntil: value ? recalculateValidUntil(current.issueDate, value, current.validUntil) : current.validUntil })); }
@@ -116,7 +128,7 @@ export function QuotationEditor({ documentNumber: initialDocumentNumber, initial
   useEffect(() => { if (!isDirty) return; const warn = (event: BeforeUnloadEvent) => event.preventDefault(); window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, [isDirty]);
   function closeEditor() { if (!isDirty || window.confirm("มีการแก้ไขที่ยังไม่ได้บันทึก ต้องการปิดหรือไม่")) router.push("/admin/quotations"); }
   function deleteQuotation() { if (!payload.id) return; setFormError(""); startTransition(async () => { const result = await deleteQuotationAction(payload.id!); if (!result.ok) return setFormError(result.formError); setDeleteOpen(false); setIsDirty(false); toast.success(`ลบ ${documentNumber ?? "ใบเสนอราคา"} แล้ว`); router.push("/admin/quotations"); }); }
-  const itemProps = (item: QuotationItemInput, index: number): ItemProps => ({ calculation: calculation ?? undefined, errors: fieldErrors, index, item, onMove: (direction) => moveItem(index, direction), onRemove: () => removeItem(index), onUpdate: (key, value) => updateItem(index, key, value), totalItems: payload.items.length });
+  const itemProps = (item: QuotationItemInput, index: number): ItemProps => ({ calculation: calculation ?? undefined, errors: fieldErrors, index, item, onRemove: () => removeItem(index), onUpdate: (key, value) => updateItem(index, key, value), totalItems: payload.items.length });
 
   return <div className="space-y-4" data-dirty={isDirty} data-quotation-editor>
     <header className="flex flex-wrap items-start justify-between gap-3 border-b border-foreground/25 pb-3" data-workbench-command-bar>
@@ -149,63 +161,20 @@ export function QuotationEditor({ documentNumber: initialDocumentNumber, initial
       <section data-document-section className="border-t border-foreground/35 pt-2 lg:col-span-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold">02 ข้อมูลเอกสาร</h2>
-          <span className="text-xs text-muted-foreground">THB</span>
+          <span className="text-xs text-muted-foreground">บาท</span>
         </div>
-        <div data-document-fields className="grid gap-3 sm:grid-cols-2"><Field error={fieldErrors.issueDate} field="issueDate" label="วันที่ออก"><Input aria-invalid={Boolean(fieldErrors.issueDate)} className={controlClassName("date")} data-field="issueDate" onChange={(event) => updateIssueDate(event.target.value)} type="date" value={payload.issueDate} /></Field><TextInput error={fieldErrors.validityDays} field="validityDays" inputMode="numeric" label="จำนวนวัน" onChange={updateValidityDays} size="compact" value={payload.validityDays} /><Field error={fieldErrors.validUntil} field="validUntil" label="ใช้ได้ถึง"><Input aria-invalid={Boolean(fieldErrors.validUntil)} className={controlClassName("date")} data-field="validUntil" onChange={(event) => { changed("validUntil"); setPayload((current) => ({ ...current, validUntil: event.target.value, validityDays: "" })); }} type="date" value={payload.validUntil} /></Field><Field field="currency" label="สกุลเงิน"><Input className={controlClassName("identifier")} data-field="currency" readOnly value="THB — บาท" /></Field><div className="sm:col-span-2"><TextInput error={fieldErrors.reference} field="reference" label="เลขอ้างอิง" onChange={(value) => updateRoot("reference", value)} size="identifier" value={payload.reference} /></div></div>
+        <div data-document-fields className="grid gap-3 sm:grid-cols-2"><Field error={fieldErrors.issueDate} field="issueDate" label="วันที่ออก"><Input aria-invalid={Boolean(fieldErrors.issueDate)} className={controlClassName("date")} data-field="issueDate" onChange={(event) => updateIssueDate(event.target.value)} type="date" value={payload.issueDate} /></Field><TextInput error={fieldErrors.validityDays} field="validityDays" inputMode="numeric" label="จำนวนวัน" onChange={updateValidityDays} size="compact" value={payload.validityDays} /><Field error={fieldErrors.validUntil} field="validUntil" label="ใช้ได้ถึง"><Input aria-invalid={Boolean(fieldErrors.validUntil)} className={controlClassName("date")} data-field="validUntil" onChange={(event) => { changed("validUntil"); setPayload((current) => ({ ...current, validUntil: event.target.value, validityDays: "" })); }} type="date" value={payload.validUntil} /></Field><TextInput error={fieldErrors.subject} field="subject" label="เรื่อง / ชื่องาน" onChange={(value) => updateRoot("subject", value)} size="name" value={payload.subject} /><div className="sm:col-span-2"><TextInput error={fieldErrors.reference} field="reference" label="เลขอ้างอิง" onChange={(value) => updateRoot("reference", value)} size="identifier" value={payload.reference} /></div></div>
       </section>
     </div>
     <section className="space-y-3 border-t border-foreground/35 pt-2">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end gap-3">
         <h2 className="text-sm font-semibold">03 รายการ</h2>
-        <div className="flex flex-wrap items-end gap-2">
-          <Field error={fieldErrors.priceMode} field="priceMode" label="รูปแบบราคา"><select aria-invalid={Boolean(fieldErrors.priceMode)} className={controlClassName("identifier", selectClassName)} data-field="priceMode" onChange={(event) => updateRoot("priceMode", event.target.value as QuotationPayload["priceMode"])} value={payload.priceMode}><option value="vat_exclusive">ไม่รวม VAT</option><option value="vat_inclusive">รวม VAT</option></select></Field>
-          <Button className="text-blue-700" onClick={addItem} size="sm" type="button" variant="ghost">เพิ่มรายการ</Button>
-        </div>
       </div>
-      <div data-item-ledger className="hidden overflow-x-auto xl:block">
-        <table className="w-full min-w-[62.5rem] table-fixed text-sm">
-          <colgroup>
-            <col className="w-10" />
-            <col />
-            <col className="w-20" />
-            <col className="w-20" />
-            <col className="w-[7.5rem]" />
-            <col className="w-36" />
-            <col className="w-36" />
-            <col className="w-[8.5rem]" />
-          </colgroup>
-          <thead className="bg-muted/70 text-left text-xs text-muted-foreground">
-            <tr><th className="p-2">#</th><th className="p-2">รายการ / รายละเอียด</th><th className="p-2">จำนวน</th><th className="p-2">หน่วย</th><th className="p-2">ราคาต่อหน่วย</th><th className="p-2">ส่วนลด</th><th className="p-2">VAT</th><th className="p-2 text-right">รวม</th></tr>
-          </thead>
-          <tbody>{payload.items.map((item, index) => <tr className="border-t align-top" key={item.id}>
-            <td className="p-2"><div className="grid justify-items-start gap-1"><span className="font-mono text-xs text-muted-foreground">{index + 1}</span><ItemActionMenu {...itemProps(item, index)} /></div></td>
-            <td className="p-2"><ItemDetailsControls {...itemProps(item, index)} /></td>
-            <td className="p-2"><ItemQuantityControl {...itemProps(item, index)} /></td>
-            <td className="p-2"><ItemUnitControl {...itemProps(item, index)} /></td>
-            <td className="p-2"><ItemPriceControls {...itemProps(item, index)} /></td>
-            <td className="p-2"><ItemDiscountControls {...itemProps(item, index)} /></td>
-            <td className="p-2"><ItemVatControls {...itemProps(item, index)} /></td>
-            <td className="p-2 text-right font-medium">{calculation?.lines[index]?.lineTotal ?? "—"}</td>
-          </tr>)}</tbody>
-        </table>
-      </div>
-      <div data-item-cards className="grid gap-3 xl:hidden">
-        {payload.items.map((item, index) => <article className="rounded-md border p-3" key={item.id}>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <span className="font-mono text-xs text-muted-foreground">รายการ {index + 1}</span>
-            <ItemActionMenu {...itemProps(item, index)} />
-          </div>
-          <ItemDetailsControls {...itemProps(item, index)} />
-          <div data-item-detail-grid className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <ItemQuantityControl {...itemProps(item, index)} labelled />
-            <ItemUnitControl {...itemProps(item, index)} labelled />
-            <ItemPriceControls {...itemProps(item, index)} labelled />
-            <ItemDiscountControls {...itemProps(item, index)} labelled />
-            <ItemVatControls {...itemProps(item, index)} labelled />
-          </div>
-          <p className="mt-3 border-t pt-2 text-right font-medium">รวม {calculation?.lines[index]?.lineTotal ?? "—"}</p>
-        </article>)}
-      </div>
+      <div className="hidden xl:grid xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_9rem_8.5rem_2.5rem] xl:gap-2 xl:border-b xl:pb-2 xl:text-xs xl:text-muted-foreground"><span>#</span><span>รายการ / รายละเอียด</span><span>จำนวน</span><span>หน่วย</span><span>ราคาต่อหน่วย</span><span>ส่วนลด</span><span>VAT</span><span className="text-right">รวม</span></div>
+      <DragDropProvider onDragEnd={(event) => { if (event.canceled) return; changed("items"); setPayload((current) => ({ ...current, items: positions(move(current.items, event) as QuotationItemInput[]) })); }}>
+        <div className="grid gap-3 xl:gap-0" data-sortable-items>{payload.items.map((item, index) => <SortableQuotationItem key={item.id} {...itemProps(item, index)} />)}</div>
+      </DragDropProvider>
+      <Button className="text-blue-700" onClick={addItem} size="sm" type="button" variant="outline">เพิ่มรายการ</Button>
     </section>
     <div data-workbench-completion className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <section data-notes-grid className="grid gap-4 lg:grid-cols-2">
