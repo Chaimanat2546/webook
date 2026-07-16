@@ -16,5 +16,5 @@ export default async function NewQuotationPage() {
   const profile = await getQuotationCompanyProfile(supabase);
   if (!profile) return <Empty><EmptyHeader><EmptyTitle>ตั้งค่าข้อมูลผู้ขายหลักก่อนสร้างใบเสนอราคา</EmptyTitle><EmptyDescription>ข้อมูลผู้ขายจะถูกคัดลอกลงในใบเสนอราคา</EmptyDescription></EmptyHeader><Button asChild><Link href="/admin/quotations/settings/company">ตั้งค่าข้อมูลผู้ขายหลัก</Link></Button></Empty>;
 
-  return <QuotationEditor documentNumber={null} initialPayload={emptyQuotationPayload(companyProfileToSeller(profile), new Date())} />;
+  return <QuotationEditor documentNumber={null} initialPayload={emptyQuotationPayload(companyProfileToSeller(profile), new Date())} publicToken={null} />;
 }

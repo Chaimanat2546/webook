@@ -111,8 +111,8 @@ describe("quotation UI", () => {
 
   it("disables save and close while a save is pending", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /<DropdownMenuItem disabled=\{isPending\} onSelect=\{onSaveAndClose\}/);
-    assert.equal(editor.match(/isPending=\{isPending\}/g)?.length, 2);
+    assert.match(editor, /<DropdownMenuItem disabled=\{isPending\} onSelect=\{onSave\}/);
+    assert.equal(editor.match(/isPending=\{isPending\}/g)?.length, 1);
   });
 
   it("uses consistent native select geometry", () => {
@@ -212,7 +212,20 @@ describe("quotation UI", () => {
 
   it("does not add out-of-scope quotation workflow", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.doesNotMatch(editor, /accepted|rejected|approval|publicToken|qrCode/i);
+    assert.doesNotMatch(editor, /accepted|rejected|approval|qrCode/i);
+  });
+
+  it("places document actions in the seller strip and keeps command bar actions text-only", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const commandBar = editor.slice(editor.indexOf("data-workbench-command-bar"), editor.indexOf("data-seller-strip"));
+    const sellerStrip = editor.slice(editor.indexOf("data-seller-strip"), editor.indexOf("data-seller-edit"));
+    assert.match(commandBar, /<Button onClick=\{closeEditor\} type="button" variant="outline">[^<]+<\/Button>/);
+    assert.match(commandBar, /onClick=\{\(\) => save\(\)\} type="button">\{isPending \? [^<]+<\/Button>/);
+    assert.doesNotMatch(commandBar, /<X|<Save/);
+    assert.match(sellerStrip, /data-document-actions[\s\S]*<Share2[\s\S]*<Printer[\s\S]*<Download[\s\S]*<DocumentMore/);
+    assert.match(editor, /<DropdownMenuItem onSelect=\{onPreview\}/);
+    assert.match(sellerStrip, /<Button disabled size="sm" title=/);
+    assert.doesNotMatch(sellerStrip, /<Button disabled title=.*<Share2/);
   });
 
   it("keeps invalid dates editable and exposes office and field-error controls", () => {

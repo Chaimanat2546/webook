@@ -16,5 +16,5 @@ export default async function EditQuotationPage({ params, searchParams }: { para
   if (!UUID.test(id)) notFound();
   const quotation = await getQuotationById(supabase, id);
   if (!quotation) notFound();
-  return <QuotationEditor documentNumber={quotation.documentNumber} initialPayload={quotation.payload} printOnLoad={print === "1"} />;
+  return <QuotationEditor documentNumber={quotation.documentNumber} initialPayload={quotation.payload} printOnLoad={print === "1"} publicToken={quotation.publicToken} />;
 }
