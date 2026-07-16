@@ -11,7 +11,7 @@ describe("quotation UI", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
     assert.match(
       document,
-      /<p className="whitespace-pre-line text-slate-500">\{item\.description\}<\/p>/,
+      /<p className="whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]">\{item\.description\}<\/p>/,
     );
     assert.match(document, /<p className="font-medium">\{item\.name\}<\/p>/);
   });
