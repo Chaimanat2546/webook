@@ -75,7 +75,7 @@ export function QuotationDocument({
               <td className="p-2">
                 <p className="font-medium">{item.name}</p>
                 {item.description ? (
-                  <p className="whitespace-pre-line">{item.description}</p>
+                  <p className="whitespace-pre-line text-slate-500">{item.description}</p>
                 ) : null}
               </td>
               <td className="p-2 text-right">{item.quantity}</td>

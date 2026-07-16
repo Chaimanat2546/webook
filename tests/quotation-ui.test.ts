@@ -7,6 +7,15 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("styles document item descriptions as secondary text", () => {
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+    assert.match(
+      document,
+      /<p className="whitespace-pre-line text-slate-500">\{item\.description\}<\/p>/,
+    );
+    assert.match(document, /<p className="font-medium">\{item\.name\}<\/p>/);
+  });
+
   it("protects and renders the single seller profile page", () => {
     const page = source("../app/admin/quotations/settings/company/page.tsx");
     assert.match(page, /canUseQuotation\(adminUser\)/);
