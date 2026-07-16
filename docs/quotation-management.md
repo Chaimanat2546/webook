@@ -30,6 +30,9 @@ customer acceptance, payment or installments, or revision history.
 - Item discounts are fixed amounts only. Disabling the feature clears all item discounts.
 - Enabling VAT starts items at 7%; disabling it stores every item as no VAT at 0%.
 - The item ledger, Preview/Print, and Public Read-only display `มูลค่าก่อนภาษี` after item discount and before VAT.
+- Money inputs accept grouped or ungrouped values and display comma grouping with two decimals after blur.
+- Calculations and stored values remain canonical decimal strings without commas.
+- Edit totals, Preview, Print, Public Read-only, and quotation lists group currency consistently.
 - Drag and drop changes item order, and that order is persisted on save.
 - Withholding tax is enabled by its own checkbox.
 - Internal notes are admin-only; public notes may appear in the document.
@@ -55,6 +58,10 @@ Seller and customer values are copied into each quotation, so later seller
 profile edits do not change saved documents. Preview renders the current draft.
 Print is available only after the first successful save and uses the latest
 saved payload in the read-only A4 document.
+
+Preview, Print, and Public Read-only share the PDF-derived A4 document
+composition. Printing mounts only the latest saved document in an isolated
+print host, preventing editor layout from creating a blank page.
 
 Share is saved-only. `/q/[token]` uses the latest saved row, never includes
 internal notes or customer contacts, and returns 404 after the quotation is
