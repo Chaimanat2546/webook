@@ -96,6 +96,40 @@ describe("quotation UI", () => {
     assert.match(editor, /internalNotes/);
   });
 
+  it("keeps long editor amounts inside narrow item and summary containers", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const totals = editor.slice(
+      editor.indexOf("function Totals"),
+      editor.indexOf("function positions"),
+    );
+    const item = editor.slice(
+      editor.indexOf("function SortableQuotationItem"),
+      editor.indexOf("function ItemDetailsControls"),
+    );
+    const withholding = editor.slice(
+      editor.indexOf('data-quotation-totals'),
+      editor.indexOf("<Dialog onOpenChange"),
+    );
+
+    assert.match(totals, /flex flex-wrap items-start justify-between gap-x-3 gap-y-1/);
+    assert.match(totals, /<span className="shrink-0">\{label\}<\/span>/);
+    assert.match(
+      totals,
+      /<output className="ml-auto max-w-full text-right tabular-nums \[overflow-wrap:anywhere\]">/,
+    );
+    assert.match(
+      item,
+      /max-w-full[^"]*tabular-nums[^"]*\[overflow-wrap:anywhere\]/,
+    );
+    assert.match(withholding, /flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2/);
+    assert.match(withholding, /inputClassName="w-28"/);
+    assert.match(
+      withholding,
+      /<output className="ml-auto max-w-full text-right tabular-nums \[overflow-wrap:anywhere\]">/,
+    );
+    assert.doesNotMatch(totals, /flex justify-between/);
+  });
+
   it("keeps quotation-specific customer and item fields focused on villa services", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const document = source("../components/admin/quotations/quotation-document.tsx");

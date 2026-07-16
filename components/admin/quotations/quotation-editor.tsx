@@ -226,14 +226,15 @@ function Totals({
 }) {
   return (
     <div
-      className={
-        bold
-          ? "flex justify-between border-t pt-2 font-semibold"
-          : "flex justify-between"
-      }
+      className={cn(
+        "flex flex-wrap items-start justify-between gap-x-3 gap-y-1",
+        bold && "border-t pt-2 font-semibold",
+      )}
     >
-      <span>{label}</span>
-      <output>{value}</output>
+      <span className="shrink-0">{label}</span>
+      <output className="ml-auto max-w-full text-right tabular-nums [overflow-wrap:anywhere]">
+        {value}
+      </output>
     </div>
   );
 }
@@ -357,7 +358,7 @@ function SortableQuotationItem(props: ItemProps) {
         {props.showItemDiscount ? <div className="xl:col-start-6 xl:row-start-1"><ItemDiscountControls {...props} labelled /></div> : null}
         {props.showItemVat ? <div className={cn("xl:row-start-1", props.showItemDiscount ? "xl:col-start-7" : "xl:col-start-6")}><ItemVatControls {...props} labelled /></div> : null}
       </div>
-      <p className="mt-3 border-t pt-2 text-right font-medium xl:col-start-[-3] xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
+      <p className="mt-3 max-w-full border-t pt-2 text-right font-medium tabular-nums [overflow-wrap:anywhere] xl:col-start-[-3] xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
         <span className="xl:sr-only">มูลค่าก่อนภาษี </span>
         {props.calculation?.lines[index]?.preTaxAmount
           ? `${props.calculation.lines[index]!.preTaxAmount} บาท`
@@ -1361,8 +1362,8 @@ export function QuotationEditor({
             label="จำนวนเงินรวมทั้งสิ้น"
             value={money(calculation?.grandTotal)}
           />
-          <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-t pt-2">
-            <label className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2">
+            <label className="flex flex-wrap items-center gap-2 text-sm">
               <input
                 checked={payload.withholdingTaxRate !== null}
                 className="size-4 accent-primary"
@@ -1376,13 +1377,16 @@ export function QuotationEditor({
                 disabled={payload.withholdingTaxRate === null}
                 error={fieldErrors.withholdingTaxRate}
                 field="withholdingTaxRate"
+                inputClassName="w-28"
                 onChange={(value) => updateRoot("withholdingTaxRate", value)}
                 size="compact"
                 value={payload.withholdingTaxRate ?? "0.00"}
               />
               %
             </label>
-            <output>{money(calculation?.withholdingTaxTotal)}</output>
+            <output className="ml-auto max-w-full text-right tabular-nums [overflow-wrap:anywhere]">
+              {money(calculation?.withholdingTaxTotal)}
+            </output>
           </div>
           <Totals bold label="ยอดชำระ" value={money(calculation?.amountDue)} />
           <p className="text-sm">
