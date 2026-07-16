@@ -14,8 +14,45 @@ const otherDate = new Date(
 ).toISOString().slice(0, 10);
 const seller = { name: "Seller", address: "Seller address", taxId: "0100000000000" };
 
-function payload(id: string | null, date = issueDate, sellerSnapshot = seller, unit: string | null = "งาน") {
-  return { id, currency: "THB", customer_snapshot: { name: "Customer", address: "Customer address" }, document_discount_type: null, document_discount_value: "0.00", internal_notes: "", issue_date: date, items: [{ position: 1, sku: "", name: "Item", description: "", quantity: "1.000", unit, unit_price: "100.00", discount_type: null, discount_value: "0.00", gross_amount: "100.00", discount_amount: "0.00", document_discount_allocation: "0.00", vat_treatment: "taxable", vat_rate: "7.00", taxable_amount: "100.00", vat_amount: "7.00", line_total: "107.00" }], price_mode: "vat_exclusive", public_notes: "", reference: "", seller_snapshot: sellerSnapshot, subject: "", totals: { subtotal: "100.00", itemDiscountTotal: "0.00", documentDiscountTotal: "0.00", taxableTotal: "100.00", vatTotal: "7.00", grandTotal: "107.00", withholdingTaxTotal: "3.00", amountDue: "104.00" }, valid_until: date, validity_days: 0, withholding_tax_rate: "3.00" };
+function payload(
+  id: string | null,
+  date = issueDate,
+  sellerSnapshot = seller,
+  unit: string | null = "งาน",
+) {
+  return {
+    customer_snapshot: { name: "Customer", address: "Customer address" },
+    id,
+    internal_notes: "",
+    issue_date: date,
+    items: [{
+      description: "",
+      discount_amount: "0.00",
+      name: "Item",
+      position: 1,
+      quantity: "1.000",
+      unit,
+      unit_price: "100.00",
+      vat_rate: "7.00",
+      vat_treatment: "taxable",
+    }],
+    public_notes: "",
+    reference: "",
+    seller_snapshot: sellerSnapshot,
+    subject: "",
+    totals: {
+      amountDue: "104.00",
+      discountTotal: "0.00",
+      grandTotal: "107.00",
+      grossTotal: "100.00",
+      preTaxTotal: "100.00",
+      vatTotal: "7.00",
+      withholdingTaxTotal: "3.00",
+    },
+    valid_until: date,
+    validity_days: 0,
+    withholding_tax_rate: "3.00",
+  };
 }
 
 async function save(client: SupabaseClient, value: ReturnType<typeof payload>) {
@@ -99,6 +136,62 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal(item.error, null, item.error?.message);
     assert.equal(item.data.quantity, 1);
     assert.equal(item.data.unit, null);
+  });
+
+  it("rejects inconsistent item and quotation money", async () => {
+    const excessiveDiscount = payload(null);
+    excessiveDiscount.items[0]!.discount_amount = "100.01";
+    assert.equal((await allowed.rpc("save_quotation", { p_payload: excessiveDiscount })).error?.code, "23514");
+
+    const hiddenVat = payload(null);
+    hiddenVat.items[0]!.vat_treatment = "none";
+    assert.equal((await allowed.rpc("save_quotation", { p_payload: hiddenVat })).error?.code, "23514");
+
+    const inconsistentTotals = payload(null);
+    inconsistentTotals.totals.preTaxTotal = "99.00";
+    assert.equal((await allowed.rpc("save_quotation", { p_payload: inconsistentTotals })).error?.code, "23514");
+
+    const inconsistentItems = payload(null);
+    inconsistentItems.totals = {
+      amountDue: "1.04",
+      discountTotal: "0.00",
+      grandTotal: "1.07",
+      grossTotal: "1.00",
+      preTaxTotal: "1.00",
+      vatTotal: "0.07",
+      withholdingTaxTotal: "0.03",
+    };
+    assert.equal((await allowed.rpc("save_quotation", { p_payload: inconsistentItems })).error?.code, "23514");
+
+    const precisionBypass = payload(null);
+    precisionBypass.items[0]!.discount_amount = "0.004";
+    precisionBypass.items.push({ ...precisionBypass.items[0]!, position: 2 });
+    precisionBypass.totals = {
+      amountDue: "207.992",
+      discountTotal: "0.008",
+      grandTotal: "213.992",
+      grossTotal: "200.00",
+      preTaxTotal: "199.992",
+      vatTotal: "14.00",
+      withholdingTaxTotal: "6.00",
+    };
+    assert.equal((await allowed.rpc("save_quotation", { p_payload: precisionBypass })).error?.code, "23514");
+  });
+
+  it("requires 1 to 100 items", async () => {
+    const nonArray = { ...payload(null), items: {} };
+    assert.equal((await allowed.rpc("save_quotation", { p_payload: nonArray })).error?.code, "22023");
+
+    const empty = payload(null);
+    empty.items = [];
+    assert.equal((await allowed.rpc("save_quotation", { p_payload: empty })).error?.code, "22023");
+
+    const excessive = payload(null);
+    excessive.items = Array.from({ length: 101 }, (_, index) => ({
+      ...excessive.items[0]!,
+      position: index + 1,
+    }));
+    assert.equal((await allowed.rpc("save_quotation", { p_payload: excessive })).error?.code, "22023");
   });
 
   it("persists withholding and exposes only saved public data", async () => {

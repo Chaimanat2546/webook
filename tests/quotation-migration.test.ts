@@ -23,6 +23,13 @@ const workbenchSql = readFileSync(
   new URL(`../supabase/migrations/${workbenchName}`, import.meta.url),
   "utf8",
 );
+const cleanupName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_item_options_schema_cleanup.sql"));
+assert.ok(cleanupName, "quotation schema cleanup migration must be created by the Supabase CLI");
+const cleanupSql = readFileSync(
+  new URL(`../supabase/migrations/${cleanupName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
   it("creates the MVP 1 tables without later-MVP scope", () => {
@@ -79,5 +86,28 @@ describe("quotation migration", () => {
       workbenchSql.indexOf("create or replace function public.get_public_quotation"),
     );
     assert.doesNotMatch(publicReadSql, /internal_notes/i);
+  });
+
+  it("resets only quotation data and installs the compact schema", () => {
+    assert.match(cleanupSql, /truncate table public\.quotations cascade/i);
+    assert.match(cleanupSql, /truncate table private\.quotation_number_counters/i);
+    assert.doesNotMatch(cleanupSql, /truncate table public\.quotation_company_profiles/i);
+    for (const column of ["currency", "price_mode", "document_discount_type", "document_discount_value", "document_discount_total"]) {
+      assert.match(cleanupSql, new RegExp(`drop column ${column}`, "i"));
+    }
+    assert.match(cleanupSql, /rename column subtotal to gross_total/i);
+    assert.match(cleanupSql, /rename column item_discount_total to discount_total/i);
+    assert.match(cleanupSql, /rename column taxable_total to pre_tax_total/i);
+    for (const column of ["sku", "discount_type", "discount_value", "document_discount_allocation", "gross_amount", "taxable_amount", "vat_amount", "line_total", "created_at", "updated_at"]) {
+      assert.match(cleanupSql, new RegExp(`drop column ${column}`, "i"));
+    }
+    assert.match(cleanupSql, /discount_amount <= round\(quantity \* unit_price, 2\)/i);
+    assert.match(cleanupSql, /vat_treatment = 'taxable' or vat_rate = 0/i);
+    assert.match(cleanupSql, /create or replace function private\.save_quotation/i);
+    assert.match(cleanupSql, /create or replace function private\.get_public_quotation/i);
+    const replacementFunctions = cleanupSql.slice(
+      cleanupSql.indexOf("create or replace function private.save_quotation"),
+    );
+    assert.doesNotMatch(replacementFunctions, /document_discount|price_mode|currency/i);
   });
 });
