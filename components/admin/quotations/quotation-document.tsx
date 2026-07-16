@@ -2,6 +2,7 @@ import {
   formatThaiBahtText,
   type QuotationCalculation,
 } from "../../../lib/quotation-calculator";
+import { formatBaht, formatMoney } from "../../../lib/quotation-money";
 import type { QuotationPayload } from "../../../lib/quotation-types";
 
 export function QuotationDocument({
@@ -13,118 +14,221 @@ export function QuotationDocument({
   documentNumber: string | null;
   payload: QuotationPayload;
 }) {
-  const money = (value: string) => `${value} บาท`;
-  const showItemDiscount = payload.items.some((item) => Number(item.discountAmount) > 0);
-  const showItemVat = payload.items.some((item) => item.vatTreatment !== "none");
+  const showItemDiscount = payload.items.some(
+    (item) => Number(item.discountAmount) > 0,
+  );
+  const showItemVat = payload.items.some(
+    (item) => item.vatTreatment !== "none",
+  );
   return (
     <article
-      className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[12mm] text-[11px] text-slate-900"
+      className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[12mm] text-[11px] leading-relaxed text-slate-900"
       data-quotation-document
     >
-      <header className="grid grid-cols-2 gap-8 border-b pb-4">
-        <div>
+      <header
+        className="grid grid-cols-[minmax(0,1.35fr)_minmax(15rem,0.65fr)] gap-8"
+        data-document-header
+      >
+        <div className="min-w-0">
           {payload.seller.logoUrl ? (
             <img
               alt="โลโก้ผู้ขาย"
-              className="mb-2 max-h-16 max-w-40 object-contain"
+              className="mb-4 max-h-16 max-w-40 object-contain"
               src={payload.seller.logoUrl}
             />
           ) : null}
-          <p className="font-semibold">{payload.seller.name}</p>
-          <p className="whitespace-pre-line">{payload.seller.address}</p>
-          <p>เลขผู้เสียภาษี {payload.seller.taxId}</p>
-          <p>{office(payload.seller)}</p>
-          {payload.seller.phone ? <p>โทร {payload.seller.phone}</p> : null}
-          {payload.seller.email ? <p>{payload.seller.email}</p> : null}
-          {payload.seller.website ? <p>{payload.seller.website}</p> : null}
+          <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-1">
+            <dt className="font-semibold">ผู้ขาย</dt>
+            <dd className="font-semibold [overflow-wrap:anywhere]">
+              {payload.seller.name}
+            </dd>
+            <dt className="font-semibold">ที่อยู่</dt>
+            <dd className="whitespace-pre-line [overflow-wrap:anywhere]">
+              {payload.seller.address}
+            </dd>
+            <dt className="font-semibold">เลขที่ภาษี</dt>
+            <dd>
+              {payload.seller.taxId} ({office(payload.seller)})
+            </dd>
+            {payload.seller.phone ? (
+              <>
+                <dt className="font-semibold">โทร</dt>
+                <dd>{payload.seller.phone}</dd>
+              </>
+            ) : null}
+            {payload.seller.email ? (
+              <>
+                <dt className="font-semibold">อีเมล</dt>
+                <dd className="[overflow-wrap:anywhere]">
+                  {payload.seller.email}
+                </dd>
+              </>
+            ) : null}
+            {payload.seller.website ? (
+              <>
+                <dt className="font-semibold">เว็บไซต์</dt>
+                <dd className="[overflow-wrap:anywhere]">
+                  {payload.seller.website}
+                </dd>
+              </>
+            ) : null}
+          </dl>
         </div>
-        <div className="text-right">
-          <h1 className="text-2xl font-bold">ใบเสนอราคา</h1>
-          <p>{documentNumber ?? "เลขที่ออกเมื่อบันทึก"}</p>
-          <p>วันที่ออก {payload.issueDate}</p>
-          <p>ใช้ได้ถึง {payload.validUntil}</p>
-          <p>เลขอ้างอิง {payload.reference || "-"}</p>
-          {payload.subject ? <p>เรื่อง / ชื่องาน: {payload.subject}</p> : null}
+        <div className="min-w-0">
+          <h1 className="mb-4 text-right text-3xl font-semibold tracking-tight text-indigo-500">
+            ใบเสนอราคา
+          </h1>
+          <dl
+            className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-indigo-50 p-4"
+            data-document-metadata
+          >
+            <dt className="font-semibold">เลขที่เอกสาร</dt>
+            <dd>{documentNumber ?? "เลขที่ออกเมื่อบันทึก"}</dd>
+            <dt className="font-semibold">วันที่ออก</dt>
+            <dd>{documentDate(payload.issueDate)}</dd>
+            <dt className="font-semibold">ใช้ได้ถึง</dt>
+            <dd>{documentDate(payload.validUntil)}</dd>
+            <dt className="font-semibold">อ้างอิง</dt>
+            <dd>{payload.reference || "-"}</dd>
+          </dl>
+          {payload.subject ? (
+            <p className="mt-3 text-right [overflow-wrap:anywhere]">
+              <span className="font-semibold">เรื่อง / ชื่องาน:</span>{" "}
+              {payload.subject}
+            </p>
+          ) : null}
         </div>
       </header>
-      <section className="mt-4 max-w-[105mm]">
-        <p className="font-semibold">ลูกค้า: {payload.customer.name}</p>
-        <p className="whitespace-pre-line">{payload.customer.address}</p>
-        {payload.customer.taxId ? (
-          <p>เลขผู้เสียภาษี {payload.customer.taxId}</p>
-        ) : null}
-        <p>{office(payload.customer)}</p>
+
+      <section className="mt-5 border-t pt-4" data-document-customer>
+        <dl className="grid max-w-[125mm] grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-1">
+          <dt className="font-semibold">ลูกค้า</dt>
+          <dd className="font-semibold [overflow-wrap:anywhere]">
+            {payload.customer.name}
+          </dd>
+          <dt className="font-semibold">ที่อยู่</dt>
+          <dd className="whitespace-pre-line [overflow-wrap:anywhere]">
+            {payload.customer.address}
+          </dd>
+          {payload.customer.taxId ? (
+            <>
+              <dt className="font-semibold">เลขที่ภาษี</dt>
+              <dd>{payload.customer.taxId}</dd>
+            </>
+          ) : null}
+          <dt className="font-semibold">สำนักงาน</dt>
+          <dd>{office(payload.customer)}</dd>
+        </dl>
       </section>
-      <table className="mt-5 w-full border-collapse">
+
+      <table
+        className="mt-5 w-full table-fixed border-collapse"
+        data-document-items
+      >
         <thead>
-          <tr className="border-y bg-slate-100 text-left">
-            <th className="p-2">#</th>
-            <th className="p-2">รายการ</th>
-            <th className="p-2 text-right">จำนวน</th>
-            <th className="p-2"></th>
-            <th className="p-2 text-right">ราคา (บาท)</th>
-            {showItemDiscount ? <th className="p-2 text-right">ส่วนลด</th> : null}
-            {showItemVat ? <th className="p-2 text-right">VAT</th> : null}
-            <th className="p-2 text-right">มูลค่าก่อนภาษี (บาท)</th>
+          <tr className="bg-indigo-50 text-left">
+            <th className="w-[6%] rounded-l-md p-2">#</th>
+            <th className="p-2">คำอธิบาย</th>
+            <th className="w-[9%] p-2 text-right">จำนวน</th>
+            <th className="w-[8%] p-2">หน่วย</th>
+            <th className="w-[14%] p-2 text-right">ราคา</th>
+            {showItemDiscount ? (
+              <th className="w-[12%] p-2 text-right">ส่วนลด</th>
+            ) : null}
+            {showItemVat ? (
+              <th className="w-[8%] p-2 text-right">VAT</th>
+            ) : null}
+            <th className="w-[16%] rounded-r-md p-2 text-right">
+              มูลค่าก่อนภาษี
+            </th>
           </tr>
         </thead>
         <tbody>
           {calculation.lines.map((item) => (
             <tr className="border-b align-top" key={item.id}>
-              <td className="p-2">{item.position}</td>
+              <td className="p-2">{item.position}.</td>
               <td className="p-2">
-                <p className="font-medium">{item.name}</p>
+                <p className="font-medium [overflow-wrap:anywhere]">{item.name}</p>
                 {item.description ? (
                   <p className="whitespace-pre-line text-slate-500 [overflow-wrap:anywhere]">{item.description}</p>
                 ) : null}
               </td>
-              <td className="p-2 text-right">{item.quantity}</td>
-              <td className="p-2">{item.unit}</td>
-              <td className="p-2 text-right">{item.unitPrice}</td>
-              {showItemDiscount ? <td className="p-2 text-right">{item.discountAmount}</td> : null}
-              {showItemVat ? <td className="p-2 text-right">
-                {item.vatTreatment === "taxable"
-                  ? `${item.vatRate}%`
-                  : item.vatTreatment === "exempt"
-                    ? "ยกเว้น"
-                    : "-"}
-              </td> : null}
-              <td className="p-2 text-right">{item.preTaxAmount}</td>
+              <td className="p-2 text-right tabular-nums">{item.quantity}</td>
+              <td className="p-2 [overflow-wrap:anywhere]">{item.unit}</td>
+              <td className="p-2 text-right tabular-nums">
+                {formatMoney(item.unitPrice)}
+              </td>
+              {showItemDiscount ? (
+                <td className="p-2 text-right tabular-nums">
+                  {formatMoney(item.discountAmount)}
+                </td>
+              ) : null}
+              {showItemVat ? (
+                <td className="p-2 text-right">
+                  {item.vatTreatment === "taxable"
+                    ? `${item.vatRate}%`
+                    : item.vatTreatment === "exempt"
+                      ? "ยกเว้น"
+                      : "-"}
+                </td>
+              ) : null}
+              <td className="p-2 text-right tabular-nums">
+                {formatMoney(item.preTaxAmount)}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="mt-5 grid grid-cols-[1fr_80mm] gap-8">
-        <div>
+
+      <section
+        className="mt-10 grid grid-cols-[minmax(0,1fr)_80mm] gap-8 border-t pt-4"
+        data-document-summary
+      >
+        <div className="min-w-0">
           {payload.publicNotes ? (
             <>
               <p className="font-semibold">หมายเหตุ</p>
-              <p className="whitespace-pre-line">{payload.publicNotes}</p>
+              <p className="whitespace-pre-line [overflow-wrap:anywhere]">
+                {payload.publicNotes}
+              </p>
             </>
           ) : null}
         </div>
         <div className="space-y-1">
-          <Total label="รวมก่อนส่วนลด" value={money(calculation.grossTotal)} />
-          {calculation.discountTotal !== "0.00" ? (
-            <Total label="ส่วนลด" value={money(calculation.discountTotal)} />
-          ) : null}
-          <Total label="มูลค่าก่อนภาษี" value={money(calculation.preTaxTotal)} />
-          <Total label="VAT" value={money(calculation.vatTotal)} />
           <Total
-            bold
+            label="รวมก่อนส่วนลด"
+            value={formatBaht(calculation.grossTotal)}
+          />
+          {calculation.discountTotal !== "0.00" ? (
+            <Total
+              label="ส่วนลด"
+              value={formatBaht(calculation.discountTotal)}
+            />
+          ) : null}
+          <Total
+            label="มูลค่าก่อนภาษี"
+            value={formatBaht(calculation.preTaxTotal)}
+          />
+          <Total label="VAT" value={formatBaht(calculation.vatTotal)} />
+          <Total
+            emphasized
             label="จำนวนเงินรวมทั้งสิ้น"
-            value={money(calculation.grandTotal)}
+            value={formatBaht(calculation.grandTotal)}
           />
           <Total
             label="หักภาษี ณ ที่จ่าย"
-            value={money(calculation.withholdingTaxTotal)}
+            value={formatBaht(calculation.withholdingTaxTotal)}
           />
-          <Total bold label="ยอดชำระ" value={money(calculation.amountDue)} />
-          <p className="pt-2 text-right">
+          <Total
+            bold
+            label="ยอดชำระ"
+            value={formatBaht(calculation.amountDue)}
+          />
+          <p className="pt-2 text-right [overflow-wrap:anywhere]">
             {formatThaiBahtText(calculation.amountDue)}
           </p>
         </div>
-      </div>
+      </section>
     </article>
   );
 }
@@ -137,25 +241,37 @@ function office(snapshot: {
     ? `สาขา ${snapshot.branchNumber}`
     : "สำนักงานใหญ่";
 }
+
+function documentDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
+}
+
 function Total({
   bold,
+  emphasized,
   label,
   value,
 }: {
   bold?: boolean;
+  emphasized?: boolean;
   label: string;
   value: string;
 }) {
   return (
     <div
-      className={
-        bold
-          ? "flex justify-between border-t pt-2 font-semibold"
-          : "flex justify-between"
-      }
+      className={[
+        "flex items-start justify-between gap-3",
+        bold ? "border-t pt-2 font-semibold" : "",
+        emphasized ? "my-3 rounded-md bg-indigo-50 p-3 text-sm" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
-      <span>{label}</span>
-      <span>{value}</span>
+      <span className="shrink-0">{label}</span>
+      <span className="min-w-0 text-right tabular-nums [overflow-wrap:anywhere]">
+        {value}
+      </span>
     </div>
   );
 }

@@ -7,13 +7,34 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("adapts the shared A4 document to the approved quotation reference", () => {
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+
+    assert.match(document, /import \{ formatBaht, formatMoney \}/);
+    assert.match(document, /data-document-header/);
+    assert.match(document, /data-document-metadata/);
+    assert.match(document, /data-document-customer/);
+    assert.match(document, /data-document-items/);
+    assert.match(document, /data-document-summary/);
+    assert.match(document, /bg-indigo-50/);
+    assert.match(document, /table-fixed/);
+    assert.match(document, /formatMoney\(item\.unitPrice\)/);
+    assert.match(document, /formatMoney\(item\.preTaxAmount\)/);
+    assert.match(document, /formatBaht\(calculation\.grandTotal\)/);
+    assert.match(document, /whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]/);
+    assert.doesNotMatch(document, /internalNotes|qrCode|signature|paymentMethod/i);
+  });
+
   it("styles document item descriptions as secondary text", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
     assert.match(
       document,
       /<p className="whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]">\{item\.description\}<\/p>/,
     );
-    assert.match(document, /<p className="font-medium">\{item\.name\}<\/p>/);
+    assert.match(
+      document,
+      /<p className="font-medium \[overflow-wrap:anywhere\]">\{item\.name\}<\/p>/,
+    );
   });
 
   it("protects and renders the single seller profile page", () => {
