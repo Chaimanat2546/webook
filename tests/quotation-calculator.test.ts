@@ -19,13 +19,13 @@ function baseInput(overrides: Partial<QuotationCalculationInput> = {}): Quotatio
       name: "บริการ",
       position: 1,
       quantity: "2",
-      sku: "",
       unit: "งาน",
       unitPrice: "10000.00",
       vatRate: "7.00",
       vatTreatment: "taxable",
     }],
     priceMode: "vat_exclusive",
+    withholdingTaxRate: null,
     ...overrides,
   };
 }
@@ -60,6 +60,34 @@ describe("quotation calculator", () => {
     assert.equal(result.taxableTotal, "16200.00");
     assert.equal(result.vatTotal, "1134.00");
     assert.equal(result.grandTotal, "17334.00");
+  });
+
+  it("keeps line totals before VAT and calculates withholding after discounts", () => {
+    const result = calculateQuotation(baseInput({
+      documentDiscountType: "percent",
+      documentDiscountValue: "10",
+      items: [{
+        ...baseInput().items[0],
+        discountType: "percent",
+        discountValue: "10",
+      }],
+      withholdingTaxRate: "3.00",
+    }));
+
+    assert.equal(result.lines[0]!.netAmount, "18000.00");
+    assert.equal(result.netSubtotal, "18000.00");
+    assert.equal(result.documentDiscountTotal, "1800.00");
+    assert.equal(result.taxableTotal, "16200.00");
+    assert.equal(result.vatTotal, "1134.00");
+    assert.equal(result.grandTotal, "17334.00");
+    assert.equal(result.withholdingTaxTotal, "486.00");
+    assert.equal(result.amountDue, "16848.00");
+  });
+
+  it("ignores withholding when its rate is null", () => {
+    const result = calculateQuotation(baseInput({ withholdingTaxRate: null }));
+    assert.equal(result.withholdingTaxTotal, "0.00");
+    assert.equal(result.amountDue, result.grandTotal);
   });
 
   it("supports fixed item and document discounts", () => {

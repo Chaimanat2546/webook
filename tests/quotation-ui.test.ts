@@ -94,9 +94,9 @@ describe("quotation UI", () => {
   it("keeps quotation-specific customer and item fields focused on villa services", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const document = source("../components/admin/quotations/quotation-document.tsx");
-    assert.doesNotMatch(editor, /customer\.shippingAddress|customer\.serviceLocation/);
+    assert.doesNotMatch(editor, /customer\.(contactName|email|phone|serviceLocation|shippingAddress)/);
     assert.doesNotMatch(editor, /items\.\$\{index\}\.sku|aria-label="SKU"|placeholder="SKU"/);
-    assert.doesNotMatch(document, /customer\.shippingAddress|customer\.serviceLocation/);
+    assert.doesNotMatch(document, /customer\.(contactName|email|phone|serviceLocation|shippingAddress)/);
   });
 
   it("composes the approved document workbench shell and semantic field sizes", () => {
@@ -212,7 +212,7 @@ describe("quotation UI", () => {
   it("shows server field errors beside all editable quotation controls in paper order", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     for (const field of [
-      "seller.email", "seller.website", "customer.taxId", "customer.contactName", "customer.phone", "customer.email",
+      "seller.email", "seller.website", "customer.taxId",
       "priceMode", "documentDiscountType",
     ]) assert.ok(editor.includes(`fieldErrors[\"${field}\"]`) || editor.includes(`fieldErrors.${field}`));
     assert.match(editor, /const error = \(field: string\) => errors\[`items\.\$\{index\}\.\$\{field\}`\]/);

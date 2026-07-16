@@ -10,7 +10,6 @@ export interface QuotationItemInput {
   name: string;
   position: number;
   quantity: string;
-  sku: string;
   unit: string;
   unitPrice: string;
   vatRate: string;
@@ -22,6 +21,7 @@ export interface QuotationCalculationInput {
   documentDiscountValue: string;
   items: QuotationItemInput[];
   priceMode: PriceMode;
+  withholdingTaxRate: string | null;
 }
 
 export interface QuotationLineCalculation extends QuotationItemInput {
@@ -29,6 +29,7 @@ export interface QuotationLineCalculation extends QuotationItemInput {
   documentDiscountAllocation: string;
   grossAmount: string;
   lineTotal: string;
+  netAmount: string;
   taxableAmount: string;
   vatAmount: string;
 }
@@ -41,14 +42,17 @@ export interface VatSummaryLine {
 }
 
 export interface QuotationCalculation {
+  amountDue: string;
   documentDiscountTotal: string;
   grandTotal: string;
   itemDiscountTotal: string;
   lines: QuotationLineCalculation[];
+  netSubtotal: string;
   subtotal: string;
   taxableTotal: string;
   vatSummary: VatSummaryLine[];
   vatTotal: string;
+  withholdingTaxTotal: string;
 }
 
 const MONEY_SCALE = 2;
@@ -115,6 +119,10 @@ function allocateProportionally(total: bigint, weights: bigint[]): bigint[] {
 
 export function calculateQuotation(input: QuotationCalculationInput): QuotationCalculation {
   if (input.items.length === 0) throw new Error("Quotation requires at least one item");
+  const withholdingRate = input.withholdingTaxRate === null
+    ? ZERO
+    : parseScaled(input.withholdingTaxRate, PERCENT_SCALE, "Withholding tax rate");
+  if (withholdingRate > PERCENT_DENOMINATOR) throw new Error("Withholding tax rate must be between 0 and 100");
 
   const prepared = input.items.map((item) => {
     const quantity = parseScaled(item.quantity, QUANTITY_SCALE, "Quantity");
@@ -134,6 +142,9 @@ export function calculateQuotation(input: QuotationCalculationInput): QuotationC
     const rate = preparedItem.item.vatTreatment === "taxable"
       ? parseScaled(preparedItem.item.vatRate, PERCENT_SCALE, "VAT rate") : ZERO;
     if (rate > PERCENT_DENOMINATOR) throw new Error("VAT rate must be between 0 and 100");
+    const netAmount = input.priceMode === "vat_inclusive" && preparedItem.item.vatTreatment === "taxable" && rate > ZERO
+      ? roundDiv(preparedItem.afterItemDiscount * PERCENT_DENOMINATOR, PERCENT_DENOMINATOR + rate)
+      : preparedItem.afterItemDiscount;
     let taxable = adjusted;
     let vat = ZERO;
     let total = adjusted;
@@ -152,11 +163,12 @@ export function calculateQuotation(input: QuotationCalculationInput): QuotationC
       documentDiscountAllocation: formatScaled(allocation, MONEY_SCALE),
       grossAmount: formatScaled(preparedItem.gross, MONEY_SCALE),
       lineTotal: formatScaled(total, MONEY_SCALE),
+      netAmount: formatScaled(netAmount, MONEY_SCALE),
       taxableAmount: formatScaled(taxable, MONEY_SCALE),
       vatAmount: formatScaled(vat, MONEY_SCALE),
     };
   });
-  const sum = (field: "discountAmount" | "grossAmount" | "lineTotal" | "taxableAmount" | "vatAmount") =>
+  const sum = (field: "discountAmount" | "grossAmount" | "lineTotal" | "netAmount" | "taxableAmount" | "vatAmount") =>
     lines.reduce((total, line) => total + parseScaled(line[field], MONEY_SCALE, field), ZERO);
   const vatGroups = new Map<string, { taxableAmount: bigint; vatAmount: bigint; vatRate: string; vatTreatment: VatTreatment }>();
   for (const line of lines) {
@@ -166,13 +178,18 @@ export function calculateQuotation(input: QuotationCalculationInput): QuotationC
     current.vatAmount += parseScaled(line.vatAmount, MONEY_SCALE, "VAT amount");
     vatGroups.set(key, current);
   }
+  const grandTotal = sum("lineTotal");
+  const taxableTotal = sum("taxableAmount");
+  const withholdingTax = roundDiv(taxableTotal * withholdingRate, PERCENT_DENOMINATOR);
   return {
+    amountDue: formatScaled(grandTotal - withholdingTax, MONEY_SCALE),
     documentDiscountTotal: formatScaled(documentDiscount, MONEY_SCALE),
-    grandTotal: formatScaled(sum("lineTotal"), MONEY_SCALE),
+    grandTotal: formatScaled(grandTotal, MONEY_SCALE),
     itemDiscountTotal: formatScaled(sum("discountAmount"), MONEY_SCALE),
     lines,
+    netSubtotal: formatScaled(sum("netAmount"), MONEY_SCALE),
     subtotal: formatScaled(sum("grossAmount"), MONEY_SCALE),
-    taxableTotal: formatScaled(sum("taxableAmount"), MONEY_SCALE),
+    taxableTotal: formatScaled(taxableTotal, MONEY_SCALE),
     vatSummary: [...vatGroups.values()].map((row) => ({
       taxableAmount: formatScaled(row.taxableAmount, MONEY_SCALE),
       vatAmount: formatScaled(row.vatAmount, MONEY_SCALE),
@@ -180,6 +197,7 @@ export function calculateQuotation(input: QuotationCalculationInput): QuotationC
       vatTreatment: row.vatTreatment,
     })),
     vatTotal: formatScaled(sum("vatAmount"), MONEY_SCALE),
+    withholdingTaxTotal: formatScaled(withholdingTax, MONEY_SCALE),
   };
 }
 

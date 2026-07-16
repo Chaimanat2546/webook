@@ -159,13 +159,8 @@ function customerSnapshot(value: unknown): CustomerSnapshot {
   return {
     address: snapshotString(snapshot, "address", "address"),
     branchNumber: snapshotString(snapshot, "branchNumber", "branch_number"),
-    contactName: snapshotString(snapshot, "contactName", "contact_name"),
-    email: snapshotString(snapshot, "email", "email"),
     name: snapshotString(snapshot, "name", "customer_name"),
     officeType: officeType(snapshot.officeType ?? snapshot.office_type),
-    phone: snapshotString(snapshot, "phone", "phone"),
-    serviceLocation: snapshotString(snapshot, "serviceLocation", "service_location"),
-    shippingAddress: snapshotString(snapshot, "shippingAddress", "shipping_address"),
     taxId: snapshotString(snapshot, "taxId", "tax_id"),
   };
 }
@@ -190,7 +185,6 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
         name: stringValue(item.name),
         position: Number(item.position),
         quantity: stringValue(item.quantity),
-        sku: stringValue(item.sku),
         unit: stringValue(item.unit),
         unitPrice: stringValue(item.unit_price),
         vatRate: stringValue(item.vat_rate),
@@ -204,6 +198,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
     subject: stringValue(row.subject),
     validUntil: stringValue(row.valid_until),
     validityDays: row.validity_days == null ? "" : stringValue(row.validity_days),
+    withholdingTaxRate: null,
   };
 }
 

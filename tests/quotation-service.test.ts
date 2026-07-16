@@ -16,13 +16,13 @@ import type { QuotationPayload } from "../lib/quotation-types.ts";
 function validPayload(): QuotationPayload {
   return {
     currency: "THB",
-    customer: { address: "Customer address", branchNumber: "", contactName: "", email: "customer@example.com", name: "Customer", officeType: "head_office", phone: "020000000", serviceLocation: "", shippingAddress: "", taxId: "" },
+    customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "" },
     documentDiscountType: null,
     documentDiscountValue: "0",
     id: null,
     internalNotes: "",
     issueDate: "2026-07-14",
-    items: [{ description: "", discountType: null, discountValue: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "Service", position: 1, quantity: "1", sku: "", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
+    items: [{ description: "", discountType: null, discountValue: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "Service", position: 1, quantity: "1", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
     priceMode: "vat_exclusive",
     publicNotes: "",
     reference: "",
@@ -30,6 +30,7 @@ function validPayload(): QuotationPayload {
     subject: "Photography",
     validUntil: "2026-07-29",
     validityDays: "15",
+    withholdingTaxRate: null,
   };
 }
 
@@ -82,12 +83,11 @@ describe("quotation service", () => {
     });
   });
 
-  it("rejects invalid date and email values", () => {
+  it("rejects invalid date values", () => {
     const payload = validPayload();
     payload.validityDays = "";
     payload.validUntil = "2026-07-13";
-    payload.customer.email = "bad-email";
-    assert.throws(() => prepareQuotationPayload(payload), (error) => error instanceof QuotationValidationError && error.fieldErrors.validUntil === "วันที่ใช้ได้ถึงต้องไม่น้อยกว่าวันที่ออกเอกสาร" && error.fieldErrors["customer.email"] === "รูปแบบอีเมลลูกค้าไม่ถูกต้อง");
+    assert.throws(() => prepareQuotationPayload(payload), (error) => error instanceof QuotationValidationError && error.fieldErrors.validUntil === "วันที่ใช้ได้ถึงต้องไม่น้อยกว่าวันที่ออกเอกสาร");
   });
 
   it("recomputes valid-until in validity-days mode", () => {
@@ -211,11 +211,37 @@ describe("quotation service", () => {
     assert.equal(prepared.payload.customer.branchNumber, "");
   });
 
-  it("keeps the legacy subject empty", () => {
-    const payload = validPayload();
-    payload.subject = "must not be saved";
-    const prepared = prepareQuotationPayload(payload);
-    assert.equal(prepared.payload.subject, "");
-    assert.equal(prepared.rpcPayload.subject, "");
+  it("keeps only quotation customer fields and persists the subject", () => {
+    const input = {
+      ...validPayload(),
+      customer: {
+        ...validPayload().customer,
+        contactName: "remove",
+        email: "remove@example.test",
+        phone: "remove",
+        serviceLocation: "remove",
+        shippingAddress: "remove",
+      },
+      subject: "งานบ้านพัก 3 คืน",
+    };
+
+    const prepared = prepareQuotationPayload(input);
+    assert.deepEqual(prepared.payload.customer, {
+      address: "Customer address",
+      branchNumber: "",
+      name: "Customer",
+      officeType: "head_office",
+      taxId: "",
+    });
+    assert.equal(prepared.payload.subject, "งานบ้านพัก 3 คืน");
+    assert.equal(prepared.rpcPayload.subject, "งานบ้านพัก 3 คืน");
+  });
+
+  it("validates an enabled withholding percentage", () => {
+    assert.throws(
+      () => prepareQuotationPayload({ ...validPayload(), withholdingTaxRate: "100.01" }),
+      (error) => error instanceof QuotationValidationError
+        && Boolean(error.fieldErrors.withholdingTaxRate),
+    );
   });
 });

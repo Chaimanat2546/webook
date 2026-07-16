@@ -20,13 +20,8 @@ export interface SellerSnapshot {
 export interface CustomerSnapshot {
   address: string;
   branchNumber: string;
-  contactName: string;
-  email: string;
   name: string;
   officeType: OfficeType;
-  phone: string;
-  serviceLocation: string;
-  shippingAddress: string;
   taxId: string;
 }
 
@@ -46,4 +41,5 @@ export interface QuotationPayload {
   subject: string;
   validUntil: string;
   validityDays: string;
+  withholdingTaxRate: string | null;
 }
