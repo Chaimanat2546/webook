@@ -1,6 +1,6 @@
 # Quotation Reference Document Design
 
-**Status:** Approved
+**Status:** Implemented and verified
 
 ## Goal
 
