@@ -63,6 +63,33 @@ describe("quotation UI", () => {
     assert.match(list, /\?print=1/);
     assert.doesNotMatch(list, /สถานะ/);
   });
+
+  it("uses exact grouped money presentation and grouped money inputs", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const list = source("../components/admin/quotations/quotation-list.tsx");
+    const price = editor.slice(
+      editor.indexOf("function ItemPriceControls"),
+      editor.indexOf("function ItemDiscountControls"),
+    );
+    const discount = editor.slice(
+      editor.indexOf("function ItemDiscountControls"),
+      editor.indexOf("function ItemVatControls"),
+    );
+    const vat = editor.slice(
+      editor.indexOf("function ItemVatControls"),
+      editor.indexOf("export function QuotationEditor"),
+    );
+
+    assert.match(editor, /import \{ formatBaht, formatMoney, normalizeMoneyInput \}/);
+    assert.match(editor, /grouped\?: boolean/);
+    assert.match(editor, /onBlur=\{handleBlur\}/);
+    assert.match(price, /<Numeric[\s\S]*?grouped[\s\S]*?field=\{`items\.\$\{index\}\.unitPrice`\}/);
+    assert.match(discount, /<Numeric[\s\S]*?grouped[\s\S]*?field=\{`items\.\$\{index\}\.discountAmount`\}/);
+    assert.doesNotMatch(vat, /\bgrouped\b/);
+    assert.match(list, /formatBaht\(quotation\.grandTotal\)/);
+    assert.doesNotMatch(list, /Intl\.NumberFormat|Number\(value\)/);
+  });
+
   it("loads create and edit routes through server repositories", () => {
     const createPage = source("../app/admin/quotations/new/page.tsx");
     const editPage = source("../app/admin/quotations/[id]/page.tsx");

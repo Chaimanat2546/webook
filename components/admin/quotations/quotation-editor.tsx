@@ -35,6 +35,7 @@ import {
   type QuotationItemInput,
 } from "../../../lib/quotation-calculator";
 import { addQuotationCalendarDays } from "../../../lib/quotation-dates";
+import { formatBaht, formatMoney, normalizeMoneyInput } from "../../../lib/quotation-money";
 import type {
   CustomerSnapshot,
   QuotationPayload,
@@ -131,7 +132,9 @@ function TextInput({
   inputClassName,
   inputMode,
   label,
+  onBlur,
   onChange,
+  onFocus,
   size = "fluid",
   value,
 }: {
@@ -141,7 +144,9 @@ function TextInput({
   inputClassName?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   label?: string;
+  onBlur?: React.FocusEventHandler<HTMLInputElement>;
   onChange: (value: string) => void;
+  onFocus?: React.FocusEventHandler<HTMLInputElement>;
   size?: FieldSize;
   value: string;
 }) {
@@ -154,7 +159,9 @@ function TextInput({
         data-field={field}
         disabled={disabled}
         inputMode={inputMode}
+        onBlur={onBlur}
         onChange={(event) => onChange(event.target.value)}
+        onFocus={onFocus}
         value={value}
       />
       {error ? <span className="text-xs text-destructive">{error}</span> : null}
@@ -172,6 +179,7 @@ function Numeric({
   disabled,
   error,
   field,
+  grouped = false,
   inputClassName,
   label,
   onChange,
@@ -181,36 +189,60 @@ function Numeric({
   disabled?: boolean;
   error?: string;
   field: string;
+  grouped?: boolean;
   inputClassName?: string;
   label?: string;
   onChange: (value: string) => void;
   size?: FieldSize;
   value: string;
 }) {
-  return label ? (
-    <TextInput
+  const [displayValue, setDisplayValue] = useState(
+    grouped && value ? formatMoney(value) : value,
+  );
+  const [focused, setFocused] = useState(false);
+
+  function handleChange(next: string) {
+    if (!grouped) return onChange(next);
+    setDisplayValue(next);
+    const normalized = normalizeMoneyInput(next);
+    onChange(normalized === null ? next : normalized);
+  }
+
+  function handleBlur() {
+    setFocused(false);
+    if (!grouped) return;
+    const normalized = normalizeMoneyInput(displayValue);
+    if (normalized === null || normalized === "") return;
+    onChange(normalized);
+    setDisplayValue(formatMoney(normalized));
+  }
+
+  const input = (
+    <Input
+      aria-invalid={Boolean(error)}
+      aria-label={label ?? field}
+      className={controlClassName(size, inputClassName)}
+      data-field={field}
       disabled={disabled}
-      error={error}
-      field={field}
-      inputClassName={inputClassName}
       inputMode="decimal"
-      label={label}
-      onChange={onChange}
-      size={size}
-      value={value}
+      onBlur={handleBlur}
+      onChange={(event) => handleChange(event.target.value)}
+      onFocus={() => {
+        setDisplayValue(grouped && value ? formatMoney(value) : value);
+        setFocused(true);
+      }}
+      value={grouped ? (focused ? displayValue : value ? formatMoney(value) : value) : value}
     />
+  );
+
+  return label ? (
+    <Field error={undefined} field={field} label={label}>
+      {input}
+      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+    </Field>
   ) : (
     <>
-      <Input
-        aria-invalid={Boolean(error)}
-        aria-label={field}
-        className={controlClassName(size, inputClassName)}
-        data-field={field}
-        disabled={disabled}
-        inputMode="decimal"
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      />
+      {input}
       {error ? <span className="text-xs text-destructive">{error}</span> : null}
     </>
   );
@@ -361,7 +393,7 @@ function SortableQuotationItem(props: ItemProps) {
       <p className="mt-3 max-w-full border-t pt-2 text-right font-medium tabular-nums [overflow-wrap:anywhere] xl:col-start-[-3] xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
         <span className="xl:sr-only">มูลค่าก่อนภาษี </span>
         {props.calculation?.lines[index]?.preTaxAmount
-          ? `${props.calculation.lines[index]!.preTaxAmount} บาท`
+          ? formatBaht(props.calculation.lines[index]!.preTaxAmount)
           : "—"}
       </p>
     </article>
@@ -449,6 +481,7 @@ function ItemPriceControls({
 }) {
   return (
     <Numeric
+      grouped
       error={errors[`items.${index}.unitPrice`]}
       field={`items.${index}.unitPrice`}
       label={labelled ? "ราคา" : undefined}
@@ -469,6 +502,7 @@ function ItemDiscountControls({
 }) {
   return (
     <Numeric
+      grouped
       error={errors[`items.${index}.discountAmount`]}
       field={`items.${index}.discountAmount`}
       label={labelled ? "ส่วนลด" : undefined}
@@ -585,7 +619,7 @@ export function QuotationEditor({
     () => (lastSavedPayload ? calculateQuotation(lastSavedPayload) : null),
     [lastSavedPayload],
   );
-  const money = (value?: string) => (value ? `${value} บาท` : "—");
+  const money = (value?: string) => (value ? formatBaht(value) : "—");
   function changed(field: string) {
     setIsDirty(true);
     setFieldErrors((current) => {
