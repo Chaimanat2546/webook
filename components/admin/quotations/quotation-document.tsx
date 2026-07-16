@@ -61,7 +61,7 @@ export function QuotationDocument({
             <th className="p-2">#</th>
             <th className="p-2">รายการ</th>
             <th className="p-2 text-right">จำนวน</th>
-            <th className="p-2">หน่วย</th>
+            <th className="p-2"></th>
             <th className="p-2 text-right">ราคา (บาท)</th>
             {showItemDiscount ? <th className="p-2 text-right">ส่วนลด</th> : null}
             {showItemVat ? <th className="p-2 text-right">VAT</th> : null}

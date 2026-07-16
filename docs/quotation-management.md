@@ -25,25 +25,29 @@ customer acceptance, payment or installments, or revision history.
 - Reference is optional. Subject is labelled `เรื่อง / ชื่องาน` in the document.
 - All user-visible currency copy uses `บาท`.
 - Quantity is required and greater than zero; unit is optional.
-- Each item has its own discount and VAT treatment/rate. Drag and drop changes
-  item order, and that order is persisted on save.
-- Document discount and withholding tax are enabled by their own checkboxes.
+- Per-item discount and VAT controls are enabled from `ตั้งค่าเอกสาร`.
+- New quotations start with both optional item features off.
+- Item discounts are fixed amounts only. Disabling the feature clears all item discounts.
+- Enabling VAT starts items at 7%; disabling it stores every item as no VAT at 0%.
+- The item ledger, Preview/Print, and Public Read-only display `มูลค่าก่อนภาษี` after item discount and before VAT.
+- Drag and drop changes item order, and that order is persisted on save.
+- Withholding tax is enabled by its own checkbox.
 - Internal notes are admin-only; public notes may appear in the document.
 
 ## Calculation And Totals
 
-The server recalculates money before saving. The approved order is: item gross
-amount; item discount; document discount allocated across items; taxable amount
-and VAT per item; grand total; withholding tax on the taxable total; then amount
-due. The document displays these seven total labels in this order:
+The server recalculates money before saving:
 
-1. `รวมเป็นเงิน`
-2. `ส่วนลด`
-3. `ราคาหลังหักส่วนลด`
-4. `VAT`
-5. `จำนวนเงินรวมทั้งสิ้น`
-6. `หักภาษี ณ ที่จ่าย`
-7. `ยอดชำระ`
+1. `gross total = sum(quantity × unit price)`
+2. `discount total = sum(fixed item discounts)`
+3. `pre-tax total = gross total − discount total`
+4. `VAT total = sum(item pre-tax amount × item VAT rate)`
+5. `grand total = pre-tax total + VAT total`
+6. `withholding tax = pre-tax total × withholding percentage`
+7. `amount due = grand total − withholding tax`
+
+The local cleanup migration resets quotation documents, items, and numbering,
+and removes unused quotation columns while preserving the seller company profile.
 
 ## Save, Preview, Print, And Share
 

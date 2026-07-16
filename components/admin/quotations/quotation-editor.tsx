@@ -1266,7 +1266,7 @@ export function QuotationEditor({
           <span>#</span>
           <span>รายการ / รายละเอียด</span>
           <span>จำนวน</span>
-          <span>หน่วย</span>
+          <span></span>
           <span>ราคาต่อหน่วย</span>
           {showItemDiscount ? <span>ส่วนลด</span> : null}
           {showItemVat ? <span>VAT</span> : null}
