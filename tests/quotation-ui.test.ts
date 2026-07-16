@@ -286,6 +286,12 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /xl:col-start-8/);
   });
 
+  it("keeps optional item controls on the first desktop ledger row", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /showItemDiscount \? <div className="xl:col-start-6 xl:row-start-1"><ItemDiscountControls/);
+    assert.match(editor, /showItemVat \? <div className=\{cn\("xl:row-start-1", props\.showItemDiscount \? "xl:col-start-7" : "xl:col-start-6"\)\}><ItemVatControls/);
+  });
+
   it("keeps two-up item controls within their grid columns", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /className=\{cn\("w-full min-w-0", selectClassName\)\}/);

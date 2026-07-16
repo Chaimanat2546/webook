@@ -354,8 +354,8 @@ function SortableQuotationItem(props: ItemProps) {
         <div className="xl:col-start-5 xl:row-start-1">
           <ItemPriceControls {...props} labelled />
         </div>
-        {props.showItemDiscount ? <div><ItemDiscountControls {...props} labelled /></div> : null}
-        {props.showItemVat ? <div><ItemVatControls {...props} labelled /></div> : null}
+        {props.showItemDiscount ? <div className="xl:col-start-6 xl:row-start-1"><ItemDiscountControls {...props} labelled /></div> : null}
+        {props.showItemVat ? <div className={cn("xl:row-start-1", props.showItemDiscount ? "xl:col-start-7" : "xl:col-start-6")}><ItemVatControls {...props} labelled /></div> : null}
       </div>
       <p className="mt-3 border-t pt-2 text-right font-medium xl:col-start-[-3] xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
         <span className="xl:sr-only">มูลค่าก่อนภาษี </span>
