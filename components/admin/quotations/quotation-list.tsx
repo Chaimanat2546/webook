@@ -11,7 +11,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../ui/c
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
 
-const money = new Intl.NumberFormat("th-TH", { currency: "THB", minimumFractionDigits: 2, style: "currency" });
+const money = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2 });
+const moneyInBaht = (value: string) => `${money.format(Number(value))} บาท`;
 
 function formatDate(value: string): string {
   const date = new Date(`${value}T00:00:00`);
@@ -55,7 +56,7 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
         <CardContent className="grid grid-cols-2 gap-2 text-sm">
           <div><p className="text-muted-foreground">วันที่ออก</p><p>{formatDate(quotation.issueDate)}</p></div>
           <div><p className="text-muted-foreground">ใช้ได้ถึง</p><p>{formatDate(quotation.validUntil)}</p></div>
-          <div className="col-span-2"><p className="text-muted-foreground">ยอดรวม</p><p className="font-medium">{money.format(Number(quotation.grandTotal))}</p></div>
+          <div className="col-span-2"><p className="text-muted-foreground">ยอดรวม</p><p className="font-medium">{moneyInBaht(quotation.grandTotal)}</p></div>
         </CardContent>
         <CardFooter><QuotationActions quotation={quotation} onDelete={() => setSelected(quotation)} /></CardFooter>
       </Card>)}
@@ -65,7 +66,7 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
         <TableHead>เลขที่เอกสาร</TableHead><TableHead>ลูกค้า</TableHead><TableHead>วันที่ออก</TableHead><TableHead>ใช้ได้ถึง</TableHead><TableHead>ยอดรวม</TableHead><TableHead>อัปเดต</TableHead><TableHead><span className="sr-only">การทำงาน</span></TableHead>
       </TableRow></TableHeader><TableBody>
         {quotations.map((quotation) => <TableRow key={quotation.id}>
-          <TableCell className="font-medium">{quotation.documentNumber}</TableCell><TableCell>{quotation.customerName || "-"}</TableCell><TableCell>{formatDate(quotation.issueDate)}</TableCell><TableCell>{formatDate(quotation.validUntil)}</TableCell><TableCell>{money.format(Number(quotation.grandTotal))}</TableCell><TableCell>{new Date(quotation.updatedAt).toLocaleString("th-TH")}</TableCell><TableCell><QuotationActions quotation={quotation} onDelete={() => setSelected(quotation)} /></TableCell>
+          <TableCell className="font-medium">{quotation.documentNumber}</TableCell><TableCell>{quotation.customerName || "-"}</TableCell><TableCell>{formatDate(quotation.issueDate)}</TableCell><TableCell>{formatDate(quotation.validUntil)}</TableCell><TableCell>{moneyInBaht(quotation.grandTotal)}</TableCell><TableCell>{new Date(quotation.updatedAt).toLocaleString("th-TH")}</TableCell><TableCell><QuotationActions quotation={quotation} onDelete={() => setSelected(quotation)} /></TableCell>
         </TableRow>)}
       </TableBody></Table>
     </Card>

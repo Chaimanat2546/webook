@@ -123,7 +123,7 @@ describe("quotation UI", () => {
     assert.match(editor, /const selectClassName = "h-8 rounded-lg/);
     assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="customer\.officeType"/);
     assert.match(editor, /className=\{selectClassName\} data-field="seller\.officeType"/);
-    assert.match(editor, /className=\{controlClassName\("identifier", selectClassName\)\} data-field="documentDiscountType"/);
+    assert.match(editor, /className=\{controlClassName\("compact", selectClassName\)\} data-field="documentDiscountType"/);
   });
 
   it("marks every editable native error control as invalid", () => {
@@ -173,6 +173,31 @@ describe("quotation UI", () => {
     assert.ok(editor.indexOf('data-field="publicNotes"') < editor.indexOf('data-field="internalNotes"'));
     assert.ok(editor.indexOf('data-field="internalNotes"') < editor.indexOf("data-quotation-totals"));
     assert.doesNotMatch(editor, /data-internal-notes[^>]*rounded-xl/);
+  });
+
+  it("uses approved baht totals in the editor, preview, print, and list", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const list = source("../components/admin/quotations/quotation-list.tsx");
+    for (const label of [
+      "รวมเป็นเงิน",
+      "ส่วนลด",
+      "ราคาหลังหักส่วนลด",
+      "VAT",
+      "จำนวนเงินรวมทั้งสิ้น",
+      "หักภาษี ณ ที่จ่าย",
+      "ยอดชำระ",
+    ]) assert.match(editor, new RegExp(label));
+    assert.match(editor, /type="checkbox"[\s\S]*documentDiscountType/);
+    assert.match(editor, /disabled=\{payload\.documentDiscountType === null\}/);
+    assert.match(editor, /type="checkbox"[\s\S]*withholdingTaxRate/);
+    assert.match(editor, /disabled=\{payload\.withholdingTaxRate === null\}/);
+    assert.doesNotMatch(editor, /รวมก่อนส่วนลด|ส่วนลดรายการ|ส่วนลดเอกสาร|ยอดรวมสุทธิ \(THB\)/);
+    assert.match(document, /item\.netAmount/);
+    assert.doesNotMatch(document, /customer\.(?:contactName|phone|email)/);
+    assert.match(document, /เรื่อง \/ ชื่องาน/);
+    assert.doesNotMatch(editor + document + list, /THB — บาท|ยอดรวมสุทธิ \(THB\)|style:\s*"currency"/);
+    assert.match(list, /บาท/);
   });
 
   it("clears branch numbers when head office is selected", () => {
@@ -249,7 +274,7 @@ describe("quotation UI", () => {
     assert.match(editor, /QuotationDocument/);
     assert.match(document, /data-quotation-document/);
     assert.doesNotMatch(document, /internalNotes/);
-    assert.doesNotMatch(document, /subject/);
+    assert.match(document, /payload\.subject/);
   });
 
   it("guards dirty editor navigation and supports saved quotation deletion", () => {

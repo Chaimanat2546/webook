@@ -43,8 +43,8 @@ function controlClassName(size: FieldSize, className?: string) {
 }
 
 function Field({ children, error, field, label }: FieldProps) { void field; return <label className="grid gap-1 text-sm"><span>{label}</span>{children}{error ? <span className="text-xs text-destructive">{error}</span> : null}</label>; }
-function TextInput({ error, field, inputClassName, inputMode, label, onChange, size = "fluid", value }: { error?: string; field: string; inputClassName?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; label?: string; onChange: (value: string) => void; size?: FieldSize; value: string }) { const input = <><Input aria-invalid={Boolean(error)} aria-label={label ?? field} className={controlClassName(size, inputClassName)} data-field={field} inputMode={inputMode} onChange={(event) => onChange(event.target.value)} value={value} />{error ? <span className="text-xs text-destructive">{error}</span> : null}</>; return label ? <Field error={undefined} field={field} label={label}>{input}</Field> : input; }
-function Numeric({ error, field, inputClassName, label, onChange, size = "fluid", value }: { error?: string; field: string; inputClassName?: string; label?: string; onChange: (value: string) => void; size?: FieldSize; value: string }) { return label ? <TextInput error={error} field={field} inputClassName={inputClassName} inputMode="decimal" label={label} onChange={onChange} size={size} value={value} /> : <><Input aria-invalid={Boolean(error)} aria-label={field} className={controlClassName(size, inputClassName)} data-field={field} inputMode="decimal" onChange={(event) => onChange(event.target.value)} value={value} />{error ? <span className="text-xs text-destructive">{error}</span> : null}</>; }
+function TextInput({ disabled, error, field, inputClassName, inputMode, label, onChange, size = "fluid", value }: { disabled?: boolean; error?: string; field: string; inputClassName?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; label?: string; onChange: (value: string) => void; size?: FieldSize; value: string }) { const input = <><Input aria-invalid={Boolean(error)} aria-label={label ?? field} className={controlClassName(size, inputClassName)} data-field={field} disabled={disabled} inputMode={inputMode} onChange={(event) => onChange(event.target.value)} value={value} />{error ? <span className="text-xs text-destructive">{error}</span> : null}</>; return label ? <Field error={undefined} field={field} label={label}>{input}</Field> : input; }
+function Numeric({ disabled, error, field, inputClassName, label, onChange, size = "fluid", value }: { disabled?: boolean; error?: string; field: string; inputClassName?: string; label?: string; onChange: (value: string) => void; size?: FieldSize; value: string }) { return label ? <TextInput disabled={disabled} error={error} field={field} inputClassName={inputClassName} inputMode="decimal" label={label} onChange={onChange} size={size} value={value} /> : <><Input aria-invalid={Boolean(error)} aria-label={field} className={controlClassName(size, inputClassName)} data-field={field} disabled={disabled} inputMode="decimal" onChange={(event) => onChange(event.target.value)} value={value} />{error ? <span className="text-xs text-destructive">{error}</span> : null}</>; }
 function Totals({ bold, label, value }: { bold?: boolean; label: string; value: string }) { return <div className={bold ? "flex justify-between border-t pt-2 font-semibold" : "flex justify-between"}><span>{label}</span><output>{value}</output></div>; }
 function positions(items: QuotationItemInput[]) { return items.map((item, index) => ({ ...item, position: index + 1 })); }
 function DocumentMore({ deleteEnabled, isPending, onDelete, onPreview, onPrint, onSaveAndClose, printEnabled, showPreviewAndPrint }: { deleteEnabled: boolean; isPending: boolean; onDelete: () => void; onPreview: () => void; onPrint: () => void; onSaveAndClose: () => void; printEnabled: boolean; showPreviewAndPrint: boolean }) { return <DropdownMenu><DropdownMenuTrigger asChild><Button type="button" variant="outline"><MoreHorizontal aria-hidden="true" className="size-4" />เพิ่มเติม</Button></DropdownMenuTrigger><DropdownMenuContent align="end">{showPreviewAndPrint ? <><DropdownMenuItem onSelect={onPreview}><Eye aria-hidden="true" className="size-4" />ดูตัวอย่าง</DropdownMenuItem>{printEnabled ? <DropdownMenuItem onSelect={onPrint}><Printer aria-hidden="true" className="size-4" />พิมพ์</DropdownMenuItem> : <DropdownMenuItem disabled><Printer aria-hidden="true" className="size-4" />พิมพ์</DropdownMenuItem>}</> : null}<DropdownMenuItem disabled={isPending} onSelect={onSaveAndClose}><Save aria-hidden="true" className="size-4" />บันทึกและปิด</DropdownMenuItem><DropdownMenuItem disabled title="ยังไม่รองรับใน MVP นี้"><Share2 aria-hidden="true" className="size-4" />แชร์</DropdownMenuItem><DropdownMenuItem disabled title="ยังไม่รองรับใน MVP นี้"><Download aria-hidden="true" className="size-4" />ดาวน์โหลด</DropdownMenuItem>{deleteEnabled ? <DropdownMenuItem onSelect={onDelete} variant="destructive"><Trash2 aria-hidden="true" className="size-4" />ลบ</DropdownMenuItem> : null}</DropdownMenuContent></DropdownMenu>; }
@@ -69,7 +69,7 @@ function SortableQuotationItem(props: ItemProps) {
       <div className="xl:col-start-6 xl:row-start-1"><ItemDiscountControls {...props} labelled /></div>
       <div className="xl:col-start-7 xl:row-start-1"><ItemVatControls {...props} labelled /></div>
     </div>
-    <p className="mt-3 border-t pt-2 text-right font-medium xl:col-start-8 xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2"><span className="xl:sr-only">รวม </span>{props.calculation?.lines[index]?.netAmount ?? "—"}</p>
+    <p className="mt-3 border-t pt-2 text-right font-medium xl:col-start-8 xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2"><span className="xl:sr-only">รวม </span>{props.calculation?.lines[index]?.netAmount ? `${props.calculation.lines[index]!.netAmount} บาท` : "—"}</p>
   </article>;
 }
 
@@ -107,9 +107,11 @@ export function QuotationEditor({ documentNumber: initialDocumentNumber, initial
   const calculationResult = useMemo(() => { try { return { calculation: calculateQuotation(payload), calculationError: "" }; } catch (error) { return { calculation: null, calculationError: error instanceof Error ? error.message : "คำนวณยอดไม่ได้" }; } }, [payload]);
   const { calculation, calculationError } = calculationResult;
   const savedCalculation = useMemo(() => lastSavedPayload ? calculateQuotation(lastSavedPayload) : null, [lastSavedPayload]);
-  const total = (value?: string) => value ?? "—";
+  const money = (value?: string) => value ? `${value} บาท` : "—";
   function changed(field: string) { setIsDirty(true); setFieldErrors((current) => { const next = { ...current }; delete next[field]; return next; }); }
   function updateRoot<K extends keyof QuotationPayload>(key: K, value: QuotationPayload[K]) { changed(String(key)); setPayload((current) => ({ ...current, [key]: value })); }
+  function setDocumentDiscountEnabled(enabled: boolean) { changed("documentDiscountType"); setPayload((current) => ({ ...current, documentDiscountType: enabled ? (current.documentDiscountType ?? "percent") : null, documentDiscountValue: enabled ? current.documentDiscountValue : "0" })); }
+  function setWithholdingEnabled(enabled: boolean) { changed("withholdingTaxRate"); setPayload((current) => ({ ...current, withholdingTaxRate: enabled ? (current.withholdingTaxRate ?? "3.00") : null })); }
   function updateSeller<K extends keyof SellerSnapshot>(key: K, value: SellerSnapshot[K]) { changed(`seller.${String(key)}`); setPayload((current) => ({ ...current, seller: { ...current.seller, [key]: value } })); }
   function updateCustomer<K extends keyof CustomerSnapshot>(key: K, value: CustomerSnapshot[K]) { changed(`customer.${String(key)}`); setPayload((current) => ({ ...current, customer: { ...current.customer, [key]: value } })); }
   function updateSellerOfficeType(officeType: SellerSnapshot["officeType"]) { changed("seller.officeType"); setPayload((current) => ({ ...current, seller: { ...current.seller, branchNumber: officeType === "branch" ? current.seller.branchNumber : "", officeType } })); }
@@ -182,15 +184,25 @@ export function QuotationEditor({ documentNumber: initialDocumentNumber, initial
         <div data-field="items" data-internal-notes tabIndex={-1}>{fieldErrors.items ? <span className="text-xs text-destructive">{fieldErrors.items}</span> : null}<Field error={fieldErrors.internalNotes} field="internalNotes" label="หมายเหตุภายใน (ไม่แสดงในเอกสาร)"><Textarea aria-invalid={Boolean(fieldErrors.internalNotes)} data-field="internalNotes" onChange={(event) => updateRoot("internalNotes", event.target.value)} value={payload.internalNotes} /></Field></div>
       </section>
       <section data-quotation-totals className="space-y-2 border-t-2 border-foreground pt-3">
-        <Field error={fieldErrors.documentDiscountType} field="documentDiscountType" label="ส่วนลดเอกสาร"><select aria-invalid={Boolean(fieldErrors.documentDiscountType)} className={controlClassName("identifier", selectClassName)} data-field="documentDiscountType" onChange={(event) => updateRoot("documentDiscountType", event.target.value === "amount" || event.target.value === "percent" ? event.target.value : null)} value={payload.documentDiscountType ?? ""}><option value="">ไม่มี</option><option value="amount">บาท</option><option value="percent">%</option></select></Field>
-        <Numeric error={fieldErrors.documentDiscountValue} field="documentDiscountValue" label="มูลค่าส่วนลดเอกสาร" onChange={(value) => updateRoot("documentDiscountValue", value)} size="identifier" value={payload.documentDiscountValue} />
-        <Totals label="รวมก่อนส่วนลด" value={total(calculation?.subtotal)} />
-        <Totals label="ส่วนลดรายการ" value={total(calculation?.itemDiscountTotal)} />
-        <Totals label="ส่วนลดเอกสาร" value={total(calculation?.documentDiscountTotal)} />
-        <Totals label="มูลค่าก่อน VAT" value={total(calculation?.taxableTotal)} />
-        <Totals label="VAT" value={total(calculation?.vatTotal)} />
-        <Totals bold label="ยอดรวมสุทธิ (THB)" value={total(calculation?.grandTotal)} />
-        <p className="text-sm">{calculation ? formatThaiBahtText(calculation.grandTotal) : "—"}</p>
+        <Totals label="รวมเป็นเงิน" value={money(calculation?.netSubtotal)} />
+        <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1 text-sm"><input checked={payload.documentDiscountType !== null} className="size-4 accent-primary" onChange={(event) => setDocumentDiscountEnabled(event.target.checked)} type="checkbox" />ส่วนลด</label>
+            <select aria-invalid={Boolean(fieldErrors.documentDiscountType)} aria-label="ประเภทส่วนลด" className={controlClassName("compact", selectClassName)} data-field="documentDiscountType" disabled={payload.documentDiscountType === null} onChange={(event) => updateRoot("documentDiscountType", event.target.value as "amount" | "percent")} value={payload.documentDiscountType ?? "percent"}><option value="percent">%</option><option value="amount">บาท</option></select>
+            <Numeric disabled={payload.documentDiscountType === null} error={fieldErrors.documentDiscountValue} field="documentDiscountValue" onChange={(value) => updateRoot("documentDiscountValue", value)} size="compact" value={payload.documentDiscountValue} />
+          </div>
+          <output>{money(calculation?.documentDiscountTotal)}</output>
+        </div>
+        {fieldErrors.documentDiscountType ? <span className="text-xs text-destructive">{fieldErrors.documentDiscountType}</span> : null}
+        <Totals label="ราคาหลังหักส่วนลด" value={money(calculation?.taxableTotal)} />
+        <Totals label="VAT" value={money(calculation?.vatTotal)} />
+        <Totals bold label="จำนวนเงินรวมทั้งสิ้น" value={money(calculation?.grandTotal)} />
+        <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-t pt-2">
+          <label className="flex items-center gap-2 text-sm"><input checked={payload.withholdingTaxRate !== null} className="size-4 accent-primary" onChange={(event) => setWithholdingEnabled(event.target.checked)} type="checkbox" />หักภาษี ณ ที่จ่าย<Numeric disabled={payload.withholdingTaxRate === null} error={fieldErrors.withholdingTaxRate} field="withholdingTaxRate" onChange={(value) => updateRoot("withholdingTaxRate", value)} size="compact" value={payload.withholdingTaxRate ?? "0.00"} />%</label>
+          <output>{money(calculation?.withholdingTaxTotal)}</output>
+        </div>
+        <Totals bold label="ยอดชำระ" value={money(calculation?.amountDue)} />
+        <p className="text-sm">{calculation ? formatThaiBahtText(calculation.amountDue) : "—"}</p>
       </section>
     </div>
     <Dialog onOpenChange={setPreviewOpen} open={previewOpen}><DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-auto p-0 sm:max-w-[calc(100vw-4rem)]" showCloseButton>{calculation ? <QuotationDocument calculation={calculation} documentNumber={documentNumber} payload={payload} /> : <p className="p-4">กรุณาแก้ไขข้อมูลก่อนดูตัวอย่าง</p>}</DialogContent></Dialog>
