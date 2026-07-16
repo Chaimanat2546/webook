@@ -178,9 +178,11 @@ describe("quotation UI", () => {
     assert.match(editor, /DropdownMenuCheckboxItem/);
     assert.match(editor, /ส่วนลดเฉพาะรายการ/);
     assert.match(editor, /VAT เฉพาะรายการ/);
-    assert.match(editor, /items\.some\(\(item\) => Number\(item\.discountAmount\) > 0\)/);
-    assert.match(editor, /items\.some\(\(item\) => item\.vatTreatment !== "none"\)/);
-    assert.match(editor, /window\.confirm/);
+    assert.match(editor, /initialPayload\.items\.some\(\(item\) => Number\(item\.discountAmount\) > 0\)/);
+    assert.match(editor, /initialPayload\.items\.some\(\(item\) => item\.vatTreatment !== "none"\)/);
+    assert.match(editor, /!enabled && payload\.items\.some\(\(item\) => Number\(item\.vatRate\) > 0\)[\s\S]*?!window\.confirm/);
+    assert.match(editor, /vatRate: enabled \? "7\.00" : "0",[\s\S]*?vatTreatment: enabled \? "taxable" : "none"/);
+    assert.doesNotMatch(editor, /!enabled && payload\.items\.some\(\(item\) => item\.vatTreatment !== "none"\)/);
   });
 
   it("uses fixed item discounts and pre-tax item values", () => {
@@ -188,7 +190,12 @@ describe("quotation UI", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
     assert.match(editor, /field=\{`items\.\$\{index\}\.discountAmount`\}/);
     assert.match(editor, /calculation\?\.lines\[index\]\?\.preTaxAmount/);
-    assert.match(editor + document, /มูลค่าก่อนภาษี/);
+    const item = editor.slice(editor.indexOf("function SortableQuotationItem"), editor.indexOf("function ItemDetailsControls"));
+    const header = editor.slice(editor.indexOf("itemGrid(showItemDiscount, showItemVat)"), editor.indexOf("<DragDropProvider"));
+    assert.match(item, /<span className="xl:sr-only">มูลค่าก่อนภาษี <\/span>/);
+    assert.match(header, /<span className="text-right">มูลค่าก่อนภาษี<\/span>/);
+    assert.doesNotMatch(item + header, />รวม<|>รวม <|รวม<\/span>/);
+    assert.match(document, /มูลค่าก่อนภาษี/);
     assert.doesNotMatch(editor + document, /documentDiscount|discountType|discountValue/);
     assert.doesNotMatch(editor, /<option value="percent">%<\/option>/);
   });
@@ -266,6 +273,17 @@ describe("quotation UI", () => {
   it("shows desktop select errors beside VAT controls", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const treatmentControl = labelled \?[\s\S]*?error=\{error\("vatTreatment"\)\}[\s\S]*?\{error\("vatTreatment"\) \?/);
+  });
+
+  it("keeps the total and delete controls last in every desktop item grid", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /if \(showItemDiscount && showItemVat\) return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_9rem_8\.5rem_2\.5rem\]"/);
+    assert.match(editor, /if \(showItemDiscount\) return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_8\.5rem_2\.5rem\]"/);
+    assert.match(editor, /if \(showItemVat\) return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_8\.5rem_2\.5rem\]"/);
+    assert.match(editor, /return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_8\.5rem_2\.5rem\]"/);
+    assert.match(editor, /aria-label=\{`ลบรายการ[\s\S]*?className="xl:col-start-\[-2\]"/);
+    assert.match(editor, /className="[^"]*xl:col-start-\[-3\][^"]*"[\s\S]*?<span className="xl:sr-only">มูลค่าก่อนภาษี/);
+    assert.doesNotMatch(editor, /xl:col-start-8/);
   });
 
   it("keeps two-up item controls within their grid columns", () => {

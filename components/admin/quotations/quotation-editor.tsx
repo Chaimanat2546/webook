@@ -328,7 +328,7 @@ function SortableQuotationItem(props: ItemProps) {
         </div>
         <Button
           aria-label={`ลบรายการ ${index + 1}`}
-          className="xl:order-last"
+          className="xl:col-start-[-2]"
           disabled={props.totalItems === 1}
           onClick={onRemove}
           size="icon-xs"
@@ -357,8 +357,8 @@ function SortableQuotationItem(props: ItemProps) {
         {props.showItemDiscount ? <div><ItemDiscountControls {...props} labelled /></div> : null}
         {props.showItemVat ? <div><ItemVatControls {...props} labelled /></div> : null}
       </div>
-      <p className="mt-3 border-t pt-2 text-right font-medium xl:col-start-8 xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
-        <span className="xl:sr-only">รวม </span>
+      <p className="mt-3 border-t pt-2 text-right font-medium xl:col-start-[-3] xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
+        <span className="xl:sr-only">มูลค่าก่อนภาษี </span>
         {props.calculation?.lines[index]?.preTaxAmount
           ? `${props.calculation.lines[index]!.preTaxAmount} บาท`
           : "—"}
@@ -613,7 +613,7 @@ export function QuotationEditor({
     }
   }
   function toggleItemVat(enabled: boolean) {
-    if (!enabled && payload.items.some((item) => item.vatTreatment !== "none")
+    if (!enabled && payload.items.some((item) => Number(item.vatRate) > 0)
       && !window.confirm("การปิด VAT เฉพาะรายการจะล้างค่า VAT ทุกรายการ ต้องการดำเนินการต่อหรือไม่")) return;
     setShowItemVat(enabled);
     changed("items");
@@ -1270,7 +1270,7 @@ export function QuotationEditor({
           <span>ราคาต่อหน่วย</span>
           {showItemDiscount ? <span>ส่วนลด</span> : null}
           {showItemVat ? <span>VAT</span> : null}
-          <span className="text-right">รวม</span>
+          <span className="text-right">มูลค่าก่อนภาษี</span>
         </div>
         <DragDropProvider
           onDragEnd={(event) => {
