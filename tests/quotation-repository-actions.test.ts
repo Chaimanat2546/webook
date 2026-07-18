@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import {
+  quotationPersistenceError,
+  QuotationPaymentAssetOriginNotConfiguredError,
+} from "../server/repositories/quotation-errors.ts";
 
 const repository = readFileSync(
   new URL("../server/repositories/quotations.ts", import.meta.url),
@@ -70,5 +74,19 @@ describe("quotation repository and actions", () => {
     assert.match(actions, /fieldErrors: error\.fieldErrors/);
     assert.match(actions, /ไม่สามารถบันทึกใบเสนอราคาได้/);
     assert.doesNotMatch(actions, /formError: error\.message/);
+  });
+
+  it("maps only the stable missing payment-asset-origin database error", () => {
+    const configured = quotationPersistenceError({
+      code: "P0001",
+      message: "quotation_payment_asset_origin_not_configured",
+    });
+    assert.ok(configured instanceof QuotationPaymentAssetOriginNotConfiguredError);
+    assert.equal(
+      quotationPersistenceError({ code: "P0001", message: "Unexpected database failure" }).message,
+      "Unexpected database failure",
+    );
+    assert.match(actions, /error instanceof QuotationPaymentAssetOriginNotConfiguredError/);
+    assert.match(actions, /ADVERTISEMENT_IMAGE_WORKER_URL/);
   });
 });

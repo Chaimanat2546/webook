@@ -15,6 +15,7 @@ import type {
   SellerSnapshot,
 } from "../../lib/quotation-types.ts";
 import type { PreparedQuotation } from "../services/quotations";
+import { quotationPersistenceError } from "./quotation-errors";
 
 export interface QuotationCompanyProfileRow {
   address: string;
@@ -355,7 +356,7 @@ export async function saveCompanyPaymentMethods(
       type: method.type,
     })),
   });
-  if (error) throw new Error(error.message);
+  if (error) throw quotationPersistenceError(error);
 }
 
 export async function listQuotations(
@@ -430,7 +431,7 @@ export async function saveQuotation(
   rpcPayload: PreparedQuotation["rpcPayload"],
 ): Promise<SavedQuotation> {
   const { data, error } = await supabase.rpc("save_quotation_with_payments", { p_payload: rpcPayload });
-  if (error) throw new Error(error.message);
+  if (error) throw quotationPersistenceError(error);
   const row = (data as Array<{ document_number: string; id: string }> | null)?.[0];
   if (!row) throw new Error("Quotation save returned no row");
   const { data: saved, error: tokenError } = await supabase

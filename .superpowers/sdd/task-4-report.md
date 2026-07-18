@@ -50,3 +50,9 @@ Recorded with this task.
 - Updated `.env.example`, `README.md`, and `docs/quotation-management.md` with the required database-owner setup using the same bare origin as `ADVERTISEMENT_IMAGE_WORKER_URL`.
 - Direct-RPC integration coverage proves a lookalike Workers.dev URL is rejected, the exact configured Workers.dev origin succeeds for master and snapshot saves, a custom configured origin succeeds for both, and an authenticated caller cannot change the origin.
 - Follow-up verification: `npm.cmd run typecheck` passed; `npm.cmd run lint` completed with the existing `no-img-element` warning only; `npm.cmd run test` passed 267 tests with 0 failures (the local Supabase integration suite is environment-gated and therefore skipped when `RUN_LOCAL_SUPABASE_TESTS` is unset).
+
+## Missing-origin runtime follow-up
+
+- Added `20260718130000_quotation_payment_asset_origin_error.sql`, which raises SQLSTATE `P0001` with the stable message `quotation_payment_asset_origin_not_configured` only when a non-empty payment asset URL is saved before origin setup. Empty or null asset fields remain valid without configuration.
+- The repository maps only that exact code/message pair to a typed error. Both master-payment and quotation save actions return an actionable Thai operator message that identifies `ADVERTISEMENT_IMAGE_WORKER_URL`; all other persistence errors retain generic handling.
+- Local integration coverage exercises missing configuration for both RPC paths and verifies empty payment data succeeds before configuration. Documentation now records the resulting operator behavior.

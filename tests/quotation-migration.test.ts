@@ -51,6 +51,13 @@ const paymentAssetOriginSql = readFileSync(
   new URL(`../supabase/migrations/${paymentAssetOriginMigrationName}`, import.meta.url),
   "utf8",
 );
+const paymentAssetOriginErrorMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_payment_asset_origin_error.sql"));
+assert.ok(paymentAssetOriginErrorMigrationName, "quotation payment asset origin error migration must exist");
+const paymentAssetOriginErrorSql = readFileSync(
+  new URL(`../supabase/migrations/${paymentAssetOriginErrorMigrationName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
   it("creates the MVP 1 tables without later-MVP scope", () => {
@@ -173,5 +180,14 @@ describe("quotation migration", () => {
     assert.match(paymentAssetOriginSql, /auth\.role\(\) <> 'service_role'/i);
     assert.match(paymentAssetOriginSql, /revoke all on function public\.configure_quotation_payment_asset_origin/i);
     assert.match(paymentAssetOriginSql, /grant execute on function public\.configure_quotation_payment_asset_origin\(text\) to service_role/i);
+  });
+
+  it("raises a stable setup error only for non-empty payment assets without an origin", () => {
+    assert.match(paymentAssetOriginErrorSql, /create or replace function private\.validate_quotation_payment_asset_url\(p_url text\)/i);
+    assert.match(paymentAssetOriginErrorSql, /coalesce\(btrim\(p_url\), ''\) = ''/i);
+    assert.match(paymentAssetOriginErrorSql, /errcode = 'P0001'/i);
+    assert.match(paymentAssetOriginErrorSql, /message = 'quotation_payment_asset_origin_not_configured'/i);
+    assert.match(paymentAssetOriginErrorSql, /create or replace function public\.configure_quotation_payment_asset_origin/i);
+    assert.match(paymentAssetOriginErrorSql, /if p_origin is null then[\s\S]*delete from private\.quotation_payment_asset_config/i);
   });
 });

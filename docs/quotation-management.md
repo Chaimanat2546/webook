@@ -79,7 +79,10 @@ configured Media Worker origin and use
 `private.quotation_payment_asset_config.origin` once as the bare origin from
 `ADVERTISEMENT_IMAGE_WORKER_URL`; only the database owner/service role can
 change it. This supports either the deployed `webook-media` Workers.dev origin
-or an exact custom media domain.
+or an exact custom media domain. Until it is configured, saves that include a
+payment asset return the actionable setup error
+`quotation_payment_asset_origin_not_configured`; payment methods with no asset
+URLs continue to save normally.
 
 ## Validation Checklist
 

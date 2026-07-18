@@ -22,6 +22,7 @@ import {
   saveQuotationCompanyProfile,
   softDeleteQuotation,
 } from "../../../server/repositories/quotations";
+import { QuotationPaymentAssetOriginNotConfiguredError } from "../../../server/repositories/quotation-errors";
 import {
   prepareSellerSnapshot,
   prepareQuotationPayload,
@@ -78,6 +79,14 @@ function paymentAssetErrors(paymentMethods: QuotationPayload["paymentMethods"]):
   return errors;
 }
 
+function missingPaymentAssetOrigin(): { fieldErrors: Record<string, string>; formError: string; ok: false } {
+  return {
+    fieldErrors: {},
+    formError: "ยังไม่ได้ตั้งค่า origin สำหรับรูปแบบชำระเงิน กรุณาตั้งค่าให้ตรงกับ ADVERTISEMENT_IMAGE_WORKER_URL",
+    ok: false,
+  };
+}
+
 export async function saveQuotationAction(value: unknown): Promise<QuotationActionResult> {
   const { adminUser, supabase } = await requireAdmin();
   if (!canUseQuotation(adminUser)) return denied();
@@ -105,6 +114,9 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
   } catch (error) {
     if (error instanceof QuotationValidationError) {
       return { fieldErrors: error.fieldErrors, formError: "", ok: false };
+    }
+    if (error instanceof QuotationPaymentAssetOriginNotConfiguredError) {
+      return missingPaymentAssetOrigin();
     }
     console.error(
       "Failed to save quotation",
@@ -232,6 +244,9 @@ export async function saveCompanyPaymentMethodsAction(
   } catch (error) {
     if (error instanceof QuotationValidationError) {
       return { fieldErrors: error.fieldErrors, formError: "", ok: false };
+    }
+    if (error instanceof QuotationPaymentAssetOriginNotConfiguredError) {
+      return missingPaymentAssetOrigin();
     }
     console.error("Failed to save company payment methods", error instanceof Error ? error.message : "Unknown error");
     return { fieldErrors: {}, formError: "Unable to save payment methods", ok: false };

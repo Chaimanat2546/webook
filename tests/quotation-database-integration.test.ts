@@ -108,10 +108,10 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal(otherAllowedProfile.error, null, otherAllowedProfile.error?.message);
     allowedProfileId = allowedProfile.data.id;
     otherAllowedProfileId = otherAllowedProfile.data.id;
-    const assetOrigin = await service.rpc("configure_quotation_payment_asset_origin", {
-      p_origin: "https://webook-media.example.workers.dev",
+    const clearedAssetOrigin = await service.rpc("configure_quotation_payment_asset_origin", {
+      p_origin: null,
     });
-    assert.equal(assetOrigin.error, null, assetOrigin.error?.message);
+    assert.equal(clearedAssetOrigin.error, null, clearedAssetOrigin.error?.message);
   });
 
   after(async () => {
@@ -285,6 +285,37 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.deepEqual(publicRead.data.quotation_payment_methods.map((method: { position: number }) => method.position), [1]);
   });
 
+  it("allows empty payment data without an asset-origin configuration", async () => {
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [] })).error, null);
+    const noAssetSnapshot = payload(null);
+    noAssetSnapshot.payment_methods = [];
+    assert.equal((await allowed.rpc("save_quotation_with_payments", {
+      p_payload: noAssetSnapshot,
+    })).error, null);
+  });
+
+  it("reports missing payment asset origin through master and snapshot RPCs", async () => {
+    const paymentKey = "123e4567-e89b-42d3-a456-426614174000.png";
+    const unconfiguredUrl = `https://webook-media.example.workers.dev/quotations/payment-assets/${paymentKey}`;
+    const paymentMethod = (url: string) => ({
+      account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "",
+      id: crypto.randomUUID(), instructions: "", is_default: false, position: 1, promptpay_id: "",
+      provider_name: "PromptPay", qr_image_url: url, qr_mode: "upload", type: "qr_payment",
+    });
+    const masterError = (await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [paymentMethod(unconfiguredUrl)],
+    })).error;
+    assert.equal(masterError?.code, "P0001");
+    assert.equal(masterError?.message, "quotation_payment_asset_origin_not_configured");
+    const snapshot = payload(null);
+    snapshot.payment_methods = [paymentMethod(unconfiguredUrl)];
+    const snapshotError = (await allowed.rpc("save_quotation_with_payments", {
+      p_payload: snapshot,
+    })).error;
+    assert.equal(snapshotError?.code, "P0001");
+    assert.equal(snapshotError?.message, "quotation_payment_asset_origin_not_configured");
+  });
+
   it("rejects external payment media through direct master and snapshot RPC calls", async () => {
     const paymentKey = "123e4567-e89b-42d3-a456-426614174000.png";
     const trustedUrl = `https://webook-media.example.workers.dev/quotations/payment-assets/${paymentKey}`;
@@ -293,6 +324,11 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       id: crypto.randomUUID(), instructions: "", is_default: false, position: 1, promptpay_id: "",
       provider_name: "PromptPay", qr_image_url: url, qr_mode: "upload", type: "qr_payment",
     });
+
+    const assetOrigin = await service.rpc("configure_quotation_payment_asset_origin", {
+      p_origin: "https://webook-media.example.workers.dev",
+    });
+    assert.equal(assetOrigin.error, null, assetOrigin.error?.message);
 
     assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
       p_methods: [paymentMethod("https://tracker.example/payment.png")],
