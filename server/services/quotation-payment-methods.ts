@@ -1,11 +1,12 @@
 import "server-only";
 
-import { MAX_PAYMENT_METHODS, normalizePaymentPositions, type CompanyPaymentMethod, type PaymentMethodType, type PaymentQrMode, type QuotationPaymentMethod } from "../../lib/quotation-payment-methods.ts";
+import { MAX_PAYMENT_METHODS, normalizePaymentPositions, type CompanyPaymentMethod, type PaymentAccountType, type PaymentMethodType, type PaymentQrMode, type QuotationPaymentMethod } from "../../lib/quotation-payment-methods.ts";
 import { QuotationValidationError } from "./quotations.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TYPES: readonly PaymentMethodType[] = ["bank_transfer", "promptpay", "qr_payment", "cash", "other"];
 const QR_MODES: readonly PaymentQrMode[] = ["none", "upload", "auto_promptpay"];
+const ACCOUNT_TYPES: readonly PaymentAccountType[] = ["", "savings", "current", "fixed"];
 
 function text(value: unknown, max: number, field: string, errors: Record<string, string>): string {
   const result = typeof value === "string" ? value.trim() : "";
@@ -24,10 +25,13 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
   if (source !== value) errors[prefix] = "ข้อมูลช่องทางชำระเงินไม่ถูกต้อง";
   const typeValue = text(source.type, 40, `${prefix}.type`, errors);
   const qrModeValue = text(source.qrMode, 40, `${prefix}.qrMode`, errors);
+  const accountTypeValue = text(source.accountType, 40, `${prefix}.accountType`, errors);
   const type = TYPES.includes(typeValue as PaymentMethodType) ? typeValue as PaymentMethodType : "bank_transfer";
   const qrMode = QR_MODES.includes(qrModeValue as PaymentQrMode) ? qrModeValue as PaymentQrMode : "none";
+  const accountType = ACCOUNT_TYPES.includes(accountTypeValue as PaymentAccountType) ? accountTypeValue as PaymentAccountType : "";
   if (typeValue !== type) errors[`${prefix}.type`] = "ประเภทช่องทางชำระเงินไม่ถูกต้อง";
   if (qrModeValue !== qrMode) errors[`${prefix}.qrMode`] = "รูปแบบ QR ไม่ถูกต้อง";
+  if (accountTypeValue !== accountType) errors[`${prefix}.accountType`] = "ประเภทบัญชีไม่ถูกต้อง";
   const id = text(source.id, 200, `${prefix}.id`, errors);
   const bankId = typeof source.bankId === "string" ? source.bankId.trim() : null;
   if (!UUID.test(id)) errors[`${prefix}.id`] = "รหัสช่องทางชำระเงินไม่ถูกต้อง";
@@ -35,6 +39,7 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
   let method: QuotationPaymentMethod = {
     accountName: text(source.accountName, 200, `${prefix}.accountName`, errors),
     accountNumber: text(source.accountNumber, 200, `${prefix}.accountNumber`, errors),
+    accountType,
     bankCode: text(source.bankCode, 200, `${prefix}.bankCode`, errors),
     bankId,
     bankLogoUrl: text(source.bankLogoUrl, 2_048, `${prefix}.bankLogoUrl`, errors),
@@ -63,15 +68,15 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
     if (qrMode === "auto_promptpay") method.qrMode = "none";
     if (method.qrMode !== "upload") method.qrImageUrl = "";
   } else if (type === "promptpay") {
-    method = { ...method, accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", providerName: "" };
+    method = { ...method, accountNumber: "", accountType: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", providerName: "" };
     if (method.qrMode !== "upload") method.qrImageUrl = "";
   } else if (type === "qr_payment") {
-    method = { ...method, ...shared, accountName: "", accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", promptPayId: "", qrMode: "upload" };
+    method = { ...method, ...shared, accountName: "", accountNumber: "", accountType: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", promptPayId: "", qrMode: "upload" };
   } else {
-    method = { ...method, ...shared, accountName: "", accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", promptPayId: "", qrImageUrl: "", qrMode: "none", providerName: type === "other" ? method.providerName : "" };
+    method = { ...method, ...shared, accountName: "", accountNumber: "", accountType: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", promptPayId: "", qrImageUrl: "", qrMode: "none", providerName: type === "other" ? method.providerName : "" };
   }
   const relevant = new Set(type === "bank_transfer"
-    ? ["accountName", "accountNumber", "bankCode", "bankId", "bankLogoUrl", "customBankLogoUrl", "customBankName", "id", "instructions", "qrImageUrl", "qrMode", "type"]
+    ? ["accountName", "accountNumber", "accountType", "bankCode", "bankId", "bankLogoUrl", "customBankLogoUrl", "customBankName", "id", "instructions", "qrImageUrl", "qrMode", "type"]
     : type === "promptpay"
       ? ["accountName", "id", "instructions", "promptPayId", "qrImageUrl", "qrMode", "type"]
       : type === "qr_payment"

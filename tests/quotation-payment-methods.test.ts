@@ -4,10 +4,13 @@ import { describe, it } from "node:test";
 import { parsePayload, payloadFor } from "thai-qr-payment";
 
 import {
+  emptyPaymentMethod,
   hydratePaymentMethodBanks,
   MAX_PAYMENT_METHODS,
   normalizePaymentPositions,
+  PAYMENT_ACCOUNT_TYPE_LABELS,
   paymentMethodListState,
+  updatePaymentMethodType,
 } from "../lib/quotation-payment-methods.ts";
 import {
   prepareCompanyPaymentMethods,
@@ -18,6 +21,7 @@ import { QuotationValidationError } from "../server/services/quotations.ts";
 const bank = {
   accountName: "Pool Villa Pattaya",
   accountNumber: "137-1-17528-4",
+  accountType: "" as const,
   bankCode: "004",
   bankId: "123e4567-e89b-42d3-a456-426614174000",
   bankLogoUrl: "/quotation/banks/kbank.svg",
@@ -45,6 +49,25 @@ function validationErrors(value: unknown): Record<string, string> {
 }
 
 describe("quotation payment methods", () => {
+  it("normalizes and validates bank account types", () => {
+    assert.equal(emptyPaymentMethod().accountType, "");
+    assert.equal(PAYMENT_ACCOUNT_TYPE_LABELS.savings, "ออมทรัพย์");
+    assert.equal(PAYMENT_ACCOUNT_TYPE_LABELS.current, "กระแสรายวัน");
+    assert.equal(PAYMENT_ACCOUNT_TYPE_LABELS.fixed, "ฝากประจำ");
+
+    const [savings] = preparePaymentMethods([{ ...bank, accountType: "savings" }]);
+    assert.equal(savings?.accountType, "savings");
+    assert.throws(
+      () => preparePaymentMethods([{ ...bank, accountType: "invalid" }]),
+      (error) => error instanceof QuotationValidationError
+        && error.fieldErrors["paymentMethods.0.accountType"] === "ประเภทบัญชีไม่ถูกต้อง",
+    );
+    const [cash] = preparePaymentMethods([{ ...bank, accountType: "fixed", type: "cash" }]);
+    assert.equal(cash?.accountType, "");
+    assert.equal(preparePaymentMethods([{ ...bank, accountType: "invalid", type: "cash" }])[0]?.accountType, "");
+    assert.equal(updatePaymentMethodType({ ...emptyPaymentMethod(), accountType: "current" }, "promptpay").accountType, "");
+  });
+
   it("builds a valid amount-bound PromptPay payload", () => {
     const payload = payloadFor({ recipient: "0812345678", amount: 50 });
     const parsed = parsePayload(payload);

@@ -224,6 +224,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
       .map((method) => ({
         accountName: stringValue(method.account_name),
         accountNumber: stringValue(method.account_number),
+        accountType: "" as const,
         bankCode: stringValue(method.bank_code),
         bankId: null,
         bankLogoUrl: stringValue(method.bank_logo_url),
@@ -315,6 +316,7 @@ export async function listCompanyPaymentMethods(
     return {
       accountName: stringValue(method.account_name),
       accountNumber: stringValue(method.account_number),
+      accountType: "" as const,
       bankCode: stringValue(bank?.code),
       bankId: method.bank_id == null ? null : stringValue(method.bank_id),
       bankLogoUrl: stringValue(bank?.logo_path),

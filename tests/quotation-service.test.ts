@@ -35,6 +35,7 @@ function promptPay(qrMode: "auto_promptpay" | "upload", qrImageUrl = "") {
   return {
     accountName: "Pool Villa",
     accountNumber: "",
+    accountType: "" as const,
     bankCode: "",
     bankId: null,
     bankLogoUrl: "",

@@ -216,6 +216,7 @@ describe("quotation UI", () => {
     const updated = updatePaymentMethodType({
       accountName: "PromptPay account",
       accountNumber: "",
+      accountType: "",
       bankCode: "",
       bankId: null,
       bankLogoUrl: "",
@@ -248,6 +249,12 @@ describe("quotation UI", () => {
 
     assert.equal(updated.type, "promptpay");
     assert.equal(updated.qrMode, "auto_promptpay");
+  });
+
+  it("clears a bank account type after changing payment type", () => {
+    const updated = updatePaymentMethodType({ ...emptyPaymentMethod(), accountType: "current" }, "cash");
+
+    assert.equal(updated.accountType, "");
   });
 
   it("derives QR upload render state after changing a bank payment type", () => {

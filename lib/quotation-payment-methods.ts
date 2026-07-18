@@ -1,9 +1,18 @@
 export type PaymentMethodType = "bank_transfer" | "promptpay" | "qr_payment" | "cash" | "other";
 export type PaymentQrMode = "none" | "upload" | "auto_promptpay";
+export type PaymentAccountType = "" | "savings" | "current" | "fixed";
+
+export const PAYMENT_ACCOUNT_TYPE_LABELS: Record<PaymentAccountType, string> = {
+  "": "ไม่ระบุ",
+  current: "กระแสรายวัน",
+  fixed: "ฝากประจำ",
+  savings: "ออมทรัพย์",
+};
 
 export interface QuotationPaymentMethod {
   accountName: string;
   accountNumber: string;
+  accountType: PaymentAccountType;
   bankCode: string;
   bankId: string | null;
   bankLogoUrl: string;
@@ -62,7 +71,7 @@ export function hydratePaymentMethodBanks<T extends QuotationPaymentMethod>(rows
 }
 
 export function emptyPaymentMethod(type: PaymentMethodType = "bank_transfer"): QuotationPaymentMethod {
-  return { accountName: "", accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", id: crypto.randomUUID(), instructions: "", position: 1, promptPayId: "", providerName: "", qrImageUrl: "", qrMode: "none", type };
+  return { accountName: "", accountNumber: "", accountType: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", id: crypto.randomUUID(), instructions: "", position: 1, promptPayId: "", providerName: "", qrImageUrl: "", qrMode: "none", type };
 }
 
 export function updatePaymentMethodType(method: QuotationPaymentMethod, type: PaymentMethodType): QuotationPaymentMethod {
@@ -73,7 +82,7 @@ export function updatePaymentMethodType(method: QuotationPaymentMethod, type: Pa
       : type !== "promptpay" && method.qrMode === "auto_promptpay"
         ? "none"
         : method.qrMode;
-  return { ...method, qrMode, type };
+  return { ...method, accountType: type === "bank_transfer" ? method.accountType : "", qrMode, type };
 }
 
 export function paymentMethodEditorState(method: Pick<QuotationPaymentMethod, "bankCode" | "bankId" | "qrMode" | "type">) {
