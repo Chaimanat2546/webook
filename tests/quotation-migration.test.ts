@@ -74,8 +74,25 @@ const finalPaymentBoundarySql = readFileSync(
   new URL(`../supabase/migrations/${finalPaymentBoundaryMigrationName}`, import.meta.url),
   "utf8",
 );
+const accountTypeMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_bank_account_type.sql"));
+assert.ok(accountTypeMigrationName, "quotation bank account type migration must exist");
+const accountTypeSql = readFileSync(
+  new URL(`../supabase/migrations/${accountTypeMigrationName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
+  it("persists and validates bank account types at every database boundary", () => {
+    assert.match(accountTypeSql, /alter table public\.quotation_company_payment_methods[\s\S]*add column account_type text not null default ''/i);
+    assert.match(accountTypeSql, /alter table public\.quotation_payment_methods[\s\S]*add column account_type text not null default ''/i);
+    assert.match(accountTypeSql, /account_type[\s\S]*in\s*\(\s*''\s*,\s*'savings'\s*,\s*'current'\s*,\s*'fixed'\s*\)/i);
+    assert.match(accountTypeSql, /p_method\s*->>\s*'account_type'/i);
+    assert.match(accountTypeSql, /insert into public\.quotation_company_payment_methods[\s\S]*account_type/i);
+    assert.match(accountTypeSql, /insert into public\.quotation_payment_methods[\s\S]*account_type/i);
+    assert.match(accountTypeSql, /'account_type'[\s\S]*p\.account_type/i);
+  });
+
   it("makes payment snapshots read-only outside the atomic quotation RPC", () => {
     assert.match(finalPaymentBoundarySql, /revoke all privileges on table public\.quotation_payment_methods from anon, authenticated/i);
     assert.match(finalPaymentBoundarySql, /grant select on table public\.quotation_payment_methods to authenticated/i);

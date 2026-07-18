@@ -267,11 +267,15 @@ describe("quotation local database integration", { skip: !enabled }, () => {
   it("isolates seller, masters, quotations, and public payment snapshots by owner", async () => {
     const bank = await service.from("banks").select("id,code,name,logo_path").eq("code", "004").single();
     assert.equal(bank.error, null, bank.error?.message);
+    const masterMethod = { account_name: "Allowed seller", account_number: "137-1-17528-4", account_type: "current", bank_id: bank.data.id, id: crypto.randomUUID(), instructions: "", is_default: true, position: 9, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" };
     const master = await allowed.rpc("save_quotation_company_payment_methods", {
-      p_methods: [{ account_name: "Allowed seller", account_number: "137-1-17528-4", bank_id: bank.data.id, id: crypto.randomUUID(), instructions: "", is_default: true, position: 9, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" }],
+      p_methods: [masterMethod],
     });
     assert.equal(master.error, null, master.error?.message);
     const masterId = (master.data as Array<{ id: string }>)[0]!.id;
+    const storedMaster = await allowed.from("quotation_company_payment_methods").select("account_type").eq("id", masterId).single();
+    assert.equal(storedMaster.error, null, storedMaster.error?.message);
+    assert.equal(storedMaster.data.account_type, "current");
     assert.equal((await allowed.from("quotation_company_payment_methods").insert({ id: crypto.randomUUID(), user_id: allowedId, type: "cash", position: 99 })).error?.code, "42501");
     assert.equal((await allowed.from("quotation_company_payment_methods").update({ instructions: "bypass" }).eq("id", masterId)).error?.code, "42501");
     assert.equal((await allowed.from("quotation_company_payment_methods").delete().eq("id", masterId)).error?.code, "42501");
@@ -284,15 +288,20 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal((await service.rpc("configure_quotation_payment_asset_origin", { p_origin: publicAssetOrigin })).error, null);
     const qrImage = `${publicAssetOrigin}/quotations/payment-assets/123e4567-e89b-42d3-a456-426614174000.png`;
     createdPayload.payment_methods = [
-      { account_name: "Allowed seller", account_number: "137-1-17528-4", bank_id: bank.data.id, bank_code: "004", bank_logo_url: "/quotation/banks/kbank.svg", bank_name: bank.data.name, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 7, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" },
+      { account_name: "Allowed seller", account_number: "137-1-17528-4", account_type: "current", bank_id: bank.data.id, bank_code: "004", bank_logo_url: "/quotation/banks/kbank.svg", bank_name: bank.data.name, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 7, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" },
       { account_name: "Allowed seller", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 8, promptpay_id: "0812345678", provider_name: "", qr_image_url: "", qr_mode: "auto_promptpay", type: "promptpay" },
       { account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 9, promptpay_id: "", provider_name: "Provider", qr_image_url: qrImage, qr_mode: "upload", type: "qr_payment" },
       { account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "Cashier", position: 10, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "cash" },
       { account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 11, promptpay_id: "", provider_name: "Cheque", qr_image_url: "", qr_mode: "none", type: "other" },
     ];
     const created = await saveWithPayments(allowed, createdPayload);
-    const snapshotRows = await allowed.from("quotation_payment_methods").select("id").eq("quotation_id", created.id);
+    const changedMaster = await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [{ ...masterMethod, account_type: "fixed" }],
+    });
+    assert.equal(changedMaster.error, null, changedMaster.error?.message);
+    const snapshotRows = await allowed.from("quotation_payment_methods").select("id,account_type,type").eq("quotation_id", created.id);
     assert.equal(snapshotRows.error, null, snapshotRows.error?.message);
+    assert.equal(snapshotRows.data?.find((method) => method.type === "bank_transfer")?.account_type, "current");
     const snapshotId = snapshotRows.data?.[0]?.id;
     assert.ok(snapshotId);
     assert.equal((await allowed.from("quotation_payment_methods").insert({ id: crypto.randomUUID(), quotation_id: created.id, type: "cash", position: 99 })).error?.code, "42501");
