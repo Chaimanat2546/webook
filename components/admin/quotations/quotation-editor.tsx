@@ -1352,7 +1352,7 @@ export function QuotationEditor({
               <TextInput
                 error={fieldErrors.reference}
                 field="reference"
-                label="เลขอ้างอิง"
+                label="เลขอ้างอิง (ถ้ามี)"
                 onChange={(value) => updateRoot("reference", value)}
                 size="identifier"
                 value={payload.reference}
