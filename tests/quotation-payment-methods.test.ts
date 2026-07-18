@@ -137,6 +137,12 @@ describe("quotation payment methods", () => {
     assert.equal(qr?.qrMode, "upload");
     assert.equal(other?.accountNumber, "");
     assert.equal(other?.qrImageUrl, "");
+    const [builtIn] = preparePaymentMethods([{ ...bank, customBankLogoUrl: png, customBankName: "Hidden custom" }]);
+    assert.equal(builtIn?.customBankLogoUrl, "");
+    assert.equal(builtIn?.customBankName, "");
+    const [custom] = preparePaymentMethods([{ ...bank, bankCode: "legacy", bankId: null, bankName: "Hidden catalogue name", customBankName: "Custom" }]);
+    assert.equal(custom?.bankCode, "OTHER");
+    assert.equal(custom?.bankName, "");
   });
 
   it("requires an uploaded or automatic QR for PromptPay", () => {

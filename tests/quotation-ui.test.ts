@@ -543,6 +543,9 @@ describe("quotation UI", () => {
     const imageInput = source("../components/admin/quotations/payment-image-input.tsx");
     assert.match(imageInput, /data-field=\{field\}/);
     assert.match(imageInput, /aria-describedby=\{message \? errorId : undefined\}/);
+    assert.match(payments, /error=\{error\("type"\)\} field=\{`paymentMethods\.\$\{index\}\.type`\}/);
+    assert.match(payments, /error=\{error\("qrMode"\)\} field=\{`paymentMethods\.\$\{index\}\.qrMode`\}/);
+    assert.match(payments, /error=\{error\("instructions"\)\} field=\{`paymentMethods\.\$\{index\}\.instructions`\}/);
   });
 
   it("shows server field errors beside all editable quotation controls in paper order", () => {

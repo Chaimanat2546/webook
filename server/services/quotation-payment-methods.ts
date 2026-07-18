@@ -53,6 +53,13 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
   const shared = { id: method.id, instructions: method.instructions, position: 0, type: method.type };
   if (type === "bank_transfer") {
     method = { ...method, promptPayId: "", providerName: "" };
+    if (method.bankId) {
+      method.customBankLogoUrl = "";
+      method.customBankName = "";
+    } else {
+      method.bankCode = "OTHER";
+      method.bankName = "";
+    }
     if (qrMode === "auto_promptpay") method.qrMode = "none";
     if (method.qrMode !== "upload") method.qrImageUrl = "";
   } else if (type === "promptpay") {

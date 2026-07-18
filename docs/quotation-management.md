@@ -30,8 +30,10 @@ history.
   snapshots. A quotation may have no payment methods.
 - Editing a master never changes an existing quotation. Deleting a master
   leaves its saved quotation snapshots intact.
-- Master tables are read-only through the table API; the account-scoped save
-  RPC is the only mutation path.
+- Payment master and quotation snapshot tables are SELECT-only through the
+  table API. Account-scoped master save and atomic quotation save RPCs are the
+  only mutation paths; authenticated users have no table-level INSERT, UPDATE,
+  DELETE, or TRUNCATE privilege.
 - Edit reload matches a saved built-in bank code to the current catalogue only
   to restore its selector ID. It preserves the saved name/logo, and falls back
   to an other-bank snapshot if that catalogue entry no longer exists.
@@ -115,7 +117,10 @@ data without an explicit migration plan.
 Server validation covers required seller/customer/item fields, branch rules,
 dates, money, VAT, withholding, PromptPay identifiers, payment type fields,
 order/ID uniqueness, and trusted asset URLs. Save errors preserve the draft
-and focus the first invalid field.
+and focus the first invalid field. The database repeats payment validation and
+normalization: required text is trimmed, irrelevant hidden fields are cleared,
+built-in bank metadata comes from the catalogue, and custom banks are stored as
+`OTHER`.
 
 ## Verification
 

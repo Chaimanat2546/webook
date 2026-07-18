@@ -67,7 +67,29 @@ const securityBoundarySql = readFileSync(
   "utf8",
 );
 
+const finalPaymentBoundaryMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_payment_final_boundary.sql"));
+assert.ok(finalPaymentBoundaryMigrationName, "final quotation payment boundary migration must exist");
+const finalPaymentBoundarySql = readFileSync(
+  new URL(`../supabase/migrations/${finalPaymentBoundaryMigrationName}`, import.meta.url),
+  "utf8",
+);
+
 describe("quotation migration", () => {
+  it("makes payment snapshots read-only outside the atomic quotation RPC", () => {
+    assert.match(finalPaymentBoundarySql, /revoke all privileges on table public\.quotation_payment_methods from anon, authenticated/i);
+    assert.match(finalPaymentBoundarySql, /grant select on table public\.quotation_payment_methods to authenticated/i);
+    assert.match(finalPaymentBoundarySql, /for select to authenticated/i);
+  });
+
+  it("normalizes DB payment values with the same type boundaries as the server", () => {
+    assert.match(finalPaymentBoundarySql, /btrim\(coalesce\(p_method ->> 'bank_code'/i);
+    assert.match(finalPaymentBoundarySql, /char_length\(btrim\(coalesce\(p_method ->> 'bank_logo_url'/i);
+    assert.match(finalPaymentBoundarySql, /\^\/quotation\/banks\/\[a-z0-9-\]\+\\\.svg\$/i);
+    assert.match(finalPaymentBoundarySql, /case when v_type = 'bank_transfer'/i);
+    assert.match(finalPaymentBoundarySql, /case when v_type = 'promptpay'/i);
+    assert.match(finalPaymentBoundarySql, /when v_type = 'qr_payment'/i);
+  });
   it("makes payment masters read-only outside their save RPC", () => {
     assert.match(securityBoundarySql, /revoke all privileges on table public\.quotation_company_payment_methods from anon, authenticated/i);
     assert.match(securityBoundarySql, /grant select on table public\.quotation_company_payment_methods to authenticated/i);

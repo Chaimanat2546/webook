@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { after, before, describe, it } from "node:test";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -74,6 +75,13 @@ async function saveWithPayments(client: SupabaseClient, value: ReturnType<typeof
 }
 
 describe("quotation local database integration", { skip: !enabled }, () => {
+  it("grants authenticated users SELECT-only snapshot table privileges", () => {
+    const privileges = execFileSync("docker", [
+      "exec", "supabase_db_webook", "psql", "-U", "postgres", "-d", "postgres", "-Atqc",
+      "select has_table_privilege('authenticated', 'public.quotation_payment_methods', 'SELECT'), has_table_privilege('authenticated', 'public.quotation_payment_methods', 'INSERT'), has_table_privilege('authenticated', 'public.quotation_payment_methods', 'UPDATE'), has_table_privilege('authenticated', 'public.quotation_payment_methods', 'DELETE'), has_table_privilege('authenticated', 'public.quotation_payment_methods', 'TRUNCATE');",
+    ], { encoding: "utf8" }).trim();
+    assert.equal(privileges, "t|f|f|f|f");
+  });
   const service = createClient(url || "http://127.0.0.1:54321", serviceRoleKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   const allowed = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   const denied = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
@@ -283,6 +291,13 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       { account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 11, promptpay_id: "", provider_name: "Cheque", qr_image_url: "", qr_mode: "none", type: "other" },
     ];
     const created = await saveWithPayments(allowed, createdPayload);
+    const snapshotRows = await allowed.from("quotation_payment_methods").select("id").eq("quotation_id", created.id);
+    assert.equal(snapshotRows.error, null, snapshotRows.error?.message);
+    const snapshotId = snapshotRows.data?.[0]?.id;
+    assert.ok(snapshotId);
+    assert.equal((await allowed.from("quotation_payment_methods").insert({ id: crypto.randomUUID(), quotation_id: created.id, type: "cash", position: 99 })).error?.code, "42501");
+    assert.equal((await allowed.from("quotation_payment_methods").update({ instructions: "bypass" }).eq("id", snapshotId)).error?.code, "42501");
+    assert.equal((await allowed.from("quotation_payment_methods").delete().eq("id", snapshotId)).error?.code, "42501");
     assert.deepEqual((await otherAllowed.from("quotations").select("id")).data, []);
 
     const crossAccountUpdate = payload(created.id);
@@ -406,8 +421,51 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal(normalized.error, null, normalized.error?.message);
     assert.equal((normalized.data as Array<{ promptpay_id: string }>)[0]?.promptpay_id, "0812345678");
     assert.equal((await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [prompt, prompt] })).error?.code, "22023");
-    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [{ ...prompt, account_number: "hidden" }] })).error?.code, "22023");
+    const hiddenPrompt = await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [{ ...prompt, account_number: "hidden", bank_code: "hidden", custom_bank_name: "hidden", provider_name: "hidden" }] });
+    assert.equal(hiddenPrompt.error, null, hiddenPrompt.error?.message);
+    assert.deepEqual(
+      Object.fromEntries(["account_number", "custom_bank_name", "provider_name"].map((key) => [key, (hiddenPrompt.data as Array<Record<string, unknown>>)[0]?.[key]])),
+      { account_number: "", custom_bank_name: "", provider_name: "" },
+    );
     assert.equal((await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [{ ...prompt, instructions: "x".repeat(2001) }] })).error?.code, "22023");
+
+    for (const required of [
+      { ...prompt, account_name: "   " },
+      { ...prompt, promptpay_id: "   " },
+      { ...prompt, id: crypto.randomUUID(), provider_name: "   ", qr_image_url: "hidden", qr_mode: "none", type: "other" },
+      { ...prompt, account_name: "", id: crypto.randomUUID(), provider_name: "   ", qr_image_url: "hidden", qr_mode: "none", type: "qr_payment" },
+    ]) {
+      assert.equal((await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [required] })).error?.code, "22023");
+    }
+
+    const bank = await service.from("banks").select("id").eq("code", "004").single();
+    assert.equal(bank.error, null, bank.error?.message);
+    const builtIn = await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [{
+      ...prompt, account_number: " 123-4 ", bank_id: bank.data.id, custom_bank_logo_url: "https://ignored.example/logo.png",
+      custom_bank_name: " Hidden custom ", id: crypto.randomUUID(), promptpay_id: "hidden", qr_mode: "none", type: "bank_transfer",
+    }] });
+    assert.equal(builtIn.error, null, builtIn.error?.message);
+    assert.equal((builtIn.data as Array<Record<string, unknown>>)[0]?.custom_bank_name, "");
+    assert.equal((builtIn.data as Array<Record<string, unknown>>)[0]?.custom_bank_logo_url, "");
+
+    const custom = await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [{
+      ...prompt, account_name: " Custom account ", account_number: " 999 ", bank_code: "legacy", bank_id: null,
+      custom_bank_name: " Custom bank ", id: crypto.randomUUID(), promptpay_id: "hidden", qr_mode: "none", type: "bank_transfer",
+    }] });
+    assert.equal(custom.error, null, custom.error?.message);
+    assert.equal((custom.data as Array<Record<string, unknown>>)[0]?.custom_bank_name, "Custom bank");
+
+    const normalizedSnapshot = payload(null);
+    normalizedSnapshot.payment_methods = [{
+      ...prompt, account_number: " hidden ", bank_code: "hidden", custom_bank_name: "hidden",
+      provider_name: "hidden", id: crypto.randomUUID(), instructions: " note ",
+    }];
+    const normalizedSaved = await saveWithPayments(allowed, normalizedSnapshot);
+    const storedNormalized = await allowed.from("quotation_payment_methods")
+      .select("account_number,bank_code,custom_bank_name,provider_name,instructions")
+      .eq("quotation_id", normalizedSaved.id).single();
+    assert.equal(storedNormalized.error, null, storedNormalized.error?.message);
+    assert.deepEqual(storedNormalized.data, { account_number: "", bank_code: "", custom_bank_name: "", provider_name: "", instructions: "note" });
 
     const zeroAmount = payload(null);
     zeroAmount.items[0]!.unit_price = "0.00";
