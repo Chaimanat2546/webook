@@ -93,6 +93,13 @@ describe("quotation UI", () => {
     assert.doesNotMatch(payments, /ArrowUp|ArrowDown/);
   });
 
+  it("resets PromptPay-only QR mode when a payment method type changes", () => {
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+
+    assert.match(payments, /function updateType\(type: T\["type"\]\)[\s\S]*?type !== "promptpay" && method\.qrMode === "auto_promptpay"[\s\S]*?qrMode: "none"/);
+    assert.match(payments, /onChange=\{\(event\) => updateType\(event\.target\.value as T\["type"\]\)\}/);
+  });
+
   it("collects the approved seller snapshot fields and normalizes the logo", () => {
     const form = source("../components/admin/quotations/company-profile-form.tsx");
     for (const name of [
