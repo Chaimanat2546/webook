@@ -82,12 +82,12 @@ describe("quotation assets", () => {
   it("uses bearer auth and preserves a useful Worker error", async () => {
     const calls: RequestInit[] = [];
     await uploadQuotationAssetObject({
-      body: new Uint8Array([1]), fetchImpl: async (_url, init) => { calls.push(init ?? {}); return new Response("{}", { status: 200 }); },
+      body: new Uint8Array([1]), contentType: "image/webp", fetchImpl: async (_url, init) => { calls.push(init ?? {}); return new Response("{}", { status: 200 }); },
       objectKey: "quotations/assets/123e4567-e89b-42d3-a456-426614174000.webp", workerSecret: "secret", workerUrl: "https://media.example",
     });
     assert.equal((calls[0]?.headers as Record<string, string>).authorization, "Bearer secret");
     await assert.rejects(() => uploadQuotationAssetObject({
-      body: new Uint8Array([1]), fetchImpl: async () => new Response("Unauthorized", { status: 401 }),
+      body: new Uint8Array([1]), contentType: "image/webp", fetchImpl: async () => new Response("Unauthorized", { status: 401 }),
       objectKey: "quotations/assets/123e4567-e89b-42d3-a456-426614174000.webp", workerSecret: "wrong", workerUrl: "https://media.example",
     }), /Failed to upload quotation asset \(401\): Unauthorized/);
   });

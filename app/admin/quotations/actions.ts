@@ -128,7 +128,7 @@ export async function saveCompanyProfileAction(
     if (logo) {
       const env = getQuotationAssetEnv();
       uploadedObjectKey = buildQuotationAssetObjectKey();
-      await uploadQuotationAssetObject({ body: await logo.arrayBuffer(), objectKey: uploadedObjectKey, ...env });
+      await uploadQuotationAssetObject({ body: await logo.arrayBuffer(), contentType: "image/webp", objectKey: uploadedObjectKey, ...env });
       logoUrl = buildQuotationAssetUrl(uploadedObjectKey, env.workerUrl);
     }
     const seller = prepareSellerSnapshot({

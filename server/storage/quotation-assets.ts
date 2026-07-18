@@ -1,4 +1,4 @@
-import { buildQuotationAssetUrl } from "../../lib/quotation-assets.ts";
+import { buildQuotationAssetUrl, buildQuotationPaymentAssetUrl } from "../../lib/quotation-assets.ts";
 
 interface Config {
   fetchImpl?: typeof fetch;
@@ -12,9 +12,12 @@ async function workerError(action: string, response: Response): Promise<Error> {
   return new Error(`Failed to ${action} quotation asset (${response.status})${body ? `: ${body}` : ""}`);
 }
 
-export async function uploadQuotationAssetObject({ body, fetchImpl = fetch, objectKey, workerSecret, workerUrl }: Config & { body: BodyInit }) {
-  const response = await fetchImpl(buildQuotationAssetUrl(objectKey, workerUrl), {
-    body, headers: { authorization: `Bearer ${workerSecret}`, "content-type": "image/webp" }, method: "PUT",
+export async function uploadQuotationAssetObject({ body, contentType, fetchImpl = fetch, objectKey, workerSecret, workerUrl }: Config & { body: BodyInit; contentType: "image/png" | "image/webp" }) {
+  const url = contentType === "image/png"
+    ? buildQuotationPaymentAssetUrl(objectKey, workerUrl)
+    : buildQuotationAssetUrl(objectKey, workerUrl);
+  const response = await fetchImpl(url, {
+    body, headers: { authorization: `Bearer ${workerSecret}`, "content-type": contentType }, method: "PUT",
   });
   if (!response.ok) throw await workerError("upload", response);
 }
