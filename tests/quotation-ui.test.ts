@@ -22,7 +22,7 @@ describe("quotation UI", () => {
     assert.match(document, /formatMoney\(item\.unitPrice\)/);
     assert.match(document, /formatMoney\(item\.preTaxAmount\)/);
     assert.match(document, /formatBaht\(calculation\.grandTotal\)/);
-    assert.match(document, /whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]/);
+    assert.match(document, /ml-5 whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]/);
     assert.match(document, /data-document-payment-methods/);
     assert.doesNotMatch(document, /internalNotes|signature/i);
   });
@@ -31,11 +31,11 @@ describe("quotation UI", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
     assert.match(
       document,
-      /<p className="whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]">\{item\.description\}<\/p>/,
+      /<p className="ml-5 whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]">[\s\S]*?\{item\.description\}[\s\S]*?<\/p>/,
     );
     assert.match(
       document,
-      /<p className="font-medium \[overflow-wrap:anywhere\]">\{item\.name\}<\/p>/,
+      /<p className="font-medium \[overflow-wrap:anywhere\]">[\s\S]*?\{item\.name\}[\s\S]*?<\/p>/,
     );
   });
 
@@ -122,6 +122,63 @@ describe("quotation UI", () => {
     assert.match(document, /amount <= 0/);
     assert.match(globalCss, /\[data-document-payment-methods\]\s*\{\s*break-inside:\s*auto\s*!important/);
     assert.doesNotMatch(document, /internalNotes/);
+  });
+
+  it("uses the compact reference hierarchy for preview and print", () => {
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+
+    assert.match(document, /data-document-seller-details/);
+    assert.match(document, /data-document-seller-contact/);
+    assert.match(document, /data-document-number[^>]*whitespace-nowrap/);
+    assert.match(
+      document,
+      /<dl[\s\S]*?data-document-metadata[\s\S]*?data-document-subject[\s\S]*?<\/dl>/,
+    );
+    assert.doesNotMatch(
+      document,
+      /<\/dl>\s*\{payload\.subject \? \(\s*<p/,
+    );
+    assert.match(document, /data-document-notes/);
+    assert.match(document, /data-document-summary-heading/);
+    assert.match(document, /data-document-summary-breakdown/);
+    assert.match(document, /data-document-summary-settlement/);
+    assert.match(document, /data-document-summary-grand-total/);
+    assert.match(document, /data-document-payment-list/);
+    assert.match(document, /data-document-payment-heading/);
+    assert.match(
+      document,
+      /data-document-payment-entry[\s\S]*?data-document-payment-logo[\s\S]*?data-document-payment-details/,
+    );
+    assert.match(
+      document,
+      /data-document-payment-details[\s\S]*?\{title\}[\s\S]*?method\.accountNumber[\s\S]*?method\.accountName/,
+    );
+    assert.match(document, /data-document-payment-logo[\s\S]*?className="h-9 w-9/);
+    assert.doesNotMatch(document, /grid-cols-2 gap-x-6 gap-y-4/);
+    assert.doesNotMatch(document, /border-y/);
+    assert.doesNotMatch(document, /formatBaht\(calculation\.grossTotal\)/);
+    assert.doesNotMatch(document, /formatBaht\(calculation\.discountTotal\)/);
+    assert.ok(document.indexOf("data-document-summary") < document.indexOf("data-document-payment-methods"));
+    assert.ok(document.indexOf("data-document-payment-methods") < document.indexOf("data-document-notes"));
+    assert.match(
+      document,
+      /data-document-notes[\s\S]*?<h2[^>]*>[\s\S]*?หมายเหตุ[\s\S]*?<\/h2>/,
+    );
+    assert.doesNotMatch(document, /เงื่อนไข \/ หมายเหตุ/);
+  });
+
+  it("uses accessible icons for seller contact labels", () => {
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+
+    assert.match(document, /<Phone aria-hidden="true"/);
+    assert.match(document, /<Mail aria-hidden="true"/);
+    assert.match(document, /<Globe2 aria-hidden="true"/);
+    for (const label of ["โทร", "อีเมล", "เว็บไซต์"]) {
+      assert.match(
+        document,
+        new RegExp(`<span className="sr-only">${label}</span>`),
+      );
+    }
   });
 
   it("composes seller settings with sortable payment method masters", () => {
