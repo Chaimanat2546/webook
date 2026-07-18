@@ -36,6 +36,7 @@ import {
   type QuotationItemInput,
 } from "../../../lib/quotation-calculator";
 import { addQuotationCalendarDays } from "../../../lib/quotation-dates";
+import type { BankOption } from "../../../lib/quotation-payment-methods";
 import {
   formatBaht,
   formatMoney,
@@ -67,8 +68,10 @@ import {
 import { Input } from "../../ui/input";
 import { Textarea } from "../../ui/textarea";
 import { QuotationDocument } from "./quotation-document";
+import { PaymentMethodList } from "./payment-method-list";
 
 export interface QuotationEditorProps {
+  banks: BankOption[];
   documentNumber: string | null;
   initialPayload: QuotationPayload;
   printOnLoad?: boolean;
@@ -302,6 +305,7 @@ function DocumentMore({
   onDelete,
   onPreview,
   onSave,
+  previewEnabled,
 }: {
   deleteEnabled: boolean;
   isPending: boolean;
@@ -309,6 +313,7 @@ function DocumentMore({
   onDelete: () => void;
   onPreview: () => void;
   onSave: () => void;
+  previewEnabled: boolean;
 }) {
   return (
     <DropdownMenu>
@@ -319,7 +324,7 @@ function DocumentMore({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={onPreview}>
+        <DropdownMenuItem disabled={!previewEnabled} onSelect={onPreview}>
           <Eye aria-hidden="true" className="size-4" />
           ดูตัวอย่าง
         </DropdownMenuItem>
@@ -610,6 +615,7 @@ function ItemVatControls({
 }
 
 export function QuotationEditor({
+  banks,
   documentNumber: initialDocumentNumber,
   initialPayload,
   printOnLoad = false,
@@ -639,7 +645,8 @@ export function QuotationEditor({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const autoPrintStarted = useRef(false);
-  const canPrint = Boolean(documentNumber && lastSavedPayload && !isPending);
+  const canUseSavedDocument = Boolean(documentNumber && lastSavedPayload && !isPending);
+  const canPrint = canUseSavedDocument;
   const calculationResult = useMemo(() => {
     try {
       return { calculation: calculateQuotation(payload), calculationError: "" };
@@ -869,8 +876,8 @@ export function QuotationEditor({
         if (firstField) requestAnimationFrame(() => focusField(firstField));
         return;
       }
-      setLastSavedPayload(payload);
-      setPayload((current) => ({ ...current, id: result.id }));
+      setLastSavedPayload(result.payload);
+      setPayload({ ...result.payload, id: result.id });
       setDocumentNumber(result.documentNumber);
       setPublicToken(result.publicToken);
       setFieldErrors({});
@@ -1060,7 +1067,7 @@ export function QuotationEditor({
           data-document-actions
         >
           <Button
-            disabled={!publicToken || isPending}
+            disabled={!publicToken || !canUseSavedDocument}
             onClick={shareSaved}
             size="sm"
             type="button"
@@ -1096,6 +1103,7 @@ export function QuotationEditor({
             onDelete={() => setDeleteOpen(true)}
             onPreview={() => setPreviewOpen(true)}
             onSave={() => save()}
+            previewEnabled={canUseSavedDocument}
           />
         </div>
       </section>
@@ -1415,6 +1423,19 @@ export function QuotationEditor({
           เพิ่มรายการ
         </Button>
       </section>
+      <section
+        className="space-y-3 border-t border-foreground/35 pt-2"
+        data-payment-methods
+      >
+        <h2 className="text-sm font-semibold">04 ช่องทางชำระเงิน</h2>
+        <PaymentMethodList
+          banks={banks}
+          errors={fieldErrors}
+          methods={payload.paymentMethods}
+          mode="quotation"
+          onChange={(paymentMethods) => updateRoot("paymentMethods", paymentMethods)}
+        />
+      </section>
       <div
         data-workbench-completion
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]"
@@ -1516,11 +1537,11 @@ export function QuotationEditor({
           className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-auto p-0 sm:max-w-[calc(100vw-4rem)]"
           showCloseButton
         >
-          {calculation ? (
+          {lastSavedPayload && savedCalculation ? (
             <QuotationDocument
-              calculation={calculation}
+              calculation={savedCalculation}
               documentNumber={documentNumber}
-              payload={payload}
+              payload={lastSavedPayload}
             />
           ) : (
             <p className="p-4">กรุณาแก้ไขข้อมูลก่อนดูตัวอย่าง</p>

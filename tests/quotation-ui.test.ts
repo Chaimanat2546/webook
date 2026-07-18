@@ -251,6 +251,49 @@ describe("quotation UI", () => {
     assert.match(editPage, /canUseQuotation\(adminUser\)/);
   });
 
+  it("copies only default account payment masters into new quotation snapshots", () => {
+    const page = source("../app/admin/quotations/new/page.tsx");
+
+    assert.match(page, /Promise\.all\(/);
+    assert.match(page, /listQuotationBanks\(supabase\)/);
+    assert.match(page, /listCompanyPaymentMethods\(supabase, user\.id\)/);
+    assert.match(page, /paymentMethods\.filter\(\(method\) => method\.isDefault\)/);
+    assert.match(page, /Reflect\.deleteProperty\(snapshot, "isDefault"\)/);
+    assert.match(page, /id: crypto\.randomUUID\(\)/);
+    assert.match(page, /position: index \+ 1/);
+    assert.match(page, /<QuotationEditor banks=\{banks\}/);
+  });
+
+  it("edits saved payment snapshots without merging current masters", () => {
+    const page = source("../app/admin/quotations/[id]/page.tsx");
+
+    assert.match(page, /Promise\.all\(\[getQuotationById\(supabase, id\), listQuotationBanks\(supabase\)\]\)/);
+    assert.match(page, /initialPayload=\{quotation\.payload\}/);
+    assert.match(page, /<QuotationEditor banks=\{banks\}/);
+    assert.doesNotMatch(page, /listCompanyPaymentMethods/);
+  });
+
+  it("edits quotation-only payment snapshots in the workbench", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+
+    assert.match(editor, /banks: BankOption\[\]/);
+    assert.match(editor, /data-payment-methods/);
+    assert.ok(editor.indexOf("data-sortable-items") < editor.indexOf("data-payment-methods"));
+    assert.match(editor, /<PaymentMethodList[\s\S]*banks=\{banks\}[\s\S]*methods=\{payload\.paymentMethods\}[\s\S]*mode="quotation"[\s\S]*onChange=\{\(paymentMethods\) => updateRoot\("paymentMethods", paymentMethods\)\}/);
+    assert.doesNotMatch(payments, /saveCompanyPaymentMethodsAction/);
+    assert.match(payments, /onChange\(normalizePaymentPositions\(move\(methods, event\) as T\[\]\)\)/);
+  });
+
+  it("previews and prints only the latest successful save", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(editor, /const canUseSavedDocument = Boolean\(documentNumber && lastSavedPayload && !isPending\)/);
+    assert.match(editor, /setLastSavedPayload\(result\.payload\)/);
+    assert.match(editor, /previewEnabled=\{canUseSavedDocument\}/);
+    assert.match(editor, /<QuotationDocument[\s\S]*calculation=\{savedCalculation\}[\s\S]*payload=\{lastSavedPayload\}/);
+  });
+
   it("uses the approved full-width responsive quotation editor", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /"use client"/);
@@ -443,7 +486,7 @@ describe("quotation UI", () => {
     assert.match(commandBar, /onClick=\{\(\) => save\(\)\}[\s\S]*?\{isPending \?/);
     assert.doesNotMatch(commandBar, /<X|<Save/);
     assert.match(sellerStrip, /data-document-actions[\s\S]*<Share2[\s\S]*<Printer[\s\S]*<Download[\s\S]*<DocumentMore/);
-    assert.match(editor, /<DropdownMenuItem onSelect=\{onPreview\}/);
+    assert.match(editor, /<DropdownMenuItem disabled=\{!previewEnabled\} onSelect=\{onPreview\}/);
     assert.match(sellerStrip, /<Button[\s\S]*?disabled[\s\S]*?size="sm"[\s\S]*?title=/);
     assert.doesNotMatch(sellerStrip, /<Button disabled title=.*<Share2/);
   });
@@ -535,7 +578,7 @@ describe("quotation UI", () => {
     assert.doesNotMatch(css, /body \* \{ visibility: hidden/);
     assert.doesNotMatch(css, /height: 297mm|overflow: hidden/);
     assert.match(editor, /lastSavedPayload/);
-    assert.match(editor, /setLastSavedPayload\(payload\)/);
+    assert.match(editor, /setLastSavedPayload\(result\.payload\)/);
     assert.match(editor, /QuotationDocument/);
     assert.match(document, /data-quotation-document/);
     assert.doesNotMatch(document, /internalNotes/);
@@ -561,7 +604,8 @@ describe("quotation UI", () => {
 
   it("prints the last saved quotation while a newer draft is dirty", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /const canPrint = Boolean\(documentNumber && lastSavedPayload && !isPending\)/);
+    assert.match(editor, /const canUseSavedDocument = Boolean\(documentNumber && lastSavedPayload && !isPending\)/);
+    assert.match(editor, /const canPrint = canUseSavedDocument/);
     assert.match(editor, /if \(!canPrint\) return/);
     assert.match(editor, /calculation=\{savedCalculation\}/);
     assert.match(editor, /payload=\{lastSavedPayload\}/);
