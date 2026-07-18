@@ -130,4 +130,12 @@ describe("quotation migration", () => {
     assert.match(paymentSql, /save_quotation_with_payments/i);
     assert.match(paymentSql, /quotation_payment_methods[\s\S]*order by p\.position/i);
   });
+
+  it("keeps the trusted bank catalogue read-only and the inner save RPC private", () => {
+    for (const policy of ["auth: delete banks", "auth: insert banks", "auth: update banks"]) {
+      assert.match(paymentSql, new RegExp(`drop policy if exists "${policy}" on public\\.banks`, "i"));
+    }
+    assert.match(paymentSql, /revoke insert, update, delete on table public\.banks from authenticated/i);
+    assert.match(paymentSql, /revoke execute on function private\.save_quotation\(jsonb\) from authenticated/i);
+  });
 });

@@ -53,6 +53,11 @@ set code = excluded.code,
     logo_path = excluded.logo_path,
     sort_order = excluded.sort_order;
 
+drop policy if exists "auth: delete banks" on public.banks;
+drop policy if exists "auth: insert banks" on public.banks;
+drop policy if exists "auth: update banks" on public.banks;
+revoke insert, update, delete on table public.banks from authenticated;
+
 create table public.quotation_company_payment_methods (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -398,6 +403,7 @@ as $$ select * from private.save_quotation_company_payment_methods(p_methods); $
 
 revoke all on function private.current_quotation_company_profile_id() from public;
 revoke all on function private.validate_quotation_payment_method(jsonb) from public;
+revoke execute on function private.save_quotation(jsonb) from authenticated;
 revoke all on function private.save_quotation_with_payments(jsonb) from public;
 revoke all on function private.save_quotation_company_payment_methods(jsonb) from public;
 revoke all on function public.save_quotation_with_payments(jsonb) from public, anon;
