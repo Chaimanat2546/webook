@@ -350,6 +350,17 @@ describe("quotation UI", () => {
     assert.match(payments, /aria-live="polite"[\s\S]*rootError/);
   });
 
+  it("hides bank notes only in the per-quotation payment editor", () => {
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+
+    assert.match(
+      payments,
+      /mode !== "quotation" \|\| method\.type !== "bank_transfer"[\s\S]*label="หมายเหตุ"/,
+    );
+    assert.match(payments, /update\("instructions", event\.target\.value/);
+    assert.doesNotMatch(payments, /instructions:\s*""/);
+  });
+
   it("previews and prints only the latest successful save", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
 

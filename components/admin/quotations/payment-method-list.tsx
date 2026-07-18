@@ -69,7 +69,7 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
     {method.type === "qr_payment" ? <Field error={error("providerName")} field={`paymentMethods.${index}.providerName`} label="ผู้ให้บริการ"><Input className="h-8" onChange={(event) => update("providerName", event.target.value as T["providerName"])} value={method.providerName} /></Field> : null}
     {method.type === "other" ? <Field error={error("providerName")} field={`paymentMethods.${index}.providerName`} label="ชื่อช่องทาง"><Input className="h-8" onChange={(event) => update("providerName", event.target.value as T["providerName"])} value={method.providerName} /></Field> : null}
     {editorState.showQrUpload ? <div className="mt-3"><PaymentImageInput disabled={uploading} error={error("qrImageUrl")} field={`paymentMethods.${index}.qrImageUrl`} label="รูป QR" onChange={(file) => upload("qrImageUrl", file)} /></div> : null}
-    <Field error={error("instructions")} field={`paymentMethods.${index}.instructions`} label="หมายเหตุ"><Textarea className="mt-3 min-h-16" onChange={(event) => update("instructions", event.target.value as T["instructions"])} value={method.instructions} /></Field>{uploadError ? <p aria-live="polite" className="mt-2 text-xs text-destructive">{uploadError}</p> : null}
+    {mode !== "quotation" || method.type !== "bank_transfer" ? <Field error={error("instructions")} field={`paymentMethods.${index}.instructions`} label="หมายเหตุ"><Textarea className="mt-3 min-h-16" onChange={(event) => update("instructions", event.target.value as T["instructions"])} value={method.instructions} /></Field> : null}{uploadError ? <p aria-live="polite" className="mt-2 text-xs text-destructive">{uploadError}</p> : null}
   </article>;
 }
 
