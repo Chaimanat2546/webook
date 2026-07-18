@@ -49,7 +49,7 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
     data.set("file", file);
     const result = await uploadQuotationPaymentAssetAction(data);
     if (result.ok) update(name, result.url as T[typeof name]);
-    else setUploadError(result.formError || Object.values(result.fieldErrors)[0] || "Unable to upload payment image");
+    else setUploadError(result.formError || Object.values(result.fieldErrors)[0] || "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้");
   });
 
   function selectBank(value: string) {

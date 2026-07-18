@@ -72,7 +72,7 @@ function paymentAssetErrors(paymentMethods: QuotationPayload["paymentMethods"]):
       try {
         validateQuotationPaymentAssetUrl(url, workerUrl);
       } catch {
-        errors[`paymentMethods.${index}.${key}`] = "Payment image must come from system storage";
+        errors[`paymentMethods.${index}.${key}`] = "รูปช่องทางชำระเงินต้องมาจากพื้นที่จัดเก็บของระบบ";
       }
     }
   }
@@ -205,11 +205,11 @@ export async function uploadQuotationPaymentAssetAction(
 ): Promise<QuotationPaymentAssetActionResult> {
   const { adminUser } = await requireAdmin();
   if (!canUseQuotation(adminUser)) {
-    return { fieldErrors: {}, formError: "No quotation permission", ok: false };
+    return { fieldErrors: {}, formError: "ไม่มีสิทธิ์จัดการใบเสนอราคา", ok: false };
   }
   try {
     const file = formData.get("file");
-    if (!(file instanceof File)) throw new Error("Payment image is required");
+    if (!(file instanceof File)) throw new Error("กรุณาเลือกรูปช่องทางชำระเงิน");
     validateQuotationPaymentAssetFile(file);
     if (file.type !== "image/png") throw new Error("Payment image must be normalized to PNG");
     const env = getQuotationAssetEnv();
@@ -223,7 +223,7 @@ export async function uploadQuotationPaymentAssetAction(
     return { ok: true, url: buildQuotationPaymentAssetUrl(objectKey, env.workerUrl) };
   } catch (error) {
     console.error("Failed to upload quotation payment asset", error instanceof Error ? error.message : "Unknown error");
-    return { fieldErrors: {}, formError: error instanceof Error && error.message.includes("2 MB") ? error.message : "Unable to upload payment image", ok: false };
+    return { fieldErrors: {}, formError: error instanceof Error && error.message.includes("2 MB") ? error.message : "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้", ok: false };
   }
 }
 
@@ -232,7 +232,7 @@ export async function saveCompanyPaymentMethodsAction(
 ): Promise<CompanyPaymentMethodsActionResult> {
   const { adminUser, supabase } = await requireAdmin();
   if (!canUseQuotation(adminUser)) {
-    return { fieldErrors: {}, formError: "No quotation permission", ok: false };
+    return { fieldErrors: {}, formError: "ไม่มีสิทธิ์จัดการใบเสนอราคา", ok: false };
   }
   try {
     const methods = prepareCompanyPaymentMethods(value);
@@ -249,6 +249,6 @@ export async function saveCompanyPaymentMethodsAction(
       return missingPaymentAssetOrigin();
     }
     console.error("Failed to save company payment methods", error instanceof Error ? error.message : "Unknown error");
-    return { fieldErrors: {}, formError: "Unable to save payment methods", ok: false };
+    return { fieldErrors: {}, formError: "ไม่สามารถบันทึกช่องทางชำระเงินได้", ok: false };
   }
 }

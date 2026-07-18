@@ -248,6 +248,34 @@ describe("quotation UI", () => {
     assert.match(form, /aria-invalid=\{Boolean\(error\)\}/);
   });
 
+  it("connects every seller profile field error to its control", () => {
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+
+    assert.match(form, /const errorId = `\$\{name\}-error`/);
+    assert.match(form, /aria-describedby=\{error \? errorId : undefined\}/);
+    assert.match(form, /id=\{errorId\}/);
+    assert.match(form, /aria-describedby=\{fieldErrors\.officeType \? "officeType-error" : undefined\}/);
+    assert.match(form, /id="officeType-error"/);
+    assert.match(form, /aria-describedby=\{fieldErrors\.address \? "address-error" : undefined\}/);
+    assert.match(form, /id="address-error"/);
+    assert.match(form, /const logoError = fieldErrors\.logo \|\| fieldErrors\.logoUrl/);
+    assert.match(form, /aria-describedby=\{logoError \? "logo-error" : undefined\}/);
+    assert.match(form, /id="logo-error"/);
+  });
+
+  it("uses Thai for payment permission, upload, storage, and save errors", () => {
+    const actions = source("../app/admin/quotations/actions.ts");
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+
+    assert.match(actions, /รูปช่องทางชำระเงินต้องมาจากพื้นที่จัดเก็บของระบบ/);
+    assert.match(actions, /กรุณาเลือกรูปช่องทางชำระเงิน/);
+    assert.match(actions, /ไม่มีสิทธิ์จัดการใบเสนอราคา/);
+    assert.match(actions, /ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้/);
+    assert.match(actions, /ไม่สามารถบันทึกช่องทางชำระเงินได้/);
+    assert.match(actions, /error\.message\.includes\("2 MB"\) \? error\.message/);
+    assert.match(payments, /ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้/);
+  });
+
   it("keeps the old asset after a successful profile replacement", () => {
     const actions = source("../app/admin/quotations/actions.ts");
     assert.match(actions, /saveCompanyProfileAction/);
