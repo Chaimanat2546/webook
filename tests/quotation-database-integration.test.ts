@@ -280,4 +280,33 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal("internal_notes" in publicRead.data, false);
     assert.deepEqual(publicRead.data.quotation_payment_methods.map((method: { position: number }) => method.position), [1]);
   });
+
+  it("rejects external payment media through direct master and snapshot RPC calls", async () => {
+    const paymentKey = "123e4567-e89b-42d3-a456-426614174000.png";
+    const trustedUrl = `https://webook-media.example.workers.dev/quotations/payment-assets/${paymentKey}`;
+    const paymentMethod = (url: string) => ({
+      account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "",
+      id: crypto.randomUUID(), instructions: "", is_default: false, position: 1, promptpay_id: "",
+      provider_name: "PromptPay", qr_image_url: url, qr_mode: "upload", type: "qr_payment",
+    });
+
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [paymentMethod("https://tracker.example/payment.png")],
+    })).error?.code, "23514");
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [paymentMethod(trustedUrl)],
+    })).error, null);
+
+    const externalSnapshot = payload(null);
+    externalSnapshot.payment_methods = [paymentMethod("https://tracker.example/payment.png")];
+    assert.equal((await allowed.rpc("save_quotation_with_payments", {
+      p_payload: externalSnapshot,
+    })).error?.code, "23514");
+
+    const trustedSnapshot = payload(null);
+    trustedSnapshot.payment_methods = [paymentMethod(trustedUrl)];
+    assert.equal((await allowed.rpc("save_quotation_with_payments", {
+      p_payload: trustedSnapshot,
+    })).error, null);
+  });
 });

@@ -33,3 +33,11 @@ No product documentation update was needed: this task adds internal server bound
 ## Commit
 
 Recorded with this task.
+
+## Follow-up security fix
+
+- Added `20260718110000_quotation_payment_asset_rpc_boundary.sql` without editing the original payment migration.
+- The migration validates non-empty custom-bank-logo and QR URLs against the deployed `webook-media` Worker URL and random PNG payment-key contract, then enforces it with checks on both payment-master and quotation-snapshot tables.
+- Direct-RPC integration coverage now rejects an external URL with SQLSTATE `23514` and accepts a valid Worker payment URL for both save RPCs.
+- `QuotationCompanyProfileRow` now selects its declared `user_id` field.
+- Follow-up verification: typecheck passed; lint has the existing `no-img-element` warning only; the full suite passed 266 tests with the local Supabase integration suite skipped because `RUN_LOCAL_SUPABASE_TESTS` is not enabled.

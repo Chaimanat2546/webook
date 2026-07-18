@@ -37,6 +37,13 @@ const paymentSql = readFileSync(
   new URL(`../supabase/migrations/${paymentMigrationName}`, import.meta.url),
   "utf8",
 );
+const paymentAssetBoundaryMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_payment_asset_rpc_boundary.sql"));
+assert.ok(paymentAssetBoundaryMigrationName, "quotation payment asset RPC boundary migration must exist");
+const paymentAssetBoundarySql = readFileSync(
+  new URL(`../supabase/migrations/${paymentAssetBoundaryMigrationName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
   it("creates the MVP 1 tables without later-MVP scope", () => {
@@ -139,5 +146,14 @@ describe("quotation migration", () => {
     assert.match(paymentSql, /grant select on table public\.banks to anon, authenticated/i);
     assert.doesNotMatch(paymentSql, /grant\s+(?:all privileges|truncate)\s+on table public\.banks/i);
     assert.match(paymentSql, /revoke execute on function private\.save_quotation\(jsonb\) from authenticated/i);
+  });
+
+  it("rejects external payment media in direct master and snapshot RPC saves", () => {
+    assert.match(paymentAssetBoundarySql, /create or replace function private\.validate_quotation_payment_asset_url\(p_url text\)/i);
+    assert.match(paymentAssetBoundarySql, new RegExp("quotations/payment-assets/.*png", "i"));
+    assert.match(paymentAssetBoundarySql, /custom_bank_logo_url/i);
+    assert.match(paymentAssetBoundarySql, /qr_image_url/i);
+    assert.match(paymentAssetBoundarySql, /alter table public\.quotation_company_payment_methods[\s\S]*check\s*\(\s*private\.validate_quotation_payment_asset_url/i);
+    assert.match(paymentAssetBoundarySql, /alter table public\.quotation_payment_methods[\s\S]*check\s*\(\s*private\.validate_quotation_payment_asset_url/i);
   });
 });

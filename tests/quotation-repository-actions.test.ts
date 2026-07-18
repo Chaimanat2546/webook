@@ -37,6 +37,7 @@ describe("quotation repository and actions", () => {
 
   it("scopes seller and payment masters to the authenticated account", () => {
     assert.match(repository, /user_id: string/);
+    assert.match(repository, /select\("id,user_id,seller_name/);
     assert.match(repository, /\.eq\("user_id", userId\)/);
     assert.match(repository, /user_id: userId/);
     assert.doesNotMatch(repository, /\.eq\("id", 1\)/);
