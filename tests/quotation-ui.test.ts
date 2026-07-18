@@ -80,6 +80,7 @@ describe("quotation UI", () => {
     assert.match(document, /break-inside-avoid/);
     assert.match(document, /\[overflow-wrap:anywhere\]/);
     assert.match(document, /ไม่สามารถสร้าง QR ได้/);
+    assert.match(document, /amount <= 0/);
     assert.match(globalCss, /\[data-document-payment-methods\]\s*\{\s*break-inside:\s*auto\s*!important/);
     assert.doesNotMatch(document, /internalNotes/);
   });

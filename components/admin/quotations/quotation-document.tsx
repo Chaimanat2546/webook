@@ -333,9 +333,12 @@ function automaticPromptPayQr(
   recipient: string,
   amountDue: string,
 ): { ok: true; src: string } | { ok: false } {
+  const amount = Number(amountDue);
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false };
+
   try {
     const svg = renderThaiQRPaymentMatrix({
-      amount: Number(amountDue),
+      amount,
       recipient,
       size: 160,
     });

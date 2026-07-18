@@ -157,11 +157,16 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
         : "_form";
     throw new QuotationValidationError({ [field]: message });
   }
-  if (Number(calculation.amountDue) > 9_999_999_999.99) {
-    const index = paymentMethods.findIndex((method) => method.qrMode === "auto_promptpay");
-    if (index >= 0) {
+  const automaticPromptPayIndex = paymentMethods.findIndex(
+    (method) => method.qrMode === "auto_promptpay",
+  );
+  if (automaticPromptPayIndex >= 0) {
+    const amountDue = Number(calculation.amountDue);
+    if (amountDue <= 0 || amountDue > 9_999_999_999.99) {
       throw new QuotationValidationError({
-        [`paymentMethods.${index}.qrMode`]: "ยอดชำระเกินวงเงินสูงสุดสำหรับ QR พร้อมเพย์",
+        [`paymentMethods.${automaticPromptPayIndex}.qrMode`]: amountDue <= 0
+          ? "ยอดชำระต้องมากกว่า 0 สำหรับ QR พร้อมเพย์อัตโนมัติ"
+          : "ยอดชำระเกินวงเงินสูงสุดสำหรับ QR พร้อมเพย์",
       });
     }
   }

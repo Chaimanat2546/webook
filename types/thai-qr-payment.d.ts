@@ -1,8 +1,15 @@
 declare module "thai-qr-payment" {
-  interface PromptPayOptions {
+  interface PromptPayPayloadOptions {
+    amount?: number;
+    recipient: string;
+    type?: "mobile" | "nationalId";
+  }
+
+  interface PromptPayRendererOptions {
     amount?: number;
     recipient: string;
     recipientType?: "mobile" | "nationalId";
+    size?: number;
   }
 
   interface ParsedPromptPayPayload {
@@ -13,8 +20,8 @@ declare module "thai-qr-payment" {
   }
 
   export function parsePayload(payload: string): ParsedPromptPayPayload;
-  export function payloadFor(options: PromptPayOptions): string;
+  export function payloadFor(options: PromptPayPayloadOptions): string;
   export function renderThaiQRPaymentMatrix(
-    options: PromptPayOptions & { size?: number },
+    options: PromptPayRendererOptions,
   ): string;
 }

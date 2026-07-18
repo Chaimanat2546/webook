@@ -45,6 +45,19 @@ describe("quotation payment methods", () => {
     assert.equal(parsed.merchant?.recipient, "0812345678");
   });
 
+  it("uses the payload API type field for a national ID", () => {
+    const payload = payloadFor({
+      amount: 50,
+      recipient: "1234567890123",
+      type: "nationalId",
+    });
+    const parsed = parsePayload(payload);
+
+    assert.equal(parsed.crc.valid, true);
+    assert.equal(parsed.amount, 50);
+    assert.equal(parsed.merchant?.recipient, "1234567890123");
+  });
+
   it("exposes the list error and blocks a twenty-first method", () => {
     assert.deepEqual(
       paymentMethodListState(

@@ -31,6 +31,27 @@ function validPayload(): QuotationPayload {
   };
 }
 
+function promptPay(qrMode: "auto_promptpay" | "upload", qrImageUrl = "") {
+  return {
+    accountName: "Pool Villa",
+    accountNumber: "",
+    bankCode: "",
+    bankId: null,
+    bankLogoUrl: "",
+    bankName: "",
+    customBankLogoUrl: "",
+    customBankName: "",
+    id: "123e4567-e89b-42d3-a456-426614174002",
+    instructions: "",
+    position: 1,
+    promptPayId: "0812345678",
+    providerName: "",
+    qrImageUrl,
+    qrMode,
+    type: "promptpay" as const,
+  };
+}
+
 describe("quotation service", () => {
   it("uses Bangkok dates and calendar-day validity", () => {
     assert.equal(getBangkokCalendarDate(new Date("2026-07-13T18:00:00.000Z")), "2026-07-14");
@@ -250,29 +271,38 @@ describe("quotation service", () => {
   it("rejects an automatic PromptPay QR above the wire amount limit", () => {
     const payload = validPayload();
     payload.items[0] = { ...payload.items[0]!, unitPrice: "10000000000", vatRate: "0", vatTreatment: "none" };
-    payload.paymentMethods = [{
-      accountName: "Pool Villa",
-      accountNumber: "",
-      bankCode: "",
-      bankId: null,
-      bankLogoUrl: "",
-      bankName: "",
-      customBankLogoUrl: "",
-      customBankName: "",
-      id: "123e4567-e89b-42d3-a456-426614174002",
-      instructions: "",
-      position: 1,
-      promptPayId: "0812345678",
-      providerName: "",
-      qrImageUrl: "",
-      qrMode: "auto_promptpay",
-      type: "promptpay",
-    }];
+    payload.paymentMethods = [promptPay("auto_promptpay")];
 
     assert.throws(
       () => prepareQuotationPayload(payload),
       (error) => error instanceof QuotationValidationError
         && Boolean(error.fieldErrors["paymentMethods.0.qrMode"]),
     );
+  });
+
+  it("requires a positive amount due for automatic PromptPay", () => {
+    const payload = validPayload();
+    payload.items[0] = { ...payload.items[0]!, vatRate: "0", vatTreatment: "none" };
+    payload.withholdingTaxRate = "100";
+    payload.paymentMethods = [promptPay("auto_promptpay")];
+
+    assert.throws(
+      () => prepareQuotationPayload(payload),
+      (error) => error instanceof QuotationValidationError
+        && Boolean(error.fieldErrors["paymentMethods.0.qrMode"]),
+    );
+  });
+
+  it("accepts the automatic PromptPay maximum and an uploaded QR at zero", () => {
+    const maximum = validPayload();
+    maximum.items[0] = { ...maximum.items[0]!, unitPrice: "9999999999.99", vatRate: "0", vatTreatment: "none" };
+    maximum.paymentMethods = [promptPay("auto_promptpay")];
+    assert.equal(prepareQuotationPayload(maximum).calculation.amountDue, "9999999999.99");
+
+    const uploaded = validPayload();
+    uploaded.items[0] = { ...uploaded.items[0]!, vatRate: "0", vatTreatment: "none" };
+    uploaded.withholdingTaxRate = "100";
+    uploaded.paymentMethods = [promptPay("upload", "/quotations/payment-assets/123e4567-e89b-42d3-a456-426614174099.png")];
+    assert.equal(prepareQuotationPayload(uploaded).calculation.amountDue, "0.00");
   });
 });

@@ -54,9 +54,11 @@ saved position and fall back to text when an image is unavailable.
 
 Automatic PromptPay QR uses `thai-qr-payment` `^1.1.0`. It is derived at
 render time from the saved PromptPay identifier and saved `amount_due`; it is
-not stored as another image. The server rejects automatic QR when amount due
-exceeds THB 9,999,999,999.99. Renderer failures show a compact Thai fallback
-instead of breaking Preview, Print, or Public Read-only.
+not stored as another image. The server accepts automatic QR only when amount
+due is greater than zero and no more than THB 9,999,999,999.99; uploaded QR
+methods may still be saved at zero. Legacy invalid automatic QR values show a
+compact Thai fallback instead of generating an arbitrary-amount QR or breaking
+Preview, Print, or Public Read-only.
 
 ## Editor And Calculation Rules
 
