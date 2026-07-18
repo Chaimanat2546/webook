@@ -30,6 +30,13 @@ const cleanupSql = readFileSync(
   new URL(`../supabase/migrations/${cleanupName}`, import.meta.url),
   "utf8",
 );
+const paymentMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_user_payment_methods.sql"));
+assert.ok(paymentMigrationName, "quotation user payment migration must exist");
+const paymentSql = readFileSync(
+  new URL(`../supabase/migrations/${paymentMigrationName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
   it("creates the MVP 1 tables without later-MVP scope", () => {
@@ -109,5 +116,18 @@ describe("quotation migration", () => {
       cleanupSql.indexOf("create or replace function private.save_quotation"),
     );
     assert.doesNotMatch(replacementFunctions, /document_discount|price_mode|currency/i);
+  });
+
+  it("isolates seller and payment data by account and saves payment snapshots atomically", () => {
+    assert.match(paymentSql, /truncate table public\.quotations cascade/i);
+    assert.match(paymentSql, /truncate table public\.quotation_company_profiles/i);
+    assert.match(paymentSql, /user_id uuid not null unique references auth\.users\(id\)/i);
+    assert.match(paymentSql, /create table public\.quotation_company_payment_methods/i);
+    assert.match(paymentSql, /create table public\.quotation_payment_methods/i);
+    assert.match(paymentSql, /company_profile_id uuid not null references public\.quotation_company_profiles/i);
+    assert.match(paymentSql, /created_by = \(select auth\.uid\(\)\)/i);
+    assert.match(paymentSql, /private\.has_quotation_permission\(\)/i);
+    assert.match(paymentSql, /save_quotation_with_payments/i);
+    assert.match(paymentSql, /quotation_payment_methods[\s\S]*order by p\.position/i);
   });
 });

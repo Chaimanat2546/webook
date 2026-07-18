@@ -22,6 +22,7 @@ function payload(
 ) {
   return {
     customer_snapshot: { name: "Customer", address: "Customer address" },
+    company_profile_id: null as string | null,
     id,
     internal_notes: "",
     issue_date: date,
@@ -36,6 +37,7 @@ function payload(
       vat_rate: "7.00",
       vat_treatment: "taxable",
     }],
+    payment_methods: [] as Array<Record<string, unknown>>,
     public_notes: "",
     reference: "",
     seller_snapshot: sellerSnapshot,
@@ -63,41 +65,60 @@ async function save(client: SupabaseClient, value: ReturnType<typeof payload>) {
   return row;
 }
 
+async function saveWithPayments(client: SupabaseClient, value: ReturnType<typeof payload>) {
+  const { data, error } = await client.rpc("save_quotation_with_payments", { p_payload: value });
+  assert.equal(error, null, error?.message);
+  const row = (data as Array<{ document_number: string; id: string }> | null)?.[0];
+  assert.ok(row);
+  return row;
+}
+
 describe("quotation local database integration", { skip: !enabled }, () => {
   const service = createClient(url || "http://127.0.0.1:54321", serviceRoleKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   const allowed = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   const denied = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
+  const otherAllowed = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   const anonymous = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", { auth: { autoRefreshToken: false, persistSession: false } });
   let allowedId = "";
   let deniedId = "";
-  let originalProfile: Record<string, unknown> | null = null;
+  let otherAllowedId = "";
+  let allowedProfileId = "";
+  let otherAllowedProfileId = "";
 
   before(async () => {
     assert.ok(url && anonKey && serviceRoleKey, "local Supabase environment is required");
     const allowedEmail = `quotation-allowed-${crypto.randomUUID()}@example.test`;
     const deniedEmail = `quotation-denied-${crypto.randomUUID()}@example.test`;
+    const otherAllowedEmail = `quotation-other-allowed-${crypto.randomUUID()}@example.test`;
     const allowedCreated = await service.auth.admin.createUser({ email: allowedEmail, email_confirm: true, password });
     const deniedCreated = await service.auth.admin.createUser({ email: deniedEmail, email_confirm: true, password });
+    const otherAllowedCreated = await service.auth.admin.createUser({ email: otherAllowedEmail, email_confirm: true, password });
     assert.equal(allowedCreated.error, null, allowedCreated.error?.message);
     assert.equal(deniedCreated.error, null, deniedCreated.error?.message);
-    allowedId = allowedCreated.data.user!.id; deniedId = deniedCreated.data.user!.id;
-    const usersInsert = await service.from("users").insert([{ allow_tools: { allow_quotation: true }, email: allowedEmail, uid: allowedId }, { allow_tools: {}, email: deniedEmail, uid: deniedId }]);
+    assert.equal(otherAllowedCreated.error, null, otherAllowedCreated.error?.message);
+    allowedId = allowedCreated.data.user!.id; deniedId = deniedCreated.data.user!.id; otherAllowedId = otherAllowedCreated.data.user!.id;
+    const usersInsert = await service.from("users").insert([{ allow_tools: { allow_quotation: true }, email: allowedEmail, uid: allowedId }, { allow_tools: {}, email: deniedEmail, uid: deniedId }, { allow_tools: { allow_quotation: true }, email: otherAllowedEmail, uid: otherAllowedId }]);
     assert.equal(usersInsert.error, null, usersInsert.error?.message);
-    const profile = await service.from("quotation_company_profiles").select().eq("id", 1).maybeSingle();
-    assert.equal(profile.error, null, profile.error?.message);
-    originalProfile = profile.data;
     assert.equal((await allowed.auth.signInWithPassword({ email: allowedEmail, password })).error, null);
     assert.equal((await denied.auth.signInWithPassword({ email: deniedEmail, password })).error, null);
+    assert.equal((await otherAllowed.auth.signInWithPassword({ email: otherAllowedEmail, password })).error, null);
+    const allowedProfile = await allowed.from("quotation_company_profiles").insert({ seller_name: "Allowed seller", address: "Allowed address", tax_id: "0100000000000" }).select("id").single();
+    const otherAllowedProfile = await otherAllowed.from("quotation_company_profiles").insert({ seller_name: "Other seller", address: "Other address", tax_id: "0200000000000" }).select("id").single();
+    assert.equal(allowedProfile.error, null, allowedProfile.error?.message);
+    assert.equal(otherAllowedProfile.error, null, otherAllowedProfile.error?.message);
+    allowedProfileId = allowedProfile.data.id;
+    otherAllowedProfileId = otherAllowedProfile.data.id;
   });
 
   after(async () => {
     await service.from("quotations").delete().in("issue_date", [issueDate, otherDate]);
-    if (originalProfile) await service.from("quotation_company_profiles").upsert(originalProfile);
-    else await service.from("quotation_company_profiles").delete().eq("id", 1);
+    await service.from("quotation_company_profiles").delete().in("user_id", [allowedId, otherAllowedId]);
     if (allowedId) await service.from("users").delete().eq("uid", allowedId);
     if (deniedId) await service.from("users").delete().eq("uid", deniedId);
+    if (otherAllowedId) await service.from("users").delete().eq("uid", otherAllowedId);
     if (allowedId) await service.auth.admin.deleteUser(allowedId);
     if (deniedId) await service.auth.admin.deleteUser(deniedId);
+    if (otherAllowedId) await service.auth.admin.deleteUser(otherAllowedId);
   });
 
   it("enforces permission, atomic daily numbers, edit stability, and soft delete", async () => {
@@ -120,10 +141,10 @@ describe("quotation local database integration", { skip: !enabled }, () => {
 
   it("keeps a saved seller snapshot after the company profile changes", async () => {
     const originalSeller = { ...seller, name: "Snapshot seller" };
-    const profileSave = await allowed.from("quotation_company_profiles").upsert({ id: 1, seller_name: originalSeller.name, address: originalSeller.address, tax_id: originalSeller.taxId });
+    const profileSave = await allowed.from("quotation_company_profiles").update({ seller_name: originalSeller.name, address: originalSeller.address, tax_id: originalSeller.taxId }).eq("id", allowedProfileId);
     assert.equal(profileSave.error, null, profileSave.error?.message);
     const created = await save(allowed, payload(null, issueDate, originalSeller));
-    const profileChange = await allowed.from("quotation_company_profiles").update({ seller_name: "Changed company profile" }).eq("id", 1);
+    const profileChange = await allowed.from("quotation_company_profiles").update({ seller_name: "Changed company profile" }).eq("id", allowedProfileId);
     assert.equal(profileChange.error, null, profileChange.error?.message);
     const quotation = await allowed.from("quotations").select("seller_snapshot").eq("id", created.id).single();
     assert.equal(quotation.error, null, quotation.error?.message);
@@ -229,5 +250,34 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       p_token: stored.data.public_token,
     });
     assert.equal(deleted.data, null);
+  });
+
+  it("isolates seller, masters, quotations, and public payment snapshots by owner", async () => {
+    const bank = await service.from("banks").select("id,code,name,logo_path").eq("code", "004").single();
+    assert.equal(bank.error, null, bank.error?.message);
+    const master = await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [{ account_name: "Allowed seller", account_number: "137-1-17528-4", bank_id: bank.data.id, id: crypto.randomUUID(), instructions: "", is_default: true, position: 9, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" }],
+    });
+    assert.equal(master.error, null, master.error?.message);
+    assert.equal((await otherAllowed.from("quotation_company_profiles").select("id")).data?.some((row) => row.id === allowedProfileId), false);
+    assert.deepEqual((await otherAllowed.from("quotation_company_payment_methods").select("id")).data, []);
+
+    const createdPayload = payload(null);
+    createdPayload.company_profile_id = allowedProfileId;
+    createdPayload.payment_methods = [{ account_name: "Allowed seller", account_number: "137-1-17528-4", bank_id: bank.data.id, bank_code: "004", bank_logo_url: "/quotation/banks/kbank.svg", bank_name: bank.data.name, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 7, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" }];
+    const created = await saveWithPayments(allowed, createdPayload);
+    assert.deepEqual((await otherAllowed.from("quotations").select("id")).data, []);
+
+    const crossAccountUpdate = payload(created.id);
+    crossAccountUpdate.company_profile_id = otherAllowedProfileId;
+    assert.equal((await otherAllowed.rpc("save_quotation_with_payments", { p_payload: crossAccountUpdate })).error?.code, "P0002");
+    assert.equal((await otherAllowed.rpc("soft_delete_quotation", { p_id: created.id })).error?.code, "P0002");
+
+    const stored = await allowed.from("quotations").select("public_token").eq("id", created.id).single();
+    assert.equal(stored.error, null, stored.error?.message);
+    const publicRead = await anonymous.rpc("get_public_quotation", { p_token: stored.data.public_token });
+    assert.equal(publicRead.error, null, publicRead.error?.message);
+    assert.equal("internal_notes" in publicRead.data, false);
+    assert.deepEqual(publicRead.data.quotation_payment_methods.map((method: { position: number }) => method.position), [1]);
   });
 });
