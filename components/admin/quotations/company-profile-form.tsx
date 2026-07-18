@@ -97,8 +97,8 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
         setIsConverting(true);
         formData.set("logo", await normalizeLogo(file));
       }
-    } catch (cause) {
-      setLocalLogoError(cause instanceof Error ? cause.message : "ไม่สามารถเตรียมโลโก้ได้");
+    } catch {
+      setLocalLogoError("ไม่สามารถเตรียมโลโก้ได้");
       return;
     } finally {
       setIsConverting(false);

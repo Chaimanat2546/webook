@@ -271,7 +271,8 @@ describe("quotation UI", () => {
     assert.match(form, /const logoError = localLogoError \|\| serverLogoError/);
     assert.match(form, /setLocalLogoError\("ไฟล์โลโก้ต้องมีขนาดไม่เกิน 10 MB"\)/);
     assert.match(form, /setLocalLogoError\("รองรับเฉพาะไฟล์ PNG, JPEG หรือ WebP"\)/);
-    assert.match(form, /setLocalLogoError\(cause instanceof Error \? cause\.message/);
+    assert.match(form, /catch \{[\s\S]*setLocalLogoError\("ไม่สามารถเตรียมโลโก้ได้"\)/);
+    assert.doesNotMatch(form, /setLocalLogoError\(cause instanceof Error \? cause\.message/);
     assert.match(form, /aria-describedby=\{logoError \? "logo-error" : undefined\}/);
     assert.match(form, /aria-invalid=\{Boolean\(logoError\)\}/);
   });
