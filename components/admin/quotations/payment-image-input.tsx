@@ -23,7 +23,7 @@ export async function normalizePaymentImageToPng(file: File): Promise<File> {
   }
 }
 
-export function PaymentImageInput({ disabled, onChange }: { disabled?: boolean; onChange: (file: File) => void }) {
+export function PaymentImageInput({ disabled, label = "รูป QR หรือโลโก้ธนาคาร", onChange }: { disabled?: boolean; label?: string; onChange: (file: File) => void }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -47,9 +47,9 @@ export function PaymentImageInput({ disabled, onChange }: { disabled?: boolean; 
     }
   }
 
-  return <label className="grid gap-2 text-sm">
-    <span>รูป QR หรือโลโก้ธนาคาร</span>
-    <input accept="image/png,image/jpeg,image/webp" disabled={disabled || loading} onChange={(event) => select(event.target.files?.[0] ?? null)} type="file" />
+  return <label className="grid min-w-0 max-w-full gap-2 text-sm">
+    <span>{label}</span>
+    <input accept="image/png,image/jpeg,image/webp" className="w-full min-w-0 max-w-full" disabled={disabled || loading} onChange={(event) => select(event.target.files?.[0] ?? null)} type="file" />
     {previewUrl ? (
       // eslint-disable-next-line @next/next/no-img-element -- Blob URLs are local previews.
       <img alt="ตัวอย่างรูปช่องทางชำระเงิน" className="max-h-40 w-auto" src={previewUrl} />

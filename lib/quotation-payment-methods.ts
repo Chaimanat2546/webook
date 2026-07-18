@@ -42,3 +42,12 @@ export function emptyPaymentMethod(type: PaymentMethodType = "bank_transfer"): Q
 export function updatePaymentMethodType(method: QuotationPaymentMethod, type: PaymentMethodType): QuotationPaymentMethod {
   return { ...method, type, ...(type !== "promptpay" && method.qrMode === "auto_promptpay" ? { qrMode: "none" } : {}) };
 }
+
+export function paymentMethodEditorState(method: Pick<QuotationPaymentMethod, "bankCode" | "bankId" | "qrMode" | "type">) {
+  const hasCustomBankFields = method.type === "bank_transfer" && (method.bankCode === "OTHER" || !method.bankId);
+  return {
+    bankSelectValue: hasCustomBankFields ? "OTHER" : method.bankId ?? "OTHER",
+    hasCustomBankFields,
+    hasQrUpload: method.type === "qr_payment" || method.qrMode === "upload",
+  };
+}

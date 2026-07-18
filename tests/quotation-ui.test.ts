@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
+import { paymentMethodEditorState, updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
 
 function source(path: string) {
   return readFileSync(new URL(path, import.meta.url), "utf8");
@@ -116,6 +116,31 @@ describe("quotation UI", () => {
 
     assert.equal(updated.type, "cash");
     assert.equal(updated.qrMode, "none");
+  });
+
+  it("derives bank and QR controls from the payment method state", () => {
+    const otherBank = paymentMethodEditorState({ bankCode: "OTHER", bankId: null, qrMode: "none", type: "bank_transfer" });
+    const builtInBank = paymentMethodEditorState({ bankCode: "004", bankId: "bank-id", qrMode: "upload", type: "bank_transfer" });
+
+    assert.deepEqual(otherBank, { bankSelectValue: "OTHER", hasCustomBankFields: true, hasQrUpload: false });
+    assert.deepEqual(builtInBank, { bankSelectValue: "bank-id", hasCustomBankFields: false, hasQrUpload: true });
+    assert.deepEqual(
+      paymentMethodEditorState({ bankCode: "", bankId: null, qrMode: "none", type: "qr_payment" }),
+      { bankSelectValue: "OTHER", hasCustomBankFields: false, hasQrUpload: true },
+    );
+  });
+
+  it("keeps the native bank selection, image labels, and file input within the payment grid", () => {
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+    const imageInput = source("../components/admin/quotations/payment-image-input.tsx");
+
+    assert.match(payments, /<option value="OTHER">อื่น ๆ<\/option>/);
+    assert.match(payments, /label="โลโก้ธนาคารอื่น"/);
+    assert.match(payments, /label="รูป QR"/);
+    assert.match(imageInput, /label\?: string/);
+    assert.match(imageInput, /<span>\{label\}<\/span>/);
+    assert.match(imageInput, /className="grid min-w-0 max-w-full gap-2 text-sm"/);
+    assert.match(imageInput, /className="w-full min-w-0 max-w-full"/);
   });
 
   it("collects the approved seller snapshot fields and normalizes the logo", () => {
