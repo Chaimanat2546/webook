@@ -246,4 +246,33 @@ describe("quotation service", () => {
         && Boolean(error.fieldErrors.withholdingTaxRate),
     );
   });
+
+  it("rejects an automatic PromptPay QR above the wire amount limit", () => {
+    const payload = validPayload();
+    payload.items[0] = { ...payload.items[0]!, unitPrice: "10000000000", vatRate: "0", vatTreatment: "none" };
+    payload.paymentMethods = [{
+      accountName: "Pool Villa",
+      accountNumber: "",
+      bankCode: "",
+      bankId: null,
+      bankLogoUrl: "",
+      bankName: "",
+      customBankLogoUrl: "",
+      customBankName: "",
+      id: "123e4567-e89b-42d3-a456-426614174002",
+      instructions: "",
+      position: 1,
+      promptPayId: "0812345678",
+      providerName: "",
+      qrImageUrl: "",
+      qrMode: "auto_promptpay",
+      type: "promptpay",
+    }];
+
+    assert.throws(
+      () => prepareQuotationPayload(payload),
+      (error) => error instanceof QuotationValidationError
+        && Boolean(error.fieldErrors["paymentMethods.0.qrMode"]),
+    );
+  });
 });

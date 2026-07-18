@@ -157,5 +157,13 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
         : "_form";
     throw new QuotationValidationError({ [field]: message });
   }
+  if (Number(calculation.amountDue) > 9_999_999_999.99) {
+    const index = paymentMethods.findIndex((method) => method.qrMode === "auto_promptpay");
+    if (index >= 0) {
+      throw new QuotationValidationError({
+        [`paymentMethods.${index}.qrMode`]: "ยอดชำระเกินวงเงินสูงสุดสำหรับ QR พร้อมเพย์",
+      });
+    }
+  }
   return { amountInWords: formatThaiBahtText(calculation.amountDue), calculation, payload, rpcPayload: { customer_snapshot: customer, id, internal_notes: payload.internalNotes, issue_date: issueDate, items: calculation.lines.map((line) => ({ description: line.description, discount_amount: line.discountAmount, name: line.name, position: line.position, quantity: line.quantity, unit: line.unit || null, unit_price: line.unitPrice, vat_rate: line.vatRate, vat_treatment: line.vatTreatment })), payment_methods: paymentMethods.map((method) => ({ account_name: method.accountName, account_number: method.accountNumber, bank_code: method.bankCode, bank_id: method.bankId, bank_logo_url: method.bankLogoUrl, bank_name: method.bankName, custom_bank_logo_url: method.customBankLogoUrl, custom_bank_name: method.customBankName, id: method.id, instructions: method.instructions, position: method.position, promptpay_id: method.promptPayId, provider_name: method.providerName, qr_image_url: method.qrImageUrl, qr_mode: method.qrMode, type: method.type })), public_notes: payload.publicNotes, reference: payload.reference, seller_snapshot: seller, subject: payload.subject, totals: { amountDue: calculation.amountDue, discountTotal: calculation.discountTotal, grandTotal: calculation.grandTotal, grossTotal: calculation.grossTotal, preTaxTotal: calculation.preTaxTotal, vatTotal: calculation.vatTotal, withholdingTaxTotal: calculation.withholdingTaxTotal }, valid_until: validUntil, validity_days: validityDays ? Number(validityDays) : null, withholding_tax_rate: payload.withholdingTaxRate } };
 }

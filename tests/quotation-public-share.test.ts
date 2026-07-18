@@ -24,4 +24,15 @@ describe("quotation public share", () => {
     assert.match(editor, /disabled=\{!publicToken/);
     assert.match(editor, /data-document-actions/);
   });
+
+  it("uses the same saved payment document for public read-only", () => {
+    const page = source("../app/q/[token]/page.tsx");
+    const repository = source("../server/repositories/quotations.ts");
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+
+    assert.match(page, /quotation\.payload/);
+    assert.match(repository, /quotation_payment_methods/);
+    assert.match(document, /payload\.paymentMethods/);
+    assert.doesNotMatch(document, /internalNotes/);
+  });
 });

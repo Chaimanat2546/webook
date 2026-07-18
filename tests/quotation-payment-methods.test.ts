@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { parsePayload, payloadFor } from "thai-qr-payment";
 
 import {
   MAX_PAYMENT_METHODS,
@@ -32,6 +33,18 @@ const bank = {
 };
 
 describe("quotation payment methods", () => {
+  it("builds a valid amount-bound PromptPay payload", () => {
+    const payload = payloadFor({ recipient: "0812345678", amount: 50 });
+    const parsed = parsePayload(payload);
+
+    assert.equal(payload, "00020101021229370016A000000677010111011300668123456785303764540550.005802TH63045197");
+    assert.equal(parsed.crc.valid, true);
+    assert.equal(parsed.currency, "764");
+    assert.equal(parsed.amount, 50);
+    assert.equal(parsed.merchant?.kind, "promptpay");
+    assert.equal(parsed.merchant?.recipient, "0812345678");
+  });
+
   it("exposes the list error and blocks a twenty-first method", () => {
     assert.deepEqual(
       paymentMethodListState(

@@ -164,4 +164,7 @@
   [data-document-summary] {
     break-inside: avoid;
   }
+  [data-document-payment-methods] {
+    break-inside: auto !important;
+  }
 }

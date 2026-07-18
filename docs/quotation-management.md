@@ -1,102 +1,121 @@
 # Quotation Management
 
-## Scope
+## Scope And Ownership
 
-Admins with `allow_tools.allow_quotation = true` manage the seller profile and
-create, edit, preview, print, search, soft-delete, and share quotations. The
-customer snapshot deliberately contains only name, address, tax ID, office
-type, and branch number; it never stores customer contact details, a shipping
-address, or a service location.
+Authenticated admins with `allow_tools.allow_quotation = true` can manage
+their own seller profile, reusable payment methods, and quotations. Every
+seller profile, payment master, and quotation is linked to the current
+Supabase Auth user. RLS combines that ownership check with the existing
+quotation permission, so one account cannot read or change another account's
+data.
 
-MVP 1 does not include download/PDF generation, workflow or approval,
-customer acceptance, payment or installments, or revision history.
+The customer snapshot contains only name, address, tax ID, office type, and
+branch number. This MVP does not include approval, customer acceptance,
+payment collection or status, reconciliation, installments, or revision
+history.
 
 ## Routes
 
-- `/admin/quotations` — list, search, print, and soft-delete
-- `/admin/quotations/new` — create from the current seller profile snapshot
-- `/admin/quotations/[id]` — edit a saved quotation
-- `/admin/quotations/settings/company` — manage the singleton seller profile
-- `/q/[token]` — no-login, read-only public view of a saved quotation
+- `/admin/quotations` - list, search, print, and soft-delete owned quotations
+- `/admin/quotations/new` - create from the current user's seller and default payment masters
+- `/admin/quotations/[id]` - edit saved seller and payment snapshots
+- `/admin/quotations/settings/company` - manage the current user's seller profile and payment masters
+- `/q/[token]` - no-login, token-scoped public view of the latest saved quotation
 
-## Editor Rules
+## Master And Snapshot Rules
 
-- Create/Edit uses the Document Workbench layout; Preview/Print remains A4.
-- Reference is optional. Subject is labelled `เรื่อง / ชื่องาน` in the document.
-- All user-visible currency copy uses `บาท`.
+- Each account has one seller profile and an ordered reusable payment list.
+- New quotations copy default payment masters into editable quotation rows.
+- Saving atomically stores seller, customer, item, and ordered payment
+  snapshots. A quotation may have no payment methods.
+- Editing a master never changes an existing quotation. Deleting a master
+  leaves its saved quotation snapshots intact.
+- Preview, Print, and Public Read-only share `QuotationDocument` and use only
+  the latest successful save. Unsaved editor changes are not shared or
+  printed.
+- Public Read-only never exposes internal notes. It intentionally displays
+  full saved bank-account and PromptPay identifiers.
+
+## Payment Methods
+
+Supported types are:
+
+- Bank transfer: bank, account number, and account name; optional uploaded QR.
+- PromptPay: 10-digit phone or 13-digit national/tax identifier and account
+  name; either uploaded QR or automatic amount-bound QR.
+- QR Payment: provider name and uploaded QR.
+- Cash: optional instructions.
+- Other: display name and optional instructions.
+
+Built-in Thai banks use trusted local assets under `public/quotation/banks`.
+Selecting `OTHER` keeps the custom name and optional logo only in the user's
+master/snapshot; it does not alter the bank catalogue. Document rows follow
+saved position and fall back to text when an image is unavailable.
+
+Automatic PromptPay QR uses `thai-qr-payment` `^1.1.0`. It is derived at
+render time from the saved PromptPay identifier and saved `amount_due`; it is
+not stored as another image. The server rejects automatic QR when amount due
+exceeds THB 9,999,999,999.99. Renderer failures show a compact Thai fallback
+instead of breaking Preview, Print, or Public Read-only.
+
+## Editor And Calculation Rules
+
+- Create/Edit uses the responsive Document Workbench; Preview/Print is A4.
+- Reference is optional and subject is labelled `เรื่อง / ชื่องาน`.
+- Currency copy is always `บาท`.
 - Quantity is required and greater than zero; unit is optional.
-- Per-item discount and VAT controls are enabled from `ตั้งค่าเอกสาร`.
+- Per-item fixed discount and VAT controls are enabled from document settings.
 - New quotations start with both optional item features off.
-- Item discounts are fixed amounts only. Disabling the feature clears all item discounts.
-- Enabling VAT starts items at 7%; disabling it stores every item as no VAT at 0%.
-- The item ledger, Preview/Print, and Public Read-only display `มูลค่าก่อนภาษี` after item discount and before VAT.
-- Money inputs accept grouped or ungrouped values and display comma grouping with two decimals after blur.
-- Calculations and stored values remain canonical decimal strings without commas.
-- Edit totals, Preview, Print, Public Read-only, and quotation lists group currency consistently.
-- Drag and drop changes item order, and that order is persisted on save.
-- Withholding tax is enabled by its own checkbox.
+- Enabling VAT starts items at 7%; disabling it stores no VAT at 0%.
+- Money inputs accept grouped or ungrouped values; stored values are canonical
+  decimal strings without commas.
+- Drag and drop order is persisted for items and payment methods.
 - Internal notes are admin-only; public notes may appear in the document.
-
-## Calculation And Totals
 
 The server recalculates money before saving:
 
-1. `gross total = sum(quantity × unit price)`
+1. `gross total = sum(quantity x unit price)`
 2. `discount total = sum(fixed item discounts)`
-3. `pre-tax total = gross total − discount total`
-4. `VAT total = sum(item pre-tax amount × item VAT rate)`
+3. `pre-tax total = gross total - discount total`
+4. `VAT total = sum(item pre-tax amount x item VAT rate)`
 5. `grand total = pre-tax total + VAT total`
-6. `withholding tax = pre-tax total × withholding percentage`
-7. `amount due = grand total − withholding tax`
+6. `withholding tax = pre-tax total x withholding percentage`
+7. `amount due = grand total - withholding tax`
 
-The local cleanup migration resets quotation documents, items, and numbering,
-and removes unused quotation columns while preserving the seller company profile.
+## Asset Rules
 
-## Save, Preview, Print, And Share
+Seller logos keep the existing WebP flow. Payment QR and custom-bank-logo
+uploads accept PNG, JPEG, or WebP up to 2 MB and normalize through Canvas to
+PNG. Empty, invalid, oversized, and user-uploaded SVG files are rejected.
 
-Seller and customer values are copied into each quotation, so later seller
-profile edits do not change saved documents. Preview renders the current draft.
-Print is available only after the first successful save and uses the latest
-saved payload in the read-only A4 document.
+Payment assets must use the exact configured Media Worker HTTPS origin and
+`/quotations/payment-assets/<uuid>.png`, without query or fragment. Configure
+`private.quotation_payment_asset_config.origin` from
+`ADVERTISEMENT_IMAGE_WORKER_URL`; only database owner/service role can change
+it. Upload failure preserves the previous saved asset and snapshot.
 
-Preview, Print, and Public Read-only share the PDF-derived A4 document
-composition. Printing mounts only the latest saved document in an isolated
-print host, preventing editor layout from creating a blank page.
+## Migration And Validation
 
-Share is saved-only. `/q/[token]` uses the latest saved row, never includes
-internal notes or customer contacts, and returns 404 after the quotation is
-soft-deleted. It is public read-only; it does not allow editing or saving.
+Migration `20260718090000_quotation_user_payment_methods.sql` performs the
+approved local-only reset of quotation documents, dependent quotation data,
+and seller profiles before adding account ownership, payment masters,
+snapshots, bank metadata, RLS, and transactional RPC behavior. It does not
+remove unrelated tables or columns. Do not apply that reset to production-like
+data without an explicit migration plan.
 
-## Asset Behavior
-
-Seller logos are normalized to WebP, limited to 10 MB input and 1600 px on the
-longest side, and uploaded to `quotations/assets/<uuid>.webp` through the
-authenticated Media Worker adapter.
-
-Payment QR and custom bank-logo assets must be HTTPS URLs under the exact
-configured Media Worker origin and use
-`/quotations/payment-assets/<uuid>.png` with no query or fragment. Configure
-`private.quotation_payment_asset_config.origin` once as the bare origin from
-`ADVERTISEMENT_IMAGE_WORKER_URL`; only the database owner/service role can
-change it. This supports either the deployed `webook-media` Workers.dev origin
-or an exact custom media domain. Until it is configured, saves that include a
-payment asset return the actionable setup error
-`quotation_payment_asset_origin_not_configured`; payment methods with no asset
-URLs continue to save normally.
-
-## Validation Checklist
-
-- Seller name, address, and tax ID are required.
-- Customer name and address are required.
-- Branch number is required only for Branch.
-- At least one item is required.
-- Item name and quantity are required; unit is optional.
-- Dates, discounts, VAT, withholding, emails, and trusted logo URLs are
-  validated server-side.
-- Save failures preserve the current draft and focus the first invalid field.
+Server validation covers required seller/customer/item fields, branch rules,
+dates, money, VAT, withholding, PromptPay identifiers, payment type fields,
+order/ID uniqueness, and trusted asset URLs. Save errors preserve the draft
+and focus the first invalid field.
 
 ## Verification
 
 Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`.
-Verify Create/Edit and Preview/Print at mobile, tablet, laptop, and desktop
-widths. Verify the public view without a login and after soft deletion.
+Inspect Preview, Print, and Public Read-only at 390, 768, 1280, and 1536 px,
+including long text, multiple reordered methods, missing images, uploaded QR,
+and automatic PromptPay QR. Confirm print output has no blank page, clipping,
+horizontal overflow, or avoidable split payment row.
+
+Before production use, scan an automatic PromptPay QR with a real Thai banking
+app and verify both the recipient and amount. Automated payload parsing and CRC
+checks do not replace this acceptance step.

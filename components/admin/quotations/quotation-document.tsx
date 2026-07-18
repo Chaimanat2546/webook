@@ -3,7 +3,9 @@ import {
   type QuotationCalculation,
 } from "../../../lib/quotation-calculator";
 import { formatBaht, formatMoney } from "../../../lib/quotation-money";
+import type { QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
 import type { QuotationPayload } from "../../../lib/quotation-types";
+import { renderThaiQRPaymentMatrix } from "thai-qr-payment";
 
 export function QuotationDocument({
   calculation,
@@ -231,8 +233,116 @@ export function QuotationDocument({
           </p>
         </div>
       </section>
+
+      {payload.paymentMethods.length ? (
+        <section
+          className="mt-6 border-t pt-4"
+          data-document-payment-methods
+        >
+          <h2 className="mb-3 text-sm font-semibold">ช่องทางชำระเงิน</h2>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+            {[...payload.paymentMethods]
+              .sort((left, right) => left.position - right.position)
+              .map((method) => (
+                <PaymentMethod
+                  amountDue={calculation.amountDue}
+                  key={method.id}
+                  method={method}
+                />
+              ))}
+          </div>
+        </section>
+      ) : null}
     </article>
   );
+}
+
+function PaymentMethod({
+  amountDue,
+  method,
+}: {
+  amountDue: string;
+  method: QuotationPaymentMethod;
+}) {
+  const bankName = method.customBankName || method.bankName;
+  const bankLogo = method.customBankLogoUrl || method.bankLogoUrl;
+  const title = method.type === "bank_transfer"
+    ? bankName
+    : method.type === "promptpay"
+      ? "พร้อมเพย์"
+      : method.type === "qr_payment" || method.type === "other"
+        ? method.providerName
+        : "เงินสด";
+  const qr = method.qrMode === "auto_promptpay"
+    ? automaticPromptPayQr(method.promptPayId, amountDue)
+    : method.qrMode === "upload" && method.qrImageUrl
+      ? { ok: true as const, src: method.qrImageUrl }
+      : null;
+
+  return (
+    <div className="break-inside-avoid min-w-0 border-l-2 border-indigo-100 pl-3">
+      <div className="flex min-w-0 items-start gap-3">
+        {bankLogo ? (
+          <picture className="h-9 w-9 shrink-0">
+            <img
+              alt={bankName ? `โลโก้${bankName}` : "โลโก้ธนาคาร"}
+              className="h-9 w-9 object-contain"
+              src={bankLogo}
+            />
+          </picture>
+        ) : null}
+        <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+          <p className="font-semibold">{title}</p>
+          {method.type === "bank_transfer" ? (
+            <>
+              <p className="font-medium tabular-nums">{method.accountNumber}</p>
+              <p>{method.accountName}</p>
+            </>
+          ) : null}
+          {method.type === "promptpay" ? (
+            <>
+              <p className="font-medium tabular-nums">{method.promptPayId}</p>
+              <p>{method.accountName}</p>
+            </>
+          ) : null}
+          {method.instructions ? (
+            <p className="whitespace-pre-line text-slate-500">
+              {method.instructions}
+            </p>
+          ) : null}
+        </div>
+        {qr?.ok ? (
+          <picture className="h-28 w-28 shrink-0">
+            <img
+              alt={`QR ${title}`}
+              className="h-28 w-28 object-contain"
+              src={qr.src}
+            />
+          </picture>
+        ) : qr ? (
+          <p className="w-28 shrink-0 text-center text-slate-500">
+            ไม่สามารถสร้าง QR ได้
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function automaticPromptPayQr(
+  recipient: string,
+  amountDue: string,
+): { ok: true; src: string } | { ok: false } {
+  try {
+    const svg = renderThaiQRPaymentMatrix({
+      amount: Number(amountDue),
+      recipient,
+      size: 160,
+    });
+    return { ok: true, src: `data:image/svg+xml,${encodeURIComponent(svg)}` };
+  } catch {
+    return { ok: false };
+  }
 }
 
 function office(snapshot: {

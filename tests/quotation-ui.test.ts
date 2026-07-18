@@ -23,7 +23,8 @@ describe("quotation UI", () => {
     assert.match(document, /formatMoney\(item\.preTaxAmount\)/);
     assert.match(document, /formatBaht\(calculation\.grandTotal\)/);
     assert.match(document, /whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]/);
-    assert.doesNotMatch(document, /internalNotes|qrCode|signature|paymentMethod/i);
+    assert.match(document, /data-document-payment-methods/);
+    assert.doesNotMatch(document, /internalNotes|signature/i);
   });
 
   it("styles document item descriptions as secondary text", () => {
@@ -61,6 +62,26 @@ describe("quotation UI", () => {
     assert.match(page, /canUseQuotation\(adminUser\)/);
     assert.match(page, /getQuotationCompanyProfile\(supabase, user\.id\)/);
     assert.match(page, /CompanyProfileForm/);
+  });
+
+  it("renders saved payment methods once in the shared document", () => {
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const globalCss = source("../app/globals.css");
+
+    assert.match(document, /payload\.paymentMethods\.length/);
+    assert.match(document, /\.sort\(\(left, right\) => left\.position - right\.position\)/);
+    assert.match(document, /renderThaiQRPaymentMatrix/);
+    assert.match(document, /method\.qrMode === "auto_promptpay"/);
+    assert.match(document, /method\.qrImageUrl/);
+    assert.match(document, /method\.customBankLogoUrl \|\| method\.bankLogoUrl/);
+    assert.match(document, /method\.accountNumber/);
+    assert.match(document, /method\.promptPayId/);
+    assert.match(document, /method\.instructions/);
+    assert.match(document, /break-inside-avoid/);
+    assert.match(document, /\[overflow-wrap:anywhere\]/);
+    assert.match(document, /ไม่สามารถสร้าง QR ได้/);
+    assert.match(globalCss, /\[data-document-payment-methods\]\s*\{\s*break-inside:\s*auto\s*!important/);
+    assert.doesNotMatch(document, /internalNotes/);
   });
 
   it("composes seller settings with sortable payment method masters", () => {
