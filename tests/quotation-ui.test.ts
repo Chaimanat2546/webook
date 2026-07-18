@@ -121,7 +121,7 @@ describe("quotation UI", () => {
 
     assert.match(
       editor,
-      /import\s*\{[\s\S]*?formatBaht,[\s\S]*?formatMoney,[\s\S]*?normalizeMoneyInput,[\s\S]*?\}\s*from "\.\.\/\.\.\/\.\.\/lib\/quotation-money"/,
+      /import\s*\{\s*formatBaht,\s*formatMoney,\s*normalizeMoneyInput,\s*\}\s*from\s*"\.\.\/\.\.\/\.\.\/lib\/quotation-money"/,
     );
     assert.match(editor, /grouped\?: boolean/);
     assert.match(editor, /onBlur=\{handleBlur\}/);
