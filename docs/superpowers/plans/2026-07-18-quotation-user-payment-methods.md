@@ -10,8 +10,9 @@
 
 ## Global Constraints
 
-- Create a new Supabase migration; never edit an existing migration.
-- The approved reset applies only to local quotation data and seller profiles. Do not remove unrelated tables or columns.
+- Migration `20260718090000_quotation_user_payment_methods.sql` was explicitly
+  approved for amendment before merge. Preserve quotation data, numbering,
+  counters, and seller data; do not remove unrelated tables or columns.
 - Keep `private.has_quotation_permission()` checks as well as account ownership checks.
 - A user may access only their own seller profile, payment masters, and quotations.
 - Public Read-only remains token-based, server-loaded, read-only, and excludes internal notes.
@@ -36,7 +37,7 @@
 - `components/admin/quotations/payment-image-input.tsx` — Canvas PNG normalization and upload control.
 - `public/quotation/banks/README.md` — bank-logo source/provenance and update policy.
 - `public/quotation/banks/bbl.svg`, `kbank.svg`, `ktb.svg`, `ttb.svg`, `scb.svg`, `cimbt.svg`, `uobt.svg`, `bay.svg`, `gsb.svg`, `ghb.svg`, `baac.svg`, `ibank.svg`, `tisco.svg`, `kkp.svg`, `tcrb.svg`, `lh.svg`, and `generic-bank.svg` — trusted built-in bank logos.
-- `supabase/migrations/20260718090000_quotation_user_payment_methods.sql` — local reset, ownership, bank metadata, payment tables, RLS, and RPC updates.
+- `supabase/migrations/20260718090000_quotation_user_payment_methods.sql` — data-preserving ownership backfill, bank metadata, payment tables, RLS, and RPC updates.
 - `tests/quotation-payment-methods.test.ts` — domain validation and ordering.
 - `tests/quotation-payment-assets.test.ts` — PNG key, file, upload, and Worker checks.
 
@@ -238,15 +239,18 @@ git commit -m "feat: validate quotation payment methods"
 
 - [ ] **Step 1: Write failing migration source tests**
 
-Assert that the newest migration contains the approved reset and schema boundaries:
+Assert that the migration preserves existing data and contains the ownership
+backfill and schema boundaries:
 
 ```ts
-assert.match(sql, /truncate table public\.quotations cascade/i);
-assert.match(sql, /truncate table public\.quotation_company_profiles/i);
-assert.match(sql, /user_id uuid not null unique references auth\.users\(id\)/i);
+assert.doesNotMatch(sql, /truncate\s+table/i);
+assert.match(sql, /quotation owner has no matching auth user/i);
+assert.match(sql, /select distinct q\.created_by[\s\S]*from public\.quotations q/i);
+assert.match(sql, /update public\.quotations q[\s\S]*profile\.user_id = q\.created_by/i);
 assert.match(sql, /create table public\.quotation_company_payment_methods/i);
 assert.match(sql, /create table public\.quotation_payment_methods/i);
-assert.match(sql, /company_profile_id uuid not null references public\.quotation_company_profiles/i);
+assert.match(sql, /add column company_profile_id uuid references public\.quotation_company_profiles/i);
+assert.match(sql, /alter column company_profile_id set not null/i);
 assert.match(sql, /created_by = \(select auth\.uid\(\)\)/i);
 assert.match(sql, /private\.has_quotation_permission\(\)/i);
 assert.match(sql, /save_quotation_with_payments/i);
@@ -261,41 +265,21 @@ Run: `node --import ./tests/register-server-only.mjs --test tests/quotation-migr
 
 Expected: FAIL because the migration and ownership policies do not exist.
 
-- [ ] **Step 3: Create the new migration with the approved local reset**
+- [ ] **Step 3: Create the data-preserving ownership migration**
 
-Start the migration with the explicit local reset and singleton conversion:
+Validate that every existing quotation creator exists in Supabase Auth before
+changing the schema. Convert the singleton profile ID to UUID, add `user_id`
+as nullable, clone the legacy profile for each distinct `quotations.created_by`
+(using the latest `seller_snapshot` only as a fallback for empty profile
+fields), then enforce the Auth foreign key, uniqueness, and non-null ownership.
+If a legacy profile exists without quotations, assign it only when exactly one
+quotation-enabled Auth user can be identified; otherwise fail explicitly.
 
-```sql
-truncate table public.quotations cascade;
-truncate table private.quotation_number_counters;
-truncate table public.quotation_company_profiles;
-
-alter table public.quotation_company_profiles drop constraint if exists quotation_company_profiles_id_check;
-alter table public.quotation_company_profiles alter column id drop default;
-alter table public.quotation_company_profiles alter column id type uuid using gen_random_uuid();
-alter table public.quotation_company_profiles alter column id set default gen_random_uuid();
-alter table public.quotation_company_profiles add column user_id uuid not null default auth.uid() references auth.users(id) on delete cascade;
-alter table public.quotation_company_profiles add constraint quotation_company_profiles_user_id_key unique (user_id);
-
-create or replace function private.current_quotation_company_profile_id()
-returns uuid
-language sql
-stable
-security definer
-set search_path = pg_catalog, public
-as $$
-  select id
-  from public.quotation_company_profiles
-  where user_id = auth.uid()
-$$;
-
-alter table public.quotations
-  add column company_profile_id uuid not null
-  default private.current_quotation_company_profile_id()
-  references public.quotation_company_profiles(id) on delete restrict;
-```
-
-The default lets the current inner `private.save_quotation()` insert an owned quotation before the payment wrapper runs. The new-quotation page already blocks users without a seller profile, and the wrapper still verifies the resolved profile before returning.
+Add `company_profile_id` as nullable, backfill it by joining profile `user_id`
+to quotation `created_by`, validate that no row remains unlinked, then set the
+column non-null and add the current-user profile function as its default.
+Existing quotation items, document numbers, and
+`private.quotation_number_counters` remain unchanged.
 
 - [ ] **Step 4: Extend the bank catalogue and seed supported choices**
 
@@ -672,7 +656,7 @@ Use `break-inside-avoid`, `min-w-0`, `overflow-wrap:anywhere`, and fixed QR dime
 
 - [ ] **Step 6: Update public tests and feature documentation**
 
-Document ownership, master/snapshot behavior, supported payment types, full public account display, trusted local bank logos, PNG rules, PromptPay amount binding, dependency, local reset, and the real-bank scan checklist in `docs/quotation-management.md`.
+Document ownership, master/snapshot behavior, supported payment types, full public account display, trusted local bank logos, PNG rules, PromptPay amount binding, dependency, data-preserving ownership migration, and the real-bank scan checklist in `docs/quotation-management.md`.
 
 - [ ] **Step 7: Run complete automated verification**
 

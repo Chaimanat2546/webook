@@ -108,11 +108,12 @@ it. Upload failure preserves the previous saved asset and snapshot.
 ## Migration And Validation
 
 Migration `20260718090000_quotation_user_payment_methods.sql` performs the
-approved local-only reset of quotation documents, dependent quotation data,
-and seller profiles before adding account ownership, payment masters,
-snapshots, bank metadata, RLS, and transactional RPC behavior. It does not
-remove unrelated tables or columns. Do not apply that reset to production-like
-data without an explicit migration plan.
+account-ownership upgrade without resetting quotation data. It preserves
+documents, items, document numbers, number counters, and seller data; clones
+the legacy singleton seller profile for each existing quotation owner; and
+links every quotation to the profile owned by its `created_by` user. The
+migration stops with an explicit error if a quotation owner is missing from
+Supabase Auth or a seller profile cannot be assigned unambiguously.
 
 Server validation covers required seller/customer/item fields, branch rules,
 dates, money, VAT, withholding, PromptPay identifiers, payment type fields,

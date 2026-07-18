@@ -115,13 +115,13 @@ quotation deletes its payment snapshot rows with it.
 
 ## Migration
 
-Create a new Supabase migration; do not edit previous migrations.
-
-The approved local-data reset clears existing quotation rows, quotation item
-rows, seller-profile rows, and dependent quotation data before replacing the
-singleton seller schema. Each account re-enters its seller profile after the
-migration. Document numbers already issued are not reused unless the existing
-counter behavior explicitly resets as part of the local reset.
+Migration `20260718090000_quotation_user_payment_methods.sql` is amended by
+explicit approval to preserve existing quotation rows, quotation items,
+document numbers, seller snapshots, and quotation number counters. It clones
+the legacy singleton seller profile for each existing quotation creator and
+links every quotation to the profile owned by its `created_by` user. It fails
+before conversion when an owner is missing from Supabase Auth or the only
+legacy profile cannot be assigned unambiguously.
 
 The migration also:
 

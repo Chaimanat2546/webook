@@ -1,6 +1,37 @@
-truncate table public.quotations cascade;
-truncate table private.quotation_number_counters;
-truncate table public.quotation_company_profiles;
+do $$
+declare
+  v_eligible_owner_count integer;
+begin
+  if exists (
+    select 1
+    from public.quotations q
+    left join auth.users auth_user on auth_user.id = q.created_by
+    where auth_user.id is null
+  ) then
+    raise exception using
+      errcode = '23503',
+      message = 'Quotation owner has no matching auth user';
+  end if;
+
+  if exists (select 1 from public.quotation_company_profiles)
+    and not exists (select 1 from public.quotations) then
+    select count(distinct auth_user.id)
+    into v_eligible_owner_count
+    from auth.users auth_user
+    join public.users app_user
+      on app_user.uid = auth_user.id
+      or (app_user.uid is null and app_user.email = auth_user.email)
+    where coalesce(app_user.allow_tools, '{}'::jsonb)
+      @> '{"allow_quotation": true}'::jsonb;
+
+    if v_eligible_owner_count <> 1 then
+      raise exception using
+        errcode = '23514',
+        message = 'Legacy seller profile has no unambiguous auth user';
+    end if;
+  end if;
+end;
+$$;
 
 alter table public.quotation_company_profiles
   drop constraint if exists quotation_company_profiles_id_check;
@@ -8,7 +39,84 @@ alter table public.quotation_company_profiles alter column id drop default;
 alter table public.quotation_company_profiles alter column id type uuid using gen_random_uuid();
 alter table public.quotation_company_profiles alter column id set default gen_random_uuid();
 alter table public.quotation_company_profiles
-  add column user_id uuid not null unique references auth.users(id) on delete cascade default auth.uid();
+  add column user_id uuid references auth.users(id) on delete cascade;
+
+with quotation_owners as (
+  select distinct q.created_by as user_id
+  from public.quotations q
+), eligible_owners as (
+  select distinct auth_user.id as user_id
+  from auth.users auth_user
+  join public.users app_user
+    on app_user.uid = auth_user.id
+    or (app_user.uid is null and app_user.email = auth_user.email)
+  where coalesce(app_user.allow_tools, '{}'::jsonb)
+    @> '{"allow_quotation": true}'::jsonb
+), chosen_owner as (
+  select min(owner.user_id::text)::uuid as user_id
+  from (
+    select user_id from quotation_owners
+    union all
+    select user_id from eligible_owners
+    where not exists (select 1 from quotation_owners)
+  ) owner
+)
+update public.quotation_company_profiles profile
+set user_id = chosen_owner.user_id
+from chosen_owner;
+
+with quotation_owners as (
+  select distinct q.created_by as user_id
+  from public.quotations q
+), template_profile as (
+  select profile.*
+  from public.quotation_company_profiles profile
+  order by profile.created_at, profile.id
+  limit 1
+)
+insert into public.quotation_company_profiles (
+  id, user_id, seller_name, address, tax_id, office_type, branch_number,
+  phone, email, website, contact_name, contact_phone, contact_email,
+  logo_url, created_at, updated_at
+)
+select
+  gen_random_uuid(), owner.user_id,
+  coalesce(nullif(template.seller_name, ''), latest.seller_snapshot ->> 'name', ''),
+  coalesce(nullif(template.address, ''), latest.seller_snapshot ->> 'address', ''),
+  coalesce(nullif(template.tax_id, ''), latest.seller_snapshot ->> 'taxId', ''),
+  case
+    when coalesce(nullif(template.office_type, ''), latest.seller_snapshot ->> 'officeType') = 'branch'
+      then 'branch'
+    else 'head_office'
+  end,
+  coalesce(nullif(template.branch_number, ''), latest.seller_snapshot ->> 'branchNumber', ''),
+  coalesce(nullif(template.phone, ''), latest.seller_snapshot ->> 'phone', ''),
+  coalesce(nullif(template.email, ''), latest.seller_snapshot ->> 'email', ''),
+  coalesce(nullif(template.website, ''), latest.seller_snapshot ->> 'website', ''),
+  coalesce(nullif(template.contact_name, ''), latest.seller_snapshot ->> 'contactName', ''),
+  coalesce(nullif(template.contact_phone, ''), latest.seller_snapshot ->> 'contactPhone', ''),
+  coalesce(nullif(template.contact_email, ''), latest.seller_snapshot ->> 'contactEmail', ''),
+  coalesce(nullif(template.logo_url, ''), latest.seller_snapshot ->> 'logoUrl', ''),
+  coalesce(template.created_at, now()), coalesce(template.updated_at, now())
+from quotation_owners owner
+left join template_profile template on true
+left join lateral (
+  select q.seller_snapshot
+  from public.quotations q
+  where q.created_by = owner.user_id
+  order by q.updated_at desc, q.id desc
+  limit 1
+) latest on true
+where not exists (
+  select 1
+  from public.quotation_company_profiles existing
+  where existing.user_id = owner.user_id
+);
+
+alter table public.quotation_company_profiles
+  alter column user_id set default auth.uid(),
+  alter column user_id set not null,
+  add constraint quotation_company_profiles_user_id_key unique (user_id);
 
 create or replace function private.current_quotation_company_profile_id()
 returns uuid
@@ -23,8 +131,26 @@ as $$
 $$;
 
 alter table public.quotations
-  add column company_profile_id uuid not null references public.quotation_company_profiles(id) on delete restrict
-  default private.current_quotation_company_profile_id();
+  add column company_profile_id uuid references public.quotation_company_profiles(id) on delete restrict;
+
+update public.quotations q
+set company_profile_id = profile.id
+from public.quotation_company_profiles profile
+where profile.user_id = q.created_by;
+
+do $$
+begin
+  if exists (select 1 from public.quotations where company_profile_id is null) then
+    raise exception using
+      errcode = '23514',
+      message = 'Quotation has no seller profile after ownership backfill';
+  end if;
+end;
+$$;
+
+alter table public.quotations
+  alter column company_profile_id set default private.current_quotation_company_profile_id(),
+  alter column company_profile_id set not null;
 
 alter table public.banks
   add column if not exists code text unique,

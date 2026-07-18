@@ -189,12 +189,18 @@ describe("quotation migration", () => {
   });
 
   it("isolates seller and payment data by account and saves payment snapshots atomically", () => {
-    assert.match(paymentSql, /truncate table public\.quotations cascade/i);
-    assert.match(paymentSql, /truncate table public\.quotation_company_profiles/i);
-    assert.match(paymentSql, /user_id uuid not null unique references auth\.users\(id\)/i);
+    assert.doesNotMatch(paymentSql, /truncate\s+table/i);
+    assert.match(paymentSql, /quotation owner has no matching auth user/i);
+    assert.match(paymentSql, /select distinct q\.created_by[\s\S]*from public\.quotations q/i);
+    assert.match(paymentSql, /insert into public\.quotation_company_profiles[\s\S]*from quotation_owners/i);
+    assert.match(paymentSql, /update public\.quotations q[\s\S]*set company_profile_id = profile\.id[\s\S]*profile\.user_id = q\.created_by/i);
+    assert.doesNotMatch(paymentSql, /truncate\s+table\s+private\.quotation_number_counters/i);
+    assert.match(paymentSql, /add column user_id uuid references auth\.users\(id\)/i);
+    assert.match(paymentSql, /alter column user_id set not null[\s\S]*unique \(user_id\)/i);
     assert.match(paymentSql, /create table public\.quotation_company_payment_methods/i);
     assert.match(paymentSql, /create table public\.quotation_payment_methods/i);
-    assert.match(paymentSql, /company_profile_id uuid not null references public\.quotation_company_profiles/i);
+    assert.match(paymentSql, /add column company_profile_id uuid references public\.quotation_company_profiles/i);
+    assert.match(paymentSql, /alter column company_profile_id set not null/i);
     assert.match(paymentSql, /created_by = \(select auth\.uid\(\)\)/i);
     assert.match(paymentSql, /private\.has_quotation_permission\(\)/i);
     assert.match(paymentSql, /save_quotation_with_payments/i);
