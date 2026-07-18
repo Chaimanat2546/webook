@@ -64,6 +64,21 @@ describe("quotation UI", () => {
     assert.match(page, /CompanyProfileForm/);
   });
 
+  it("switches seller settings sections through URL navigation", () => {
+    const page = source("../app/admin/quotations/settings/company/page.tsx");
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+
+    assert.match(page, /searchParams: Promise<\{ section\?: string \}>/);
+    assert.match(page, /section === "payments" \? "payments" : "company"/);
+    assert.match(page, /\?section=company/);
+    assert.match(page, /\?section=payments/);
+    assert.match(page, /aria-current=\{selectedSection === item\.id \? "page" : undefined\}/);
+    assert.match(page, /selectedSection === "company"[\s\S]*<CompanyProfileForm/);
+    assert.match(page, /selectedSection === "payments"[\s\S]*<PaymentMethodsSettings/);
+    assert.match(form, /export function PaymentMethodsSettings/);
+    assert.doesNotMatch(form, /<PaymentMethodsSettings[\s\S]*initialMethods=\{initialPaymentMethods\}/);
+  });
+
   it("renders saved payment methods once in the shared document", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
     const globalCss = source("../app/globals.css");
