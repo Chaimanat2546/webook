@@ -151,3 +151,11 @@ horizontal overflow, or avoidable split payment row.
 Before production use, scan an automatic PromptPay QR with a real Thai banking
 app and verify both the recipient and amount. Automated payload parsing and CRC
 checks do not replace this acceptance step.
+
+### Seller Settings Navigation
+
+`/admin/quotations/settings/company` has two URL-driven sections:
+`?section=company` for the seller profile and `?section=payments` for master
+payment methods. The seller form previews a selected logo locally before save.
+Master bank notes remain editable; the per-quotation bank-transfer editor hides
+that field without deleting a previously saved value.
