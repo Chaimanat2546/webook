@@ -7,7 +7,7 @@ import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { uploadQuotationPaymentAssetAction } from "../../../app/admin/quotations/actions";
-import { emptyPaymentMethod, normalizePaymentPositions, paymentMethodEditorState, updatePaymentMethodType, type BankOption, type QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
+import { emptyPaymentMethod, normalizePaymentPositions, paymentMethodEditorState, paymentMethodListState, updatePaymentMethodType, type BankOption, type QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -21,6 +21,7 @@ export interface PaymentMethodListProps<T extends QuotationPaymentMethod> {
   methods: T[];
   mode: "master" | "quotation";
   onChange: (methods: T[]) => void;
+  showAddButton?: boolean;
 }
 
 const paymentTypes = [["bank_transfer", "โอนเงินผ่านธนาคาร"], ["promptpay", "PromptPay"], ["qr_payment", "QR Payment"], ["cash", "เงินสด"], ["other", "อื่น ๆ"]] as const;
@@ -66,8 +67,9 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
   </article>;
 }
 
-export function PaymentMethodList<T extends QuotationPaymentMethod>({ banks, errors, methods, mode, onChange }: PaymentMethodListProps<T>) {
+export function PaymentMethodList<T extends QuotationPaymentMethod>({ banks, errors, methods, mode, onChange, showAddButton = true }: PaymentMethodListProps<T>) {
+  const listState = paymentMethodListState(methods, errors);
   const update = (index: number, patch: Partial<T>) => onChange(normalizePaymentPositions(methods.map((method, current) => current === index ? { ...method, ...patch } : method)));
-  const add = () => onChange(normalizePaymentPositions([...methods, { ...emptyPaymentMethod(), ...(mode === "master" ? { isDefault: false } : {}) } as T]));
-  return <section aria-label="ช่องทางชำระเงิน" className="min-w-0"><DragDropProvider onDragEnd={(event) => { if (!event.canceled) onChange(normalizePaymentPositions(move(methods, event) as T[])); }}><div className="divide-y border-y">{methods.map((method, index) => <SortablePaymentMethod banks={banks} errors={errors} index={index} key={method.id} method={method} mode={mode} onPatch={(patch) => update(index, patch)} onRemove={() => onChange(normalizePaymentPositions(methods.filter((_, current) => current !== index)))} />)}</div></DragDropProvider><Button className="mt-3" onClick={add} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />เพิ่มช่องทางชำระเงิน</Button></section>;
+  const add = () => { if (listState.canAdd) onChange(normalizePaymentPositions([...methods, { ...emptyPaymentMethod(), ...(mode === "master" ? { isDefault: false } : {}) } as T])); };
+  return <section aria-label="ช่องทางชำระเงิน" className="min-w-0">{listState.rootError ? <p aria-live="polite" className="mb-3 text-sm text-destructive" data-field="paymentMethods" tabIndex={-1}>{listState.rootError}</p> : null}<DragDropProvider onDragEnd={(event) => { if (!event.canceled) onChange(normalizePaymentPositions(move(methods, event) as T[])); }}><div className="divide-y border-y">{methods.map((method, index) => <SortablePaymentMethod banks={banks} errors={errors} index={index} key={method.id} method={method} mode={mode} onPatch={(patch) => update(index, patch)} onRemove={() => onChange(normalizePaymentPositions(methods.filter((_, current) => current !== index)))} />)}</div></DragDropProvider>{showAddButton ? <Button className="mt-3" disabled={!listState.canAdd} onClick={add} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />เพิ่มช่องทางชำระเงิน</Button> : null}</section>;
 }

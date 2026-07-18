@@ -31,6 +31,18 @@ export interface BankOption {
   name: string;
 }
 
+export const MAX_PAYMENT_METHODS = 20;
+
+export function paymentMethodListState(
+  methods: readonly QuotationPaymentMethod[],
+  errors: Readonly<Record<string, string>>,
+) {
+  return {
+    canAdd: methods.length < MAX_PAYMENT_METHODS,
+    rootError: errors.paymentMethods ?? "",
+  };
+}
+
 export function normalizePaymentPositions<T extends QuotationPaymentMethod>(rows: T[]): T[] {
   return rows.map((row, index) => ({ ...row, position: index + 1 }));
 }

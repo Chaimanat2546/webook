@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { normalizePaymentPositions } from "../lib/quotation-payment-methods.ts";
+import {
+  MAX_PAYMENT_METHODS,
+  normalizePaymentPositions,
+  paymentMethodListState,
+} from "../lib/quotation-payment-methods.ts";
 import {
   prepareCompanyPaymentMethods,
   preparePaymentMethods,
@@ -28,6 +32,16 @@ const bank = {
 };
 
 describe("quotation payment methods", () => {
+  it("exposes the list error and blocks a twenty-first method", () => {
+    assert.deepEqual(
+      paymentMethodListState(
+        Array.from({ length: MAX_PAYMENT_METHODS }, () => bank),
+        { paymentMethods: "Payment method IDs must be unique" },
+      ),
+      { canAdd: false, rootError: "Payment method IDs must be unique" },
+    );
+  });
+
   it("allows no payment method and normalizes positions", () => {
     assert.deepEqual(preparePaymentMethods([]), []);
     assert.deepEqual(

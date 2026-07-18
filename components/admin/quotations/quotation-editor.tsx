@@ -36,7 +36,12 @@ import {
   type QuotationItemInput,
 } from "../../../lib/quotation-calculator";
 import { addQuotationCalendarDays } from "../../../lib/quotation-dates";
-import type { BankOption } from "../../../lib/quotation-payment-methods";
+import {
+  emptyPaymentMethod,
+  normalizePaymentPositions,
+  paymentMethodListState,
+  type BankOption,
+} from "../../../lib/quotation-payment-methods";
 import {
   formatBaht,
   formatMoney,
@@ -663,6 +668,7 @@ export function QuotationEditor({
     () => (lastSavedPayload ? calculateQuotation(lastSavedPayload) : null),
     [lastSavedPayload],
   );
+  const paymentListState = paymentMethodListState(payload.paymentMethods, fieldErrors);
   const money = (value?: string) => (value ? formatBaht(value) : "—");
   function changed(field: string) {
     setIsDirty(true);
@@ -805,6 +811,13 @@ export function QuotationEditor({
         },
       ]),
     }));
+  }
+  function addPaymentMethod() {
+    if (!paymentListState.canAdd) return;
+    updateRoot(
+      "paymentMethods",
+      normalizePaymentPositions([...payload.paymentMethods, emptyPaymentMethod()]),
+    );
   }
   function removeItem(index: number) {
     if (payload.items.length > 1) {
@@ -1427,13 +1440,25 @@ export function QuotationEditor({
         className="space-y-3 border-t border-foreground/35 pt-2"
         data-payment-methods
       >
-        <h2 className="text-sm font-semibold">04 ช่องทางชำระเงิน</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">04 ช่องทางชำระเงิน</h2>
+          <Button
+            disabled={!paymentListState.canAdd}
+            onClick={addPaymentMethod}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            เพิ่มช่องทางชำระเงิน
+          </Button>
+        </div>
         <PaymentMethodList
           banks={banks}
           errors={fieldErrors}
           methods={payload.paymentMethods}
           mode="quotation"
           onChange={(paymentMethods) => updateRoot("paymentMethods", paymentMethods)}
+          showAddButton={false}
         />
       </section>
       <div

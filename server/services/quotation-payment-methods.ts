@@ -1,6 +1,6 @@
 import "server-only";
 
-import { normalizePaymentPositions, type CompanyPaymentMethod, type PaymentMethodType, type PaymentQrMode, type QuotationPaymentMethod } from "../../lib/quotation-payment-methods.ts";
+import { MAX_PAYMENT_METHODS, normalizePaymentPositions, type CompanyPaymentMethod, type PaymentMethodType, type PaymentQrMode, type QuotationPaymentMethod } from "../../lib/quotation-payment-methods.ts";
 import { QuotationValidationError } from "./quotations.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -70,7 +70,7 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
 export function preparePaymentMethods(value: unknown): QuotationPaymentMethod[] {
   if (value == null) return [];
   if (!Array.isArray(value)) throw new QuotationValidationError({ paymentMethods: "Invalid payment methods" });
-  if (value.length > 20) throw new QuotationValidationError({ paymentMethods: "Payment method count cannot exceed 20" });
+  if (value.length > MAX_PAYMENT_METHODS) throw new QuotationValidationError({ paymentMethods: "Payment method count cannot exceed 20" });
   const errors: Record<string, string> = {};
   const methods = value.map((row, index) => paymentMethod(row, index, errors));
   if (new Set(methods.map((method) => method.id)).size !== methods.length) errors.paymentMethods = "Payment method IDs must be unique";

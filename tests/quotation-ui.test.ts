@@ -281,8 +281,11 @@ describe("quotation UI", () => {
     assert.match(editor, /data-payment-methods/);
     assert.ok(editor.indexOf("data-sortable-items") < editor.indexOf("data-payment-methods"));
     assert.match(editor, /<PaymentMethodList[\s\S]*banks=\{banks\}[\s\S]*methods=\{payload\.paymentMethods\}[\s\S]*mode="quotation"[\s\S]*onChange=\{\(paymentMethods\) => updateRoot\("paymentMethods", paymentMethods\)\}/);
+    assert.match(editor, /<h2[^>]*>04 ช่องทางชำระเงิน<\/h2>[\s\S]*<Button[\s\S]*disabled=\{!paymentListState\.canAdd\}[\s\S]*เพิ่มช่องทางชำระเงิน[\s\S]*<PaymentMethodList/);
+    assert.match(editor, /showAddButton=\{false\}/);
     assert.doesNotMatch(payments, /saveCompanyPaymentMethodsAction/);
     assert.match(payments, /onChange\(normalizePaymentPositions\(move\(methods, event\) as T\[\]\)\)/);
+    assert.match(payments, /aria-live="polite"[\s\S]*rootError/);
   });
 
   it("previews and prints only the latest successful save", () => {
