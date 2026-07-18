@@ -135,3 +135,14 @@ trademark ownership.
   the new type and valid `qrMode: "none"` state.
 - Verification: focused UI suite passed (38/38) and `npm.cmd run typecheck`
   passed.
+
+## Re-review fix: QR upload visibility and tablet containment
+
+- RED: `node --import ./tests/register-server-only.mjs --test tests/quotation-ui.test.ts`
+  failed as expected (38/40): `qr_payment` with `qrMode: "none"` still exposed
+  the upload control, and the image wrapper lacked `w-full`.
+- GREEN: `paymentMethodEditorState()` now exposes QR upload only when
+  `qrMode === "upload"`; the focused regression covers both `qr_payment` modes.
+  `PaymentImageInput` adds `w-full` while retaining `min-w-0 max-w-full`.
+- Verification: focused UI suite passed (40/40), `npm.cmd run typecheck` passed,
+  and `git diff --check` passed.

@@ -48,6 +48,6 @@ export function paymentMethodEditorState(method: Pick<QuotationPaymentMethod, "b
   return {
     bankSelectValue: hasCustomBankFields ? "OTHER" : method.bankId ?? "OTHER",
     hasCustomBankFields,
-    hasQrUpload: method.type === "qr_payment" || method.qrMode === "upload",
+    hasQrUpload: method.qrMode === "upload",
   };
 }

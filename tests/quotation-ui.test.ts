@@ -126,6 +126,10 @@ describe("quotation UI", () => {
     assert.deepEqual(builtInBank, { bankSelectValue: "bank-id", hasCustomBankFields: false, hasQrUpload: true });
     assert.deepEqual(
       paymentMethodEditorState({ bankCode: "", bankId: null, qrMode: "none", type: "qr_payment" }),
+      { bankSelectValue: "OTHER", hasCustomBankFields: false, hasQrUpload: false },
+    );
+    assert.deepEqual(
+      paymentMethodEditorState({ bankCode: "", bankId: null, qrMode: "upload", type: "qr_payment" }),
       { bankSelectValue: "OTHER", hasCustomBankFields: false, hasQrUpload: true },
     );
   });
@@ -139,7 +143,7 @@ describe("quotation UI", () => {
     assert.match(payments, /label="รูป QR"/);
     assert.match(imageInput, /label\?: string/);
     assert.match(imageInput, /<span>\{label\}<\/span>/);
-    assert.match(imageInput, /className="grid min-w-0 max-w-full gap-2 text-sm"/);
+    assert.match(imageInput, /className="grid w-full min-w-0 max-w-full gap-2 text-sm"/);
     assert.match(imageInput, /className="w-full min-w-0 max-w-full"/);
   });
 

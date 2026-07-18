@@ -47,7 +47,7 @@ export function PaymentImageInput({ disabled, label = "รูป QR หรือ
     }
   }
 
-  return <label className="grid min-w-0 max-w-full gap-2 text-sm">
+  return <label className="grid w-full min-w-0 max-w-full gap-2 text-sm">
     <span>{label}</span>
     <input accept="image/png,image/jpeg,image/webp" className="w-full min-w-0 max-w-full" disabled={disabled || loading} onChange={(event) => select(event.target.files?.[0] ?? null)} type="file" />
     {previewUrl ? (
