@@ -56,7 +56,8 @@ set code = excluded.code,
 drop policy if exists "auth: delete banks" on public.banks;
 drop policy if exists "auth: insert banks" on public.banks;
 drop policy if exists "auth: update banks" on public.banks;
-revoke insert, update, delete on table public.banks from authenticated;
+revoke all privileges on table public.banks from anon, authenticated;
+grant select on table public.banks to anon, authenticated;
 
 create table public.quotation_company_payment_methods (
   id uuid primary key default gen_random_uuid(),

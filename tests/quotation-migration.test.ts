@@ -135,7 +135,9 @@ describe("quotation migration", () => {
     for (const policy of ["auth: delete banks", "auth: insert banks", "auth: update banks"]) {
       assert.match(paymentSql, new RegExp(`drop policy if exists "${policy}" on public\\.banks`, "i"));
     }
-    assert.match(paymentSql, /revoke insert, update, delete on table public\.banks from authenticated/i);
+    assert.match(paymentSql, /revoke all privileges on table public\.banks from anon, authenticated/i);
+    assert.match(paymentSql, /grant select on table public\.banks to anon, authenticated/i);
+    assert.doesNotMatch(paymentSql, /grant\s+(?:all privileges|truncate)\s+on table public\.banks/i);
     assert.match(paymentSql, /revoke execute on function private\.save_quotation\(jsonb\) from authenticated/i);
   });
 });
