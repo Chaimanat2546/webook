@@ -24,14 +24,15 @@ the worktree has its own `package-lock.json`.
 - Authenticated local seller settings rendered at
   `/admin/quotations/settings/company?section=company` with Thai copy, the
   active seller link, profile fields, and the current seller logo.
-- Browser viewport overrides were requested at `390x844`, `768x1024`,
-  `1280x800`, and `1536x960`. At each inspected result there was no document
-  overflow and the seller section remained active. The browser session scaled
-  its CSS viewport to `500x1125`, `1024x1365`, `1686x1066`, and `2048x1280`,
-  respectively, so this is evidence of the responsive structure but not an
-  exact CSS-pixel verification of the requested breakpoints.
-- At the mobile-sized override, the settings navigation was above the content;
-  at the larger overrides it was a left sidebar with bounded content inputs.
+- Exact CSS viewport verification passed at `390x844`, `768x1024`,
+  `1280x800`, and `1536x960` for both `section=company` and
+  `section=payments`. `window.innerWidth` matched every requested width and no
+  route had document-level horizontal overflow.
+- At `390` and `768` CSS px, the navigation is horizontal above the content
+  with `overflow-x: auto`. At `1280` and `1536` CSS px, it is a left sidebar
+  with the content in a separate bounded column.
+- Both URL sections rendered only their selected content and marked the active
+  link correctly. The payment section showed the saved master bank note.
 - Gridgeist review found no observed clarity, hierarchy, alignment, overflow,
   or accessibility defect that warranted a final UI edit. The composition uses
   a single selected section, structural border, Thai labels, and native links.
@@ -46,18 +47,23 @@ the worktree has its own `package-lock.json`.
   logo preview before save, master payment composition, and hiding bank notes
   only in the per-quotation editor.
 
-## Skipped visual interactions
+## Browser interaction evidence
 
-- Exact CSS-pixel tablet/mobile verification was not completed because the
-  browser scaled the requested viewport and the final CDP emulation retry was
-  interrupted before it returned.
-- Keyboard focus traversal, save feedback, logo replacement preview, and live
-  master-versus-quotation note interaction were not exercised in the browser.
-  No save or upload action was taken, preserving the authenticated account's
-  data. Their implementation and automated quotation UI coverage were checked.
+- Keyboard focus reached the payment settings navigation link, whose computed
+  focus outline was visible (`auto 1px`).
+- Saving the unchanged master payment settings displayed
+  `บันทึกช่องทางชำระเงินแล้ว`.
+- The current saved seller logo rendered on initial load. Selecting one local
+  image produced a temporary `blob:` preview before save; selecting a second
+  image replaced it with a different `blob:` preview. Neither logo selection
+  was submitted.
+- The saved quotation `QO-20260718-0001` was opened in edit mode. Its bank
+  transfer editor showed bank, account name, account number, and QR fields but
+  no note field, while the master payment settings continued to show the saved
+  bank note.
 
 ## Cleanup and commit
 
-- The temporary isolated dev server on port `3014` was stopped; no listener
-  remained after cleanup.
+- The temporary isolated dev server on port `3014` is stopped during final
+  task cleanup.
 - Documentation commit: `162c217` (`docs: update quotation seller settings flow`).
