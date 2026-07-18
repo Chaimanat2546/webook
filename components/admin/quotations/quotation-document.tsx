@@ -31,11 +31,13 @@ export function QuotationDocument({
       >
         <div className="min-w-0">
           {payload.seller.logoUrl ? (
+            <picture>
             <img
               alt="โลโก้ผู้ขาย"
               className="mb-4 max-h-16 max-w-40 object-contain"
               src={payload.seller.logoUrl}
             />
+            </picture>
           ) : null}
           <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-1">
             <dt className="font-semibold">ผู้ขาย</dt>

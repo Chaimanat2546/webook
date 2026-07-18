@@ -36,7 +36,11 @@ import {
   type QuotationItemInput,
 } from "../../../lib/quotation-calculator";
 import { addQuotationCalendarDays } from "../../../lib/quotation-dates";
-import { formatBaht, formatMoney, normalizeMoneyInput } from "../../../lib/quotation-money";
+import {
+  formatBaht,
+  formatMoney,
+  normalizeMoneyInput,
+} from "../../../lib/quotation-money";
 import type {
   CustomerSnapshot,
   QuotationPayload,
@@ -232,7 +236,15 @@ function Numeric({
         setDisplayValue(grouped && value ? formatMoney(value) : value);
         setFocused(true);
       }}
-      value={grouped ? (focused ? displayValue : value ? formatMoney(value) : value) : value}
+      value={
+        grouped
+          ? focused
+            ? displayValue
+            : value
+              ? formatMoney(value)
+              : value
+          : value
+      }
     />
   );
 
@@ -275,9 +287,12 @@ function positions(items: QuotationItemInput[]) {
   return items.map((item, index) => ({ ...item, position: index + 1 }));
 }
 function itemGrid(showItemDiscount: boolean, showItemVat: boolean) {
-  if (showItemDiscount && showItemVat) return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_9rem_8.5rem_2.5rem]";
-  if (showItemDiscount) return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_8.5rem_2.5rem]";
-  if (showItemVat) return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_8.5rem_2.5rem]";
+  if (showItemDiscount && showItemVat)
+    return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_9rem_8.5rem_2.5rem]";
+  if (showItemDiscount)
+    return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_8.5rem_2.5rem]";
+  if (showItemVat)
+    return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_8.5rem_2.5rem]";
   return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_8.5rem_2.5rem]";
 }
 function DocumentMore({
@@ -388,8 +403,21 @@ function SortableQuotationItem(props: ItemProps) {
         <div className="xl:col-start-5 xl:row-start-1">
           <ItemPriceControls {...props} labelled />
         </div>
-        {props.showItemDiscount ? <div className="xl:col-start-6 xl:row-start-1"><ItemDiscountControls {...props} labelled /></div> : null}
-        {props.showItemVat ? <div className={cn("xl:row-start-1", props.showItemDiscount ? "xl:col-start-7" : "xl:col-start-6")}><ItemVatControls {...props} labelled /></div> : null}
+        {props.showItemDiscount ? (
+          <div className="xl:col-start-6 xl:row-start-1">
+            <ItemDiscountControls {...props} labelled />
+          </div>
+        ) : null}
+        {props.showItemVat ? (
+          <div
+            className={cn(
+              "xl:row-start-1",
+              props.showItemDiscount ? "xl:col-start-7" : "xl:col-start-6",
+            )}
+          >
+            <ItemVatControls {...props} labelled />
+          </div>
+        ) : null}
       </div>
       <p className="mt-3 max-w-full border-t pt-2 text-right font-medium tabular-nums [overflow-wrap:anywhere] xl:col-start-[-3] xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
         <span className="xl:sr-only">มูลค่าก่อนภาษี </span>
@@ -530,7 +558,8 @@ function ItemVatControls({
       className={cn("w-full min-w-0", selectClassName)}
       data-field={`items.${index}.vatTreatment`}
       onChange={(event) => {
-        const vatTreatment = event.target.value as QuotationItemInput["vatTreatment"];
+        const vatTreatment = event.target
+          .value as QuotationItemInput["vatTreatment"];
         onUpdate("vatTreatment", vatTreatment);
         if (vatTreatment !== "taxable") onUpdate("vatRate", "0");
       }}
@@ -560,7 +589,13 @@ function ItemVatControls({
     </>
   );
   return (
-    <div className={labelled ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2" : "grid gap-1"}>
+    <div
+      className={
+        labelled
+          ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2"
+          : "grid gap-1"
+      }
+    >
       {treatmentControl}
       <Numeric
         error={error("vatRate")}
@@ -638,8 +673,14 @@ export function QuotationEditor({
     setPayload((current) => ({ ...current, [key]: value }));
   }
   function toggleItemDiscount(enabled: boolean) {
-    if (!enabled && payload.items.some((item) => Number(item.discountAmount) > 0)
-      && !window.confirm("การปิดส่วนลดเฉพาะรายการจะล้างส่วนลดทุกรายการ ต้องการดำเนินการต่อหรือไม่")) return;
+    if (
+      !enabled &&
+      payload.items.some((item) => Number(item.discountAmount) > 0) &&
+      !window.confirm(
+        "การปิดส่วนลดเฉพาะรายการจะล้างส่วนลดทุกรายการ ต้องการดำเนินการต่อหรือไม่",
+      )
+    )
+      return;
     setShowItemDiscount(enabled);
     if (!enabled) {
       changed("items");
@@ -650,8 +691,14 @@ export function QuotationEditor({
     }
   }
   function toggleItemVat(enabled: boolean) {
-    if (!enabled && payload.items.some((item) => Number(item.vatRate) > 0)
-      && !window.confirm("การปิด VAT เฉพาะรายการจะล้างค่า VAT ทุกรายการ ต้องการดำเนินการต่อหรือไม่")) return;
+    if (
+      !enabled &&
+      payload.items.some((item) => Number(item.vatRate) > 0) &&
+      !window.confirm(
+        "การปิด VAT เฉพาะรายการจะล้างค่า VAT ทุกรายการ ต้องการดำเนินการต่อหรือไม่",
+      )
+    )
+      return;
     setShowItemVat(enabled);
     changed("items");
     setPayload((current) => ({
@@ -975,12 +1022,14 @@ export function QuotationEditor({
       >
         <div className="flex min-w-0 items-center gap-3">
           {payload.seller.logoUrl && !logoUnavailable ? (
-            <img
-              alt="โลโก้ผู้ขาย"
-              className="max-h-12 max-w-24 object-contain"
-              onError={() => setLogoUnavailable(true)}
-              src={payload.seller.logoUrl}
-            />
+            <picture>
+              <img
+                alt="โลโก้ผู้ขาย"
+                className="max-h-12 max-w-24 object-contain"
+                onError={() => setLogoUnavailable(true)}
+                src={payload.seller.logoUrl}
+              />
+            </picture>
           ) : (
             <div className="grid h-10 w-16 place-items-center rounded border text-xs text-muted-foreground">
               โลโก้
@@ -1296,12 +1345,16 @@ export function QuotationEditor({
           <h2 className="text-sm font-semibold">03 รายการ</h2>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" type="button" variant="outline">ตั้งค่าเอกสาร</Button>
+              <Button size="sm" type="button" variant="outline">
+                ตั้งค่าเอกสาร
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuCheckboxItem
                 checked={showItemDiscount}
-                onCheckedChange={(checked) => toggleItemDiscount(checked === true)}
+                onCheckedChange={(checked) =>
+                  toggleItemDiscount(checked === true)
+                }
                 onSelect={(event) => event.preventDefault()}
               >
                 ส่วนลดเฉพาะรายการ
@@ -1316,7 +1369,12 @@ export function QuotationEditor({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <div className={cn("hidden xl:grid xl:gap-2 xl:border-b xl:pb-2 xl:text-xs xl:text-muted-foreground", itemGrid(showItemDiscount, showItemVat))}>
+        <div
+          className={cn(
+            "hidden xl:grid xl:gap-2 xl:border-b xl:pb-2 xl:text-xs xl:text-muted-foreground",
+            itemGrid(showItemDiscount, showItemVat),
+          )}
+        >
           <span>#</span>
           <span>รายการ / รายละเอียด</span>
           <span>จำนวน</span>
@@ -1404,11 +1462,17 @@ export function QuotationEditor({
           data-quotation-totals
           className="space-y-2 border-t-2 border-foreground pt-3"
         >
-          <Totals label="รวมก่อนส่วนลด" value={money(calculation?.grossTotal)} />
+          <Totals
+            label="รวมก่อนส่วนลด"
+            value={money(calculation?.grossTotal)}
+          />
           {calculation?.discountTotal !== "0.00" ? (
             <Totals label="ส่วนลด" value={money(calculation?.discountTotal)} />
           ) : null}
-          <Totals label="มูลค่าก่อนภาษี" value={money(calculation?.preTaxTotal)} />
+          <Totals
+            label="มูลค่าก่อนภาษี"
+            value={money(calculation?.preTaxTotal)}
+          />
           <Totals label="VAT" value={money(calculation?.vatTotal)} />
           <Totals
             bold
