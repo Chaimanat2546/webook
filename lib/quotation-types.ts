@@ -1,4 +1,5 @@
 import type { QuotationItemInput } from "./quotation-calculator.ts";
+import type { QuotationPaymentMethod } from "./quotation-payment-methods.ts";
 
 export type OfficeType = "branch" | "head_office";
 
@@ -31,6 +32,7 @@ export interface QuotationPayload {
   internalNotes: string;
   issueDate: string;
   items: QuotationItemInput[];
+  paymentMethods: QuotationPaymentMethod[];
   publicNotes: string;
   reference: string;
   seller: SellerSnapshot;

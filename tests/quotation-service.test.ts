@@ -20,6 +20,7 @@ function validPayload(): QuotationPayload {
     internalNotes: "",
     issueDate: "2026-07-14",
     items: [{ description: "", discountAmount: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "Service", position: 1, quantity: "1", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
+    paymentMethods: [],
     publicNotes: "",
     reference: "",
     seller: { address: "Seller address", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "seller@example.com", logoUrl: "", name: "Seller", officeType: "head_office", phone: "020000001", taxId: "0100000000000", website: "" },

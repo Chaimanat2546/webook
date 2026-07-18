@@ -178,6 +178,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
         vatTreatment: vatTreatment(item.vat_treatment),
       }))
       .sort((left, right) => left.position - right.position),
+    paymentMethods: [],
     publicNotes: stringValue(row.public_notes),
     reference: stringValue(row.reference),
     seller: sellerSnapshot(row.seller_snapshot),
