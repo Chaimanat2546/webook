@@ -403,11 +403,11 @@ assert.doesNotMatch(promptPayEditorScope, /ประเภทบัญชี/);
 assert.match(documentSource, /PAYMENT_ACCOUNT_TYPE_LABELS\[method\.accountType\]/);
 ```
 
-Also test a small exported formatter:
+Also require the shared document to build the line from the optional Thai label and account number:
 
 ```ts
-assert.equal(formatBankAccountLine("savings", "123-4"), "ออมทรัพย์ 123-4");
-assert.equal(formatBankAccountLine("", "123-4"), "123-4");
+assert.match(documentSource, /accountTypeLabel[\s\S]*method\.accountNumber/);
+assert.match(documentSource, /\[accountTypeLabel, method\.accountNumber\]\.filter\(Boolean\)\.join\(" "\)/);
 ```
 
 - [ ] **Step 2: Run UI tests and confirm failure**
@@ -418,7 +418,7 @@ Run:
 node --import ./tests/register-server-only.mjs --test tests/quotation-ui.test.ts
 ```
 
-Expected: FAIL because the select and formatter do not exist.
+Expected: FAIL because the select and shared document line do not exist.
 
 - [ ] **Step 3: Add the bank-only select**
 
@@ -445,25 +445,24 @@ Within the existing `method.type === "bank_transfer"` grid in `payment-method-li
 
 Change the desktop bank grid from four to five columns only at the existing large breakpoint; retain the current one/two-column responsive behavior below it.
 
-- [ ] **Step 4: Format the shared account-number line**
+- [ ] **Step 4: Format the shared account-number line without a new abstraction**
 
-Add beside existing document helpers:
+Inside the existing payment-entry component, derive one local value:
 
 ```ts
-export function formatBankAccountLine(
-  accountType: PaymentAccountType,
-  accountNumber: string,
-): string {
-  const label = accountType ? PAYMENT_ACCOUNT_TYPE_LABELS[accountType] : "";
-  return [label, accountNumber].filter(Boolean).join(" ");
-}
+const accountTypeLabel = method.accountType
+  ? PAYMENT_ACCOUNT_TYPE_LABELS[method.accountType]
+  : "";
+const accountNumberLine = [accountTypeLabel, method.accountNumber]
+  .filter(Boolean)
+  .join(" ");
 ```
 
 Replace only the bank-transfer account-number expression:
 
 ```tsx
 <p className="font-semibold tabular-nums">
-  {formatBankAccountLine(method.accountType, method.accountNumber)}
+  {accountNumberLine}
 </p>
 ```
 
