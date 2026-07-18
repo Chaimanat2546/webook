@@ -9,29 +9,29 @@ const QR_MODES: readonly PaymentQrMode[] = ["none", "upload", "auto_promptpay"];
 
 function text(value: unknown, max: number, field: string, errors: Record<string, string>): string {
   const result = typeof value === "string" ? value.trim() : "";
-  if (result.length > max) errors[field] = "Payment value is too long";
+  if (result.length > max) errors[field] = "ข้อมูลช่องทางชำระเงินยาวเกินกำหนด";
   return result;
 }
 
 function assetUrl(value: string, field: string, errors: Record<string, string>): string {
-  if (/^(?:data:|javascript:)|\.svg(?:[?#]|$)|image\/svg\+xml/i.test(value)) errors[field] = "Invalid payment asset URL";
+  if (/^(?:data:|javascript:)|\.svg(?:[?#]|$)|image\/svg\+xml/i.test(value)) errors[field] = "ลิงก์รูปช่องทางชำระเงินไม่ถูกต้อง";
   return value;
 }
 
 function paymentMethod(value: unknown, index: number, errors: Record<string, string>): QuotationPaymentMethod {
   const prefix = `paymentMethods.${index}`;
   const source = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
-  if (source !== value) errors[prefix] = "Invalid payment method";
+  if (source !== value) errors[prefix] = "ข้อมูลช่องทางชำระเงินไม่ถูกต้อง";
   const typeValue = text(source.type, 40, `${prefix}.type`, errors);
   const qrModeValue = text(source.qrMode, 40, `${prefix}.qrMode`, errors);
   const type = TYPES.includes(typeValue as PaymentMethodType) ? typeValue as PaymentMethodType : "bank_transfer";
   const qrMode = QR_MODES.includes(qrModeValue as PaymentQrMode) ? qrModeValue as PaymentQrMode : "none";
-  if (typeValue !== type) errors[`${prefix}.type`] = "Invalid payment type";
-  if (qrModeValue !== qrMode) errors[`${prefix}.qrMode`] = "Invalid QR mode";
+  if (typeValue !== type) errors[`${prefix}.type`] = "ประเภทช่องทางชำระเงินไม่ถูกต้อง";
+  if (qrModeValue !== qrMode) errors[`${prefix}.qrMode`] = "รูปแบบ QR ไม่ถูกต้อง";
   const id = text(source.id, 200, `${prefix}.id`, errors);
   const bankId = typeof source.bankId === "string" ? source.bankId.trim() : null;
-  if (!UUID.test(id)) errors[`${prefix}.id`] = "Invalid payment method ID";
-  if (bankId !== null && !UUID.test(bankId)) errors[`${prefix}.bankId`] = "Invalid bank ID";
+  if (!UUID.test(id)) errors[`${prefix}.id`] = "รหัสช่องทางชำระเงินไม่ถูกต้อง";
+  if (bankId !== null && !UUID.test(bankId)) errors[`${prefix}.bankId`] = "รหัสธนาคารไม่ถูกต้อง";
   let method: QuotationPaymentMethod = {
     accountName: text(source.accountName, 200, `${prefix}.accountName`, errors),
     accountNumber: text(source.accountNumber, 200, `${prefix}.accountNumber`, errors),
@@ -83,30 +83,30 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
     if (key.startsWith(`${prefix}.`) && !relevant.has(key.slice(prefix.length + 1))) delete errors[key];
   }
   if (type === "bank_transfer") {
-    if (method.bankLogoUrl && !/^\/quotation\/banks\/[a-z0-9-]+\.svg$/i.test(method.bankLogoUrl)) errors[`${prefix}.bankLogoUrl`] = "Invalid built-in bank logo";
-    if (!method.accountName) errors[`${prefix}.accountName`] = "Account name is required";
-    if (!method.accountNumber) errors[`${prefix}.accountNumber`] = "Account number is required";
-    if (!method.bankId && !method.customBankName) errors[`${prefix}.bankId`] = "Bank is required";
+    if (method.bankLogoUrl && !/^\/quotation\/banks\/[a-z0-9-]+\.svg$/i.test(method.bankLogoUrl)) errors[`${prefix}.bankLogoUrl`] = "โลโก้ธนาคารในระบบไม่ถูกต้อง";
+    if (!method.accountName) errors[`${prefix}.accountName`] = "กรุณากรอกชื่อบัญชี";
+    if (!method.accountNumber) errors[`${prefix}.accountNumber`] = "กรุณากรอกเลขที่บัญชี";
+    if (!method.bankId && !method.customBankName) errors[`${prefix}.bankId`] = "กรุณาเลือกธนาคาร";
   }
   if (type === "promptpay") {
-    if (!method.accountName) errors[`${prefix}.accountName`] = "Account name is required";
-    if (![10, 13].includes(method.promptPayId.length)) errors[`${prefix}.promptPayId`] = "PromptPay ID must contain 10 or 13 digits";
-    if (qrMode === "none") errors[`${prefix}.qrMode`] = "PromptPay requires an uploaded or automatic QR";
+    if (!method.accountName) errors[`${prefix}.accountName`] = "กรุณากรอกชื่อบัญชี";
+    if (![10, 13].includes(method.promptPayId.length)) errors[`${prefix}.promptPayId`] = "หมายเลข PromptPay ต้องมี 10 หรือ 13 หลัก";
+    if (qrMode === "none") errors[`${prefix}.qrMode`] = "PromptPay ต้องใช้ QR ที่อัปโหลดหรือสร้างอัตโนมัติ";
   }
-  if (type === "qr_payment" && !method.providerName) errors[`${prefix}.providerName`] = "Provider name is required";
-  if (type === "other" && !method.providerName) errors[`${prefix}.providerName`] = "Display name is required";
-  if ((type === "qr_payment" || qrMode === "upload") && !method.qrImageUrl) errors[`${prefix}.qrImageUrl`] = "QR image is required";
-  if (method.qrMode === "auto_promptpay" && type !== "promptpay") errors[`${prefix}.qrMode`] = "Automatic PromptPay QR is only available for PromptPay";
+  if (type === "qr_payment" && !method.providerName) errors[`${prefix}.providerName`] = "กรุณากรอกชื่อผู้ให้บริการ";
+  if (type === "other" && !method.providerName) errors[`${prefix}.providerName`] = "กรุณากรอกชื่อช่องทาง";
+  if ((type === "qr_payment" || qrMode === "upload") && !method.qrImageUrl) errors[`${prefix}.qrImageUrl`] = "กรุณาอัปโหลดรูป QR";
+  if (method.qrMode === "auto_promptpay" && type !== "promptpay") errors[`${prefix}.qrMode`] = "QR PromptPay อัตโนมัติใช้ได้กับช่องทาง PromptPay เท่านั้น";
   return method;
 }
 
 export function preparePaymentMethods(value: unknown): QuotationPaymentMethod[] {
   if (value == null) return [];
-  if (!Array.isArray(value)) throw new QuotationValidationError({ paymentMethods: "Invalid payment methods" });
-  if (value.length > MAX_PAYMENT_METHODS) throw new QuotationValidationError({ paymentMethods: "Payment method count cannot exceed 20" });
+  if (!Array.isArray(value)) throw new QuotationValidationError({ paymentMethods: "ข้อมูลช่องทางชำระเงินไม่ถูกต้อง" });
+  if (value.length > MAX_PAYMENT_METHODS) throw new QuotationValidationError({ paymentMethods: "เพิ่มช่องทางชำระเงินได้ไม่เกิน 20 รายการ" });
   const errors: Record<string, string> = {};
   const methods = value.map((row, index) => paymentMethod(row, index, errors));
-  if (new Set(methods.map((method) => method.id)).size !== methods.length) errors.paymentMethods = "Payment method IDs must be unique";
+  if (new Set(methods.map((method) => method.id)).size !== methods.length) errors.paymentMethods = "รหัสช่องทางชำระเงินต้องไม่ซ้ำกัน";
   if (Object.keys(errors).length) throw new QuotationValidationError(errors);
   return normalizePaymentPositions(methods);
 }

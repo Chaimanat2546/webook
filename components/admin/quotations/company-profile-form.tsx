@@ -19,13 +19,15 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [isConverting, setIsConverting] = useState(false);
+  const [localLogoError, setLocalLogoError] = useState("");
   const [logoUrl, setLogoUrl] = useState(initialSeller.logoUrl);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState("");
   const [logoUnavailable, setLogoUnavailable] = useState(false);
   const [officeType, setOfficeType] = useState(initialSeller.officeType);
   const [pending, startTransition] = useTransition();
   const displayedLogoUrl = logoPreviewUrl || logoUrl;
-  const logoError = fieldErrors.logo || fieldErrors.logoUrl;
+  const serverLogoError = fieldErrors.logo || fieldErrors.logoUrl;
+  const logoError = localLogoError || serverLogoError;
 
   useEffect(() => {
     return () => {
@@ -60,6 +62,7 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
   function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     setError("");
+    setLocalLogoError("");
     if (!file) {
       setLogoPreviewUrl("");
       return;
@@ -67,7 +70,7 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
     if (file.size > 10 * 1024 * 1024) {
       event.target.value = "";
       setLogoPreviewUrl("");
-      setError("ไฟล์โลโก้ต้องมีขนาดไม่เกิน 10 MB");
+      setLocalLogoError("ไฟล์โลโก้ต้องมีขนาดไม่เกิน 10 MB");
       return;
     }
     try {
@@ -77,13 +80,14 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
     } catch {
       event.target.value = "";
       setLogoPreviewUrl("");
-      setError("รองรับเฉพาะไฟล์ PNG, JPEG หรือ WebP");
+      setLocalLogoError("รองรับเฉพาะไฟล์ PNG, JPEG หรือ WebP");
     }
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setLocalLogoError("");
     setFieldErrors({});
     setMessage("");
     const formData = new FormData(event.currentTarget);
@@ -94,7 +98,7 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
         formData.set("logo", await normalizeLogo(file));
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "ไม่สามารถเตรียมโลโก้ได้");
+      setLocalLogoError(cause instanceof Error ? cause.message : "ไม่สามารถเตรียมโลโก้ได้");
       return;
     } finally {
       setIsConverting(false);

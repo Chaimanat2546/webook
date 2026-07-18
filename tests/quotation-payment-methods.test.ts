@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { parsePayload, payloadFor } from "thai-qr-payment";
 
@@ -32,6 +33,16 @@ const bank = {
   qrMode: "none" as const,
   type: "bank_transfer" as const,
 };
+
+function validationErrors(value: unknown): Record<string, string> {
+  try {
+    preparePaymentMethods(value);
+  } catch (error) {
+    if (error instanceof QuotationValidationError) return error.fieldErrors;
+    throw error;
+  }
+  assert.fail("Expected quotation payment validation to fail");
+}
 
 describe("quotation payment methods", () => {
   it("builds a valid amount-bound PromptPay payload", () => {
@@ -195,6 +206,31 @@ describe("quotation payment methods", () => {
     assert.throws(() => preparePaymentMethods([{ ...bank, type: "card" }]), /Quotation validation failed/);
     assert.throws(() => preparePaymentMethods([{ ...bank, instructions: "x".repeat(2_001) }]), /Quotation validation failed/);
     assert.equal(preparePaymentMethods([{ ...bank, qrMode: "auto_promptpay" }])[0]?.qrMode, "none");
+  });
+
+  it("returns clear Thai validation messages for every payment error", () => {
+    assert.equal(validationErrors({}).paymentMethods, "ข้อมูลช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors(Array.from({ length: 21 }, (_, index) => ({ ...bank, id: crypto.randomUUID(), position: index + 1 }))).paymentMethods, "เพิ่มช่องทางชำระเงินได้ไม่เกิน 20 รายการ");
+    assert.equal(validationErrors([bank, bank]).paymentMethods, "รหัสช่องทางชำระเงินต้องไม่ซ้ำกัน");
+    assert.equal(validationErrors([null])["paymentMethods.0"], "ข้อมูลช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, instructions: "x".repeat(2_001) }])["paymentMethods.0.instructions"], "ข้อมูลช่องทางชำระเงินยาวเกินกำหนด");
+    assert.equal(validationErrors([{ ...bank, type: "card" }])["paymentMethods.0.type"], "ประเภทช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, qrMode: "bad" }])["paymentMethods.0.qrMode"], "รูปแบบ QR ไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, id: "bad" }])["paymentMethods.0.id"], "รหัสช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, bankId: "bad" }])["paymentMethods.0.bankId"], "รหัสธนาคารไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, bankLogoUrl: "https://example.com/bank.svg" }])["paymentMethods.0.bankLogoUrl"], "โลโก้ธนาคารในระบบไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, bankId: null, customBankLogoUrl: "data:image/svg+xml,<svg />", customBankName: "Other" }])["paymentMethods.0.customBankLogoUrl"], "ลิงก์รูปช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, accountName: "" }])["paymentMethods.0.accountName"], "กรุณากรอกชื่อบัญชี");
+    assert.equal(validationErrors([{ ...bank, accountNumber: "" }])["paymentMethods.0.accountNumber"], "กรุณากรอกเลขที่บัญชี");
+    assert.equal(validationErrors([{ ...bank, bankId: null }])["paymentMethods.0.bankId"], "กรุณาเลือกธนาคาร");
+    assert.equal(validationErrors([{ ...bank, promptPayId: "123", qrMode: "auto_promptpay", type: "promptpay" }])["paymentMethods.0.promptPayId"], "หมายเลข PromptPay ต้องมี 10 หรือ 13 หลัก");
+    assert.equal(validationErrors([{ ...bank, promptPayId: "0812345678", type: "promptpay" }])["paymentMethods.0.qrMode"], "PromptPay ต้องใช้ QR ที่อัปโหลดหรือสร้างอัตโนมัติ");
+    assert.equal(validationErrors([{ ...bank, providerName: "", qrImageUrl: "/quotations/payment-assets/123e4567-e89b-42d3-a456-426614174099.png", type: "qr_payment" }])["paymentMethods.0.providerName"], "กรุณากรอกชื่อผู้ให้บริการ");
+    assert.equal(validationErrors([{ ...bank, providerName: "", type: "other" }])["paymentMethods.0.providerName"], "กรุณากรอกชื่อช่องทาง");
+    assert.equal(validationErrors([{ ...bank, providerName: "Provider", qrImageUrl: "", type: "qr_payment" }])["paymentMethods.0.qrImageUrl"], "กรุณาอัปโหลดรูป QR");
+
+    const service = readFileSync(new URL("../server/services/quotation-payment-methods.ts", import.meta.url), "utf8");
+    assert.doesNotMatch(service, /Payment value is too long|Invalid payment|Invalid QR|Invalid bank|Invalid built-in|Account name is required|Account number is required|Bank is required|PromptPay ID must|PromptPay requires|Provider name is required|Display name is required|QR image is required|Automatic PromptPay QR|Payment method count|Payment method IDs/);
   });
 
   it("preserves only boolean default flags for company methods", () => {

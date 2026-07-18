@@ -258,9 +258,22 @@ describe("quotation UI", () => {
     assert.match(form, /id="officeType-error"/);
     assert.match(form, /aria-describedby=\{fieldErrors\.address \? "address-error" : undefined\}/);
     assert.match(form, /id="address-error"/);
-    assert.match(form, /const logoError = fieldErrors\.logo \|\| fieldErrors\.logoUrl/);
+    assert.match(form, /const serverLogoError = fieldErrors\.logo \|\| fieldErrors\.logoUrl/);
     assert.match(form, /aria-describedby=\{logoError \? "logo-error" : undefined\}/);
     assert.match(form, /id="logo-error"/);
+  });
+
+  it("associates local and server logo errors with the logo input", () => {
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+
+    assert.match(form, /const \[localLogoError, setLocalLogoError\] = useState\(""\)/);
+    assert.match(form, /const serverLogoError = fieldErrors\.logo \|\| fieldErrors\.logoUrl/);
+    assert.match(form, /const logoError = localLogoError \|\| serverLogoError/);
+    assert.match(form, /setLocalLogoError\("ไฟล์โลโก้ต้องมีขนาดไม่เกิน 10 MB"\)/);
+    assert.match(form, /setLocalLogoError\("รองรับเฉพาะไฟล์ PNG, JPEG หรือ WebP"\)/);
+    assert.match(form, /setLocalLogoError\(cause instanceof Error \? cause\.message/);
+    assert.match(form, /aria-describedby=\{logoError \? "logo-error" : undefined\}/);
+    assert.match(form, /aria-invalid=\{Boolean\(logoError\)\}/);
   });
 
   it("uses Thai for payment permission, upload, storage, and save errors", () => {
