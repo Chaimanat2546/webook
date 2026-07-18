@@ -99,6 +99,7 @@ describe("quotation UI", () => {
     assert.match(form, /URL\.createObjectURL\(file\)/);
     assert.match(form, /URL\.revokeObjectURL\(logoPreviewUrl\)/);
     assert.match(form, /onChange=\{handleLogoChange\}/);
+    assert.match(form, /<Input[^>]*onChange=\{handleLogoChange\}[^>]*disabled=\{disabled\}/);
     assert.match(form, /const displayedLogoUrl = logoPreviewUrl \|\| logoUrl/);
   });
 
