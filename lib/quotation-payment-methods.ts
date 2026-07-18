@@ -55,6 +55,6 @@ export function paymentMethodEditorState(method: Pick<QuotationPaymentMethod, "b
   return {
     bankSelectValue: hasCustomBankFields ? "OTHER" : method.bankId ?? "OTHER",
     hasCustomBankFields,
-    hasQrUpload: method.qrMode === "upload",
+    showQrUpload: method.qrMode === "upload",
   };
 }

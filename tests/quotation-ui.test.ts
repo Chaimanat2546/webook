@@ -132,19 +132,28 @@ describe("quotation UI", () => {
     assert.equal(updated.qrMode, "auto_promptpay");
   });
 
+  it("derives QR upload render state after changing a bank payment type", () => {
+    const qrPayment = updatePaymentMethodType(emptyPaymentMethod("bank_transfer"), "qr_payment");
+    const promptPay = updatePaymentMethodType(emptyPaymentMethod("bank_transfer"), "promptpay");
+
+    assert.equal(paymentMethodEditorState(qrPayment).showQrUpload, true);
+    assert.equal(promptPay.qrMode, "auto_promptpay");
+    assert.equal(paymentMethodEditorState(promptPay).showQrUpload, false);
+  });
+
   it("derives bank and QR controls from the payment method state", () => {
     const otherBank = paymentMethodEditorState({ bankCode: "OTHER", bankId: null, qrMode: "none", type: "bank_transfer" });
     const builtInBank = paymentMethodEditorState({ bankCode: "004", bankId: "bank-id", qrMode: "upload", type: "bank_transfer" });
 
-    assert.deepEqual(otherBank, { bankSelectValue: "OTHER", hasCustomBankFields: true, hasQrUpload: false });
-    assert.deepEqual(builtInBank, { bankSelectValue: "bank-id", hasCustomBankFields: false, hasQrUpload: true });
+    assert.deepEqual(otherBank, { bankSelectValue: "OTHER", hasCustomBankFields: true, showQrUpload: false });
+    assert.deepEqual(builtInBank, { bankSelectValue: "bank-id", hasCustomBankFields: false, showQrUpload: true });
     assert.deepEqual(
       paymentMethodEditorState({ bankCode: "", bankId: null, qrMode: "none", type: "qr_payment" }),
-      { bankSelectValue: "OTHER", hasCustomBankFields: false, hasQrUpload: false },
+      { bankSelectValue: "OTHER", hasCustomBankFields: false, showQrUpload: false },
     );
     assert.deepEqual(
       paymentMethodEditorState({ bankCode: "", bankId: null, qrMode: "upload", type: "qr_payment" }),
-      { bankSelectValue: "OTHER", hasCustomBankFields: false, hasQrUpload: true },
+      { bankSelectValue: "OTHER", hasCustomBankFields: false, showQrUpload: true },
     );
   });
 

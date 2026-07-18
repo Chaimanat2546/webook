@@ -176,3 +176,14 @@ trademark ownership.
   `npm.cmd run lint` passed with the existing seller-profile raw-`img` warning
   only; `npm.cmd run test` passed (275/275; one documented local database
   integration skip); and `git diff --check` passed.
+
+## Latest review fix: transition render state
+
+- RED: the focused UI suite failed because the transition editor state had no
+  `showQrUpload` field (actual `undefined`, expected `true`).
+- GREEN: the existing QR-upload render flag is now named `showQrUpload` and
+  used by the payment editor. The regression calls `paymentMethodEditorState()`
+  on the actual updated bank-to-QR Payment and bank-to-PromptPay rows, proving
+  the upload state and automatic PromptPay mode together.
+- Verification: focused UI suite passed (43/43); `npm.cmd run typecheck`
+  passed.
