@@ -103,7 +103,7 @@ describe("quotation UI", () => {
     assert.doesNotMatch(list, /สถานะ/);
   });
 
-  it("uses exact grouped money presentation and grouped money inputs", () => {
+  it("uses grouped money presentation and grouped money inputs", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const list = source("../components/admin/quotations/quotation-list.tsx");
     const price = editor.slice(
@@ -119,7 +119,10 @@ describe("quotation UI", () => {
       editor.indexOf("export function QuotationEditor"),
     );
 
-    assert.match(editor, /import \{ formatBaht, formatMoney, normalizeMoneyInput \}/);
+    assert.match(
+      editor,
+      /import\s*\{[\s\S]*?formatBaht,[\s\S]*?formatMoney,[\s\S]*?normalizeMoneyInput,[\s\S]*?\}\s*from "\.\.\/\.\.\/\.\.\/lib\/quotation-money"/,
+    );
     assert.match(editor, /grouped\?: boolean/);
     assert.match(editor, /onBlur=\{handleBlur\}/);
     assert.match(price, /<Numeric[\s\S]*?grouped[\s\S]*?field=\{`items\.\$\{index\}\.unitPrice`\}/);
@@ -289,7 +292,7 @@ describe("quotation UI", () => {
     assert.match(editor, /VAT เฉพาะรายการ/);
     assert.match(editor, /initialPayload\.items\.some\(\(item\) => Number\(item\.discountAmount\) > 0\)/);
     assert.match(editor, /initialPayload\.items\.some\(\(item\) => item\.vatTreatment !== "none"\)/);
-    assert.match(editor, /!enabled && payload\.items\.some\(\(item\) => Number\(item\.vatRate\) > 0\)[\s\S]*?!window\.confirm/);
+    assert.match(editor, /!enabled\s*&&\s*payload\.items\.some\(\(item\) => Number\(item\.vatRate\) > 0\)[\s\S]*?!window\.confirm/);
     assert.match(editor, /vatRate: enabled \? "7\.00" : "0",[\s\S]*?vatTreatment: enabled \? "taxable" : "none"/);
     assert.doesNotMatch(editor, /!enabled && payload\.items\.some\(\(item\) => item\.vatTreatment !== "none"\)/);
   });
@@ -386,10 +389,10 @@ describe("quotation UI", () => {
 
   it("keeps the total and delete controls last in every desktop item grid", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /if \(showItemDiscount && showItemVat\) return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_9rem_8\.5rem_2\.5rem\]"/);
-    assert.match(editor, /if \(showItemDiscount\) return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_8\.5rem_2\.5rem\]"/);
-    assert.match(editor, /if \(showItemVat\) return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_8\.5rem_2\.5rem\]"/);
-    assert.match(editor, /return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_8\.5rem_2\.5rem\]"/);
+    assert.match(editor, /if\s*\(\s*showItemDiscount && showItemVat\s*\)\s*return\s*"xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_9rem_8\.5rem_2\.5rem\]"/);
+    assert.match(editor, /if\s*\(\s*showItemDiscount\s*\)\s*return\s*"xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_8\.5rem_2\.5rem\]"/);
+    assert.match(editor, /if\s*\(\s*showItemVat\s*\)\s*return\s*"xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_8\.5rem_2\.5rem\]"/);
+    assert.match(editor, /return\s*"xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_8\.5rem_2\.5rem\]"/);
     assert.match(editor, /aria-label=\{`ลบรายการ[\s\S]*?className="xl:col-start-\[-2\]"/);
     assert.match(editor, /className="[^"]*xl:col-start-\[-3\][^"]*"[\s\S]*?<span className="xl:sr-only">มูลค่าก่อนภาษี/);
     assert.doesNotMatch(editor, /xl:col-start-8/);
@@ -397,8 +400,8 @@ describe("quotation UI", () => {
 
   it("keeps optional item controls on the first desktop ledger row", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /showItemDiscount \? <div className="xl:col-start-6 xl:row-start-1"><ItemDiscountControls/);
-    assert.match(editor, /showItemVat \? <div className=\{cn\("xl:row-start-1", props\.showItemDiscount \? "xl:col-start-7" : "xl:col-start-6"\)\}><ItemVatControls/);
+    assert.match(editor, /props\.showItemDiscount\s*\?\s*\(\s*<div className="xl:col-start-6 xl:row-start-1">\s*<ItemDiscountControls/);
+    assert.match(editor, /props\.showItemVat\s*\?\s*\(\s*<div\s*className=\{cn\(\s*"xl:row-start-1",\s*props\.showItemDiscount\s*\?\s*"xl:col-start-7"\s*:\s*"xl:col-start-6",\s*\)\}\s*>\s*<ItemVatControls/);
   });
 
   it("keeps two-up item controls within their grid columns", () => {
