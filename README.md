@@ -378,6 +378,20 @@ Deploy the media Worker manually:
 npx.cmd wrangler deploy --config workers/media/wrangler.jsonc
 ```
 
+After applying the quotation payment-asset migrations, configure the private
+database origin once from the same bare HTTPS origin used by
+`ADVERTISEMENT_IMAGE_WORKER_URL` (no trailing slash, path, query, or fragment):
+
+```sql
+insert into private.quotation_payment_asset_config (singleton, origin)
+values (true, 'https://webook-media.<account>.workers.dev')
+on conflict (singleton) do update set origin = excluded.origin;
+```
+
+Run this as the database owner in the Supabase SQL editor. `anon` and
+`authenticated` roles cannot read or modify this configuration. A custom media
+domain is supported by storing its exact HTTPS origin instead.
+
 ## Advertisement Media
 
 Supabase stores advertisement image metadata only:

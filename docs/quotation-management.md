@@ -73,6 +73,14 @@ Seller logos are normalized to WebP, limited to 10 MB input and 1600 px on the
 longest side, and uploaded to `quotations/assets/<uuid>.webp` through the
 authenticated Media Worker adapter.
 
+Payment QR and custom bank-logo assets must be HTTPS URLs under the exact
+configured Media Worker origin and use
+`/quotations/payment-assets/<uuid>.png` with no query or fragment. Configure
+`private.quotation_payment_asset_config.origin` once as the bare origin from
+`ADVERTISEMENT_IMAGE_WORKER_URL`; only the database owner/service role can
+change it. This supports either the deployed `webook-media` Workers.dev origin
+or an exact custom media domain.
+
 ## Validation Checklist
 
 - Seller name, address, and tax ID are required.

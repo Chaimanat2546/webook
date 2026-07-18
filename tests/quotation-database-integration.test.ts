@@ -108,6 +108,10 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal(otherAllowedProfile.error, null, otherAllowedProfile.error?.message);
     allowedProfileId = allowedProfile.data.id;
     otherAllowedProfileId = otherAllowedProfile.data.id;
+    const assetOrigin = await service.rpc("configure_quotation_payment_asset_origin", {
+      p_origin: "https://webook-media.example.workers.dev",
+    });
+    assert.equal(assetOrigin.error, null, assetOrigin.error?.message);
   });
 
   after(async () => {
@@ -294,6 +298,12 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       p_methods: [paymentMethod("https://tracker.example/payment.png")],
     })).error?.code, "23514");
     assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [paymentMethod(`https://webook-media.other.workers.dev/quotations/payment-assets/${paymentKey}`)],
+    })).error?.code, "23514");
+    assert.equal((await allowed.rpc("configure_quotation_payment_asset_origin", {
+      p_origin: "https://attacker.example",
+    })).error?.code, "42501");
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
       p_methods: [paymentMethod(trustedUrl)],
     })).error, null);
 
@@ -307,6 +317,20 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     trustedSnapshot.payment_methods = [paymentMethod(trustedUrl)];
     assert.equal((await allowed.rpc("save_quotation_with_payments", {
       p_payload: trustedSnapshot,
+    })).error, null);
+
+    const customOrigin = "https://media.poolvilla.example";
+    assert.equal((await service.rpc("configure_quotation_payment_asset_origin", {
+      p_origin: customOrigin,
+    })).error, null);
+    const customUrl = `${customOrigin}/quotations/payment-assets/${paymentKey}`;
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [paymentMethod(customUrl)],
+    })).error, null);
+    const customSnapshot = payload(null);
+    customSnapshot.payment_methods = [paymentMethod(customUrl)];
+    assert.equal((await allowed.rpc("save_quotation_with_payments", {
+      p_payload: customSnapshot,
     })).error, null);
   });
 });

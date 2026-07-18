@@ -44,6 +44,13 @@ const paymentAssetBoundarySql = readFileSync(
   new URL(`../supabase/migrations/${paymentAssetBoundaryMigrationName}`, import.meta.url),
   "utf8",
 );
+const paymentAssetOriginMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_payment_asset_origin_config.sql"));
+assert.ok(paymentAssetOriginMigrationName, "quotation payment asset origin configuration migration must exist");
+const paymentAssetOriginSql = readFileSync(
+  new URL(`../supabase/migrations/${paymentAssetOriginMigrationName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
   it("creates the MVP 1 tables without later-MVP scope", () => {
@@ -155,5 +162,16 @@ describe("quotation migration", () => {
     assert.match(paymentAssetBoundarySql, /qr_image_url/i);
     assert.match(paymentAssetBoundarySql, /alter table public\.quotation_company_payment_methods[\s\S]*check\s*\(\s*private\.validate_quotation_payment_asset_url/i);
     assert.match(paymentAssetBoundarySql, /alter table public\.quotation_payment_methods[\s\S]*check\s*\(\s*private\.validate_quotation_payment_asset_url/i);
+  });
+
+  it("binds payment media validation to one private configured origin", () => {
+    assert.match(paymentAssetOriginSql, /create table private\.quotation_payment_asset_config/i);
+    assert.match(paymentAssetOriginSql, /create or replace function private\.validate_quotation_payment_asset_url\(p_url text\)/i);
+    assert.match(paymentAssetOriginSql, /security definer/i);
+    assert.match(paymentAssetOriginSql, /from private\.quotation_payment_asset_config/i);
+    assert.match(paymentAssetOriginSql, /create or replace function public\.configure_quotation_payment_asset_origin/i);
+    assert.match(paymentAssetOriginSql, /auth\.role\(\) <> 'service_role'/i);
+    assert.match(paymentAssetOriginSql, /revoke all on function public\.configure_quotation_payment_asset_origin/i);
+    assert.match(paymentAssetOriginSql, /grant execute on function public\.configure_quotation_payment_asset_origin\(text\) to service_role/i);
   });
 });
