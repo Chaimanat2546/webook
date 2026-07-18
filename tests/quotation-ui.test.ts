@@ -79,6 +79,29 @@ describe("quotation UI", () => {
     assert.doesNotMatch(form, /<PaymentMethodsSettings[\s\S]*initialMethods=\{initialPaymentMethods\}/);
   });
 
+  it("uses clear Thai seller copy and previews a selected logo before save", () => {
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+
+    for (const copy of [
+      "ข้อมูลจดทะเบียน",
+      "ชื่อบริษัท / ผู้ขาย",
+      "เลขประจำตัวผู้เสียภาษี",
+      "สำนักงานใหญ่",
+      "ที่อยู่",
+      "ช่องทางติดต่อบริษัท",
+      "ผู้ติดต่อฝ่ายขาย",
+      "โลโก้ผู้ขาย",
+      "เลือกโลโก้ใหม่",
+      "บันทึกข้อมูลผู้ขาย",
+      "บันทึกช่องทางชำระเงิน",
+    ]) assert.match(form, new RegExp(copy));
+
+    assert.match(form, /URL\.createObjectURL\(file\)/);
+    assert.match(form, /URL\.revokeObjectURL\(logoPreviewUrl\)/);
+    assert.match(form, /onChange=\{handleLogoChange\}/);
+    assert.match(form, /const displayedLogoUrl = logoPreviewUrl \|\| logoUrl/);
+  });
+
   it("renders saved payment methods once in the shared document", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
     const globalCss = source("../app/globals.css");
