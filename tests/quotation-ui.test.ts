@@ -290,7 +290,8 @@ describe("quotation UI", () => {
     const page = source("../app/admin/quotations/[id]/page.tsx");
 
     assert.match(page, /Promise\.all\(\[getQuotationById\(supabase, id\), listQuotationBanks\(supabase\)\]\)/);
-    assert.match(page, /initialPayload=\{quotation\.payload\}/);
+    assert.match(page, /hydratePaymentMethodBanks\(quotation\.payload\.paymentMethods, banks\)/);
+    assert.match(page, /initialPayload=\{initialPayload\}/);
     assert.match(page, /<QuotationEditor banks=\{banks\}/);
     assert.doesNotMatch(page, /listCompanyPaymentMethods/);
   });
@@ -531,6 +532,17 @@ describe("quotation UI", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /querySelectorAll<HTMLElement>/);
     assert.match(editor, /offsetParent !== null/);
+  });
+
+  it("connects payment validation errors to stable accessible controls", () => {
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+    assert.match(payments, /"data-field": field/);
+    assert.match(payments, /"aria-invalid": Boolean\(error\)/);
+    assert.match(payments, /"aria-describedby": error \? errorId : undefined/);
+    assert.match(payments, /id=\{errorId\}/);
+    const imageInput = source("../components/admin/quotations/payment-image-input.tsx");
+    assert.match(imageInput, /data-field=\{field\}/);
+    assert.match(imageInput, /aria-describedby=\{message \? errorId : undefined\}/);
   });
 
   it("shows server field errors beside all editable quotation controls in paper order", () => {

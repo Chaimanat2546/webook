@@ -263,12 +263,25 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       p_methods: [{ account_name: "Allowed seller", account_number: "137-1-17528-4", bank_id: bank.data.id, id: crypto.randomUUID(), instructions: "", is_default: true, position: 9, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" }],
     });
     assert.equal(master.error, null, master.error?.message);
+    const masterId = (master.data as Array<{ id: string }>)[0]!.id;
+    assert.equal((await allowed.from("quotation_company_payment_methods").insert({ id: crypto.randomUUID(), user_id: allowedId, type: "cash", position: 99 })).error?.code, "42501");
+    assert.equal((await allowed.from("quotation_company_payment_methods").update({ instructions: "bypass" }).eq("id", masterId)).error?.code, "42501");
+    assert.equal((await allowed.from("quotation_company_payment_methods").delete().eq("id", masterId)).error?.code, "42501");
     assert.equal((await otherAllowed.from("quotation_company_profiles").select("id")).data?.some((row) => row.id === allowedProfileId), false);
     assert.deepEqual((await otherAllowed.from("quotation_company_payment_methods").select("id")).data, []);
 
     const createdPayload = payload(null);
     createdPayload.company_profile_id = allowedProfileId;
-    createdPayload.payment_methods = [{ account_name: "Allowed seller", account_number: "137-1-17528-4", bank_id: bank.data.id, bank_code: "004", bank_logo_url: "/quotation/banks/kbank.svg", bank_name: bank.data.name, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 7, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" }];
+    const publicAssetOrigin = "https://webook-media.example.workers.dev";
+    assert.equal((await service.rpc("configure_quotation_payment_asset_origin", { p_origin: publicAssetOrigin })).error, null);
+    const qrImage = `${publicAssetOrigin}/quotations/payment-assets/123e4567-e89b-42d3-a456-426614174000.png`;
+    createdPayload.payment_methods = [
+      { account_name: "Allowed seller", account_number: "137-1-17528-4", bank_id: bank.data.id, bank_code: "004", bank_logo_url: "/quotation/banks/kbank.svg", bank_name: bank.data.name, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 7, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "bank_transfer" },
+      { account_name: "Allowed seller", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 8, promptpay_id: "0812345678", provider_name: "", qr_image_url: "", qr_mode: "auto_promptpay", type: "promptpay" },
+      { account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 9, promptpay_id: "", provider_name: "Provider", qr_image_url: qrImage, qr_mode: "upload", type: "qr_payment" },
+      { account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "Cashier", position: 10, promptpay_id: "", provider_name: "", qr_image_url: "", qr_mode: "none", type: "cash" },
+      { account_name: "", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "", id: crypto.randomUUID(), instructions: "", position: 11, promptpay_id: "", provider_name: "Cheque", qr_image_url: "", qr_mode: "none", type: "other" },
+    ];
     const created = await saveWithPayments(allowed, createdPayload);
     assert.deepEqual((await otherAllowed.from("quotations").select("id")).data, []);
 
@@ -282,7 +295,13 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     const publicRead = await anonymous.rpc("get_public_quotation", { p_token: stored.data.public_token });
     assert.equal(publicRead.error, null, publicRead.error?.message);
     assert.equal("internal_notes" in publicRead.data, false);
-    assert.deepEqual(publicRead.data.quotation_payment_methods.map((method: { position: number }) => method.position), [1]);
+    assert.deepEqual(publicRead.data.quotation_payment_methods.map((method: { position: number }) => method.position), [1, 2, 3, 4, 5]);
+    for (const method of publicRead.data.quotation_payment_methods) {
+      assert.equal("internal_notes" in method, false);
+      if (method.type !== "bank_transfer") assert.equal(method.account_number, "");
+      if (method.type !== "promptpay") assert.equal(method.promptpay_id, "");
+      if (!['qr_payment', 'other'].includes(method.type)) assert.equal(method.provider_name, "");
+    }
   });
 
   it("allows empty payment data without an asset-origin configuration", async () => {
@@ -295,6 +314,7 @@ describe("quotation local database integration", { skip: !enabled }, () => {
   });
 
   it("reports missing payment asset origin through master and snapshot RPCs", async () => {
+    assert.equal((await service.rpc("configure_quotation_payment_asset_origin", { p_origin: null })).error, null);
     const paymentKey = "123e4567-e89b-42d3-a456-426614174000.png";
     const unconfiguredUrl = `https://webook-media.example.workers.dev/quotations/payment-assets/${paymentKey}`;
     const paymentMethod = (url: string) => ({
@@ -332,22 +352,28 @@ describe("quotation local database integration", { skip: !enabled }, () => {
 
     assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
       p_methods: [paymentMethod("https://tracker.example/payment.png")],
-    })).error?.code, "23514");
+    })).error?.code, "22023");
     assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
       p_methods: [paymentMethod(`https://webook-media.other.workers.dev/quotations/payment-assets/${paymentKey}`)],
-    })).error?.code, "23514");
+    })).error?.code, "22023");
     assert.equal((await allowed.rpc("configure_quotation_payment_asset_origin", {
       p_origin: "https://attacker.example",
     })).error?.code, "42501");
     assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
       p_methods: [paymentMethod(trustedUrl)],
     })).error, null);
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [paymentMethod(`${trustedUrl}x`)],
+    })).error?.code, "22023");
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", {
+      p_methods: [paymentMethod(`${trustedUrl}?tracking=1`)],
+    })).error?.code, "22023");
 
     const externalSnapshot = payload(null);
     externalSnapshot.payment_methods = [paymentMethod("https://tracker.example/payment.png")];
     assert.equal((await allowed.rpc("save_quotation_with_payments", {
       p_payload: externalSnapshot,
-    })).error?.code, "23514");
+    })).error?.code, "22023");
 
     const trustedSnapshot = payload(null);
     trustedSnapshot.payment_methods = [paymentMethod(trustedUrl)];
@@ -368,5 +394,25 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal((await allowed.rpc("save_quotation_with_payments", {
       p_payload: customSnapshot,
     })).error, null);
+  });
+
+  it("normalizes PromptPay and rejects duplicate, hidden, oversized, and invalid automatic methods at the database boundary", async () => {
+    const prompt = {
+      account_name: "Allowed seller", account_number: "", bank_id: null, custom_bank_logo_url: "", custom_bank_name: "",
+      id: crypto.randomUUID(), instructions: "", is_default: false, position: 1, promptpay_id: "081-234-5678",
+      provider_name: "", qr_image_url: "", qr_mode: "auto_promptpay", type: "promptpay",
+    };
+    const normalized = await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [prompt] });
+    assert.equal(normalized.error, null, normalized.error?.message);
+    assert.equal((normalized.data as Array<{ promptpay_id: string }>)[0]?.promptpay_id, "0812345678");
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [prompt, prompt] })).error?.code, "22023");
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [{ ...prompt, account_number: "hidden" }] })).error?.code, "22023");
+    assert.equal((await allowed.rpc("save_quotation_company_payment_methods", { p_methods: [{ ...prompt, instructions: "x".repeat(2001) }] })).error?.code, "22023");
+
+    const zeroAmount = payload(null);
+    zeroAmount.items[0]!.unit_price = "0.00";
+    zeroAmount.totals = { amountDue: "0.00", discountTotal: "0.00", grandTotal: "0.00", grossTotal: "0.00", preTaxTotal: "0.00", vatTotal: "0.00", withholdingTaxTotal: "0.00" };
+    zeroAmount.payment_methods = [prompt];
+    assert.equal((await allowed.rpc("save_quotation_with_payments", { p_payload: zeroAmount })).error?.code, "22023");
   });
 });

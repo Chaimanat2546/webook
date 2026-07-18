@@ -32,7 +32,7 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
   const bankId = typeof source.bankId === "string" ? source.bankId.trim() : null;
   if (!UUID.test(id)) errors[`${prefix}.id`] = "Invalid payment method ID";
   if (bankId !== null && !UUID.test(bankId)) errors[`${prefix}.bankId`] = "Invalid bank ID";
-  const method = {
+  let method: QuotationPaymentMethod = {
     accountName: text(source.accountName, 200, `${prefix}.accountName`, errors),
     accountNumber: text(source.accountNumber, 200, `${prefix}.accountNumber`, errors),
     bankCode: text(source.bankCode, 200, `${prefix}.bankCode`, errors),
@@ -50,7 +50,33 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
     qrMode,
     type,
   };
+  const shared = { id: method.id, instructions: method.instructions, position: 0, type: method.type };
   if (type === "bank_transfer") {
+    method = { ...method, promptPayId: "", providerName: "" };
+    if (qrMode === "auto_promptpay") method.qrMode = "none";
+    if (method.qrMode !== "upload") method.qrImageUrl = "";
+  } else if (type === "promptpay") {
+    method = { ...method, accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", providerName: "" };
+    if (method.qrMode !== "upload") method.qrImageUrl = "";
+  } else if (type === "qr_payment") {
+    method = { ...method, ...shared, accountName: "", accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", promptPayId: "", qrMode: "upload" };
+  } else {
+    method = { ...method, ...shared, accountName: "", accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", promptPayId: "", qrImageUrl: "", qrMode: "none", providerName: type === "other" ? method.providerName : "" };
+  }
+  const relevant = new Set(type === "bank_transfer"
+    ? ["accountName", "accountNumber", "bankCode", "bankId", "bankLogoUrl", "customBankLogoUrl", "customBankName", "id", "instructions", "qrImageUrl", "qrMode", "type"]
+    : type === "promptpay"
+      ? ["accountName", "id", "instructions", "promptPayId", "qrImageUrl", "qrMode", "type"]
+      : type === "qr_payment"
+        ? ["id", "instructions", "providerName", "qrImageUrl", "qrMode", "type"]
+        : type === "other"
+          ? ["id", "instructions", "providerName", "type"]
+          : ["id", "instructions", "type"]);
+  for (const key of Object.keys(errors)) {
+    if (key.startsWith(`${prefix}.`) && !relevant.has(key.slice(prefix.length + 1))) delete errors[key];
+  }
+  if (type === "bank_transfer") {
+    if (method.bankLogoUrl && !/^\/quotation\/banks\/[a-z0-9-]+\.svg$/i.test(method.bankLogoUrl)) errors[`${prefix}.bankLogoUrl`] = "Invalid built-in bank logo";
     if (!method.accountName) errors[`${prefix}.accountName`] = "Account name is required";
     if (!method.accountNumber) errors[`${prefix}.accountNumber`] = "Account number is required";
     if (!method.bankId && !method.customBankName) errors[`${prefix}.bankId`] = "Bank is required";
@@ -63,7 +89,7 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
   if (type === "qr_payment" && !method.providerName) errors[`${prefix}.providerName`] = "Provider name is required";
   if (type === "other" && !method.providerName) errors[`${prefix}.providerName`] = "Display name is required";
   if ((type === "qr_payment" || qrMode === "upload") && !method.qrImageUrl) errors[`${prefix}.qrImageUrl`] = "QR image is required";
-  if (qrMode === "auto_promptpay" && type !== "promptpay") errors[`${prefix}.qrMode`] = "Automatic PromptPay QR is only available for PromptPay";
+  if (method.qrMode === "auto_promptpay" && type !== "promptpay") errors[`${prefix}.qrMode`] = "Automatic PromptPay QR is only available for PromptPay";
   return method;
 }
 

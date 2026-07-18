@@ -30,11 +30,18 @@ history.
   snapshots. A quotation may have no payment methods.
 - Editing a master never changes an existing quotation. Deleting a master
   leaves its saved quotation snapshots intact.
+- Master tables are read-only through the table API; the account-scoped save
+  RPC is the only mutation path.
+- Edit reload matches a saved built-in bank code to the current catalogue only
+  to restore its selector ID. It preserves the saved name/logo, and falls back
+  to an other-bank snapshot if that catalogue entry no longer exists.
 - Preview, Print, and Public Read-only share `QuotationDocument` and use only
   the latest successful save. Unsaved editor changes are not shared or
   printed.
 - Public Read-only never exposes internal notes. It intentionally displays
   full saved bank-account and PromptPay identifiers.
+- Public payment JSON contains only fields relevant to each saved payment type,
+  including for legacy rows that may still contain hidden values.
 
 ## Payment Methods
 

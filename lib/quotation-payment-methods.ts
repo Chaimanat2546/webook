@@ -47,6 +47,20 @@ export function normalizePaymentPositions<T extends QuotationPaymentMethod>(rows
   return rows.map((row, index) => ({ ...row, position: index + 1 }));
 }
 
+export function hydratePaymentMethodBanks<T extends QuotationPaymentMethod>(rows: T[], banks: BankOption[]): T[] {
+  return rows.map((row) => {
+    if (row.type !== "bank_transfer" || row.bankId || row.bankCode === "OTHER") return row;
+    const bank = banks.find((option) => option.code === row.bankCode);
+    if (bank) return { ...row, bankId: bank.id };
+    return {
+      ...row,
+      bankCode: "OTHER",
+      bankId: null,
+      customBankName: row.customBankName || row.bankName,
+    };
+  });
+}
+
 export function emptyPaymentMethod(type: PaymentMethodType = "bank_transfer"): QuotationPaymentMethod {
   return { accountName: "", accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", id: crypto.randomUUID(), instructions: "", position: 1, promptPayId: "", providerName: "", qrImageUrl: "", qrMode: "none", type };
 }

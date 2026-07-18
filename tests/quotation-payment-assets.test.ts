@@ -37,6 +37,13 @@ describe("quotation payment assets", () => {
     assert.throws(() => validateQuotationPaymentAssetFile(new File([new Uint8Array(2 * 1024 * 1024 + 1)], "large.png", { type: "image/png" })), /2 MB/);
   });
 
+  it("gives an actionable error when a normalized PNG exceeds 2 MB", () => {
+    assert.throws(
+      () => validateQuotationPaymentAssetFile(new File([new Uint8Array(2 * 1024 * 1024 + 1)], "normalized.png", { type: "image/png" })),
+      /2 MB/,
+    );
+  });
+
   it("uploads normalized payment files with explicit PNG content type", async () => {
     const calls: RequestInit[] = [];
     await uploadQuotationAssetObject({
@@ -55,6 +62,7 @@ describe("quotation payment assets", () => {
     assert.match(source, /canvas\.height = bitmap\.height/);
     assert.match(source, /canvas\.toBlob/);
     assert.match(source, /"image\/png"/);
+    assert.match(source, /return validateQuotationPaymentAssetFile\(new File\(\[blob\]/);
     assert.match(source, /URL\.revokeObjectURL/);
   });
 });

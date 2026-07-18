@@ -223,7 +223,7 @@ export async function uploadQuotationPaymentAssetAction(
     return { ok: true, url: buildQuotationPaymentAssetUrl(objectKey, env.workerUrl) };
   } catch (error) {
     console.error("Failed to upload quotation payment asset", error instanceof Error ? error.message : "Unknown error");
-    return { fieldErrors: {}, formError: "Unable to upload payment image", ok: false };
+    return { fieldErrors: {}, formError: error instanceof Error && error.message.includes("2 MB") ? error.message : "Unable to upload payment image", ok: false };
   }
 }
 

@@ -59,7 +59,34 @@ const paymentAssetOriginErrorSql = readFileSync(
   "utf8",
 );
 
+const securityBoundaryMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_payment_security_boundary.sql"));
+assert.ok(securityBoundaryMigrationName, "quotation payment security boundary migration must exist");
+const securityBoundarySql = readFileSync(
+  new URL(`../supabase/migrations/${securityBoundaryMigrationName}`, import.meta.url),
+  "utf8",
+);
+
 describe("quotation migration", () => {
+  it("makes payment masters read-only outside their save RPC", () => {
+    assert.match(securityBoundarySql, /revoke all privileges on table public\.quotation_company_payment_methods from anon, authenticated/i);
+    assert.match(securityBoundarySql, /grant select on table public\.quotation_company_payment_methods to authenticated/i);
+    assert.match(securityBoundarySql, /for select to authenticated/i);
+    assert.doesNotMatch(securityBoundarySql, /for all to authenticated[\s\S]*quotation_company_payment_methods/i);
+  });
+
+  it("serializes explicit type-appropriate public payment fields", () => {
+    assert.match(securityBoundarySql, /jsonb_build_object\('id', p\.id/i);
+    assert.doesNotMatch(securityBoundarySql, /to_jsonb\(p\)/i);
+    assert.doesNotMatch(securityBoundarySql, /internal_notes.*quotation_payment_methods/i);
+    assert.match(securityBoundarySql, /case when p\.type = 'bank_transfer'/i);
+    assert.match(securityBoundarySql, /case when p\.type = 'promptpay'/i);
+  });
+
+  it("uses ordinary PostgreSQL regex semantics for payment assets and PromptPay", () => {
+    assert.match(securityBoundarySql, /\}\\\.png\$'/i);
+    assert.match(securityBoundarySql, /regexp_replace\([^;]+, '\\D', '', 'g'\)/i);
+  });
   it("creates the MVP 1 tables without later-MVP scope", () => {
     assert.match(sql, /create table public\.quotation_company_profiles/i);
     assert.match(sql, /create table public\.quotations/i);

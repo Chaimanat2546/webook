@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { QuotationEditor } from "../../../../components/admin/quotations/quotation-editor";
+import { hydratePaymentMethodBanks } from "../../../../lib/quotation-payment-methods";
 import { Empty, EmptyHeader, EmptyTitle } from "../../../../components/ui/empty";
 import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin";
 import { getQuotationById, listQuotationBanks } from "../../../../server/repositories/quotations";
@@ -16,5 +17,6 @@ export default async function EditQuotationPage({ params, searchParams }: { para
   if (!UUID.test(id)) notFound();
   const [quotation, banks] = await Promise.all([getQuotationById(supabase, id), listQuotationBanks(supabase)]);
   if (!quotation) notFound();
-  return <QuotationEditor banks={banks} documentNumber={quotation.documentNumber} initialPayload={quotation.payload} printOnLoad={print === "1"} publicToken={quotation.publicToken} />;
+  const initialPayload = { ...quotation.payload, paymentMethods: hydratePaymentMethodBanks(quotation.payload.paymentMethods, banks) };
+  return <QuotationEditor banks={banks} documentNumber={quotation.documentNumber} initialPayload={initialPayload} printOnLoad={print === "1"} publicToken={quotation.publicToken} />;
 }
