@@ -58,7 +58,7 @@ describe("quotation UI", () => {
   it("protects and renders the single seller profile page", () => {
     const page = source("../app/admin/quotations/settings/company/page.tsx");
     assert.match(page, /canUseQuotation\(adminUser\)/);
-    assert.match(page, /getQuotationCompanyProfile\(supabase\)/);
+    assert.match(page, /getQuotationCompanyProfile\(supabase, user\.id\)/);
     assert.match(page, /CompanyProfileForm/);
   });
 
@@ -82,7 +82,7 @@ describe("quotation UI", () => {
   it("keeps the old asset after a successful profile replacement", () => {
     const actions = source("../app/admin/quotations/actions.ts");
     assert.match(actions, /saveCompanyProfileAction/);
-    assert.match(actions, /getQuotationCompanyProfile\(supabase\)/);
+    assert.match(actions, /getQuotationCompanyProfile\(supabase, user\.id\)/);
     assert.match(actions, /cleanup newly uploaded quotation logo/i);
     assert.doesNotMatch(actions, /deleteQuotationAssetObject\([^)]*existing/i);
   });
@@ -135,7 +135,7 @@ describe("quotation UI", () => {
   it("loads create and edit routes through server repositories", () => {
     const createPage = source("../app/admin/quotations/new/page.tsx");
     const editPage = source("../app/admin/quotations/[id]/page.tsx");
-    assert.match(createPage, /getQuotationCompanyProfile\(supabase\)/);
+    assert.match(createPage, /getQuotationCompanyProfile\(supabase, user\.id\)/);
     assert.match(createPage, /emptyQuotationPayload/);
     assert.match(editPage, /getQuotationById\(supabase, id\)/);
     assert.match(editPage, /notFound\(\)/);

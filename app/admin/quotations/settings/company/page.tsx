@@ -6,9 +6,9 @@ import { canUseQuotation, requireAdmin } from "../../../../../server/auth/admin"
 import { companyProfileToSeller, getQuotationCompanyProfile } from "../../../../../server/repositories/quotations";
 
 export default async function CompanyProfilePage() {
-  const { adminUser, supabase } = await requireAdmin();
+  const { adminUser, supabase, user } = await requireAdmin();
   if (!canUseQuotation(adminUser)) return <Empty><EmptyHeader><EmptyTitle>ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ขาย</EmptyTitle></EmptyHeader></Empty>;
-  const profile = await getQuotationCompanyProfile(supabase);
+  const profile = await getQuotationCompanyProfile(supabase, user.id);
   const seller = profile ? companyProfileToSeller(profile) : {
     address: "", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "", officeType: "head_office" as const, phone: "", taxId: "", website: "",
   };

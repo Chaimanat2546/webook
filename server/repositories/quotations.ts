@@ -4,6 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { VatTreatment } from "../../lib/quotation-calculator.ts";
 import type {
+  BankOption,
+  CompanyPaymentMethod,
+  PaymentMethodType,
+  PaymentQrMode,
+} from "../../lib/quotation-payment-methods.ts";
+import type {
   CustomerSnapshot,
   QuotationPayload,
   SellerSnapshot,
@@ -17,13 +23,14 @@ export interface QuotationCompanyProfileRow {
   contact_name: string;
   contact_phone: string;
   email: string;
-  id: number;
+  id: string;
   logo_url: string;
   seller_name: string;
   office_type: "branch" | "head_office";
   phone: string;
   tax_id: string;
   updated_at: string;
+  user_id: string;
   website: string;
 }
 
@@ -58,6 +65,11 @@ const quotationSelect = `
   quotation_items(
     id,position,name,description,quantity,unit,unit_price,
     discount_amount,vat_treatment,vat_rate
+  ),
+  quotation_payment_methods(
+    id,type,bank_code,bank_name,bank_logo_url,custom_bank_name,
+    custom_bank_logo_url,account_number,account_name,promptpay_id,
+    provider_name,instructions,qr_mode,qr_image_url,position
   )
 `;
 
@@ -74,6 +86,24 @@ type DatabaseQuotationItem = {
   vat_treatment: unknown;
 };
 
+type DatabaseQuotationPaymentMethod = {
+  account_name: unknown;
+  account_number: unknown;
+  bank_code: unknown;
+  bank_logo_url: unknown;
+  bank_name: unknown;
+  custom_bank_logo_url: unknown;
+  custom_bank_name: unknown;
+  id: unknown;
+  instructions: unknown;
+  position: unknown;
+  promptpay_id: unknown;
+  provider_name: unknown;
+  qr_image_url: unknown;
+  qr_mode: unknown;
+  type: unknown;
+};
+
 type DatabaseQuotationRow = {
   customer_snapshot: unknown;
   id: unknown;
@@ -82,6 +112,7 @@ type DatabaseQuotationRow = {
   public_notes: unknown;
   public_token: unknown;
   quotation_items: DatabaseQuotationItem[] | null;
+  quotation_payment_methods: DatabaseQuotationPaymentMethod[] | null;
   reference: unknown;
   seller_snapshot: unknown;
   subject: unknown;
@@ -110,6 +141,16 @@ function officeType(value: unknown): "branch" | "head_office" {
 
 function vatTreatment(value: unknown): VatTreatment {
   return value === "taxable" || value === "exempt" ? value : "none";
+}
+
+function paymentMethodType(value: unknown): PaymentMethodType {
+  return value === "promptpay" || value === "qr_payment" || value === "cash" || value === "other"
+    ? value
+    : "bank_transfer";
+}
+
+function paymentQrMode(value: unknown): PaymentQrMode {
+  return value === "upload" || value === "auto_promptpay" ? value : "none";
 }
 
 export function companyProfileToSeller(row: QuotationCompanyProfileRow): SellerSnapshot {
@@ -178,7 +219,26 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
         vatTreatment: vatTreatment(item.vat_treatment),
       }))
       .sort((left, right) => left.position - right.position),
-    paymentMethods: [],
+    paymentMethods: (row.quotation_payment_methods ?? [])
+      .map((method) => ({
+        accountName: stringValue(method.account_name),
+        accountNumber: stringValue(method.account_number),
+        bankCode: stringValue(method.bank_code),
+        bankId: null,
+        bankLogoUrl: stringValue(method.bank_logo_url),
+        bankName: stringValue(method.bank_name),
+        customBankLogoUrl: stringValue(method.custom_bank_logo_url),
+        customBankName: stringValue(method.custom_bank_name),
+        id: stringValue(method.id),
+        instructions: stringValue(method.instructions),
+        position: Number(method.position),
+        promptPayId: stringValue(method.promptpay_id),
+        providerName: stringValue(method.provider_name),
+        qrImageUrl: stringValue(method.qr_image_url),
+        qrMode: paymentQrMode(method.qr_mode),
+        type: paymentMethodType(method.type),
+      }))
+      .sort((left, right) => left.position - right.position),
     publicNotes: stringValue(row.public_notes),
     reference: stringValue(row.reference),
     seller: sellerSnapshot(row.seller_snapshot),
@@ -189,11 +249,11 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
   };
 }
 
-export async function getQuotationCompanyProfile(supabase: SupabaseClient) {
+export async function getQuotationCompanyProfile(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("quotation_company_profiles")
     .select("id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,updated_at")
-    .eq("id", 1)
+    .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data as QuotationCompanyProfileRow | null;
@@ -202,6 +262,7 @@ export async function getQuotationCompanyProfile(supabase: SupabaseClient) {
 export async function saveQuotationCompanyProfile(
   supabase: SupabaseClient,
   seller: SellerSnapshot,
+  userId: string,
 ) {
   const { error } = await supabase.from("quotation_company_profiles").upsert({
     address: seller.address,
@@ -210,14 +271,89 @@ export async function saveQuotationCompanyProfile(
     contact_name: seller.contactName,
     contact_phone: seller.contactPhone,
     email: seller.email,
-    id: 1,
     logo_url: seller.logoUrl,
     seller_name: seller.name,
     office_type: seller.officeType,
     phone: seller.phone,
     tax_id: seller.taxId,
     updated_at: new Date().toISOString(),
+    user_id: userId,
     website: seller.website,
+  }, { onConflict: "user_id" });
+  if (error) throw new Error(error.message);
+}
+
+export async function listQuotationBanks(supabase: SupabaseClient): Promise<BankOption[]> {
+  const { data, error } = await supabase
+    .from("banks")
+    .select("id,code,name,logo_path,sort_order")
+    .not("code", "is", null)
+    .order("sort_order")
+    .order("name");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((bank) => ({
+    code: stringValue(bank.code),
+    id: stringValue(bank.id),
+    logoUrl: stringValue(bank.logo_path),
+    name: stringValue(bank.name),
+  }));
+}
+
+export async function listCompanyPaymentMethods(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<CompanyPaymentMethod[]> {
+  const { data, error } = await supabase
+    .from("quotation_company_payment_methods")
+    .select("id,type,bank_id,custom_bank_name,custom_bank_logo_url,account_number,account_name,promptpay_id,provider_name,instructions,qr_mode,qr_image_url,is_default,position,banks(code,name,logo_path)")
+    .eq("user_id", userId)
+    .order("position");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((method) => {
+    const bank = method.banks as { code?: unknown; logo_path?: unknown; name?: unknown } | null;
+    return {
+      accountName: stringValue(method.account_name),
+      accountNumber: stringValue(method.account_number),
+      bankCode: stringValue(bank?.code),
+      bankId: method.bank_id == null ? null : stringValue(method.bank_id),
+      bankLogoUrl: stringValue(bank?.logo_path),
+      bankName: stringValue(bank?.name),
+      customBankLogoUrl: stringValue(method.custom_bank_logo_url),
+      customBankName: stringValue(method.custom_bank_name),
+      id: stringValue(method.id),
+      instructions: stringValue(method.instructions),
+      isDefault: method.is_default === true,
+      position: Number(method.position),
+      promptPayId: stringValue(method.promptpay_id),
+      providerName: stringValue(method.provider_name),
+      qrImageUrl: stringValue(method.qr_image_url),
+      qrMode: paymentQrMode(method.qr_mode),
+      type: paymentMethodType(method.type),
+    };
+  });
+}
+
+export async function saveCompanyPaymentMethods(
+  supabase: SupabaseClient,
+  methods: CompanyPaymentMethod[],
+): Promise<void> {
+  const { error } = await supabase.rpc("save_quotation_company_payment_methods", {
+    p_methods: methods.map((method) => ({
+      account_name: method.accountName,
+      account_number: method.accountNumber,
+      bank_id: method.bankId,
+      custom_bank_logo_url: method.customBankLogoUrl,
+      custom_bank_name: method.customBankName,
+      id: method.id,
+      instructions: method.instructions,
+      is_default: method.isDefault,
+      position: method.position,
+      promptpay_id: method.promptPayId,
+      provider_name: method.providerName,
+      qr_image_url: method.qrImageUrl,
+      qr_mode: method.qrMode,
+      type: method.type,
+    })),
   });
   if (error) throw new Error(error.message);
 }
@@ -293,7 +429,7 @@ export async function saveQuotation(
   supabase: SupabaseClient,
   rpcPayload: PreparedQuotation["rpcPayload"],
 ): Promise<SavedQuotation> {
-  const { data, error } = await supabase.rpc("save_quotation", { p_payload: rpcPayload });
+  const { data, error } = await supabase.rpc("save_quotation_with_payments", { p_payload: rpcPayload });
   if (error) throw new Error(error.message);
   const row = (data as Array<{ document_number: string; id: string }> | null)?.[0];
   if (!row) throw new Error("Quotation save returned no row");
