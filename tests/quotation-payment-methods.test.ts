@@ -51,6 +51,23 @@ describe("quotation payment methods", () => {
     assert.equal(method?.promptPayId, "0812345678");
   });
 
+  it("requires an uploaded or automatic QR for PromptPay", () => {
+    assert.throws(
+      () => preparePaymentMethods([{
+        ...bank,
+        accountNumber: "",
+        bankCode: "",
+        bankId: null,
+        bankLogoUrl: "",
+        bankName: "",
+        promptPayId: "0812345678",
+        type: "promptpay",
+      }]),
+      (error) => error instanceof QuotationValidationError
+        && Boolean(error.fieldErrors["paymentMethods.0.qrMode"]),
+    );
+  });
+
   it("rejects missing type-specific data", () => {
     for (const [method, field] of [
       [{ ...bank, accountName: "" }, "paymentMethods.0.accountName"],

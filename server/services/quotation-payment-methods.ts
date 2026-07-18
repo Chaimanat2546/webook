@@ -58,6 +58,7 @@ function paymentMethod(value: unknown, index: number, errors: Record<string, str
   if (type === "promptpay") {
     if (!method.accountName) errors[`${prefix}.accountName`] = "Account name is required";
     if (![10, 13].includes(method.promptPayId.length)) errors[`${prefix}.promptPayId`] = "PromptPay ID must contain 10 or 13 digits";
+    if (qrMode === "none") errors[`${prefix}.qrMode`] = "PromptPay requires an uploaded or automatic QR";
   }
   if (type === "qr_payment" && !method.providerName) errors[`${prefix}.providerName`] = "Provider name is required";
   if (type === "other" && !method.providerName) errors[`${prefix}.providerName`] = "Display name is required";
