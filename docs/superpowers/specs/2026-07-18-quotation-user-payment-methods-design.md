@@ -123,6 +123,11 @@ links every quotation to the profile owned by its `created_by` user. It fails
 before conversion when an owner is missing from Supabase Auth or the only
 legacy profile cannot be assigned unambiguously.
 
+Databases that already recorded the original `20260718090000` migration do not
+rerun amended migration bytes. They require an inspected, deliberate migration
+history/schema reconciliation or an equivalent follow-up migration; a blind
+`supabase migration up` is not a repair strategy.
+
 The migration also:
 
 - adds the ownership constraints and indexes used by RLS;

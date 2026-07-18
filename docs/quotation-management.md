@@ -115,6 +115,23 @@ links every quotation to the profile owned by its `created_by` user. The
 migration stops with an explicit error if a quotation owner is missing from
 Supabase Auth or a seller profile cannot be assigned unambiguously.
 
+A database that already records migration `20260718090000` will not execute
+the amended file again. Inspect its actual schema and migration history first,
+then deliberately reconcile the history/schema or ship an equivalent follow-up
+migration. Never run `supabase migration up` blindly to repair this mismatch.
+
+Run the executable legacy-upgrade regression against isolated temporary
+databases in the running local Supabase Postgres container:
+
+```powershell
+$env:RUN_QUOTATION_MIGRATION_UPGRADE_TESTS = "1"
+node --import ./tests/register-server-only.mjs --test tests/quotation-migration-upgrade.test.ts
+```
+
+The default container is `supabase_db_webook`; set `SUPABASE_DB_CONTAINER` to
+override it. The test creates a uniquely named database per case and drops it
+afterward. It never resets or migrates the shared local database.
+
 Server validation covers required seller/customer/item fields, branch rules,
 dates, money, VAT, withholding, PromptPay identifiers, payment type fields,
 order/ID uniqueness, and trusted asset URLs. Save errors preserve the draft
