@@ -62,6 +62,37 @@ describe("quotation UI", () => {
     assert.match(page, /CompanyProfileForm/);
   });
 
+  it("composes seller settings with sortable payment method masters", () => {
+    const page = source("../app/admin/quotations/settings/company/page.tsx");
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+
+    assert.match(page, /Promise\.all\(/);
+    assert.match(page, /getQuotationCompanyProfile\(supabase, user\.id\)/);
+    assert.match(page, /listQuotationBanks\(supabase\)/);
+    assert.match(page, /listCompanyPaymentMethods\(supabase, user\.id\)/);
+    assert.match(form, /PaymentMethodList/);
+    assert.match(form, /saveCompanyPaymentMethodsAction/);
+
+    assert.match(payments, /mode: "master" \| "quotation"/);
+    assert.match(payments, /bank_transfer[\s\S]*promptpay[\s\S]*qr_payment[\s\S]*cash[\s\S]*other/);
+    assert.match(payments, /isDefault/);
+    assert.match(payments, /DragDropProvider/);
+    assert.match(payments, /useSortable/);
+    assert.match(payments, /move\(methods, event\)/);
+    assert.match(payments, /PaymentImageInput/);
+    assert.match(payments, /result\.formError/);
+    assert.match(payments, /OTHER/);
+    assert.match(payments, /customBankName/);
+    assert.match(payments, /customBankLogoUrl/);
+    assert.match(payments, /qrMode/);
+    assert.match(payments, /qrImageUrl/);
+    assert.match(payments, /mode === "master"/);
+    assert.match(payments, /<Plus/);
+    assert.match(payments, /Trash2/);
+    assert.doesNotMatch(payments, /ArrowUp|ArrowDown/);
+  });
+
   it("collects the approved seller snapshot fields and normalizes the logo", () => {
     const form = source("../components/admin/quotations/company-profile-form.tsx");
     for (const name of [

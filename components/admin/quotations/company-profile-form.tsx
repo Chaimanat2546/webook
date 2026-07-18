@@ -2,17 +2,19 @@
 
 import { useState, useTransition } from "react";
 
-import { saveCompanyProfileAction } from "../../../app/admin/quotations/actions";
+import { saveCompanyPaymentMethodsAction, saveCompanyProfileAction } from "../../../app/admin/quotations/actions";
 import { validateQuotationAssetFile } from "../../../lib/quotation-assets";
 import { resizeQuotationImageToMax } from "../../../lib/quotation-image-resize";
+import type { BankOption, CompanyPaymentMethod } from "../../../lib/quotation-payment-methods";
 import type { SellerSnapshot } from "../../../lib/quotation-types";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
+import { PaymentMethodList } from "./payment-method-list";
 
-export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSnapshot }) {
+export function CompanyProfileForm({ banks, initialPaymentMethods, initialSeller }: { banks: BankOption[]; initialPaymentMethods: CompanyPaymentMethod[]; initialSeller: SellerSnapshot }) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
@@ -79,7 +81,7 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
   }
 
   const disabled = pending || isConverting;
-  return <form className="grid gap-4" onSubmit={submit}>
+  return <><form className="grid gap-4" onSubmit={submit}>
     <Card><CardHeader><CardTitle>Legal identity</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
       <Field error={fieldErrors.name} label="Company name" name="name" required value={initialSeller.name} />
       <Field error={fieldErrors.taxId} label="Tax ID" name="taxId" required value={initialSeller.taxId} />
@@ -92,7 +94,27 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
     <Card><CardHeader><CardTitle>Logo</CardTitle></CardHeader><CardContent className="grid gap-3">{logoUrl && !logoUnavailable ? <img alt="Current seller logo" className="max-h-32 max-w-48 object-contain" onError={() => setLogoUnavailable(true)} src={logoUrl} /> : <p className="text-sm text-muted-foreground">ไม่สามารถแสดงโลโก้</p>}<div className="grid gap-2"><Label htmlFor="logo">Replace logo</Label><Input accept="image/png,image/jpeg,image/webp" id="logo" name="logo" type="file" /><p className="text-sm text-muted-foreground">PNG, JPEG, or WebP; max 10 MB</p></div></CardContent></Card>
     <p aria-live="polite" className={error ? "text-destructive" : "text-muted-foreground"}>{error || message}</p>
     <Button disabled={disabled} type="submit">{disabled ? "Saving" : "Save"}</Button>
-  </form>;
+  </form><PaymentMethodsSettings banks={banks} initialMethods={initialPaymentMethods} /></>;
+}
+
+function PaymentMethodsSettings({ banks, initialMethods }: { banks: BankOption[]; initialMethods: CompanyPaymentMethod[] }) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [methods, setMethods] = useState(initialMethods);
+  const [message, setMessage] = useState("");
+  const [pending, startTransition] = useTransition();
+  function save() {
+    setErrors({});
+    setMessage("");
+    startTransition(async () => {
+      const result = await saveCompanyPaymentMethodsAction(methods);
+      if (result.ok) setMessage("Payment methods saved");
+      else {
+        setErrors(result.fieldErrors);
+        setMessage(result.formError || Object.values(result.fieldErrors)[0] || "Unable to save payment methods");
+      }
+    });
+  }
+  return <Card><CardHeader><CardTitle>ช่องทางชำระเงิน</CardTitle></CardHeader><CardContent className="grid gap-4"><PaymentMethodList banks={banks} errors={errors} methods={methods} mode="master" onChange={setMethods} /><p aria-live="polite" className={Object.keys(errors).length || message.startsWith("Unable") ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>{message}</p><Button disabled={pending} onClick={save} type="button">{pending ? "Saving" : "Save payment methods"}</Button></CardContent></Card>;
 }
 
 function Field({ error, label, name, required, type = "text", value }: { error?: string; label: string; name: string; required?: boolean; type?: string; value: string }) {
