@@ -75,6 +75,20 @@ design and implementation plan already describe this behavior. The local bank
 asset catalogue was added because it is required to track source URLs and
 trademark ownership.
 
+## Live follow-up verification
+
+- Live 390px inspection found a controlled bank select whose `OTHER` state did
+  not match its UUID-valued option; the explicit `OTHER` option now keeps the
+  visible choice and conditional custom-bank fields in sync.
+- Live 768px inspection found a native file input wider than its grid cell;
+  both the wrapper and input now use `min-w-0 w-full max-w-full`.
+- QR inputs are visible only for `qrMode: "upload"`, including QR Payment; the
+  label is configurable and custom-bank logos and QR images now have distinct
+  Thai labels.
+- Final focused UI tests passed (40/40), typecheck passed, lint had 0 errors
+  with the existing raw-`img` warning, full tests passed (273/273), and
+  `git diff --check fb33ddb..HEAD` passed. Follow-up review: approved.
+
 ## Review fix: PromptPay QR transition
 
 - RED: added a focused `quotation-ui.test.ts` regression test for changing a
@@ -146,3 +160,19 @@ trademark ownership.
   `PaymentImageInput` adds `w-full` while retaining `min-w-0 max-w-full`.
 - Verification: focused UI suite passed (40/40), `npm.cmd run typecheck` passed,
   and `git diff --check` passed.
+
+## Final review fix: type-entry QR defaults
+
+- RED: two pure `quotation-ui.test.ts` regressions start from
+  `emptyPaymentMethod("bank_transfer")`. The focused suite failed (40/42):
+  entering QR Payment kept `qrMode: "none"`, and entering PromptPay also kept
+  `"none"`.
+- GREEN: `updatePaymentMethodType()` now assigns `"upload"` for QR Payment and
+  `"auto_promptpay"` when a no-QR method enters PromptPay. Existing uploaded
+  QR state remains intact for compatible types; leaving PromptPay still clears
+  only its incompatible automatic mode. `PaymentMethodList` already routes the
+  type selector through this helper and renders the upload input from that mode.
+- Focused UI suite passed (42/42); `npm.cmd run typecheck` passed;
+  `npm.cmd run lint` passed with the existing seller-profile raw-`img` warning
+  only; `npm.cmd run test` passed (275/275; one documented local database
+  integration skip); and `git diff --check` passed.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { paymentMethodEditorState, updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
+import { emptyPaymentMethod, paymentMethodEditorState, updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
 
 function source(path: string) {
   return readFileSync(new URL(path, import.meta.url), "utf8");
@@ -116,6 +116,20 @@ describe("quotation UI", () => {
 
     assert.equal(updated.type, "cash");
     assert.equal(updated.qrMode, "none");
+  });
+
+  it("defaults a new QR payment to uploaded QR", () => {
+    const updated = updatePaymentMethodType(emptyPaymentMethod("bank_transfer"), "qr_payment");
+
+    assert.equal(updated.type, "qr_payment");
+    assert.equal(updated.qrMode, "upload");
+  });
+
+  it("defaults a new PromptPay payment to automatic QR", () => {
+    const updated = updatePaymentMethodType(emptyPaymentMethod("bank_transfer"), "promptpay");
+
+    assert.equal(updated.type, "promptpay");
+    assert.equal(updated.qrMode, "auto_promptpay");
   });
 
   it("derives bank and QR controls from the payment method state", () => {
