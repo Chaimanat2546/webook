@@ -7,7 +7,7 @@ import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { uploadQuotationPaymentAssetAction } from "../../../app/admin/quotations/actions";
-import { emptyPaymentMethod, normalizePaymentPositions, type BankOption, type QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
+import { emptyPaymentMethod, normalizePaymentPositions, updatePaymentMethodType, type BankOption, type QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -53,7 +53,7 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
   }
 
   function updateType(type: T["type"]) {
-    onPatch({ type, ...(type !== "promptpay" && method.qrMode === "auto_promptpay" ? { qrMode: "none" } : {}) } as Partial<T>);
+    onPatch(updatePaymentMethodType(method, type) as Partial<T>);
   }
 
   return <article className={cn("min-w-0 border-b py-4 last:border-b-0", isDragging && "opacity-60")} data-payment-method ref={ref}>

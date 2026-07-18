@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
 
 function source(path: string) {
   return readFileSync(new URL(path, import.meta.url), "utf8");
@@ -93,11 +94,28 @@ describe("quotation UI", () => {
     assert.doesNotMatch(payments, /ArrowUp|ArrowDown/);
   });
 
-  it("resets PromptPay-only QR mode when a payment method type changes", () => {
-    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+  it("resets automatic PromptPay QR when its payment type changes", () => {
+    const updated = updatePaymentMethodType({
+      accountName: "PromptPay account",
+      accountNumber: "",
+      bankCode: "",
+      bankId: null,
+      bankLogoUrl: "",
+      bankName: "",
+      customBankLogoUrl: "",
+      customBankName: "",
+      id: crypto.randomUUID(),
+      instructions: "",
+      position: 1,
+      promptPayId: "0812345678",
+      providerName: "",
+      qrImageUrl: "",
+      qrMode: "auto_promptpay",
+      type: "promptpay",
+    }, "cash");
 
-    assert.match(payments, /function updateType\(type: T\["type"\]\)[\s\S]*?type !== "promptpay" && method\.qrMode === "auto_promptpay"[\s\S]*?qrMode: "none"/);
-    assert.match(payments, /onChange=\{\(event\) => updateType\(event\.target\.value as T\["type"\]\)\}/);
+    assert.equal(updated.type, "cash");
+    assert.equal(updated.qrMode, "none");
   });
 
   it("collects the approved seller snapshot fields and normalizes the logo", () => {

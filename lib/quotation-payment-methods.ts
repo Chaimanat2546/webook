@@ -38,3 +38,7 @@ export function normalizePaymentPositions<T extends QuotationPaymentMethod>(rows
 export function emptyPaymentMethod(type: PaymentMethodType = "bank_transfer"): QuotationPaymentMethod {
   return { accountName: "", accountNumber: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", id: crypto.randomUUID(), instructions: "", position: 1, promptPayId: "", providerName: "", qrImageUrl: "", qrMode: "none", type };
 }
+
+export function updatePaymentMethodType(method: QuotationPaymentMethod, type: PaymentMethodType): QuotationPaymentMethod {
+  return { ...method, type, ...(type !== "promptpay" && method.qrMode === "auto_promptpay" ? { qrMode: "none" } : {}) };
+}
