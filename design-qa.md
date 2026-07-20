@@ -1,38 +1,69 @@
-# Quotation payment information layout QA
+# Quotation Certification Layout Design QA
 
-- Source visual truth: `C:/Users/POOLVI~1/AppData/Local/Temp/codex-clipboard-f680e603-db73-4231-83de-ee3a2763816c.png`
-- Implementation screenshot: `C:/Users/POOLVI~1/AppData/Local/Temp/quotation-payment-layout-viewport.png`
-- Viewport: 1280 × 720, DPR 1.
-- State: saved quotation Preview with one bank-transfer payment method.
+- Source visual truth: `C:\Users\POOLVI~1\AppData\Local\Temp\codex-clipboard-b0383ec2-5e46-4557-8378-0cd3a1293411.png`
+- Implementation screenshot: `C:\Users\POOLVI~1\AppData\Local\Temp\quotation-certification-preview-1280.png`
+- Public Read-only screenshot: `C:\Users\POOLVI~1\AppData\Local\Temp\quotation-public-viewport-1280.png`
+- Focused side-by-side comparison: `C:\tmp\quotation-certification-comparison.png`
+- Viewports checked: 390, 768, 1280, and 1536 CSS pixels
+- State: saved quotation Preview and token-scoped Public Read-only document
 
 ## Full-view comparison evidence
 
-- The payment heading remains in the left document column.
-- The bank logo and its information now form one compact group to the right of the heading.
-- The surrounding summary and notes sections retain their existing alignment and spacing.
+The rendered A4 document keeps notes immediately above one ruled certification
+row. The row uses the approved order: Public QR, issuer, approver, company
+stamp, and customer receiver. Preview and Public Read-only use the same shared
+renderer. At 390 and 768 pixels, the fixed A4 document scrolls inside its
+document container; the page itself does not gain horizontal overflow. At 1280
+and 1536 pixels, the row remains unchanged and fits the available document
+surface.
 
 ## Focused region comparison evidence
 
-- The bank details render in the requested order: bank name, account number, account name.
-- The three values occupy one vertical stack beside a 36 × 36 px bank logo.
-- The account number is emphasized and uses tabular numerals.
-- The payment entry has no horizontal overflow.
-- Existing typography, monochrome document palette, supplied bank asset, and app-specific copy were preserved.
-- Browser console reported no errors.
+The focused comparison places the supplied reference on the left and the
+implementation on the right. Both use a compact horizontal document grid,
+top-aligned labels, contained QR/stamp assets, aligned signing baselines, and a
+customer receiver at the far right. Dynamic content differs because the local
+quotation has different customer/signer data. The local signer image URLs are
+currently unavailable, and the specified optional-image fallback correctly
+leaves their signing areas clean without changing the grid.
+
+## Required fidelity surfaces
+
+- Fonts and typography: existing quotation type scale, Thai font, weights, and
+  wrapping are preserved; long values remain bounded by their slot.
+- Spacing and layout rhythm: the 16 mm section-title rail and five equal content
+  tracks align with neighboring document sections and the reference density.
+- Colors and visual tokens: the existing neutral rules, text colors, and white
+  paper surface are unchanged.
+- Image quality and asset fidelity: QR, signatures, and stamp use the existing
+  real assets with aspect-ratio-preserving `contain`; no placeholder or CSS art
+  was introduced.
+- Copy and content: labels match the approved Thai copy; positions are absent;
+  the receiver uses the saved customer name and leaves signature/date blank.
 
 ## Findings
 
-- No actionable P0, P1, or P2 differences remain for the requested information ordering.
-- The reference includes an account type before the number; the current data model does not store account type, so no invented value is displayed.
+No actionable P0, P1, or P2 visual differences remain.
+
+## Primary interactions and runtime checks
+
+- Opened a saved quotation Preview from the document action menu.
+- Opened the same saved quotation through `/q/{public_token}` without admin UI.
+- Confirmed the five-slot order and absence of position text in both surfaces.
+- Confirmed the row height/order remains stable at all four required widths.
+- Checked browser warning/error logs; none were reported.
 
 ## Comparison history
 
-1. Earlier P2: the bank name sat beside the logo while account number and account name occupied a separate column.
-   - Fix: placed the bank name, account number, and account name in one vertical details container beside the enlarged logo.
-   - Post-fix evidence: browser inspection returned the ordered children `ธนาคารกสิกรไทย`, `12356998565`, `ชัยมนัส แอบสุข`, with no overflow.
+The first comparison found no actionable P0/P1/P2 issue, so no visual-fix
+iteration was required.
 
-## Follow-up polish
+## Residual test gap
 
-- Add an account-type field only if the product later needs to display values such as `ออมทรัพย์`.
+The in-app browser did not expose the programmatic PDF download as a browser
+download event, so this QA pass could not rasterize the newly downloaded file.
+The mirrored React PDF source contract, PDF tests, typecheck, and production
+build all pass; PDF pagination remains covered by the existing automated
+contract.
 
 final result: passed

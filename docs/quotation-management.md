@@ -124,7 +124,12 @@ Print, or PDF; the Public QR remains required for PDF Download.
 
 - Payment and certification overrides are edited in tabs below document notes;
   payment is the default tab and tab switches preserve unsaved state.
-- The receiver slot stays blank for manual name, position, date, and signature.
+- Preview, Print, Public Read-only, and PDF show one compact certification row
+  containing the Public QR, issuer, approver, company stamp, and customer
+  receiver in that order.
+- Issuer and approver show signature, name, and quotation issue date without
+  position. The receiver shows the saved customer name and leaves signature
+  and date blank for handwriting; no acceptance data is stored.
 - `/q/[token]` is a bearer-style, no-login, read-only link. It shows only the
   latest save, excludes internal notes, and returns no document after soft delete.
 - Set `QUOTATION_PUBLIC_ORIGIN` to the canonical bare HTTPS origin. Share and
@@ -132,7 +137,7 @@ Print, or PDF; the Public QR remains required for PDF Download.
   invalid configuration disables Share and omits QR while Preview/Print remain usable.
 - PDF Download uses the latest saved snapshot, bundled Noto Sans Thai fonts,
   comma-formatted money, repeated item headings, page-safe long text, payments,
-  notes, Public QR, stamp, and three signing slots.
+  notes, and the compact five-slot certification row.
 - Link expiry, passwords, token rotation, e-signing, approval workflow, and
   orphaned-asset garbage collection remain outside this MVP.
 
