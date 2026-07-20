@@ -36,6 +36,7 @@ describe("quotation repository and actions", () => {
     assert.match(actions, /saveQuotation\(supabase, prepared\.rpcPayload\)/);
     assert.match(actions, /softDeleteQuotation\(supabase, id\)/);
     assert.match(actions, /uploadQuotationPaymentAssetAction/);
+    assert.match(actions, /uploadQuotationCertificationAssetAction/);
     assert.match(actions, /saveCompanyPaymentMethodsAction/);
   });
 
@@ -64,6 +65,17 @@ describe("quotation repository and actions", () => {
     assert.match(actions, /contentType: "image\/png"/);
     assert.match(actions, /validateQuotationPaymentAssetUrl\(url/);
     assert.match(actions, /prepareCompanyPaymentMethods\(value\)/);
+  });
+
+  it("validates and uploads normalized certification PNGs after permission checks", () => {
+    assert.match(actions, /validateQuotationCertificationAssetFile\(file\)/);
+    assert.match(actions, /file\.type !== "image\/png"/);
+    assert.match(actions, /buildQuotationCertificationAssetObjectKey\(\)/);
+    assert.match(actions, /contentType: "image\/png"/);
+    assert.match(actions, /validateQuotationCertificationAssetUrl\(url/);
+    assert.match(actions, /certification\.issuer\.signatureUrl/);
+    assert.match(actions, /certification\.approver\.signatureUrl/);
+    assert.match(actions, /certification\.companyStampUrl/);
   });
 
   it("hydrates ordered payment snapshots and returns the saved normalized payload", () => {

@@ -20,9 +20,10 @@ interface Env {
 }
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_KEY_PREFIXES = ["advertisements/", "houses/", "quotations/assets/", "quotations/payment-assets/"] as const;
+const ALLOWED_KEY_PREFIXES = ["advertisements/", "houses/", "quotations/assets/", "quotations/payment-assets/", "quotations/certification-assets/"] as const;
 const QUOTATION_ASSET_KEY = /^quotations\/assets\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/i;
 const QUOTATION_PAYMENT_ASSET_KEY = /^quotations\/payment-assets\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.png$/i;
+const QUOTATION_CERTIFICATION_ASSET_KEY = /^quotations\/certification-assets\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.png$/i;
 const ALLOWED_CONTENT_TYPES = new Set([
   "image/avif",
   "image/gif",
@@ -40,6 +41,7 @@ function keyFromRequest(request: Request): string {
     !ALLOWED_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
     (key.startsWith("quotations/assets/") && !QUOTATION_ASSET_KEY.test(key)) ||
     (key.startsWith("quotations/payment-assets/") && !QUOTATION_PAYMENT_ASSET_KEY.test(key)) ||
+    (key.startsWith("quotations/certification-assets/") && !QUOTATION_CERTIFICATION_ASSET_KEY.test(key)) ||
     key.includes("://") ||
     parts.some((part) => !part || part === "." || part === "..")
   ) {
@@ -93,8 +95,8 @@ const worker = {
 
     if (request.method === "PUT") {
       const contentType = request.headers.get("content-type") ?? "";
-      if ((key.startsWith("quotations/payment-assets/") && contentType !== "image/png") ||
-        (!key.startsWith("quotations/payment-assets/") && !ALLOWED_CONTENT_TYPES.has(contentType))) {
+      if (((key.startsWith("quotations/payment-assets/") || key.startsWith("quotations/certification-assets/")) && contentType !== "image/png") ||
+        (!key.startsWith("quotations/payment-assets/") && !key.startsWith("quotations/certification-assets/") && !ALLOWED_CONTENT_TYPES.has(contentType))) {
         return new Response("Unsupported media type", { headers: corsHeaders(), status: 415 });
       }
 
