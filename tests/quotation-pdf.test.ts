@@ -68,4 +68,23 @@ describe("quotation PDF", () => {
     assert.match(pdfSource, /wrap=\{false\}/);
     assert.match(pdfSource, /ผู้รับเอกสาร/);
   });
+
+  it("repeats the ledger heading in normal flow on continuation pages", () => {
+    assert.match(pdfSource, /<View fixed style=\{styles\.tableHeader\} wrap=\{false\}>/);
+    assert.doesNotMatch(pdfSource, /tableHeader:\s*\{[^}]*position:/);
+  });
+
+  it("allows validated long user content to wrap across pages", () => {
+    const header = pdfSource.slice(pdfSource.indexOf("data-pdf-header"), pdfSource.indexOf("data-pdf-customer"));
+    const customer = pdfSource.slice(pdfSource.indexOf("data-pdf-customer"), pdfSource.indexOf("data-pdf-items"));
+    const items = pdfSource.slice(pdfSource.indexOf("data-pdf-items"), pdfSource.indexOf("data-pdf-totals"));
+    const payment = pdfSource.slice(pdfSource.indexOf("function PaymentMethod"), pdfSource.indexOf("function Signer"));
+
+    assert.doesNotMatch(header, /style=\{styles\.header\} wrap=\{false\}/);
+    assert.doesNotMatch(customer, /style=\{styles\.customer\} wrap=\{false\}/);
+    assert.doesNotMatch(items, /style=\{styles\.tableRow\} wrap=\{false\}/);
+    assert.doesNotMatch(payment, /style=\{styles\.payment\} wrap=\{false\}/);
+    assert.match(payment, /style=\{styles\.paymentCore\} wrap=\{false\}/);
+    assert.match(payment, /<\/View>\s*\{method\.instructions \? <Text/);
+  });
 });

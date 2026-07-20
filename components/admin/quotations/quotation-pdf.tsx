@@ -16,6 +16,7 @@ import {
 } from "../../../lib/quotation-document-view";
 import { formatBaht, formatMoney } from "../../../lib/quotation-money";
 import { PAYMENT_ACCOUNT_TYPE_LABELS } from "../../../lib/quotation-payment-methods";
+import { splitQuotationPdfWord } from "../../../lib/quotation-pdf";
 import type { QuotationPayload } from "../../../lib/quotation-types";
 
 Font.register({
@@ -26,9 +27,7 @@ Font.register({
   ],
 });
 
-Font.registerHyphenationCallback((word) =>
-  word.length > 24 ? (word.match(/.{1,12}/gu) ?? [word]) : [word],
-);
+Font.registerHyphenationCallback(splitQuotationPdfWord);
 
 const colors = {
   accent: "#6366f1",
@@ -81,7 +80,8 @@ const styles = StyleSheet.create({
   totalsBox: { width: 220 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
   grandTotal: { backgroundColor: colors.light, borderRadius: 4, fontSize: 10, fontWeight: 600, marginBottom: 4, padding: 7 },
-  payment: { flexDirection: "row", paddingVertical: 7 },
+  payment: { paddingVertical: 7 },
+  paymentCore: { flexDirection: "row" },
   paymentLogo: { height: 30, marginRight: 8, objectFit: "contain", width: 30 },
   paymentQr: { height: 78, marginLeft: 8, objectFit: "contain", width: 78 },
   notes: { minHeight: 36 },
@@ -197,26 +197,28 @@ function PaymentMethod({
   const logoSource = method.customBankLogoUrl || method.bankLogoUrl;
   const accountType = method.accountType ? PAYMENT_ACCOUNT_TYPE_LABELS[method.accountType] : "";
   return (
-    <View style={styles.payment} wrap={false}>
-      {image(images, logoSource) ? <PdfImage src={image(images, logoSource)} style={styles.paymentLogo} /> : null}
-      <View style={styles.grow}>
-        <Text style={styles.bold}>{paymentTitle(method)}</Text>
-        {method.type === "bank_transfer" ? (
-          <>
-            <Text>{[accountType, method.accountNumber].filter(Boolean).join(" ")}</Text>
-            <Text>{method.accountName}</Text>
-          </>
-        ) : null}
-        {method.type === "promptpay" ? (
-          <>
-            <Text>{method.promptPayId}</Text>
-            <Text>{method.accountName}</Text>
-          </>
-        ) : null}
-        {method.instructions ? <Text style={styles.muted}>{method.instructions}</Text> : null}
-        {method.qrMode === "auto_promptpay" && !method.qrSource ? <Text style={styles.muted}>ไม่สามารถสร้าง QR ได้</Text> : null}
+    <View style={styles.payment}>
+      <View style={styles.paymentCore} wrap={false}>
+        {image(images, logoSource) ? <PdfImage src={image(images, logoSource)} style={styles.paymentLogo} /> : null}
+        <View style={styles.grow}>
+          <Text style={styles.bold}>{paymentTitle(method)}</Text>
+          {method.type === "bank_transfer" ? (
+            <>
+              <Text>{[accountType, method.accountNumber].filter(Boolean).join(" ")}</Text>
+              <Text>{method.accountName}</Text>
+            </>
+          ) : null}
+          {method.type === "promptpay" ? (
+            <>
+              <Text>{method.promptPayId}</Text>
+              <Text>{method.accountName}</Text>
+            </>
+          ) : null}
+          {method.qrMode === "auto_promptpay" && !method.qrSource ? <Text style={styles.muted}>ไม่สามารถสร้าง QR ได้</Text> : null}
+        </View>
+        {image(images, method.qrSource) ? <PdfImage src={image(images, method.qrSource)} style={styles.paymentQr} /> : null}
       </View>
-      {image(images, method.qrSource) ? <PdfImage src={image(images, method.qrSource)} style={styles.paymentQr} /> : null}
+      {method.instructions ? <Text style={styles.muted}>{method.instructions}</Text> : null}
     </View>
   );
 }
@@ -257,7 +259,7 @@ function QuotationPdfDocument({
     <Document author={payload.seller.name} title={model.documentNumber}>
       <Page size="A4" style={styles.page} wrap>
         {/* data-pdf-header */}
-        <View style={styles.header} wrap={false}>
+        <View style={styles.header}>
           <View style={styles.seller}>
             {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
             <Detail label="ผู้ขาย" value={payload.seller.name} />
@@ -281,7 +283,7 @@ function QuotationPdfDocument({
         </View>
 
         {/* data-pdf-customer */}
-        <View style={styles.customer} wrap={false}>
+        <View style={styles.customer}>
           <Detail label="ลูกค้า" value={payload.customer.name} />
           <Detail label="ที่อยู่" value={payload.customer.address} />
           {payload.customer.taxId ? <Detail label="เลขที่ภาษี" value={payload.customer.taxId} /> : null}
@@ -290,7 +292,7 @@ function QuotationPdfDocument({
 
         {/* data-pdf-items */}
         <View style={styles.table}>
-          <View style={styles.tableHeader} wrap={false}>
+          <View fixed style={styles.tableHeader} wrap={false}>
             <Text style={styles.descriptionCell}>คำอธิบาย</Text>
             <Text style={styles.qtyCell}>จำนวน</Text>
             <Text style={styles.unitCell}>หน่วย</Text>
@@ -300,7 +302,7 @@ function QuotationPdfDocument({
             <Text style={styles.moneyCell}>มูลค่าก่อนภาษี</Text>
           </View>
           {calculation.lines.map((item) => (
-            <View key={item.id} style={styles.tableRow} wrap={false}>
+            <View key={item.id} style={styles.tableRow}>
               <View style={styles.descriptionCell}>
                 <Text style={styles.bold}>{item.position}. {item.name}</Text>
                 {item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}
@@ -352,17 +354,17 @@ function QuotationPdfDocument({
           <Text style={styles.grow}>{payload.publicNotes}</Text>
         </View>
 
-        <View wrap={false}>
+        <View>
           {/* data-pdf-public-qr */}
           {image(images, model.publicQrDataUrl) ? (
-            <View style={styles.publicQr}>
+            <View style={styles.publicQr} wrap={false}>
               <PdfImage src={image(images, model.publicQrDataUrl)} style={styles.publicQrImage} />
               <Text>สแกนเพื่อดูเอกสารออนไลน์</Text>
             </View>
           ) : null}
 
           {/* data-pdf-certification */}
-          <View style={styles.certification}>
+          <View style={styles.certification} wrap={false}>
             <Signer images={images} issueDate={model.issueDate} label="ผู้ออกเอกสาร" signer={model.certification.issuer} />
             <Signer images={images} issueDate={model.issueDate} label="ผู้อนุมัติ" signer={model.certification.approver} />
             <View style={styles.certificationSlot}>
