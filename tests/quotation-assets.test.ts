@@ -25,6 +25,24 @@ function workerEnv() {
 }
 
 describe("quotation assets", () => {
+  it("keeps every built-in bank icon lightweight and vector-only", () => {
+    const icons = [
+      "baac.svg", "bay.svg", "bbl.svg", "cimbt.svg", "generic-bank.svg", "ghb.svg",
+      "gsb.svg", "ibank.svg", "kbank.svg", "kkp.svg", "ktb.svg", "lh.svg", "scb.svg",
+      "tcrb.svg", "tisco.svg", "ttb.svg", "uobt.svg",
+    ];
+
+    for (const icon of icons) {
+      const svg = readFileSync(`public/quotation/banks/${icon}`, "utf8");
+      assert.match(svg, /viewBox="0 0 48 48"/, icon);
+      assert.doesNotMatch(
+        svg,
+        /<(?:image|linearGradient|radialGradient|filter)\b|data:image|base64|(?:href|src)=["']https?:\/\//i,
+        icon,
+      );
+    }
+  });
+
   it("creates and validates random WebP keys under the quotation prefix", () => {
     const key = buildQuotationAssetObjectKey(() => "123e4567-e89b-42d3-a456-426614174000");
     assert.equal(key, "quotations/assets/123e4567-e89b-42d3-a456-426614174000.webp");

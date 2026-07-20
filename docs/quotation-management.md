@@ -63,7 +63,8 @@ Bank transfers may optionally select ไม่ระบุ, ออมทรั�
 Public, and Print show the selected Thai type before the account number on the
 same line; an unspecified type adds no placeholder.
 
-Built-in Thai banks use trusted local assets under `public/quotation/banks`.
+Built-in Thai banks use generic local bank-building icons under
+`public/quotation/banks`; they are not official bank logos or trademarks.
 Selecting `OTHER` keeps the custom name and optional logo only in the user's
 master/snapshot; it does not alter the bank catalogue. Document rows follow
 saved position and fall back to text when an image is unavailable.
