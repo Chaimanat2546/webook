@@ -584,6 +584,19 @@ describe("quotation UI", () => {
     assert.match(editor, /title=\{documentNumber && isDirty \? "บันทึกการเปลี่ยนแปลงก่อน" : undefined\}/);
   });
 
+  it("downloads only the saved clean quotation and blocks repeated activation", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(editor, /const \[isDownloading, setIsDownloading\] = useState\(false\)/);
+    assert.match(editor, /if \(!canUseSavedDocument \|\| !lastSavedPayload \|\| !savedCalculation \|\| !documentNumber \|\| isDownloading\) return/);
+    assert.match(editor, /payload: lastSavedPayload/);
+    assert.match(editor, /calculation: savedCalculation/);
+    assert.match(editor, /disabled=\{!canUseSavedDocument \|\| isDownloading\}/);
+    assert.match(editor, /onClick=\{downloadSaved\}/);
+    assert.match(editor, /isDownloading \? "กำลังสร้าง PDF…" : "ดาวน์โหลด"/);
+    assert.match(editor, /toast\.error\("ไม่สามารถสร้าง PDF ได้ กรุณาลองอีกครั้ง"\)/);
+  });
+
   it("uses the approved full-width responsive quotation editor", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /"use client"/);

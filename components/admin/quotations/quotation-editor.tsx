@@ -664,6 +664,7 @@ export function QuotationEditor({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const autoPrintStarted = useRef(false);
   const canUseSavedDocument = Boolean(
       documentNumber &&
@@ -1058,6 +1059,27 @@ export function QuotationEditor({
       toast.error("ไม่สามารถคัดลอกลิงก์ได้");
     }
   }
+  async function downloadSaved() {
+    if (!canUseSavedDocument || !lastSavedPayload || !savedCalculation || !documentNumber || isDownloading) return;
+    if (!publicOrigin || !publicToken) return;
+    setIsDownloading(true);
+    try {
+      const publicQrDataUrl = savedPublicQrDataUrl || await createQuotationPublicQrDataUrl(
+        buildQuotationPublicUrl(publicOrigin, publicToken),
+      );
+      const { downloadQuotationPdf } = await import("./quotation-pdf");
+      await downloadQuotationPdf({
+        calculation: savedCalculation,
+        documentNumber,
+        payload: lastSavedPayload,
+        publicQrDataUrl,
+      });
+    } catch {
+      toast.error("ไม่สามารถสร้าง PDF ได้ กรุณาลองอีกครั้ง");
+    } finally {
+      setIsDownloading(false);
+    }
+  }
   function deleteQuotation() {
     if (!payload.id) return;
     setFormError("");
@@ -1197,14 +1219,15 @@ export function QuotationEditor({
             พิมพ์
           </Button>
           <Button
-            disabled
+            disabled={!canUseSavedDocument || isDownloading}
+            onClick={downloadSaved}
             size="sm"
             title={documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined}
             type="button"
             variant="outline"
           >
             <Download aria-hidden="true" className="size-4" />
-            ดาวน์โหลด
+            {isDownloading ? "กำลังสร้าง PDF…" : "ดาวน์โหลด"}
           </Button>
           {shareUnavailableMessage ? (
             <p className="basis-full text-xs text-destructive" id="quotation-share-unavailable">
