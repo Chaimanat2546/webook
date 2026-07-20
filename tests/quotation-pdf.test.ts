@@ -50,7 +50,7 @@ describe("quotation PDF", () => {
     assert.match(pdfSource, /if \(!images\[model\.publicQrDataUrl\]\) throw new Error\("Public QR image is unavailable"\)/);
   });
 
-  it("keeps the approved order, paginated ledger, and certification section", () => {
+  it("keeps the approved order, paginated ledger, and five-slot certification row", () => {
     const sections = [
       "data-pdf-header",
       "data-pdf-customer",
@@ -58,15 +58,32 @@ describe("quotation PDF", () => {
       "data-pdf-totals",
       "data-pdf-payment-methods",
       "data-pdf-notes",
-      "data-pdf-public-qr",
       "data-pdf-certification",
     ];
     for (let index = 1; index < sections.length; index += 1) {
       assert.ok(pdfSource.indexOf(sections[index - 1]!) < pdfSource.indexOf(sections[index]!));
     }
+
+    const certification = pdfSource.slice(
+      pdfSource.indexOf("data-pdf-certification"),
+      pdfSource.indexOf("style={styles.footer}"),
+    );
+    const signer = pdfSource.slice(
+      pdfSource.indexOf("function Signer"),
+      pdfSource.indexOf("function QuotationPdfDocument"),
+    );
+
+    assert.ok(certification.indexOf("data-pdf-public-qr") > -1);
+    assert.match(certification, /สแกนเพื่อเปิดด้วยเว็บไซต์/);
+    assert.match(certification, /ผู้ออกเอกสาร/);
+    assert.match(certification, /ผู้อนุมัติเอกสาร/);
+    assert.match(certification, /ตราประทับ/);
+    assert.match(certification, /ผู้รับเอกสาร \(ลูกค้า\)/);
+    assert.match(certification, /payload\.customer\.name/);
+    assert.doesNotMatch(certification, /ตำแหน่ง/);
+    assert.doesNotMatch(signer, /signer\.position/);
     assert.match(pdfSource, /fixed[\s\S]*render=\{\(\{ pageNumber, totalPages \}\)/);
-    assert.match(pdfSource, /wrap=\{false\}/);
-    assert.match(pdfSource, /ผู้รับเอกสาร/);
+    assert.match(certification, /wrap=\{false\}/);
   });
 
   it("repeats the ledger heading in normal flow on continuation pages", () => {

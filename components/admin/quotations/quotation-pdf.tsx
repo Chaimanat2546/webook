@@ -85,14 +85,22 @@ const styles = StyleSheet.create({
   paymentLogo: { height: 30, marginRight: 8, objectFit: "contain", width: 30 },
   paymentQr: { height: 78, marginLeft: 8, objectFit: "contain", width: 78 },
   notes: { minHeight: 36 },
-  publicQr: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 0.6, flexDirection: "row", paddingVertical: 8 },
-  publicQrImage: { height: 58, marginRight: 10, objectFit: "contain", width: 58 },
-  certification: { flexDirection: "row", paddingTop: 12 },
-  certificationSlot: { flexGrow: 1, flexBasis: 0, paddingHorizontal: 5, textAlign: "center" },
+  certification: { flexDirection: "row" },
+  certificationSlot: {
+    flexBasis: 0,
+    flexGrow: 1,
+    minWidth: 0,
+    paddingHorizontal: 3,
+    textAlign: "center",
+  },
+  certificationAssetBox: {
+    alignItems: "center",
+    height: 60,
+    justifyContent: "center",
+    marginBottom: 3,
+  },
   signatureBox: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 0.6, height: 60, justifyContent: "flex-end", marginBottom: 3 },
-  signature: { height: 48, objectFit: "contain", width: "100%" },
-  receiverLine: { borderBottomColor: colors.border, borderBottomWidth: 0.6, height: 16 },
-  stamp: { height: 48, marginLeft: "auto", marginRight: "auto", marginTop: 8, objectFit: "contain", width: 110 },
+  certificationImage: { height: 48, objectFit: "contain", width: "100%" },
   footer: { bottom: 16, color: colors.muted, fontSize: 7, left: 28.35, position: "absolute", right: 28.35, textAlign: "center" },
 });
 
@@ -238,10 +246,11 @@ function Signer({
     <View style={styles.certificationSlot}>
       <Text style={styles.bold}>{label}</Text>
       <View style={styles.signatureBox}>
-        {image(images, signer.signatureUrl) ? <PdfImage src={image(images, signer.signatureUrl)} style={styles.signature} /> : null}
+        {image(images, signer.signatureUrl) ? (
+          <PdfImage src={image(images, signer.signatureUrl)} style={styles.certificationImage} />
+        ) : null}
       </View>
       {signer.name ? <Text>({signer.name})</Text> : null}
-      {signer.position ? <Text>{signer.position}</Text> : null}
       <Text>วันที่ {issueDate}</Text>
     </View>
   );
@@ -354,30 +363,39 @@ function QuotationPdfDocument({
           <Text style={styles.grow}>{payload.publicNotes}</Text>
         </View>
 
-        <View>
-          {/* data-pdf-public-qr */}
-          {image(images, model.publicQrDataUrl) ? (
-            <View style={styles.publicQr} wrap={false}>
-              <PdfImage src={image(images, model.publicQrDataUrl)} style={styles.publicQrImage} />
-              <Text>สแกนเพื่อดูเอกสารออนไลน์</Text>
-            </View>
-          ) : null}
-
-          {/* data-pdf-certification */}
-          <View style={styles.certification} wrap={false}>
-            <Signer images={images} issueDate={model.issueDate} label="ผู้ออกเอกสาร" signer={model.certification.issuer} />
-            <Signer images={images} issueDate={model.issueDate} label="ผู้อนุมัติ" signer={model.certification.approver} />
+        {/* data-pdf-certification */}
+        <View style={[styles.section, styles.row]} wrap={false}>
+          <Text style={styles.sectionTitle}>รับรอง</Text>
+          <View style={[styles.grow, styles.certification]}>
+            {/* data-pdf-public-qr */}
             <View style={styles.certificationSlot}>
-              <Text style={styles.bold}>ผู้รับเอกสาร</Text>
+              <Text style={styles.bold}>สแกนเพื่อเปิดด้วยเว็บไซต์</Text>
+              <View style={styles.certificationAssetBox}>
+                {image(images, model.publicQrDataUrl) ? (
+                  <PdfImage src={image(images, model.publicQrDataUrl)} style={styles.certificationImage} />
+                ) : null}
+              </View>
+            </View>
+            <Signer images={images} issueDate={model.issueDate} label="ผู้ออกเอกสาร" signer={model.certification.issuer} />
+            <Signer images={images} issueDate={model.issueDate} label="ผู้อนุมัติเอกสาร" signer={model.certification.approver} />
+            <View style={styles.certificationSlot}>
+              <Text style={styles.bold}>ตราประทับ</Text>
+              <View style={styles.certificationAssetBox}>
+                {image(images, model.certification.companyStampUrl) ? (
+                  <PdfImage
+                    src={image(images, model.certification.companyStampUrl)}
+                    style={styles.certificationImage}
+                  />
+                ) : null}
+              </View>
+            </View>
+            <View style={styles.certificationSlot}>
+              <Text style={styles.bold}>ผู้รับเอกสาร (ลูกค้า)</Text>
               <View style={styles.signatureBox} />
-              <Text>ชื่อ ____________________</Text>
-              <Text>ตำแหน่ง __________________</Text>
+              <Text>{payload.customer.name}</Text>
               <Text>วันที่ ____________________</Text>
             </View>
           </View>
-          {image(images, model.certification.companyStampUrl) ? (
-            <PdfImage src={image(images, model.certification.companyStampUrl)} style={styles.stamp} />
-          ) : null}
         </View>
 
         <Text
