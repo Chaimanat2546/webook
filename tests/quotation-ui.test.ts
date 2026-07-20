@@ -509,6 +509,10 @@ describe("quotation UI", () => {
     assert.match(editPage, /notFound\(\)/);
     assert.match(createPage, /canUseQuotation\(adminUser\)/);
     assert.match(editPage, /canUseQuotation\(adminUser\)/);
+    assert.match(createPage, /const publicOrigin = getQuotationPublicOrigin\(\)/);
+    assert.match(editPage, /const publicOrigin = getQuotationPublicOrigin\(\)/);
+    assert.match(createPage, /publicOrigin=\{publicOrigin\}/);
+    assert.match(editPage, /publicOrigin=\{publicOrigin\}/);
   });
 
   it("copies only default account payment masters into new quotation snapshots", () => {

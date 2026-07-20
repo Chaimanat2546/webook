@@ -1171,13 +1171,16 @@ the company stamp near the first two slots without absolute overlap over text.
 
 - [ ] **Step 6: Generate QR in editor and Public page**
 
-In the editor, keep `publicQrDataUrl` state. Build the Public URL with
-`buildQuotationPublicUrl(window.location.origin, publicToken)` and use that
-same value for clipboard Share. An effect must set QR state to `""` when
-there is no token or the quotation is dirty; otherwise build the URL from
-`window.location.origin`, generate the QR, ignore stale effect completions, and
-show a toast only when generation fails. Pass it to current Preview and the
-saved Print portal. Before calling `window.print()`, wait for every image in
+In both admin server pages, read `getQuotationPublicOrigin()` and pass its
+nullable result to the editor. Keep `publicQrDataUrl` state and build both the
+QR destination and clipboard Share URL only with that server-provided origin.
+Never derive a bearer-token URL from the browser or request origin. An effect
+must set QR state to `""` when there is no configured origin, no token, or the
+quotation is dirty; otherwise generate the QR, ignore stale effect completions,
+and show a toast only when generation fails. Missing or invalid configuration
+must disable Share with a clear Thai explanation while Preview and Print remain
+available without a Public QR. Pass the QR to current Preview and the saved
+Print portal. Before calling `window.print()`, wait for every image in
 the mounted print portal to load or decode. Use a bounded 1.5 second fallback,
 and abort the wait when the print request becomes stale or the portal unmounts.
 
@@ -1213,7 +1216,7 @@ Expected: focused tests and typecheck PASS.
 - [ ] **Step 8: Commit Task 6**
 
 ```powershell
-git add -- lib/quotation-public-qr.ts lib/quotation-document-view.ts components/admin/quotations/document-image.tsx components/admin/quotations/quotation-document.tsx components/admin/quotations/quotation-editor.tsx app/q/[token]/page.tsx tests/quotation-public-qr.test.ts tests/quotation-public-share.test.ts tests/quotation-ui.test.ts
+git add -- .env.example lib/env.ts lib/quotation-public-qr.ts lib/quotation-print.ts lib/quotation-document-view.ts components/admin/quotations/document-image.tsx components/admin/quotations/quotation-document.tsx components/admin/quotations/quotation-editor.tsx app/admin/quotations/new/page.tsx app/admin/quotations/[id]/page.tsx app/q/[token]/page.tsx tests/env.test.ts tests/quotation-public-qr.test.ts tests/quotation-print.test.ts tests/quotation-public-share.test.ts tests/quotation-ui.test.ts docs/superpowers/plans/2026-07-20-quotation-pdf-public-qr-certification.md
 git commit -m "feat: add quotation Public QR and certification document"
 ```
 

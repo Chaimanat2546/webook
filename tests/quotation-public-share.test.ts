@@ -23,30 +23,42 @@ describe("quotation public share", () => {
 
   it("enables share only for a clean saved public token", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const createPage = source("../app/admin/quotations/new/page.tsx");
+    const editPage = source("../app/admin/quotations/[id]/page.tsx");
     assert.match(editor, /publicToken/);
+    assert.match(editor, /publicOrigin: string \| null/);
     assert.match(editor, /navigator\.clipboard\.writeText/);
-    assert.match(editor, /buildQuotationPublicUrl\(window\.location\.origin, publicToken\)/);
-    assert.match(editor, /documentNumber &&[\s\S]*lastSavedPayload &&[\s\S]*publicToken &&[\s\S]*!isDirty/);
+    assert.match(editor, /buildQuotationPublicUrl\(publicOrigin, publicToken\)/);
+    assert.doesNotMatch(editor, /window\.location\.origin/);
+    assert.match(editor, /documentNumber &&[\s\S]*lastSavedPayload &&[\s\S]*publicOrigin &&[\s\S]*publicToken &&[\s\S]*!isDirty/);
     assert.match(editor, /disabled=\{!canUseSavedDocument\}/);
+    assert.match(editor, /ยังไม่ได้ตั้งค่า URL สาธารณะสำหรับใบเสนอราคา/);
+    assert.match(editor, /aria-describedby=\{shareUnavailableMessage \? "quotation-share-unavailable" : undefined\}/);
+    assert.match(editor, /id="quotation-share-unavailable"[\s\S]*\{shareUnavailableMessage\}/);
     assert.match(editor, /data-document-actions/);
+    for (const page of [createPage, editPage]) {
+      assert.match(page, /getQuotationPublicOrigin\(\)/);
+      assert.match(page, /publicOrigin=\{publicOrigin\}/);
+      assert.doesNotMatch(page, /headers\(\)|window\.location\.origin|x-forwarded-host|get\("host"\)/);
+    }
   });
 
   it("keeps Public QR output scoped to a clean saved quotation", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const \[publicQrDataUrl, setPublicQrDataUrl\] = useState\(""\)/);
-    assert.match(editor, /if \(!publicToken \|\| isDirty\)[\s\S]*setPublicQrDataUrl\(""\)/);
+    assert.match(editor, /if \(!publicOrigin \|\| !publicToken \|\| isDirty\)[\s\S]*setPublicQrDataUrl\(""\)/);
     assert.match(editor, /createQuotationPublicQrDataUrl\(publicUrl\)/);
     assert.match(editor, /let stale = false/);
     assert.match(editor, /if \(stale\) return;[\s\S]*setPublicQrDataUrl/);
     assert.match(editor, /return \(\) => \{[\s\S]*stale = true/);
-    assert.match(editor, /const savedPublicQrDataUrl = !isDirty && publicToken && publicQrSettledToken === publicToken/);
+    assert.match(editor, /const savedPublicQrDataUrl = !isDirty && publicOrigin && publicToken && publicQrSettledToken === publicToken/);
     assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 2);
   });
 
   it("waits for a clean saved quotation QR before printing", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const \[publicQrSettledToken, setPublicQrSettledToken\] = useState\(""\)/);
-    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*publicQrSettledToken !== publicToken/);
+    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*publicOrigin &&[\s\S]*publicQrSettledToken !== publicToken/);
     assert.match(editor, /const canPrint = Boolean\([\s\S]*!publicQrPending/);
     assert.equal(editor.match(/setPublicQrSettledToken\(publicToken\)/g)?.length, 2);
   });

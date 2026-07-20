@@ -3,6 +3,7 @@ import Link from "next/link";
 import { QuotationEditor } from "../../../../components/admin/quotations/quotation-editor";
 import { Button } from "../../../../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../../../../components/ui/empty";
+import { getQuotationPublicOrigin } from "../../../../lib/env";
 import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin";
 import { companyProfileToCertification, companyProfileToSeller, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks } from "../../../../server/repositories/quotations";
 import { emptyQuotationPayload } from "../../../../server/services/quotations";
@@ -30,5 +31,6 @@ export default async function NewQuotationPage() {
     Reflect.deleteProperty(snapshot, "isDefault");
     return { ...snapshot, id: crypto.randomUUID(), position: index + 1 };
   });
-  return <QuotationEditor banks={banks} documentNumber={null} initialPayload={initialPayload} publicToken={null} />;
+  const publicOrigin = getQuotationPublicOrigin();
+  return <QuotationEditor banks={banks} documentNumber={null} initialPayload={initialPayload} publicOrigin={publicOrigin} publicToken={null} />;
 }

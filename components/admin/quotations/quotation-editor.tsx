@@ -87,6 +87,7 @@ export interface QuotationEditorProps {
   documentNumber: string | null;
   initialPayload: QuotationPayload;
   printOnLoad?: boolean;
+  publicOrigin: string | null;
   publicToken: string | null;
 }
 type FieldProps = {
@@ -631,6 +632,7 @@ export function QuotationEditor({
   documentNumber: initialDocumentNumber,
   initialPayload,
   printOnLoad = false,
+  publicOrigin,
   publicToken: initialPublicToken,
 }: QuotationEditorProps) {
   const router = useRouter();
@@ -664,16 +666,20 @@ export function QuotationEditor({
   const [isPrinting, setIsPrinting] = useState(false);
   const autoPrintStarted = useRef(false);
   const canUseSavedDocument = Boolean(
-    documentNumber &&
+      documentNumber &&
       lastSavedPayload &&
+      publicOrigin &&
       publicToken &&
       !isDirty &&
       !isPending,
   );
+  const shareUnavailableMessage = !publicOrigin
+    ? "ยังไม่ได้ตั้งค่า URL สาธารณะสำหรับใบเสนอราคา"
+    : "";
   const publicQrPending = Boolean(
-    publicToken && !isDirty && publicQrSettledToken !== publicToken,
+    publicOrigin && publicToken && !isDirty && publicQrSettledToken !== publicToken,
   );
-  const savedPublicQrDataUrl = !isDirty && publicToken && publicQrSettledToken === publicToken
+  const savedPublicQrDataUrl = !isDirty && publicOrigin && publicToken && publicQrSettledToken === publicToken
     ? publicQrDataUrl
     : "";
   const canPrint = Boolean(
@@ -1002,7 +1008,7 @@ export function QuotationEditor({
   }, [canPrint, printOnLoad, printSaved]);
   useEffect(() => {
     let stale = false;
-    if (!publicToken || isDirty) {
+    if (!publicOrigin || !publicToken || isDirty) {
       queueMicrotask(() => {
         if (stale) return;
         setPublicQrDataUrl("");
@@ -1013,7 +1019,7 @@ export function QuotationEditor({
       };
     }
 
-    const publicUrl = buildQuotationPublicUrl(window.location.origin, publicToken);
+    const publicUrl = buildQuotationPublicUrl(publicOrigin, publicToken);
     createQuotationPublicQrDataUrl(publicUrl)
       .then((value) => {
         if (stale) return;
@@ -1029,7 +1035,7 @@ export function QuotationEditor({
     return () => {
       stale = true;
     };
-  }, [isDirty, publicToken]);
+  }, [isDirty, publicOrigin, publicToken]);
   useEffect(() => {
     if (!isDirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -1044,9 +1050,9 @@ export function QuotationEditor({
       router.push("/admin/quotations");
   }
   async function shareSaved() {
-    if (!canUseSavedDocument || !publicToken) return;
+    if (!canUseSavedDocument || !publicOrigin || !publicToken) return;
     try {
-      await navigator.clipboard.writeText(buildQuotationPublicUrl(window.location.origin, publicToken));
+      await navigator.clipboard.writeText(buildQuotationPublicUrl(publicOrigin, publicToken));
       toast.success("คัดลอกลิงก์สาธารณะแล้ว");
     } catch {
       toast.error("ไม่สามารถคัดลอกลิงก์ได้");
@@ -1169,10 +1175,11 @@ export function QuotationEditor({
           data-document-actions
         >
           <Button
+            aria-describedby={shareUnavailableMessage ? "quotation-share-unavailable" : undefined}
             disabled={!canUseSavedDocument}
             onClick={shareSaved}
             size="sm"
-            title={documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined}
+            title={shareUnavailableMessage || (documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined)}
             type="button"
             variant="outline"
           >
@@ -1199,6 +1206,11 @@ export function QuotationEditor({
             <Download aria-hidden="true" className="size-4" />
             ดาวน์โหลด
           </Button>
+          {shareUnavailableMessage ? (
+            <p className="basis-full text-xs text-destructive" id="quotation-share-unavailable">
+              {shareUnavailableMessage}
+            </p>
+          ) : null}
           <DocumentMore
             deleteEnabled={Boolean(payload.id)}
             onClose={closeEditor}
