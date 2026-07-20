@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { validateQuotationPaymentAssetFile } from "../../../lib/quotation-assets";
 import { Button } from "../../ui/button";
@@ -11,6 +11,7 @@ export interface QuotationPngImageInputProps {
   error?: string;
   field: string;
   label: string;
+  onBusyChange?: (busy: boolean) => void;
   onChange: (file: File) => Promise<void> | void;
   onRemove?: () => void;
   value?: string;
@@ -35,10 +36,11 @@ export async function normalizeQuotationPngImage(file: File): Promise<File> {
   }
 }
 
-export function QuotationPngImageInput({ disabled, error: serverError = "", field, label, onChange, onRemove, value = "" }: QuotationPngImageInputProps) {
+export function QuotationPngImageInput({ disabled, error: serverError = "", field, label, onBusyChange, onChange, onRemove, value = "" }: QuotationPngImageInputProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const displayedUrl = previewUrl || value;
   const message = serverError || error;
   const inputId = field.replaceAll(".", "-");
@@ -52,6 +54,7 @@ export function QuotationPngImageInput({ disabled, error: serverError = "", fiel
     if (!file) return;
     setError("");
     setLoading(true);
+    onBusyChange?.(true);
     try {
       const normalized = await normalizeQuotationPngImage(file);
       await onChange(normalized);
@@ -60,18 +63,20 @@ export function QuotationPngImageInput({ disabled, error: serverError = "", fiel
       setError(cause instanceof Error ? cause.message : "ไม่สามารถเตรียมรูปภาพได้");
     } finally {
       setLoading(false);
+      onBusyChange?.(false);
     }
   }
 
   function remove() {
     setError("");
     setPreviewUrl("");
+    if (inputRef.current) inputRef.current.value = "";
     onRemove?.();
   }
 
   return <div className="grid min-w-0 gap-2 text-sm">
     <Label htmlFor={inputId}>{label}</Label>
-    <input accept="image/png,image/jpeg,image/webp" aria-describedby={message ? errorId : undefined} aria-invalid={Boolean(message)} className="w-full min-w-0 max-w-full" data-field={field} disabled={disabled || loading} id={inputId} onChange={(event) => select(event.target.files?.[0] ?? null)} type="file" />
+    <input accept="image/png,image/jpeg,image/webp" aria-describedby={message ? errorId : undefined} aria-invalid={Boolean(message)} className="w-full min-w-0 max-w-full" data-field={field} disabled={disabled || loading} id={inputId} onChange={(event) => select(event.target.files?.[0] ?? null)} ref={inputRef} type="file" />
     {displayedUrl ? <div className="flex flex-wrap items-start gap-3">
       {/* eslint-disable-next-line @next/next/no-img-element -- Blob and validated asset URLs need a direct preview. */}
       <img alt={`ตัวอย่าง${label}`} className="max-h-40 max-w-full rounded-md border object-contain" src={displayedUrl} />

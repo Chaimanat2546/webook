@@ -18,6 +18,14 @@ export function emptyCertificationSnapshot(): CertificationSnapshot {
   };
 }
 
+export function updateCertificationSigner(
+  current: CertificationSnapshot,
+  signer: "approver" | "issuer",
+  patch: Partial<CertificationSigner>,
+): CertificationSnapshot {
+  return { ...current, [signer]: { ...current[signer], ...patch } };
+}
+
 const nullable = (value: string) => value || null;
 
 export function certificationSnapshotToJson(snapshot: CertificationSnapshot) {

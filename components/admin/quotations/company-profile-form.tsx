@@ -161,9 +161,11 @@ export function CertificationSettings({ initialCertification }: { initialCertifi
   const [certification, setCertification] = useState(initialCertification);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
+  const [uploadingFields, setUploadingFields] = useState(new Set<string>());
   const [pending, startTransition] = useTransition();
 
   function save() {
+    if (uploadingFields.size) return;
     setErrors({});
     setMessage("");
     startTransition(async () => {
@@ -176,12 +178,21 @@ export function CertificationSettings({ initialCertification }: { initialCertifi
     });
   }
 
+  function updateUploadState(field: string, busy: boolean) {
+    setUploadingFields((current) => {
+      const next = new Set(current);
+      if (busy) next.add(field);
+      else next.delete(field);
+      return next;
+    });
+  }
+
   return <Card>
     <CardHeader><CardTitle>ข้อมูลรับรองหลัก</CardTitle></CardHeader>
     <CardContent className="grid gap-4">
-      <CertificationFields disabled={pending} errors={errors} onChange={setCertification} value={certification} />
+      <CertificationFields disabled={pending} errors={errors} onChange={setCertification} onUploadStateChange={updateUploadState} value={certification} />
       <p aria-live="polite" className={Object.keys(errors).length ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>{message}</p>
-      <Button disabled={pending} onClick={save} type="button">{pending ? "กำลังบันทึก..." : "บันทึกข้อมูลรับรอง"}</Button>
+      <Button disabled={pending || uploadingFields.size > 0} onClick={save} type="button">{pending ? "กำลังบันทึก..." : uploadingFields.size ? "กำลังอัปโหลดรูป..." : "บันทึกข้อมูลรับรอง"}</Button>
     </CardContent>
   </Card>;
 }

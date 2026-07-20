@@ -19,11 +19,15 @@ export default async function CompanyProfilePage({ searchParams }: { searchParam
   const selectedSection = section === "payments" || section === "certification" ? section : "company";
   const { adminUser, supabase, user } = await requireAdmin();
   if (!canUseQuotation(adminUser)) return <Empty><EmptyHeader><EmptyTitle>ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ขาย</EmptyTitle></EmptyHeader></Empty>;
-  const [profile, banks, paymentMethods] = await Promise.all([
-    getQuotationCompanyProfile(supabase, user.id),
-    listQuotationBanks(supabase),
-    listCompanyPaymentMethods(supabase, user.id),
-  ]);
+  const profile = selectedSection === "payments"
+    ? null
+    : await getQuotationCompanyProfile(supabase, user.id);
+  const [banks, paymentMethods] = selectedSection === "payments"
+    ? await Promise.all([
+        listQuotationBanks(supabase),
+        listCompanyPaymentMethods(supabase, user.id),
+      ])
+    : [[], []];
   const seller = profile ? companyProfileToSeller(profile) : {
     address: "", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "", officeType: "head_office" as const, phone: "", taxId: "", website: "",
   };

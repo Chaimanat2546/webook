@@ -106,6 +106,21 @@ describe("quotation UI", () => {
     assert.ok(imageInput.indexOf("await onChange(normalized)") < imageInput.indexOf("setPreviewUrl(URL.createObjectURL(normalized))"));
     assert.match(imageInput, /onRemove \? <Button/);
     assert.match(fields, /throw new Error\(message\)/);
+    assert.match(fields, /onChange\(\(current\) => updateCertificationSigner/);
+    assert.match(fields, /onUploadStateChange\?\.\(field, busy\)/);
+    assert.match(form, /const \[uploadingFields, setUploadingFields\] = useState\(new Set<string>\(\)\)/);
+    assert.match(form, /if \(uploadingFields\.size\) return/);
+    assert.match(form, /disabled=\{pending \|\| uploadingFields\.size > 0\}/);
+    assert.match(imageInput, /onBusyChange\?\.\(true\)/);
+    assert.match(imageInput, /onBusyChange\?\.\(false\)/);
+    assert.match(imageInput, /inputRef\.current\.value = ""/);
+  });
+
+  it("loads only the data needed by the selected seller settings section", () => {
+    const page = source("../app/admin/quotations/settings/company/page.tsx");
+
+    assert.match(page, /const profile = selectedSection === "payments"\s*\? null\s*: await getQuotationCompanyProfile\(supabase, user\.id\)/);
+    assert.match(page, /selectedSection === "payments"\s*\? await Promise\.all\(\[\s*listQuotationBanks\(supabase\),\s*listCompanyPaymentMethods\(supabase, user\.id\),?\s*\]\)/);
   });
 
   it("uses clear Thai seller copy and previews a selected logo before save", () => {

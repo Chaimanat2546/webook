@@ -4,6 +4,8 @@ import { describe, it } from "node:test";
 import {
   certificationSnapshotToJson,
   emptyCertificationSnapshot,
+  updateCertificationSigner,
+  type CertificationSnapshot,
 } from "../lib/quotation-certification.ts";
 import {
   prepareQuotationPayload,
@@ -59,5 +61,14 @@ describe("quotation certification", () => {
       (error) => error instanceof QuotationValidationError
         && error.fieldErrors["certification.issuer.name"] === "ข้อมูลยาวเกินกำหนด",
     );
+  });
+
+  it("applies a completed upload to the latest signer state", () => {
+    const uploadCompletion = (current: CertificationSnapshot) => updateCertificationSigner(current, "issuer", { signatureUrl: "https://media.example/signature.png" });
+    const editedWhileUploading = updateCertificationSigner(emptyCertificationSnapshot(), "issuer", { name: "แก้ไขล่าสุด" });
+    const completed = uploadCompletion(editedWhileUploading);
+
+    assert.equal(completed.issuer.name, "แก้ไขล่าสุด");
+    assert.equal(completed.issuer.signatureUrl, "https://media.example/signature.png");
   });
 });
