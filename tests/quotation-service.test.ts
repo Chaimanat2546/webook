@@ -5,6 +5,7 @@ import {
   addQuotationCalendarDays,
   getBangkokCalendarDate,
 } from "../lib/quotation-dates.ts";
+import { emptyCertificationSnapshot } from "../lib/quotation-certification.ts";
 import {
   prepareQuotationPayload,
   prepareSellerSnapshot,
@@ -15,6 +16,7 @@ import type { QuotationPayload } from "../lib/quotation-types.ts";
 
 function validPayload(): QuotationPayload {
   return {
+    certification: emptyCertificationSnapshot(),
     customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "" },
     id: null,
     internalNotes: "",
@@ -142,6 +144,7 @@ describe("quotation service", () => {
     assert.equal(payload.items[0]!.discountAmount, "0");
     assert.equal(payload.items[0]!.vatTreatment, "none");
     assert.equal(payload.items[0]!.vatRate, "0");
+    assert.deepEqual(payload.certification, emptyCertificationSnapshot());
   });
 
   it("accepts only a fixed item discount not above gross", () => {

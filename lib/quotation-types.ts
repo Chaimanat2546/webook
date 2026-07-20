@@ -1,4 +1,5 @@
 import type { QuotationItemInput } from "./quotation-calculator.ts";
+import type { CertificationSnapshot } from "./quotation-certification.ts";
 import type { QuotationPaymentMethod } from "./quotation-payment-methods.ts";
 
 export type OfficeType = "branch" | "head_office";
@@ -27,6 +28,7 @@ export interface CustomerSnapshot {
 }
 
 export interface QuotationPayload {
+  certification: CertificationSnapshot;
   customer: CustomerSnapshot;
   id: string | null;
   internalNotes: string;
