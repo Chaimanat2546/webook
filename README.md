@@ -20,11 +20,12 @@ Quotation management is an explicitly added admin module. Users need
 - `/admin/quotations` — list, search, print, and soft delete
 - `/admin/quotations/new` — create from the current seller profile
 - `/admin/quotations/[id]` — edit a saved quotation
-- `/admin/quotations/settings/company` — manage the seller profile
+- `/admin/quotations/settings/company` — manage seller, payment, and certification masters
 
-Preview uses the current draft; browser print and Share use the latest saved
-quotation. Share is available only after saving at `/q/[token]` and excludes
-internal notes.
+Preview uses the current draft; browser print uses the latest save; Share and
+PDF Download require a saved-clean quotation. Public Share is available at
+`/q/[token]`, excludes internal notes, and uses `QUOTATION_PUBLIC_ORIGIN` for
+canonical QR/link generation.
 See [quotation management](docs/quotation-management.md) for behavior and
 verification details.
 
@@ -113,6 +114,8 @@ NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=PASTE_LOCAL_ANON_KEY
 # Server-side only. Required for username sign-in lookup.
 SUPABASE_SERVICE_ROLE_KEY=PASTE_LOCAL_SERVICE_ROLE_KEY
+# Canonical bare HTTPS origin for quotation Public links and QR codes.
+QUOTATION_PUBLIC_ORIGIN=
 # Shared media Worker for advertisements and new house images.
 ADVERTISEMENT_IMAGE_WORKER_URL=
 ADVERTISEMENT_IMAGE_WORKER_SECRET=

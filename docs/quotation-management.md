@@ -3,8 +3,8 @@
 ## Scope And Ownership
 
 Authenticated admins with `allow_tools.allow_quotation = true` can manage
-their own seller profile, reusable payment methods, and quotations. Every
-seller profile, payment master, and quotation is linked to the current
+their own seller profile, reusable payment methods, optional certification
+master, and quotations. Every seller profile, payment master, and quotation is linked to the current
 Supabase Auth user. RLS combines that ownership check with the existing
 quotation permission, so one account cannot read or change another account's
 data.
@@ -19,13 +19,16 @@ history.
 - `/admin/quotations` - list, search, print, and soft-delete owned quotations
 - `/admin/quotations/new` - create from the current user's seller and default payment masters
 - `/admin/quotations/[id]` - edit saved seller and payment snapshots
-- `/admin/quotations/settings/company` - manage the current user's seller profile and payment masters
+- `/admin/quotations/settings/company` - manage the current user's seller profile, payment masters, and certification master
 - `/q/[token]` - no-login, token-scoped public view of the latest saved quotation
 
 ## Master And Snapshot Rules
 
-- Each account has one seller profile and an ordered reusable payment list.
+- Each account has one seller profile, an ordered reusable payment list, and
+  optional issuer, approver, signature, and company-stamp certification data.
 - New quotations copy default payment masters into editable quotation rows.
+- New quotations copy the certification master once into an editable document
+  snapshot. Existing quotations never merge later master changes.
 - Saving atomically stores seller, customer, item, and ordered payment
   snapshots. A quotation may have no payment methods.
 - Editing a master never changes an existing quotation. Deleting a master
@@ -37,9 +40,8 @@ history.
 - Edit reload matches a saved built-in bank code to the current catalogue only
   to restore its selector ID. It preserves the saved name/logo, and falls back
   to an other-bank snapshot if that catalogue entry no longer exists.
-- Preview, Print, and Public Read-only share `QuotationDocument` and use only
-  the latest successful save. Unsaved editor changes are not shared or
-  printed.
+- Preview shows the current local draft. Print uses the latest successful save.
+  Share and PDF Download require a saved document with no unsaved changes.
 - Public Read-only never exposes internal notes. It intentionally displays
   full saved bank-account and PromptPay identifiers.
 - Public payment JSON contains only fields relevant to each saved payment type,
@@ -112,7 +114,33 @@ Payment assets must use the exact configured Media Worker HTTPS origin and
 `ADVERTISEMENT_IMAGE_WORKER_URL`; only database owner/service role can change
 it. Upload failure preserves the previous saved asset and snapshot.
 
+Certification signatures and company stamps follow the same 2 MB PNG
+normalization boundary under `/quotations/certification-assets/<uuid>.png`.
+Failed optional document images are omitted without breaking Preview, Public,
+Print, or PDF; the Public QR remains required for PDF Download.
+
+## Certification, Public Share, And PDF
+
+- Payment and certification overrides are edited in tabs below document notes;
+  payment is the default tab and tab switches preserve unsaved state.
+- The receiver slot stays blank for manual name, position, date, and signature.
+- `/q/[token]` is a bearer-style, no-login, read-only link. It shows only the
+  latest save, excludes internal notes, and returns no document after soft delete.
+- Set `QUOTATION_PUBLIC_ORIGIN` to the canonical bare HTTPS origin. Share and
+  Public QR generation never trust request or browser Host values; missing or
+  invalid configuration disables Share and omits QR while Preview/Print remain usable.
+- PDF Download uses the latest saved snapshot, bundled Noto Sans Thai fonts,
+  comma-formatted money, repeated item headings, page-safe long text, payments,
+  notes, Public QR, stamp, and three signing slots.
+- Link expiry, passwords, token rotation, e-signing, approval workflow, and
+  orphaned-asset garbage collection remain outside this MVP.
+
 ## Migration And Validation
+
+Migration `20260720120000_quotation_pdf_qr_certification.sql` adds the
+account-owned certification master, per-quotation JSON snapshot, validated
+owner-scoped save RPC, trusted certification asset rules, and Public snapshot
+output. Apply it before opening the new settings/editor routes.
 
 Migration `20260718090000_quotation_user_payment_methods.sql` performs the
 account-ownership upgrade without resetting quotation data. It preserves
@@ -150,7 +178,7 @@ built-in bank metadata comes from the catalogue, and custom banks are stored as
 ## Verification
 
 Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`.
-Inspect Preview, Print, and Public Read-only at 390, 768, 1280, and 1536 px,
+Inspect Preview, Print, PDF, and Public Read-only at 390, 768, 1280, and 1536 px,
 including long text, multiple reordered methods, missing images, uploaded QR,
 and automatic PromptPay QR. Confirm print output has no blank page, clipping,
 horizontal overflow, or avoidable split payment row.
@@ -161,8 +189,9 @@ checks do not replace this acceptance step.
 
 ### Seller Settings Navigation
 
-`/admin/quotations/settings/company` has two URL-driven sections:
-`?section=company` for the seller profile and `?section=payments` for master
-payment methods. The seller form previews a selected logo locally before save.
+`/admin/quotations/settings/company` has three URL-driven sections:
+`?section=company` for the seller profile, `?section=payments` for master
+payment methods, and `?section=certification` for issuer, approver, signatures,
+and company stamp. Image fields preview a selected file locally before save.
 Master bank notes remain editable; the per-quotation bank-transfer editor hides
 that field without deleting a previously saved value.
