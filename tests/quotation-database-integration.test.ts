@@ -98,9 +98,14 @@ describe("quotation local database integration", { skip: !enabled }, () => {
   let otherAllowedId = "";
   let allowedProfileId = "";
   let otherAllowedProfileId = "";
+  let originalAssetOrigin: string | null = null;
 
   before(async () => {
     assert.ok(url && anonKey && serviceRoleKey, "local Supabase environment is required");
+    originalAssetOrigin = execFileSync("docker", [
+      "exec", "supabase_db_webook", "psql", "-U", "postgres", "-d", "postgres", "-Atqc",
+      "select coalesce((select origin from private.quotation_payment_asset_config where singleton), '');",
+    ], { encoding: "utf8" }).trim() || null;
     const allowedEmail = `quotation-allowed-${crypto.randomUUID()}@example.test`;
     const deniedEmail = `quotation-denied-${crypto.randomUUID()}@example.test`;
     const otherAllowedEmail = `quotation-other-allowed-${crypto.randomUUID()}@example.test`;
@@ -137,6 +142,10 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     if (allowedId) await service.auth.admin.deleteUser(allowedId);
     if (deniedId) await service.auth.admin.deleteUser(deniedId);
     if (otherAllowedId) await service.auth.admin.deleteUser(otherAllowedId);
+    const restoredAssetOrigin = await service.rpc("configure_quotation_payment_asset_origin", {
+      p_origin: originalAssetOrigin,
+    });
+    assert.equal(restoredAssetOrigin.error, null, restoredAssetOrigin.error?.message);
   });
 
   it("enforces permission, atomic daily numbers, edit stability, and soft delete", async () => {
