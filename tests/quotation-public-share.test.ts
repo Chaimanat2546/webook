@@ -16,12 +16,13 @@ describe("quotation public share", () => {
     assert.doesNotMatch(page, /requireAdmin|canUseQuotation/);
   });
 
-  it("enables share only for a saved public token", () => {
+  it("enables share only for a clean saved public token", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /publicToken/);
     assert.match(editor, /navigator\.clipboard\.writeText/);
     assert.match(editor, /\/q\/\$\{publicToken\}/);
-    assert.match(editor, /disabled=\{!publicToken/);
+    assert.match(editor, /documentNumber &&[\s\S]*lastSavedPayload &&[\s\S]*publicToken &&[\s\S]*!isDirty/);
+    assert.match(editor, /disabled=\{!canUseSavedDocument\}/);
     assert.match(editor, /data-document-actions/);
   });
 

@@ -115,11 +115,15 @@ export function prepareSellerSnapshot(value: unknown): SellerSnapshot {
   return seller;
 }
 
-export function emptyQuotationPayload(seller: SellerSnapshot, now: Date): QuotationPayload {
+export function emptyQuotationPayload(
+  seller: SellerSnapshot,
+  now: Date,
+  certification = emptyCertificationSnapshot(),
+): QuotationPayload {
   const issueDate = getBangkokCalendarDate(now);
   const validityDays = "15";
   return {
-    certification: emptyCertificationSnapshot(),
+    certification,
     customer: { address: "", branchNumber: "", name: "", officeType: "head_office", taxId: "" },
     id: null, internalNotes: "", issueDate,
     items: [{ description: "", discountAmount: "0", id: crypto.randomUUID(), name: "", position: 1, quantity: "1", unit: "", unitPrice: "0.00", vatRate: "0", vatTreatment: "none" }],

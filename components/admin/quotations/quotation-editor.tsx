@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -72,6 +73,7 @@ import {
 } from "../../ui/dropdown-menu";
 import { Input } from "../../ui/input";
 import { Textarea } from "../../ui/textarea";
+import { CertificationFields } from "./certification-fields";
 import { QuotationDocument } from "./quotation-document";
 import { PaymentMethodList } from "./payment-method-list";
 
@@ -305,20 +307,20 @@ function itemGrid(showItemDiscount: boolean, showItemVat: boolean) {
 }
 function DocumentMore({
   deleteEnabled,
-  isPending,
   onClose,
   onDelete,
   onPreview,
   onSave,
   previewEnabled,
+  saveDisabled,
 }: {
   deleteEnabled: boolean;
-  isPending: boolean;
   onClose: () => void;
   onDelete: () => void;
   onPreview: () => void;
   onSave: () => void;
   previewEnabled: boolean;
+  saveDisabled: boolean;
 }) {
   return (
     <DropdownMenu>
@@ -333,7 +335,7 @@ function DocumentMore({
           <Eye aria-hidden="true" className="size-4" />
           ดูตัวอย่าง
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={isPending} onSelect={onSave}>
+        <DropdownMenuItem disabled={saveDisabled} onSelect={onSave}>
           <Save aria-hidden="true" className="size-4" />
           บันทึก
         </DropdownMenuItem>
@@ -633,6 +635,10 @@ export function QuotationEditor({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [isDirty, setIsDirty] = useState(false);
+  const [activeCompletionTab, setActiveCompletionTab] = useState<
+    "certification" | "payments"
+  >("payments");
+  const [uploadingFields, setUploadingFields] = useState(new Set<string>());
   const [showItemDiscount, setShowItemDiscount] = useState(() =>
     initialPayload.items.some((item) => Number(item.discountAmount) > 0),
   );
@@ -650,8 +656,14 @@ export function QuotationEditor({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const autoPrintStarted = useRef(false);
-  const canUseSavedDocument = Boolean(documentNumber && lastSavedPayload && !isPending);
-  const canPrint = canUseSavedDocument;
+  const canUseSavedDocument = Boolean(
+    documentNumber &&
+      lastSavedPayload &&
+      publicToken &&
+      !isDirty &&
+      !isPending,
+  );
+  const canPrint = Boolean(documentNumber && lastSavedPayload && !isPending);
   const calculationResult = useMemo(() => {
     try {
       return { calculation: calculateQuotation(payload), calculationError: "" };
@@ -684,6 +696,24 @@ export function QuotationEditor({
   ) {
     changed(String(key));
     setPayload((current) => ({ ...current, [key]: value }));
+  }
+  function updateCertification(
+    value: SetStateAction<QuotationPayload["certification"]>,
+  ) {
+    changed("certification");
+    setPayload((current) => ({
+      ...current,
+      certification:
+        typeof value === "function" ? value(current.certification) : value,
+    }));
+  }
+  function updateUploadState(field: string, busy: boolean) {
+    setUploadingFields((current) => {
+      const next = new Set(current);
+      if (busy) next.add(field);
+      else next.delete(field);
+      return next;
+    });
   }
   function toggleItemDiscount(enabled: boolean) {
     if (
@@ -879,6 +909,7 @@ export function QuotationEditor({
     )
     .map(([field, message]) => ({ field, message }));
   function save(close = false) {
+    if (uploadingFields.size) return;
     setFormError("");
     startTransition(async () => {
       const result = await saveQuotationAction(payload);
@@ -886,6 +917,8 @@ export function QuotationEditor({
         setFieldErrors(result.fieldErrors);
         setFormError(result.formError);
         const firstField = Object.keys(result.fieldErrors)[0];
+        if (firstField?.startsWith("certification.")) setActiveCompletionTab("certification");
+        if (firstField?.startsWith("paymentMethods")) setActiveCompletionTab("payments");
         if (firstField) requestAnimationFrame(() => focusField(firstField));
         return;
       }
@@ -1005,7 +1038,7 @@ export function QuotationEditor({
           <Button onClick={closeEditor} type="button" variant="outline">
             ปิด
           </Button>
-          <Button disabled={isPending} onClick={() => save()} type="button">
+          <Button disabled={isPending || uploadingFields.size > 0} onClick={() => save()} type="button">
             {isPending ? "กำลังบันทึก" : "บันทึก"}
           </Button>
         </div>
@@ -1080,9 +1113,10 @@ export function QuotationEditor({
           data-document-actions
         >
           <Button
-            disabled={!publicToken || !canUseSavedDocument}
+            disabled={!canUseSavedDocument}
             onClick={shareSaved}
             size="sm"
+            title={documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined}
             type="button"
             variant="outline"
           >
@@ -1102,7 +1136,7 @@ export function QuotationEditor({
           <Button
             disabled
             size="sm"
-            title="ยังไม่รองรับใน MVP นี้"
+            title={documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined}
             type="button"
             variant="outline"
           >
@@ -1111,12 +1145,12 @@ export function QuotationEditor({
           </Button>
           <DocumentMore
             deleteEnabled={Boolean(payload.id)}
-            isPending={isPending}
             onClose={closeEditor}
             onDelete={() => setDeleteOpen(true)}
             onPreview={() => setPreviewOpen(true)}
             onSave={() => save()}
-            previewEnabled={canUseSavedDocument}
+            previewEnabled={Boolean(calculation)}
+            saveDisabled={isPending || uploadingFields.size > 0}
           />
         </div>
       </section>
@@ -1436,36 +1470,14 @@ export function QuotationEditor({
           เพิ่มรายการ
         </Button>
       </section>
-      <section
-        className="space-y-3 border-t border-foreground/35 pt-2"
-        data-payment-methods
-      >
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">04 ช่องทางชำระเงิน</h2>
-          <Button
-            disabled={!paymentListState.canAdd}
-            onClick={addPaymentMethod}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            เพิ่มช่องทางชำระเงิน
-          </Button>
-        </div>
-        <PaymentMethodList
-          banks={banks}
-          errors={fieldErrors}
-          methods={payload.paymentMethods}
-          mode="quotation"
-          onChange={(paymentMethods) => updateRoot("paymentMethods", paymentMethods)}
-          showAddButton={false}
-        />
-      </section>
       <div
         data-workbench-completion
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]"
       >
-        <section data-notes-grid className="grid gap-4 lg:grid-cols-2">
+        <section
+          data-notes-grid
+          className="grid gap-4 lg:col-start-1 lg:row-start-1 lg:grid-cols-2"
+        >
           <div data-public-notes>
             <Field
               error={fieldErrors.publicNotes}
@@ -1506,7 +1518,7 @@ export function QuotationEditor({
         </section>
         <section
           data-quotation-totals
-          className="space-y-2 border-t-2 border-foreground pt-3"
+          className="space-y-2 border-t-2 border-foreground pt-3 lg:col-start-2 lg:row-span-2 lg:row-start-1"
         >
           <Totals
             label="รวมก่อนส่วนลด"
@@ -1556,17 +1568,111 @@ export function QuotationEditor({
             {calculation ? formatThaiBahtText(calculation.amountDue) : "—"}
           </p>
         </section>
+        <section
+          className="min-w-0 lg:col-start-1 lg:row-start-2"
+          data-completion-tabs
+        >
+          <div
+            aria-label="ข้อมูลท้ายใบเสนอราคา"
+            className="flex gap-5 border-b"
+            role="tablist"
+          >
+            <button
+              aria-controls="quotation-completion-panel"
+              aria-selected={activeCompletionTab === "payments"}
+              className={cn(
+                "border-b-2 px-1 py-2 text-sm font-medium",
+                activeCompletionTab === "payments"
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground",
+              )}
+              id="quotation-payments-tab"
+              onClick={() => setActiveCompletionTab("payments")}
+              role="tab"
+              type="button"
+            >
+              ช่องทางชำระเงิน
+            </button>
+            <button
+              aria-controls="quotation-completion-panel"
+              aria-selected={activeCompletionTab === "certification"}
+              className={cn(
+                "border-b-2 px-1 py-2 text-sm font-medium",
+                activeCompletionTab === "certification"
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground",
+              )}
+              id="quotation-certification-tab"
+              onClick={() => setActiveCompletionTab("certification")}
+              role="tab"
+              type="button"
+            >
+              การรับรอง
+            </button>
+          </div>
+          <div
+            aria-labelledby={
+              activeCompletionTab === "payments"
+                ? "quotation-payments-tab"
+                : "quotation-certification-tab"
+            }
+            className="pt-4"
+            id="quotation-completion-panel"
+            role="tabpanel"
+          >
+            <div
+              className="grid gap-3"
+              data-payment-methods
+              hidden={activeCompletionTab !== "payments"}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium">ช่องทางชำระเงิน</span>
+                <Button
+                  disabled={!paymentListState.canAdd}
+                  onClick={addPaymentMethod}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  เพิ่มช่องทางชำระเงิน
+                </Button>
+              </div>
+              <PaymentMethodList
+                banks={banks}
+                errors={fieldErrors}
+                methods={payload.paymentMethods}
+                mode="quotation"
+                onChange={(paymentMethods) =>
+                  updateRoot("paymentMethods", paymentMethods)
+                }
+                showAddButton={false}
+              />
+            </div>
+            <div
+              data-certification-fields
+              hidden={activeCompletionTab !== "certification"}
+            >
+              <CertificationFields
+                disabled={isPending}
+                errors={fieldErrors}
+                onChange={updateCertification}
+                onUploadStateChange={updateUploadState}
+                value={payload.certification}
+              />
+            </div>
+          </div>
+        </section>
       </div>
       <Dialog onOpenChange={setPreviewOpen} open={previewOpen}>
         <DialogContent
           className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-auto p-0 sm:max-w-[calc(100vw-4rem)]"
           showCloseButton
         >
-          {lastSavedPayload && savedCalculation ? (
+          {calculation ? (
             <QuotationDocument
-              calculation={savedCalculation}
+              calculation={calculation}
               documentNumber={documentNumber}
-              payload={lastSavedPayload}
+              payload={payload}
             />
           ) : (
             <p className="p-4">กรุณาแก้ไขข้อมูลก่อนดูตัวอย่าง</p>

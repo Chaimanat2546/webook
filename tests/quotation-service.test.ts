@@ -147,6 +147,22 @@ describe("quotation service", () => {
     assert.deepEqual(payload.certification, emptyCertificationSnapshot());
   });
 
+  it("copies an explicit certification snapshot into a new quotation", () => {
+    const certification = {
+      approver: { name: "Approver", position: "Director", signatureUrl: "" },
+      companyStampUrl: "",
+      issuer: { name: "Issuer", position: "Sales", signatureUrl: "" },
+    };
+
+    const payload = emptyQuotationPayload(
+      validPayload().seller,
+      new Date("2026-07-13T18:00:00.000Z"),
+      certification,
+    );
+
+    assert.deepEqual(payload.certification, certification);
+  });
+
   it("accepts only a fixed item discount not above gross", () => {
     const valid = validPayload();
     valid.items[0]!.discountAmount = "500.00";
