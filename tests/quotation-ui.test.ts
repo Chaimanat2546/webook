@@ -195,8 +195,10 @@ describe("quotation UI", () => {
     assert.match(certification, /data-document-receiver/);
     assert.match(certification, /ผู้รับเอกสาร \(ลูกค้า\)/);
     assert.match(certification, /model\.payload\.customer\.name/);
-    assert.ok(certification.indexOf("data-document-public-qr") < certification.indexOf("data-document-stamp"));
-    assert.ok(certification.indexOf("data-document-stamp") < certification.indexOf("data-document-receiver"));
+    assert.match(
+      certification,
+      /data-document-public-qr[\s\S]*label="ผู้ออกเอกสาร"[\s\S]*label="ผู้อนุมัติเอกสาร"[\s\S]*data-document-stamp[\s\S]*data-document-receiver/,
+    );
     assert.doesNotMatch(certification, /ตำแหน่ง/);
     assert.doesNotMatch(signer, /signer\.position/);
     assert.match(certification, /break-inside-avoid/);

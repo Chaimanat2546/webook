@@ -63,7 +63,10 @@ iteration was required.
 The in-app browser did not expose the programmatic PDF download as a browser
 download event, so this QA pass could not rasterize the newly downloaded file.
 The mirrored React PDF source contract, PDF tests, typecheck, and production
-build all pass; PDF pagination remains covered by the existing automated
-contract.
+build all pass, but these checks prove structure and the `wrap={false}` guard;
+they do not visually prove clipping, pagination, or the absence of a trailing
+blank page. The `passed` result below applies to the browser-rendered Preview
+and Public surfaces. PDF raster comparison remains a separate manual check
+before claiming visual PDF fidelity.
 
 final result: passed

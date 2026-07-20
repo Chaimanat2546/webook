@@ -80,6 +80,10 @@ describe("quotation PDF", () => {
     assert.match(certification, /ตราประทับ/);
     assert.match(certification, /ผู้รับเอกสาร \(ลูกค้า\)/);
     assert.match(certification, /payload\.customer\.name/);
+    assert.match(
+      certification,
+      /data-pdf-public-qr[\s\S]*label="ผู้ออกเอกสาร"[\s\S]*label="ผู้อนุมัติเอกสาร"[\s\S]*ตราประทับ[\s\S]*ผู้รับเอกสาร \(ลูกค้า\)/,
+    );
     assert.doesNotMatch(certification, /ตำแหน่ง/);
     assert.doesNotMatch(signer, /signer\.position/);
     assert.match(pdfSource, /fixed[\s\S]*render=\{\(\{ pageNumber, totalPages \}\)/);
