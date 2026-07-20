@@ -169,22 +169,39 @@ describe("quotation UI", () => {
     assert.doesNotMatch(document, /internalNotes/);
   });
 
-  it("renders the optional Public QR and read-only certification document", () => {
+  it("renders one compact five-slot certification row", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
     const imagePath = new URL("../components/admin/quotations/document-image.tsx", import.meta.url);
 
     assert.ok(existsSync(imagePath), "document image fallback should exist");
     const image = readFileSync(imagePath, "utf8");
-    assert.match(document, /data-document-public-qr/);
-    assert.match(document, /สแกนเพื่อดูเอกสารออนไลน์/);
-    assert.match(document, /data-document-certification/);
-    assert.equal(document.match(/<SignerSlot/g)?.length, 2);
-    assert.equal(document.match(/data-document-signer/g)?.length, 1);
-    assert.equal(document.match(/data-document-receiver/g)?.length, 1);
-    assert.match(document, /model\.issueDate/);
-    assert.match(document, /break-inside-avoid/);
-    assert.match(document, /grid-cols-1[\s\S]*sm:grid-cols-3[\s\S]*print:grid-cols-3/);
-    assert.match(document, /<DocumentImage[\s\S]*?object-contain/);
+    const certificationMarker = document.indexOf("data-document-certification");
+    const certification = document.slice(
+      document.lastIndexOf("<section", certificationMarker),
+      document.indexOf("function PaymentMethod"),
+    );
+    const signer = document.slice(
+      document.indexOf("function SignerSlot"),
+      document.indexOf("function Total"),
+    );
+
+    assert.match(certification, /grid-cols-5/);
+    assert.match(certification, /data-document-public-qr/);
+    assert.match(certification, /สแกนเพื่อเปิดด้วยเว็บไซต์/);
+    assert.equal(certification.match(/<SignerSlot/g)?.length, 2);
+    assert.match(certification, /label="ผู้ออกเอกสาร"/);
+    assert.match(certification, /label="ผู้อนุมัติเอกสาร"/);
+    assert.match(certification, /data-document-stamp/);
+    assert.match(certification, /data-document-receiver/);
+    assert.match(certification, /ผู้รับเอกสาร \(ลูกค้า\)/);
+    assert.match(certification, /model\.payload\.customer\.name/);
+    assert.ok(certification.indexOf("data-document-public-qr") < certification.indexOf("data-document-stamp"));
+    assert.ok(certification.indexOf("data-document-stamp") < certification.indexOf("data-document-receiver"));
+    assert.doesNotMatch(certification, /ตำแหน่ง/);
+    assert.doesNotMatch(signer, /signer\.position/);
+    assert.match(certification, /break-inside-avoid/);
+    assert.match(certification, /\[overflow-wrap:anywhere\]/);
+    assert.match(certification, /<DocumentImage[\s\S]*?object-contain/);
     assert.doesNotMatch(document, /<(?:Input|input)[\s>]/);
     assert.match(image, /useState\(false\)/);
     assert.match(image, /onError=\{\(\) => setUnavailable\(true\)\}/);

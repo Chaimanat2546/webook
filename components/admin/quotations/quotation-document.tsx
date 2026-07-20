@@ -301,49 +301,58 @@ export function QuotationDocument({
         ) : null}
       </section>
 
-      {model.publicQrDataUrl ? (
-        <section className="flex items-center gap-3 border-b py-3" data-document-public-qr>
-          {/* eslint-disable-next-line @next/next/no-img-element -- Generated Data URLs are intentionally embedded for print. */}
-          <img
-            alt="QR สำหรับดูใบเสนอราคาออนไลน์"
-            className="size-20 object-contain"
-            src={model.publicQrDataUrl}
-          />
-          <p>สแกนเพื่อดูเอกสารออนไลน์</p>
-        </section>
-      ) : null}
-
       <section
-        className="break-inside-avoid grid grid-cols-1 gap-4 py-5 text-center sm:grid-cols-3 print:grid-cols-3"
+        className="break-inside-avoid grid grid-cols-[16mm_minmax(0,1fr)] gap-5 border-b py-3"
         data-document-certification
       >
-        <SignerSlot
-          issueDate={model.issueDate}
-          label="ผู้ออกเอกสาร"
-          signer={model.certification.issuer}
-        />
-        <SignerSlot
-          issueDate={model.issueDate}
-          label="ผู้อนุมัติ"
-          signer={model.certification.approver}
-        />
-        <div className="space-y-1" data-document-receiver>
-          <p className="font-semibold">ผู้รับเอกสาร</p>
-          <div className="h-20 border-b" aria-hidden="true" />
-          <p>ชื่อ ______________________________</p>
-          <p>ตำแหน่ง ___________________________</p>
-          <p>วันที่ _____________________________</p>
-        </div>
-        {model.certification.companyStampUrl ? (
-          <div className="flex min-h-16 items-center justify-center sm:col-span-2 print:col-span-2">
-            <DocumentImage
-              alt="ตราประทับบริษัท"
-              className="max-h-16 max-w-32 object-contain"
-              key={model.certification.companyStampUrl}
-              src={model.certification.companyStampUrl}
-            />
+        <h2 className="flex items-start gap-1 font-semibold">
+          <ReceiptText aria-hidden="true" className="mt-0.5 size-3" />
+          รับรอง
+        </h2>
+        <div className="grid min-w-0 grid-cols-5 gap-3 text-center">
+          <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-public-qr>
+            <p className="font-semibold">สแกนเพื่อเปิดด้วยเว็บไซต์</p>
+            <div className="flex h-20 items-center justify-center">
+              {model.publicQrDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Generated Data URLs are intentionally embedded for print.
+                <img
+                  alt="QR สำหรับดูใบเสนอราคาออนไลน์"
+                  className="max-h-20 w-full object-contain"
+                  src={model.publicQrDataUrl}
+                />
+              ) : null}
+            </div>
           </div>
-        ) : null}
+          <SignerSlot
+            issueDate={model.issueDate}
+            label="ผู้ออกเอกสาร"
+            signer={model.certification.issuer}
+          />
+          <SignerSlot
+            issueDate={model.issueDate}
+            label="ผู้อนุมัติเอกสาร"
+            signer={model.certification.approver}
+          />
+          <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-stamp>
+            <p className="font-semibold">ตราประทับ</p>
+            <div className="flex h-20 items-center justify-center">
+              {model.certification.companyStampUrl ? (
+                <DocumentImage
+                  alt="ตราประทับบริษัท"
+                  className="max-h-16 w-full object-contain"
+                  key={model.certification.companyStampUrl}
+                  src={model.certification.companyStampUrl}
+                />
+              ) : null}
+            </div>
+          </div>
+          <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-receiver>
+            <p className="font-semibold">ผู้รับเอกสาร (ลูกค้า)</p>
+            <div className="h-20 border-b" aria-hidden="true" />
+            <p>{model.payload.customer.name}</p>
+            <p>วันที่ __________________</p>
+          </div>
+        </div>
       </section>
     </article>
   );
@@ -444,7 +453,7 @@ function SignerSlot({
   signer: QuotationDocumentViewModel["certification"]["issuer"];
 }) {
   return (
-    <div className="space-y-1" data-document-signer>
+    <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-signer>
       <p className="font-semibold">{label}</p>
       <div className="flex h-20 items-end justify-center border-b">
         {signer.signatureUrl ? (
@@ -457,7 +466,6 @@ function SignerSlot({
         ) : null}
       </div>
       {signer.name ? <p>({signer.name})</p> : null}
-      {signer.position ? <p>{signer.position}</p> : null}
       <p>วันที่ {issueDate}</p>
     </div>
   );
