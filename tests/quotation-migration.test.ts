@@ -81,8 +81,25 @@ const accountTypeSql = readFileSync(
   new URL(`../supabase/migrations/${accountTypeMigrationName}`, import.meta.url),
   "utf8",
 );
+const certificationMigrationName = "20260720120000_quotation_pdf_qr_certification.sql";
+const certificationSql = readFileSync(
+  new URL(`../supabase/migrations/${certificationMigrationName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
+  it("persists certification snapshots through the owner-scoped save and public read RPCs", () => {
+    assert.match(certificationSql, /alter table public\.quotation_company_profiles[\s\S]*issuer_name text[\s\S]*approver_name text[\s\S]*company_stamp_url text/i);
+    assert.match(certificationSql, /alter table public\.quotations[\s\S]*certification_snapshot jsonb not null default '\{\}'::jsonb/i);
+    assert.match(certificationSql, /jsonb_typeof\(certification_snapshot\) = 'object'/i);
+    assert.match(certificationSql, /p_payload -> 'certification_snapshot'/i);
+    assert.match(certificationSql, /update public\.quotations[\s\S]*certification_snapshot = v_certification/i);
+    assert.match(certificationSql, /'certification_snapshot', q\.certification_snapshot/i);
+    assert.match(certificationSql, /validate_quotation_certification_asset_url/i);
+    assert.match(certificationSql, /quotations\/certification-assets/i);
+    assert.doesNotMatch(certificationSql, /drop table|drop column|truncate/i);
+  });
+
   it("persists and validates bank account types at every database boundary", () => {
     assert.match(accountTypeSql, /alter table public\.quotation_company_payment_methods[\s\S]*add column account_type text not null default ''/i);
     assert.match(accountTypeSql, /alter table public\.quotation_payment_methods[\s\S]*add column account_type text not null default ''/i);

@@ -22,6 +22,11 @@ function payload(
   unit: string | null = "งาน",
 ) {
   return {
+    certification_snapshot: {
+      approver: { name: null, position: null, signature_url: null },
+      company_stamp_url: null,
+      issuer: { name: "Issuer", position: "Sales", signature_url: null },
+    },
     customer_snapshot: { name: "Customer", address: "Customer address" },
     company_profile_id: null as string | null,
     id,
@@ -163,6 +168,40 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.deepEqual(quotation.data.seller_snapshot, originalSeller);
   });
 
+  it("persists certification snapshots independently of profile changes and public reads", async () => {
+    const createdPayload = payload(null);
+    createdPayload.internal_notes = "private certification note";
+    const created = await saveWithPayments(allowed, createdPayload);
+    const stored = await allowed
+      .from("quotations")
+      .select("certification_snapshot,public_token")
+      .eq("id", created.id)
+      .single();
+    assert.equal(stored.error, null, stored.error?.message);
+    assert.equal((await allowed.from("quotation_company_profiles")
+      .update({ issuer_name: "Changed issuer" })
+      .eq("id", allowedProfileId)).error, null);
+    const changedProfile = await allowed.from("quotation_company_profiles")
+      .select("issuer_name").eq("id", allowedProfileId).single();
+    assert.equal(changedProfile.error, null, changedProfile.error?.message);
+    assert.equal(changedProfile.data.issuer_name, "Changed issuer");
+    assert.deepEqual(stored.data.certification_snapshot, createdPayload.certification_snapshot);
+
+    const publicRead = await anonymous.rpc("get_public_quotation", {
+      p_token: stored.data.public_token,
+    });
+    assert.equal(publicRead.error, null, publicRead.error?.message);
+    assert.deepEqual(publicRead.data.certification_snapshot, createdPayload.certification_snapshot);
+    assert.equal("internal_notes" in publicRead.data, false);
+
+    assert.equal((await allowed.rpc("soft_delete_quotation", { p_id: created.id })).error, null);
+    const deleted = await anonymous.rpc("get_public_quotation", {
+      p_token: stored.data.public_token,
+    });
+    assert.equal(deleted.error, null, deleted.error?.message);
+    assert.equal(deleted.data, null);
+  });
+
   it("persists a null unit while quantity remains required", async () => {
     const created = await save(allowed, payload(null, issueDate, seller, null));
     const item = await allowed.from("quotation_items").select("quantity,unit").eq("quotation_id", created.id).single();
@@ -280,6 +319,19 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal((await allowed.from("quotation_company_payment_methods").update({ instructions: "bypass" }).eq("id", masterId)).error?.code, "42501");
     assert.equal((await allowed.from("quotation_company_payment_methods").delete().eq("id", masterId)).error?.code, "42501");
     assert.equal((await otherAllowed.from("quotation_company_profiles").select("id")).data?.some((row) => row.id === allowedProfileId), false);
+    assert.deepEqual((await otherAllowed.from("quotation_company_profiles")
+      .select("issuer_name,approver_name,company_stamp_url")
+      .eq("id", allowedProfileId)).data, []);
+    const crossAccountCertificationUpdate = await otherAllowed
+      .from("quotation_company_profiles")
+      .update({ issuer_name: "Cross-account issuer" })
+      .eq("id", allowedProfileId)
+      .select("issuer_name");
+    assert.deepEqual(crossAccountCertificationUpdate.data, []);
+    const allowedCertificationProfile = await allowed.from("quotation_company_profiles")
+      .select("issuer_name").eq("id", allowedProfileId).single();
+    assert.equal(allowedCertificationProfile.error, null, allowedCertificationProfile.error?.message);
+    assert.notEqual(allowedCertificationProfile.data.issuer_name, "Cross-account issuer");
     assert.deepEqual((await otherAllowed.from("quotation_company_payment_methods").select("id")).data, []);
 
     const createdPayload = payload(null);
