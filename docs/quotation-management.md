@@ -56,6 +56,13 @@ Supported types are:
 - Cash: optional instructions.
 - Other: display name and optional instructions.
 
+### Bank Account Type
+
+Bank transfers may optionally select ไม่ระบุ, ออมทรัพย์, กระแสรายวัน, or
+ฝากประจำ. The master value is copied into the quotation snapshot. Preview,
+Public, and Print show the selected Thai type before the account number on the
+same line; an unspecified type adds no placeholder.
+
 Built-in Thai banks use trusted local assets under `public/quotation/banks`.
 Selecting `OTHER` keeps the custom name and optional logo only in the user's
 master/snapshot; it does not alter the bank catalogue. Document rows follow

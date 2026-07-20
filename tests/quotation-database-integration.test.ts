@@ -299,6 +299,9 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       p_methods: [{ ...masterMethod, account_type: "fixed" }],
     });
     assert.equal(changedMaster.error, null, changedMaster.error?.message);
+    const changedStoredMaster = await allowed.from("quotation_company_payment_methods").select("account_type").eq("id", masterId).single();
+    assert.equal(changedStoredMaster.error, null, changedStoredMaster.error?.message);
+    assert.equal(changedStoredMaster.data.account_type, "fixed");
     const snapshotRows = await allowed.from("quotation_payment_methods").select("id,account_type,type").eq("quotation_id", created.id);
     assert.equal(snapshotRows.error, null, snapshotRows.error?.message);
     assert.equal(snapshotRows.data?.find((method) => method.type === "bank_transfer")?.account_type, "current");
@@ -322,6 +325,8 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.deepEqual(publicRead.data.quotation_payment_methods.map((method: { position: number }) => method.position), [1, 2, 3, 4, 5]);
     for (const method of publicRead.data.quotation_payment_methods) {
       assert.equal("internal_notes" in method, false);
+      if (method.type === "bank_transfer") assert.equal(method.account_type, "current");
+      if (method.type !== "bank_transfer") assert.equal(method.account_type, "");
       if (method.type !== "bank_transfer") assert.equal(method.account_number, "");
       if (method.type !== "promptpay") assert.equal(method.promptpay_id, "");
       if (!['qr_payment', 'other'].includes(method.type)) assert.equal(method.provider_name, "");
