@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import type { QuotationCalculation } from "../lib/quotation-calculator.ts";
 import { buildQuotationDocumentViewModel } from "../lib/quotation-document-view.ts";
+import { getQuotationPublicOrigin } from "../lib/env.ts";
 import {
   buildQuotationPublicUrl,
   createQuotationPublicQrDataUrl,
@@ -15,6 +16,15 @@ describe("quotation Public QR", () => {
       buildQuotationPublicUrl("https://example.com/admin/quotations", "123e4567-e89b-42d3-a456-426614174000"),
       "https://example.com/q/123e4567-e89b-42d3-a456-426614174000",
     );
+  });
+
+  it("builds the token destination only from the configured HTTPS origin", () => {
+    const origin = getQuotationPublicOrigin("https://quotes.example.com/");
+    assert.equal(
+      origin ? buildQuotationPublicUrl(origin, "123e4567-e89b-42d3-a456-426614174000") : "",
+      "https://quotes.example.com/q/123e4567-e89b-42d3-a456-426614174000",
+    );
+    assert.equal(getQuotationPublicOrigin("http://attacker.example"), null);
   });
 
   it("generates a PNG Data URL", async () => {

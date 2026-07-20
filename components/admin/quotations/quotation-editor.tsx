@@ -52,6 +52,7 @@ import {
   buildQuotationPublicUrl,
   createQuotationPublicQrDataUrl,
 } from "../../../lib/quotation-public-qr";
+import { waitForQuotationPrintImages } from "../../../lib/quotation-print";
 import type {
   CustomerSnapshot,
   QuotationPayload,
@@ -957,6 +958,8 @@ export function QuotationEditor({
   useEffect(() => {
     if (!isPrinting) return;
     let finished = false;
+    let timeout: number | undefined;
+    const controller = new AbortController();
     const printStyle = document.createElement("style");
     printStyle.textContent = "@page { size: A4; margin: 0; }";
     function cleanup() {
@@ -964,18 +967,29 @@ export function QuotationEditor({
       finished = true;
       document.documentElement.classList.remove("quotation-printing");
       printStyle.remove();
+      if (timeout !== undefined) window.clearTimeout(timeout);
       setIsPrinting(false);
     }
 
-    document.head.append(printStyle);
-    document.documentElement.classList.add("quotation-printing");
-    window.addEventListener("afterprint", cleanup, { once: true });
-    const frame = window.requestAnimationFrame(() => window.print());
-    const timeout = window.setTimeout(cleanup, 1_000);
+    const frame = window.requestAnimationFrame(() => {
+      void (async () => {
+        const images = document.querySelectorAll<HTMLImageElement>("[data-quotation-print] img");
+        const ready = await waitForQuotationPrintImages(images, {
+          signal: controller.signal,
+        });
+        if (!ready || controller.signal.aborted) return;
+        document.head.append(printStyle);
+        document.documentElement.classList.add("quotation-printing");
+        window.addEventListener("afterprint", cleanup, { once: true });
+        window.print();
+        if (!finished) timeout = window.setTimeout(cleanup, 1_000);
+      })();
+    });
 
     return () => {
+      controller.abort();
       window.cancelAnimationFrame(frame);
-      window.clearTimeout(timeout);
+      if (timeout !== undefined) window.clearTimeout(timeout);
       window.removeEventListener("afterprint", cleanup);
       document.documentElement.classList.remove("quotation-printing");
       printStyle.remove();

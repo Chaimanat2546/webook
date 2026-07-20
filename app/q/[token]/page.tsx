@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { QuotationDocument } from "../../../components/admin/quotations/quotation-document";
 import { calculateQuotation } from "../../../lib/quotation-calculator";
+import { getQuotationPublicOrigin } from "../../../lib/env";
 import {
   buildQuotationPublicUrl,
   createQuotationPublicQrDataUrl,
@@ -29,12 +29,8 @@ export default async function PublicQuotationPage({ params }: { params: Promise<
   const calculation = calculateQuotation(quotation.payload);
   let publicQrDataUrl = "";
   try {
-    const requestHeaders = await headers();
-    const forwardedProtocol = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim();
-    const protocol = forwardedProtocol === "https" ? "https" : "http";
-    const host = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim()
-      || requestHeaders.get("host");
-    const publicUrl = host ? buildQuotationPublicUrl(`${protocol}://${host}`, token) : "";
+    const origin = getQuotationPublicOrigin();
+    const publicUrl = origin ? buildQuotationPublicUrl(origin, token) : "";
     publicQrDataUrl = publicUrl ? await createQuotationPublicQrDataUrl(publicUrl) : "";
   } catch {
     publicQrDataUrl = "";

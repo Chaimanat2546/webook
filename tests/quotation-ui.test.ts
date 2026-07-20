@@ -907,6 +907,10 @@ describe("quotation UI", () => {
     assert.match(editor, /setIsPrinting\(true\)/);
     assert.match(editor, /createPortal\([\s\S]*data-quotation-print[\s\S]*document\.body/);
     assert.match(editor, /window\.addEventListener\("afterprint", cleanup/);
+    assert.match(editor, /querySelectorAll<HTMLImageElement>\("\[data-quotation-print\] img"\)/);
+    assert.match(editor, /await waitForQuotationPrintImages/);
+    assert.match(editor, /AbortController/);
+    assert.ok(editor.indexOf("await waitForQuotationPrintImages") < editor.indexOf("window.print()"));
     assert.match(editor, /setIsPrinting\(false\)/);
     assert.match(css, /body > :not\(\[data-quotation-print\]\)/);
     assert.match(css, /display: none !important/);

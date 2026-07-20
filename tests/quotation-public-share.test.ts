@@ -11,9 +11,8 @@ describe("quotation public share", () => {
     assert.match(page, /createSupabaseServerClient/);
     assert.match(page, /calculateQuotation/);
     assert.match(page, /QuotationDocument/);
-    assert.match(page, /await headers\(\)/);
-    assert.match(page, /x-forwarded-proto/);
-    assert.match(page, /x-forwarded-host/);
+    assert.match(page, /getQuotationPublicOrigin\(\)/);
+    assert.doesNotMatch(page, /headers\(\)|x-forwarded-proto|x-forwarded-host|requestHeaders|get\("host"\)/);
     assert.match(page, /buildQuotationPublicUrl/);
     assert.match(page, /createQuotationPublicQrDataUrl/);
     assert.match(page, /publicQrDataUrl=\{publicQrDataUrl\}/);
