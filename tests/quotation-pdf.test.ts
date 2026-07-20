@@ -19,6 +19,15 @@ describe("quotation PDF", () => {
     assert.match(pdfSource, /wrap/);
   });
 
+  it("lets Thai font metrics determine line height at every text size", () => {
+    const pageStart = pdfSource.indexOf("page: {");
+    const pageEnd = pdfSource.indexOf("row: {");
+    assert.ok(pageStart >= 0 && pageEnd > pageStart);
+    const pageStyle = pdfSource.slice(pageStart, pageEnd);
+
+    assert.doesNotMatch(pageStyle, /lineHeight:/);
+  });
+
   it("collects and deduplicates every supported document image", () => {
     assert.match(pdfSource, /export function collectQuotationPdfImageSources/);
     assert.match(pdfSource, /seller\.logoUrl/);

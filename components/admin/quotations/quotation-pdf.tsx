@@ -42,7 +42,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily: "Noto Sans Thai",
     fontSize: 8,
-    lineHeight: 1.45,
     paddingBottom: 36,
     paddingHorizontal: 28.35,
     paddingTop: 28.35,

@@ -978,6 +978,19 @@ describe("quotation UI", () => {
     assert.match(css, /\[data-quotation-document\] tr/);
   });
 
+  it("preserves quotation background colors when printing", () => {
+    const css = source("../app/globals.css");
+
+    assert.match(
+      css,
+      /\[data-quotation-document\]\s*\{[^}]*-webkit-print-color-adjust:\s*exact/,
+    );
+    assert.match(
+      css,
+      /\[data-quotation-document\]\s*\{[^}]*[;{\r\n]\s*print-color-adjust:\s*exact/,
+    );
+  });
+
   it("prints the last saved quotation while a newer draft is dirty", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const canPrint = Boolean\([\s\S]*documentNumber && lastSavedPayload && !isPending && !publicQrPending/);

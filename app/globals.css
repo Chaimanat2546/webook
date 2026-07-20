@@ -157,6 +157,8 @@
   }
   [data-quotation-document] {
     margin: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   [data-quotation-document] thead { display: table-header-group; }
   [data-quotation-document] tr,

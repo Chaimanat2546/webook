@@ -20,11 +20,25 @@ describe("quotation PDF helpers", () => {
     }
   });
 
-  it("leaves Thai and combining grapheme sequences untouched", () => {
-    const thai = "ข้อความภาษาไทยที่ยาวต่อเนื่องและต้องไม่ถูกแบ่งกลางเครื่องหมาย";
+  it("keeps the final Thai glyph with an invisible sentinel", () => {
+    for (const thai of [
+      "จำนวน",
+      "คำอธิบาย",
+      "จำนวนเงินที่ชำระ",
+      "ข้อความภาษาไทยที่ยาวต่อเนื่องและต้องไม่ถูกแบ่งกลางเครื่องหมาย",
+    ]) {
+      const parts = splitQuotationPdfWord(thai);
+      assert.deepEqual(parts, [`${thai}\u200b\u200b`]);
+      assert.equal(parts.join("").replaceAll("\u200b", ""), thai);
+    }
+
+    assert.deepEqual(splitQuotationPdfWord("จำนวน\u200b"), ["จำนวน\u200b\u200b"]);
+    assert.deepEqual(splitQuotationPdfWord("จำนวน\u200b\u200b"), ["จำนวน\u200b\u200b"]);
+  });
+
+  it("leaves non-Thai combining grapheme sequences untouched", () => {
     const combining = "e\u0301".repeat(20);
 
-    assert.deepEqual(splitQuotationPdfWord(thai), [thai]);
     assert.deepEqual(splitQuotationPdfWord(combining), [combining]);
   });
 

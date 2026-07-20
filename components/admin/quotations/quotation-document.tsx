@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Phone,
   ReceiptText,
+  Signature,
 } from "lucide-react";
 import { DocumentImage } from "./document-image";
 
@@ -306,7 +307,7 @@ export function QuotationDocument({
         data-document-certification
       >
         <h2 className="flex items-start gap-1 font-semibold">
-          <ReceiptText aria-hidden="true" className="mt-0.5 size-3" />
+          <Signature aria-hidden="true" className="mt-0.5 size-3" />
           รับรอง
         </h2>
         <div className="grid min-w-0 grid-cols-5 gap-3 text-center">
