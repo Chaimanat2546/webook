@@ -11,6 +11,12 @@ describe("quotation public share", () => {
     assert.match(page, /createSupabaseServerClient/);
     assert.match(page, /calculateQuotation/);
     assert.match(page, /QuotationDocument/);
+    assert.match(page, /await headers\(\)/);
+    assert.match(page, /x-forwarded-proto/);
+    assert.match(page, /x-forwarded-host/);
+    assert.match(page, /buildQuotationPublicUrl/);
+    assert.match(page, /createQuotationPublicQrDataUrl/);
+    assert.match(page, /publicQrDataUrl=\{publicQrDataUrl\}/);
     assert.match(page, /notFound\(\)/);
     assert.match(page, /robots:\s*\{\s*follow:\s*false,\s*index:\s*false/);
     assert.doesNotMatch(page, /requireAdmin|canUseQuotation/);
@@ -20,21 +26,43 @@ describe("quotation public share", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /publicToken/);
     assert.match(editor, /navigator\.clipboard\.writeText/);
-    assert.match(editor, /\/q\/\$\{publicToken\}/);
+    assert.match(editor, /buildQuotationPublicUrl\(window\.location\.origin, publicToken\)/);
     assert.match(editor, /documentNumber &&[\s\S]*lastSavedPayload &&[\s\S]*publicToken &&[\s\S]*!isDirty/);
     assert.match(editor, /disabled=\{!canUseSavedDocument\}/);
     assert.match(editor, /data-document-actions/);
+  });
+
+  it("keeps Public QR output scoped to a clean saved quotation", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /const \[publicQrDataUrl, setPublicQrDataUrl\] = useState\(""\)/);
+    assert.match(editor, /if \(!publicToken \|\| isDirty\)[\s\S]*setPublicQrDataUrl\(""\)/);
+    assert.match(editor, /createQuotationPublicQrDataUrl\(publicUrl\)/);
+    assert.match(editor, /let stale = false/);
+    assert.match(editor, /if \(stale\) return;[\s\S]*setPublicQrDataUrl/);
+    assert.match(editor, /return \(\) => \{[\s\S]*stale = true/);
+    assert.match(editor, /const savedPublicQrDataUrl = !isDirty && publicToken && publicQrSettledToken === publicToken/);
+    assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 2);
+  });
+
+  it("waits for a clean saved quotation QR before printing", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /const \[publicQrSettledToken, setPublicQrSettledToken\] = useState\(""\)/);
+    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*publicQrSettledToken !== publicToken/);
+    assert.match(editor, /const canPrint = Boolean\([\s\S]*!publicQrPending/);
+    assert.equal(editor.match(/setPublicQrSettledToken\(publicToken\)/g)?.length, 2);
   });
 
   it("uses the same saved payment document for public read-only", () => {
     const page = source("../app/q/[token]/page.tsx");
     const repository = source("../server/repositories/quotations.ts");
     const document = source("../components/admin/quotations/quotation-document.tsx");
+    const viewModel = source("../lib/quotation-document-view.ts");
 
     assert.match(page, /quotation\.payload/);
     assert.match(repository, /quotation_payment_methods/);
     assert.match(repository, /quotation_payment_methods\([\s\S]*account_type/);
-    assert.match(document, /payload\.paymentMethods/);
+    assert.match(viewModel, /payload\.paymentMethods/);
+    assert.match(document, /model\.paymentMethods/);
     assert.doesNotMatch(document, /internalNotes/);
   });
 });

@@ -48,6 +48,10 @@ import {
   formatMoney,
   normalizeMoneyInput,
 } from "../../../lib/quotation-money";
+import {
+  buildQuotationPublicUrl,
+  createQuotationPublicQrDataUrl,
+} from "../../../lib/quotation-public-qr";
 import type {
   CustomerSnapshot,
   QuotationPayload,
@@ -632,6 +636,8 @@ export function QuotationEditor({
   const [payload, setPayload] = useState<QuotationPayload>(initialPayload);
   const [documentNumber, setDocumentNumber] = useState(initialDocumentNumber);
   const [publicToken, setPublicToken] = useState(initialPublicToken);
+  const [publicQrDataUrl, setPublicQrDataUrl] = useState("");
+  const [publicQrSettledToken, setPublicQrSettledToken] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [isDirty, setIsDirty] = useState(false);
@@ -663,7 +669,15 @@ export function QuotationEditor({
       !isDirty &&
       !isPending,
   );
-  const canPrint = Boolean(documentNumber && lastSavedPayload && !isPending);
+  const publicQrPending = Boolean(
+    publicToken && !isDirty && publicQrSettledToken !== publicToken,
+  );
+  const savedPublicQrDataUrl = !isDirty && publicToken && publicQrSettledToken === publicToken
+    ? publicQrDataUrl
+    : "";
+  const canPrint = Boolean(
+    documentNumber && lastSavedPayload && !isPending && !publicQrPending,
+  );
   const calculationResult = useMemo(() => {
     try {
       return { calculation: calculateQuotation(payload), calculationError: "" };
@@ -973,6 +987,36 @@ export function QuotationEditor({
     printSaved();
   }, [canPrint, printOnLoad, printSaved]);
   useEffect(() => {
+    let stale = false;
+    if (!publicToken || isDirty) {
+      queueMicrotask(() => {
+        if (stale) return;
+        setPublicQrDataUrl("");
+        setPublicQrSettledToken("");
+      });
+      return () => {
+        stale = true;
+      };
+    }
+
+    const publicUrl = buildQuotationPublicUrl(window.location.origin, publicToken);
+    createQuotationPublicQrDataUrl(publicUrl)
+      .then((value) => {
+        if (stale) return;
+        setPublicQrDataUrl(value);
+        setPublicQrSettledToken(publicToken);
+      })
+      .catch(() => {
+        if (stale) return;
+        setPublicQrDataUrl("");
+        setPublicQrSettledToken(publicToken);
+        toast.error("ไม่สามารถสร้าง QR เอกสารสาธารณะได้");
+      });
+    return () => {
+      stale = true;
+    };
+  }, [isDirty, publicToken]);
+  useEffect(() => {
     if (!isDirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warn);
@@ -986,11 +1030,9 @@ export function QuotationEditor({
       router.push("/admin/quotations");
   }
   async function shareSaved() {
-    if (!publicToken) return;
+    if (!canUseSavedDocument || !publicToken) return;
     try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/q/${publicToken}`,
-      );
+      await navigator.clipboard.writeText(buildQuotationPublicUrl(window.location.origin, publicToken));
       toast.success("คัดลอกลิงก์สาธารณะแล้ว");
     } catch {
       toast.error("ไม่สามารถคัดลอกลิงก์ได้");
@@ -1673,6 +1715,7 @@ export function QuotationEditor({
               calculation={calculation}
               documentNumber={documentNumber}
               payload={payload}
+              publicQrDataUrl={savedPublicQrDataUrl}
             />
           ) : (
             <p className="p-4">กรุณาแก้ไขข้อมูลก่อนดูตัวอย่าง</p>
@@ -1719,6 +1762,7 @@ export function QuotationEditor({
                 calculation={savedCalculation}
                 documentNumber={documentNumber}
                 payload={lastSavedPayload}
+                publicQrDataUrl={savedPublicQrDataUrl}
               />
             </div>,
             document.body,

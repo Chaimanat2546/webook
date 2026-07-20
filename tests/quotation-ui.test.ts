@@ -24,7 +24,7 @@ describe("quotation UI", () => {
     assert.match(document, /formatBaht\(calculation\.grandTotal\)/);
     assert.match(document, /ml-5 whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]/);
     assert.match(document, /data-document-payment-methods/);
-    assert.doesNotMatch(document, /internalNotes|signature/i);
+    assert.doesNotMatch(document, /internalNotes/);
   });
 
   it("styles document item descriptions as secondary text", () => {
@@ -149,13 +149,14 @@ describe("quotation UI", () => {
 
   it("renders saved payment methods once in the shared document", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
+    const viewModel = source("../lib/quotation-document-view.ts");
     const globalCss = source("../app/globals.css");
 
-    assert.match(document, /payload\.paymentMethods\.length/);
-    assert.match(document, /\.sort\(\(left, right\) => left\.position - right\.position\)/);
-    assert.match(document, /renderThaiQRPaymentMatrix/);
+    assert.match(document, /model\.paymentMethods\.length/);
+    assert.match(viewModel, /\.sort\(\(left, right\) => left\.position - right\.position\)/);
+    assert.match(viewModel, /renderThaiQRPaymentMatrix/);
     assert.match(document, /method\.qrMode === "auto_promptpay"/);
-    assert.match(document, /method\.qrImageUrl/);
+    assert.match(document, /method\.qrSource/);
     assert.match(document, /method\.customBankLogoUrl \|\| method\.bankLogoUrl/);
     assert.match(document, /method\.accountNumber/);
     assert.match(document, /method\.promptPayId/);
@@ -163,9 +164,31 @@ describe("quotation UI", () => {
     assert.match(document, /break-inside-avoid/);
     assert.match(document, /\[overflow-wrap:anywhere\]/);
     assert.match(document, /ไม่สามารถสร้าง QR ได้/);
-    assert.match(document, /amount <= 0/);
+    assert.match(viewModel, /amount <= 0/);
     assert.match(globalCss, /\[data-document-payment-methods\]\s*\{\s*break-inside:\s*auto\s*!important/);
     assert.doesNotMatch(document, /internalNotes/);
+  });
+
+  it("renders the optional Public QR and read-only certification document", () => {
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const imagePath = new URL("../components/admin/quotations/document-image.tsx", import.meta.url);
+
+    assert.ok(existsSync(imagePath), "document image fallback should exist");
+    const image = readFileSync(imagePath, "utf8");
+    assert.match(document, /data-document-public-qr/);
+    assert.match(document, /สแกนเพื่อดูเอกสารออนไลน์/);
+    assert.match(document, /data-document-certification/);
+    assert.equal(document.match(/<SignerSlot/g)?.length, 2);
+    assert.equal(document.match(/data-document-signer/g)?.length, 1);
+    assert.equal(document.match(/data-document-receiver/g)?.length, 1);
+    assert.match(document, /model\.issueDate/);
+    assert.match(document, /break-inside-avoid/);
+    assert.match(document, /grid-cols-1[\s\S]*sm:grid-cols-3[\s\S]*print:grid-cols-3/);
+    assert.match(document, /<DocumentImage[\s\S]*?object-contain/);
+    assert.doesNotMatch(document, /<(?:Input|input)[\s>]/);
+    assert.match(image, /useState\(false\)/);
+    assert.match(image, /onError=\{\(\) => setUnavailable\(true\)\}/);
+    assert.match(image, /if \(unavailable\) return null/);
   });
 
   it("uses the compact reference hierarchy for preview and print", () => {
@@ -917,7 +940,7 @@ describe("quotation UI", () => {
 
   it("prints the last saved quotation while a newer draft is dirty", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /const canPrint = Boolean\(documentNumber && lastSavedPayload && !isPending\)/);
+    assert.match(editor, /const canPrint = Boolean\([\s\S]*documentNumber && lastSavedPayload && !isPending && !publicQrPending/);
     assert.match(editor, /if \(!canPrint\) return/);
     assert.match(editor, /calculation=\{savedCalculation\}/);
     assert.match(editor, /payload=\{lastSavedPayload\}/);
