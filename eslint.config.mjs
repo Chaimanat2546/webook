@@ -7,14 +7,15 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    ".open-next/**",
-    ".wrangler/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
+  ".next/**",
+  ".open-next/**",
+  ".wrangler/**",
+  ".worktrees/**",
+  ".superpowers/**",
+  "out/**",
+  "build/**",
+  "next-env.d.ts",
+]),
 ]);
 
 export default eslintConfig;

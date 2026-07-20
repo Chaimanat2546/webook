@@ -12,7 +12,8 @@
     "test": "node --import ./tests/register-server-only.mjs --test \"tests/**/*.test.ts\"",
     "preview:cf": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:cf": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "upload:cf": "opennextjs-cloudflare build && opennextjs-cloudflare upload"
+    "upload:cf": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "verify": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
