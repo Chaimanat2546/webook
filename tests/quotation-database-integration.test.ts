@@ -4,7 +4,8 @@ import { after, before, describe, it } from "node:test";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const enabled = process.env.RUN_LOCAL_SUPABASE_TESTS === "1";
+const enabled = process.env.RUN_LOCAL_SUPABASE_TESTS === "1"
+  || process.env.RUN_QUOTATION_DB_TESTS === "1";
 const url = process.env.LOCAL_SUPABASE_URL ?? "";
 const anonKey = process.env.LOCAL_SUPABASE_ANON_KEY ?? "";
 const serviceRoleKey = process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -178,9 +179,13 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       .eq("id", created.id)
       .single();
     assert.equal(stored.error, null, stored.error?.message);
-    assert.equal((await allowed.from("quotation_company_profiles")
-      .update({ issuer_name: "Changed issuer" })
-      .eq("id", allowedProfileId)).error, null);
+    const changedCertification = {
+      ...createdPayload.certification_snapshot,
+      issuer: { ...createdPayload.certification_snapshot.issuer, name: "Changed issuer" },
+    };
+    assert.equal((await allowed.rpc("save_quotation_company_certification", {
+      p_value: changedCertification,
+    })).error, null);
     const changedProfile = await allowed.from("quotation_company_profiles")
       .select("issuer_name").eq("id", allowedProfileId).single();
     assert.equal(changedProfile.error, null, changedProfile.error?.message);
@@ -200,6 +205,105 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     });
     assert.equal(deleted.error, null, deleted.error?.message);
     assert.equal(deleted.data, null);
+  });
+
+  it("validates certification masters and snapshots at the database boundary", async () => {
+    const origin = "https://webook-media.example.workers.dev";
+    const assetKey = "123e4567-e89b-42d3-a456-426614174000.png";
+    assert.equal((await service.rpc("configure_quotation_payment_asset_origin", {
+      p_origin: origin,
+    })).error, null);
+    const trustedUrl = `${origin}/quotations/certification-assets/${assetKey}`;
+    const certification = {
+      approver: { name: " Approver ", position: " Director ", signature_url: trustedUrl },
+      company_stamp_url: trustedUrl,
+      issuer: { name: " Issuer ", position: " Sales ", signature_url: trustedUrl },
+    };
+    const savedMaster = await allowed.rpc("save_quotation_company_certification", {
+      p_value: certification,
+    });
+    assert.equal(savedMaster.error, null, savedMaster.error?.message);
+    const storedMaster = await allowed.from("quotation_company_profiles")
+      .select("issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url")
+      .eq("id", allowedProfileId).single();
+    assert.equal(storedMaster.error, null, storedMaster.error?.message);
+    assert.deepEqual(storedMaster.data, {
+      approver_name: "Approver", approver_position: "Director", approver_signature_url: trustedUrl,
+      company_stamp_url: trustedUrl,
+      issuer_name: "Issuer", issuer_position: "Sales", issuer_signature_url: trustedUrl,
+    });
+
+    assert.equal((await allowed.from("quotation_company_profiles")
+      .update({ issuer_name: "Direct bypass" }).eq("id", allowedProfileId)).error?.code, "42501");
+    assert.equal((await allowed.from("quotation_company_profiles").insert({
+      issuer_name: "Direct bypass", user_id: allowedId,
+    })).error?.code, "42501");
+    assert.equal((await allowed.from("quotation_company_profiles")
+      .update({ address: "Validated seller update" }).eq("id", allowedProfileId)).error, null);
+    const sellerUpdate = await allowed.from("quotation_company_profiles")
+      .select("address").eq("id", allowedProfileId).single();
+    assert.equal(sellerUpdate.error, null, sellerUpdate.error?.message);
+    assert.equal(sellerUpdate.data.address, "Validated seller update");
+
+    const trustedSnapshot = {
+      ...payload(null),
+      certification_snapshot: certification,
+    };
+    assert.equal((await allowed.rpc("save_quotation_with_payments", {
+      p_payload: trustedSnapshot,
+    })).error, null);
+
+    const invalidUrl = (url: string) => ({
+      ...certification,
+      company_stamp_url: url,
+    });
+    for (const invalid of [
+      invalidUrl(`https://foreign.example/quotations/certification-assets/${assetKey}`),
+      invalidUrl(`${origin}/quotations/payment-assets/${assetKey}`),
+      invalidUrl(`${trustedUrl}?tracking=1`),
+      invalidUrl(`${origin}/quotations/certification-assets/not-a-uuid.png`),
+      { ...certification, issuer: { ...certification.issuer, name: "x".repeat(201) } },
+      { ...certification, company_stamp_url: "x".repeat(2049) },
+    ]) {
+      assert.equal((await allowed.rpc("save_quotation_company_certification", {
+        p_value: invalid,
+      })).error?.code, "22023");
+    }
+
+    const nonStringLeaf = (
+      section: "approver" | "issuer" | "root",
+      key: string,
+      value: unknown,
+    ) => {
+      const invalid = structuredClone(certification) as Record<string, unknown>;
+      if (section === "root") invalid[key] = value;
+      else (invalid[section] as Record<string, unknown>)[key] = value;
+      return invalid;
+    };
+    for (const invalid of [
+      nonStringLeaf("issuer", "name", 7),
+      nonStringLeaf("issuer", "position", false),
+      nonStringLeaf("issuer", "signature_url", []),
+      nonStringLeaf("approver", "name", {}),
+      nonStringLeaf("approver", "position", 7),
+      nonStringLeaf("approver", "signature_url", true),
+      nonStringLeaf("root", "company_stamp_url", []),
+    ]) {
+      assert.equal((await allowed.rpc("save_quotation_company_certification", {
+        p_value: invalid,
+      })).error?.code, "22023");
+    }
+
+    const invalidSnapshot = {
+      ...payload(null),
+      certification_snapshot: nonStringLeaf("issuer", "name", 7),
+    };
+    assert.equal((await allowed.rpc("save_quotation_with_payments", {
+      p_payload: invalidSnapshot,
+    })).error?.code, "22023");
+    assert.equal((await denied.rpc("save_quotation_company_certification", {
+      p_value: nonStringLeaf("issuer", "name", 7),
+    })).error?.code, "42501");
   });
 
   it("persists a null unit while quantity remains required", async () => {
@@ -327,7 +431,7 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       .update({ issuer_name: "Cross-account issuer" })
       .eq("id", allowedProfileId)
       .select("issuer_name");
-    assert.deepEqual(crossAccountCertificationUpdate.data, []);
+    assert.equal(crossAccountCertificationUpdate.error?.code, "42501");
     const allowedCertificationProfile = await allowed.from("quotation_company_profiles")
       .select("issuer_name").eq("id", allowedProfileId).single();
     assert.equal(allowedCertificationProfile.error, null, allowedCertificationProfile.error?.message);

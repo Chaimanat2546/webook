@@ -7,6 +7,16 @@ alter table public.quotation_company_profiles
   add column approver_signature_url text,
   add column company_stamp_url text;
 
+revoke insert, update on public.quotation_company_profiles from authenticated;
+grant insert (
+  user_id, seller_name, address, tax_id, office_type, branch_number, phone,
+  email, website, contact_name, contact_phone, contact_email, logo_url, updated_at
+) on public.quotation_company_profiles to authenticated;
+grant update (
+  user_id, seller_name, address, tax_id, office_type, branch_number, phone,
+  email, website, contact_name, contact_phone, contact_email, logo_url, updated_at
+) on public.quotation_company_profiles to authenticated;
+
 alter table public.quotations
   add column certification_snapshot jsonb not null default '{}'::jsonb,
   add constraint quotations_certification_snapshot_object_check
@@ -49,6 +59,13 @@ begin
   if jsonb_typeof(v_value) is distinct from 'object'
     or jsonb_typeof(v_issuer) is distinct from 'object'
     or jsonb_typeof(v_approver) is distinct from 'object'
+    or coalesce(jsonb_typeof(v_issuer -> 'name'), 'null') not in ('string', 'null')
+    or coalesce(jsonb_typeof(v_issuer -> 'position'), 'null') not in ('string', 'null')
+    or coalesce(jsonb_typeof(v_issuer -> 'signature_url'), 'null') not in ('string', 'null')
+    or coalesce(jsonb_typeof(v_approver -> 'name'), 'null') not in ('string', 'null')
+    or coalesce(jsonb_typeof(v_approver -> 'position'), 'null') not in ('string', 'null')
+    or coalesce(jsonb_typeof(v_approver -> 'signature_url'), 'null') not in ('string', 'null')
+    or coalesce(jsonb_typeof(v_value -> 'company_stamp_url'), 'null') not in ('string', 'null')
     or char_length(btrim(coalesce(v_issuer ->> 'name', '))) > 200
     or char_length(btrim(coalesce(v_issuer ->> 'position', '))) > 200
     or char_length(v_issuer_signature) > 2048
@@ -78,6 +95,47 @@ begin
 end;
 $$;
 
+create or replace function private.save_quotation_company_certification(p_value jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = pg_catalog, public, private
+as $$
+declare
+  v_certification jsonb;
+  v_profile_id uuid;
+begin
+  if not private.has_quotation_permission() then
+    raise exception using errcode = '42501', message = 'Unauthorized';
+  end if;
+  v_certification := private.normalize_quotation_certification(p_value);
+  update public.quotation_company_profiles
+  set issuer_name = v_certification #>> '{issuer,name}',
+      issuer_position = v_certification #>> '{issuer,position}',
+      issuer_signature_url = v_certification #>> '{issuer,signature_url}',
+      approver_name = v_certification #>> '{approver,name}',
+      approver_position = v_certification #>> '{approver,position}',
+      approver_signature_url = v_certification #>> '{approver,signature_url}',
+      company_stamp_url = v_certification ->> 'company_stamp_url',
+      updated_at = now()
+  where user_id = auth.uid()
+  returning id into v_profile_id;
+  if v_profile_id is null then
+    raise exception using errcode = 'P0002', message = 'Quotation company profile not found';
+  end if;
+  return v_profile_id;
+end;
+$$;
+
+create or replace function public.save_quotation_company_certification(p_value jsonb)
+returns uuid
+language sql
+security invoker
+set search_path = pg_catalog, public
+as $$
+  select private.save_quotation_company_certification(p_value);
+$$;
+
 create or replace function private.save_quotation_with_payments(p_payload jsonb)
 returns table (id uuid, document_number text)
 language plpgsql
@@ -95,12 +153,13 @@ declare
   v_qr_mode text;
   v_position integer := 1;
   v_methods jsonb := coalesce(p_payload -> 'payment_methods', '[]'::jsonb);
-  v_certification jsonb := private.normalize_quotation_certification(
-    p_payload -> 'certification_snapshot'
-  );
+  v_certification jsonb;
   v_amount_due numeric;
 begin
   if not private.has_quotation_permission() then raise exception using errcode = '42501', message = 'Unauthorized'; end if;
+  v_certification := private.normalize_quotation_certification(
+    p_payload -> 'certification_snapshot'
+  );
   if jsonb_typeof(v_methods) is distinct from 'array' or jsonb_array_length(v_methods) > 20 then
     raise exception using errcode = '22023', message = 'Payment methods must be an array of at most 20 rows';
   end if;
@@ -195,5 +254,9 @@ revoke all on function private.save_quotation_company_payment_methods(jsonb) fro
 revoke all on function private.save_quotation_with_payments(jsonb) from public;
 revoke all on function private.normalize_quotation_certification(jsonb) from public;
 revoke all on function private.validate_quotation_certification_asset_url(text) from public;
+revoke all on function private.save_quotation_company_certification(jsonb) from public;
+revoke all on function public.save_quotation_company_certification(jsonb) from public, anon;
 grant execute on function private.save_quotation_company_payment_methods(jsonb) to authenticated;
 grant execute on function private.save_quotation_with_payments(jsonb) to authenticated;
+grant execute on function private.save_quotation_company_certification(jsonb) to authenticated;
+grant execute on function public.save_quotation_company_certification(jsonb) to authenticated;
