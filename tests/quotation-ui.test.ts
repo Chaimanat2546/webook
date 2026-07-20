@@ -295,6 +295,7 @@ describe("quotation UI", () => {
     const documentSource = source("../components/admin/quotations/quotation-document.tsx");
 
     assert.match(bankEditorScope, /lg:grid-cols-5/);
+    assert.match(bankEditorScope, /label="ธนาคาร"[\s\S]*label="ประเภทบัญชี"[\s\S]*label="ชื่อบัญชี"[\s\S]*label="เลขที่บัญชี"[\s\S]*label="QR โอนเงิน"/);
     assert.match(bankEditorScope, /label="ประเภทบัญชี"/);
     assert.match(bankEditorScope, /update\("accountType"/);
     assert.match(bankEditorScope, /<option value="">ไม่ระบุ<\/option>/);
