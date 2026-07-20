@@ -78,6 +78,21 @@ describe("quotation repository and actions", () => {
     assert.match(actions, /certification\.companyStampUrl/);
   });
 
+  it("saves the certification master through the validated owner-scoped RPC", () => {
+    assert.match(repository, /export async function saveQuotationCompanyCertification/);
+    assert.match(repository, /\.rpc\(\s*"save_quotation_company_certification"/);
+    assert.match(repository, /p_value: certificationSnapshotToJson\(certification\)/);
+    assert.doesNotMatch(repository, /issuer_name:\s*certification|approver_name:\s*certification|company_stamp_url:\s*certification/);
+
+    assert.match(actions, /export async function saveCompanyCertificationAction/);
+    assert.match(actions, /canUseQuotation\(adminUser\)/);
+    assert.match(actions, /prepareCertificationSnapshot\(value\)/);
+    assert.match(actions, /certificationAssetErrors\(certification\)/);
+    assert.match(actions, /saveQuotationCompanyCertification\(supabase, certification\)/);
+    assert.match(actions, /revalidatePath\("\/admin\/quotations\/settings\/company"\)/);
+    assert.doesNotMatch(actions, /certification_snapshot\s*:/);
+  });
+
   it("hydrates ordered payment snapshots and returns the saved normalized payload", () => {
     assert.match(repository, /quotation_payment_methods\(/);
     assert.match(repository, /paymentMethods: \(row\.quotation_payment_methods \?\? \[\]\)/);

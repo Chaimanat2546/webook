@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { emptyPaymentMethod, paymentMethodEditorState, updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
 
@@ -69,7 +69,7 @@ describe("quotation UI", () => {
     const form = source("../components/admin/quotations/company-profile-form.tsx");
 
     assert.match(page, /searchParams: Promise<\{ section\?: string \}>/);
-    assert.match(page, /section === "payments" \? "payments" : "company"/);
+    assert.match(page, /section === "payments" \|\| section === "certification"/);
     assert.match(page, /\?section=company/);
     assert.match(page, /\?section=payments/);
     assert.match(page, /aria-current=\{selectedSection === item\.id \? "page" : undefined\}/);
@@ -77,6 +77,35 @@ describe("quotation UI", () => {
     assert.match(page, /selectedSection === "payments"[\s\S]*<PaymentMethodsSettings/);
     assert.match(form, /export function PaymentMethodsSettings/);
     assert.doesNotMatch(form, /<PaymentMethodsSettings[\s\S]*initialMethods=\{initialPaymentMethods\}/);
+  });
+
+  it("adds certification master settings with reusable image fields", () => {
+    const page = source("../app/admin/quotations/settings/company/page.tsx");
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+    const fieldsPath = new URL("../components/admin/quotations/certification-fields.tsx", import.meta.url);
+    const imageInputPath = new URL("../components/admin/quotations/quotation-png-image-input.tsx", import.meta.url);
+
+    assert.ok(existsSync(fieldsPath), "certification fields component should exist");
+    assert.ok(existsSync(imageInputPath), "shared quotation PNG image input should exist");
+    const fields = readFileSync(fieldsPath, "utf8");
+    const imageInput = readFileSync(imageInputPath, "utf8");
+
+    assert.match(page, /\?section=certification/);
+    assert.match(page, /selectedSection === "certification"/);
+    assert.match(page, /ข้อมูลรับรองหลัก/);
+    assert.match(page, /<CertificationSettings/);
+    assert.match(form, /บันทึกข้อมูลรับรอง/);
+    assert.match(fields, /ผู้ออกเอกสาร/);
+    assert.match(fields, /ผู้อนุมัติ/);
+    assert.match(fields, /ตราประทับบริษัท/);
+    assert.match(imageInput, /ลบรูป/);
+    assert.match(imageInput, /URL\.createObjectURL/);
+    assert.match(imageInput, /URL\.revokeObjectURL/);
+    assert.match(imageInput, /image\/png,image\/jpeg,image\/webp/);
+    assert.match(imageInput, /await onChange\(normalized\)/);
+    assert.ok(imageInput.indexOf("await onChange(normalized)") < imageInput.indexOf("setPreviewUrl(URL.createObjectURL(normalized))"));
+    assert.match(imageInput, /onRemove \? <Button/);
+    assert.match(fields, /throw new Error\(message\)/);
   });
 
   it("uses clear Thai seller copy and previews a selected logo before save", () => {
@@ -310,14 +339,14 @@ describe("quotation UI", () => {
 
   it("keeps the native bank selection, image labels, and file input within the payment grid", () => {
     const payments = source("../components/admin/quotations/payment-method-list.tsx");
-    const imageInput = source("../components/admin/quotations/payment-image-input.tsx");
+    const imageInput = source("../components/admin/quotations/quotation-png-image-input.tsx");
 
     assert.match(payments, /<option value="OTHER">อื่น ๆ<\/option>/);
     assert.match(payments, /label="โลโก้ธนาคารอื่น"/);
     assert.match(payments, /label="รูป QR"/);
-    assert.match(imageInput, /label\?: string/);
-    assert.match(imageInput, /<span>\{label\}<\/span>/);
-    assert.match(imageInput, /className="grid w-full min-w-0 max-w-full gap-2 text-sm"/);
+    assert.match(imageInput, /label: string/);
+    assert.match(imageInput, /<Label htmlFor=\{inputId\}>\{label\}<\/Label>/);
+    assert.match(imageInput, /className="grid min-w-0 gap-2 text-sm"/);
     assert.match(imageInput, /className="w-full min-w-0 max-w-full"/);
   });
 
@@ -722,7 +751,7 @@ describe("quotation UI", () => {
     assert.match(payments, /"aria-invalid": Boolean\(error\)/);
     assert.match(payments, /"aria-describedby": error \? errorId : undefined/);
     assert.match(payments, /id=\{errorId\}/);
-    const imageInput = source("../components/admin/quotations/payment-image-input.tsx");
+    const imageInput = source("../components/admin/quotations/quotation-png-image-input.tsx");
     assert.match(imageInput, /data-field=\{field\}/);
     assert.match(imageInput, /aria-describedby=\{message \? errorId : undefined\}/);
     assert.match(payments, /error=\{error\("type"\)\} field=\{`paymentMethods\.\$\{index\}\.type`\}/);

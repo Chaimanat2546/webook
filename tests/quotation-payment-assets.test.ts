@@ -54,8 +54,8 @@ describe("quotation payment assets", () => {
     assert.equal((calls[0]?.headers as Record<string, string>)["content-type"], "image/png");
   });
 
-  it("normalizes payment images to PNG in the browser", () => {
-    const source = readFileSync("components/admin/quotations/payment-image-input.tsx", "utf8");
+  it("normalizes quotation images to PNG in the browser", () => {
+    const source = readFileSync("components/admin/quotations/quotation-png-image-input.tsx", "utf8");
     assert.match(source, /validateQuotationPaymentAssetFile\(file\)/);
     assert.match(source, /createImageBitmap\(file\)/);
     assert.match(source, /canvas\.width = bitmap\.width/);

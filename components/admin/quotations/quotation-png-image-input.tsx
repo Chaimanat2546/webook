@@ -1,0 +1,82 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { validateQuotationPaymentAssetFile } from "../../../lib/quotation-assets";
+import { Button } from "../../ui/button";
+import { Label } from "../../ui/label";
+
+export interface QuotationPngImageInputProps {
+  disabled?: boolean;
+  error?: string;
+  field: string;
+  label: string;
+  onChange: (file: File) => Promise<void> | void;
+  onRemove?: () => void;
+  value?: string;
+}
+
+export async function normalizeQuotationPngImage(file: File): Promise<File> {
+  validateQuotationPaymentAssetFile(file);
+  const bitmap = await createImageBitmap(file);
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("ไม่สามารถเตรียมรูปภาพได้");
+    context.drawImage(bitmap, 0, 0);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => result ? resolve(result) : reject(new Error("ไม่สามารถแปลงรูปภาพได้")), "image/png");
+    });
+    return validateQuotationPaymentAssetFile(new File([blob], "quotation-image.png", { type: "image/png" }));
+  } finally {
+    bitmap.close();
+  }
+}
+
+export function QuotationPngImageInput({ disabled, error: serverError = "", field, label, onChange, onRemove, value = "" }: QuotationPngImageInputProps) {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const displayedUrl = previewUrl || value;
+  const message = serverError || error;
+  const inputId = field.replaceAll(".", "-");
+  const errorId = `${inputId}-error`;
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  async function select(file: File | null) {
+    if (!file) return;
+    setError("");
+    setLoading(true);
+    try {
+      const normalized = await normalizeQuotationPngImage(file);
+      await onChange(normalized);
+      setPreviewUrl(URL.createObjectURL(normalized));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "ไม่สามารถเตรียมรูปภาพได้");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function remove() {
+    setError("");
+    setPreviewUrl("");
+    onRemove?.();
+  }
+
+  return <div className="grid min-w-0 gap-2 text-sm">
+    <Label htmlFor={inputId}>{label}</Label>
+    <input accept="image/png,image/jpeg,image/webp" aria-describedby={message ? errorId : undefined} aria-invalid={Boolean(message)} className="w-full min-w-0 max-w-full" data-field={field} disabled={disabled || loading} id={inputId} onChange={(event) => select(event.target.files?.[0] ?? null)} type="file" />
+    {displayedUrl ? <div className="flex flex-wrap items-start gap-3">
+      {/* eslint-disable-next-line @next/next/no-img-element -- Blob and validated asset URLs need a direct preview. */}
+      <img alt={`ตัวอย่าง${label}`} className="max-h-40 max-w-full rounded-md border object-contain" src={displayedUrl} />
+      {onRemove ? <Button disabled={disabled || loading} onClick={remove} size="sm" type="button" variant="outline">ลบรูป</Button> : null}
+    </div> : null}
+    <span aria-live="polite" className={message ? "text-destructive" : "text-muted-foreground"} id={errorId}>{loading ? "กำลังเตรียมรูปภาพ" : message}</span>
+  </div>;
+}

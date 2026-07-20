@@ -23,12 +23,14 @@ import {
   getQuotationCompanyProfile,
   saveCompanyPaymentMethods,
   saveQuotation,
+  saveQuotationCompanyCertification,
   saveQuotationCompanyProfile,
   softDeleteQuotation,
 } from "../../../server/repositories/quotations";
 import { QuotationPaymentAssetOriginNotConfiguredError } from "../../../server/repositories/quotation-errors";
 import {
   prepareSellerSnapshot,
+  prepareCertificationSnapshot,
   prepareQuotationPayload,
   QuotationValidationError,
 } from "../../../server/services/quotations";
@@ -307,5 +309,28 @@ export async function saveCompanyPaymentMethodsAction(
     }
     console.error("Failed to save company payment methods", error instanceof Error ? error.message : "Unknown error");
     return { fieldErrors: {}, formError: "ไม่สามารถบันทึกช่องทางชำระเงินได้", ok: false };
+  }
+}
+
+export async function saveCompanyCertificationAction(
+  value: unknown,
+): Promise<CompanyPaymentMethodsActionResult> {
+  const { adminUser, supabase } = await requireAdmin();
+  if (!canUseQuotation(adminUser)) {
+    return { fieldErrors: {}, formError: "ไม่มีสิทธิ์จัดการข้อมูลรับรอง", ok: false };
+  }
+  try {
+    const certification = prepareCertificationSnapshot(value);
+    const fieldErrors = certificationAssetErrors(certification);
+    if (Object.keys(fieldErrors).length) return { fieldErrors, formError: "", ok: false };
+    await saveQuotationCompanyCertification(supabase, certification);
+    revalidatePath("/admin/quotations/settings/company");
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof QuotationValidationError) {
+      return { fieldErrors: error.fieldErrors, formError: "", ok: false };
+    }
+    console.error("Failed to save company certification", error instanceof Error ? error.message : "Unknown error");
+    return { fieldErrors: {}, formError: "ไม่สามารถบันทึกข้อมูลรับรองได้ กรุณาลองอีกครั้ง", ok: false };
   }
 }

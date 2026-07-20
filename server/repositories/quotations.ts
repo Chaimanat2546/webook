@@ -3,7 +3,10 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { VatTreatment } from "../../lib/quotation-calculator.ts";
-import type { CertificationSnapshot } from "../../lib/quotation-certification.ts";
+import {
+  certificationSnapshotToJson,
+  type CertificationSnapshot,
+} from "../../lib/quotation-certification.ts";
 import type {
   BankOption,
   CompanyPaymentMethod,
@@ -331,6 +334,18 @@ export async function saveQuotationCompanyProfile(
     website: seller.website,
   }, { onConflict: "user_id" });
   if (error) throw new Error(error.message);
+}
+
+export async function saveQuotationCompanyCertification(
+  supabase: SupabaseClient,
+  certification: CertificationSnapshot,
+): Promise<void> {
+  const { data, error } = await supabase.rpc(
+    "save_quotation_company_certification",
+    { p_value: certificationSnapshotToJson(certification) },
+  );
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Quotation company profile not found");
 }
 
 export async function listQuotationBanks(supabase: SupabaseClient): Promise<BankOption[]> {
