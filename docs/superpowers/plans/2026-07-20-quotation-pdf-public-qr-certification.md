@@ -816,24 +816,12 @@ Add to `server/repositories/quotations.ts`:
 ```ts
 export async function saveQuotationCompanyCertification(
   supabase: SupabaseClient,
-  userId: string,
   certification: CertificationSnapshot,
 ): Promise<void> {
-  const { data, error } = await supabase
-    .from("quotation_company_profiles")
-    .update({
-      approver_name: certification.approver.name || null,
-      approver_position: certification.approver.position || null,
-      approver_signature_url: certification.approver.signatureUrl || null,
-      company_stamp_url: certification.companyStampUrl || null,
-      issuer_name: certification.issuer.name || null,
-      issuer_position: certification.issuer.position || null,
-      issuer_signature_url: certification.issuer.signatureUrl || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId)
-    .select("id")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc(
+    "save_quotation_company_certification",
+    { p_value: certificationSnapshotToJson(certification) },
+  );
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Quotation company profile not found");
 }
@@ -842,7 +830,7 @@ export async function saveQuotationCompanyCertification(
 Add `saveCompanyCertificationAction(value)` to actions. It must require admin
 quotation permission, normalize with the same `prepareCertificationSnapshot`
 used by quotation saves, validate three URLs through the certification asset
-validator, call the repository with `user.id`, revalidate the settings page,
+validator, call the owner-scoped validated repository RPC, revalidate the settings page,
 and return field errors without exposing raw database messages.
 
 - [ ] **Step 6: Add the URL-driven settings section**
