@@ -7,6 +7,12 @@ import {
   type QuotationItemInput,
   type VatTreatment,
 } from "../../lib/quotation-calculator.ts";
+import {
+  certificationSnapshotToJson,
+  emptyCertificationSnapshot,
+  type CertificationSigner,
+  type CertificationSnapshot,
+} from "../../lib/quotation-certification.ts";
 import { addQuotationCalendarDays, getBangkokCalendarDate } from "../../lib/quotation-dates.ts";
 import type { QuotationPaymentMethod } from "../../lib/quotation-payment-methods.ts";
 import type { CustomerSnapshot, QuotationPayload, SellerSnapshot } from "../../lib/quotation-types.ts";
@@ -37,6 +43,7 @@ export interface PreparedQuotation {
   payload: QuotationPayload;
   rpcPayload: {
     customer_snapshot: CustomerSnapshot; id: string | null; internal_notes: string; issue_date: string;
+    certification_snapshot: ReturnType<typeof certificationSnapshotToJson>;
     items: Array<{ description: string; discount_amount: string; name: string; position: number; quantity: string; unit: string | null; unit_price: string; vat_rate: string; vat_treatment: VatTreatment }>;
     payment_methods: Array<{ account_name: string; account_number: string; account_type: string; bank_code: string; bank_id: string | null; bank_logo_url: string; bank_name: string; custom_bank_logo_url: string; custom_bank_name: string; id: string; instructions: string; position: number; promptpay_id: string; provider_name: string; qr_image_url: string; qr_mode: string; type: string }>;
     public_notes: string; reference: string; seller_snapshot: SellerSnapshot; subject: string; withholding_tax_rate: string | null;
@@ -63,6 +70,32 @@ function branchNumber(source: Record<string, unknown>, officeType: "branch" | "h
 }
 function numeric(value: string, expression: RegExp, field: string, errors: Record<string, string>, percentage = false): string { if (!expression.test(value) || (percentage && Number(value) > 100)) errors[field] = "ตัวเลขไม่ถูกต้อง"; return value; }
 
+export function prepareCertificationSnapshot(value: unknown): CertificationSnapshot {
+  const errors: Record<string, string> = {};
+  let source: Record<string, unknown>;
+  try { source = objectValue(value ?? {}, "certification"); }
+  catch { errors.certification = "ข้อมูลรับรองไม่ถูกต้อง"; source = {}; }
+
+  const signer = (key: "approver" | "issuer"): CertificationSigner => {
+    let row: Record<string, unknown>;
+    try { row = objectValue(source[key] ?? {}, `certification.${key}`); }
+    catch { errors[`certification.${key}`] = "ข้อมูลผู้ลงนามไม่ถูกต้อง"; row = {}; }
+    return {
+      name: bounded(stringValue(row, "name"), 200, `certification.${key}.name`, errors),
+      position: bounded(stringValue(row, "position"), 200, `certification.${key}.position`, errors),
+      signatureUrl: bounded(stringValue(row, "signatureUrl"), 2_048, `certification.${key}.signatureUrl`, errors),
+    };
+  };
+
+  const certification = {
+    approver: signer("approver"),
+    companyStampUrl: bounded(stringValue(source, "companyStampUrl"), 2_048, "certification.companyStampUrl", errors),
+    issuer: signer("issuer"),
+  };
+  if (Object.keys(errors).length) throw new QuotationValidationError(errors);
+  return certification;
+}
+
 export function prepareSellerSnapshot(value: unknown): SellerSnapshot {
   let source: Record<string, unknown>;
   try { source = objectValue(value, "seller"); }
@@ -82,10 +115,15 @@ export function prepareSellerSnapshot(value: unknown): SellerSnapshot {
   return seller;
 }
 
-export function emptyQuotationPayload(seller: SellerSnapshot, now: Date): QuotationPayload {
+export function emptyQuotationPayload(
+  seller: SellerSnapshot,
+  now: Date,
+  certification = emptyCertificationSnapshot(),
+): QuotationPayload {
   const issueDate = getBangkokCalendarDate(now);
   const validityDays = "15";
   return {
+    certification,
     customer: { address: "", branchNumber: "", name: "", officeType: "head_office", taxId: "" },
     id: null, internalNotes: "", issueDate,
     items: [{ description: "", discountAmount: "0", id: crypto.randomUUID(), name: "", position: 1, quantity: "1", unit: "", unitPrice: "0.00", vatRate: "0", vatTreatment: "none" }],
@@ -104,6 +142,8 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   }
   let seller: SellerSnapshot;
   try { seller = prepareSellerSnapshot(source.seller); } catch (error) { if (error instanceof QuotationValidationError) Object.assign(errors, error.fieldErrors); else errors.seller = "ข้อมูลผู้ขายไม่ถูกต้อง"; seller = { address: "", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "", officeType: "head_office", phone: "", taxId: "", website: "" }; }
+  let certification: CertificationSnapshot;
+  try { certification = prepareCertificationSnapshot(source.certification); } catch (error) { if (error instanceof QuotationValidationError) Object.assign(errors, error.fieldErrors); else errors.certification = "ข้อมูลรับรองไม่ถูกต้อง"; certification = emptyCertificationSnapshot(); }
   let customerSource: Record<string, unknown>;
   try { customerSource = objectValue(source.customer, "customer"); } catch { errors.customer = "Invalid customer"; customerSource = {}; }
   customerSource.officeType = trimValue(customerSource.officeType);
@@ -144,7 +184,7 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   let paymentMethods: QuotationPaymentMethod[];
   try { paymentMethods = preparePaymentMethods(source.paymentMethods); }
   catch (error) { if (error instanceof QuotationValidationError) Object.assign(errors, error.fieldErrors); else errors.paymentMethods = "Invalid payment methods"; paymentMethods = []; }
-  const payload: QuotationPayload = { customer, id, internalNotes: bounded(stringValue(source, "internalNotes"), 5_000, "internalNotes", errors), issueDate, items, paymentMethods, publicNotes: bounded(stringValue(source, "publicNotes"), 5_000, "publicNotes", errors), reference: bounded(stringValue(source, "reference"), 200, "reference", errors), seller, subject: bounded(stringValue(source, "subject"), 200, "subject", errors), validUntil, validityDays, withholdingTaxRate };
+  const payload: QuotationPayload = { certification, customer, id, internalNotes: bounded(stringValue(source, "internalNotes"), 5_000, "internalNotes", errors), issueDate, items, paymentMethods, publicNotes: bounded(stringValue(source, "publicNotes"), 5_000, "publicNotes", errors), reference: bounded(stringValue(source, "reference"), 200, "reference", errors), seller, subject: bounded(stringValue(source, "subject"), 200, "subject", errors), validUntil, validityDays, withholdingTaxRate };
   if (Object.keys(errors).length) throw new QuotationValidationError(errors);
   let calculation: QuotationCalculation;
   try { calculation = calculateQuotation(payload); } catch (error) {
@@ -170,5 +210,5 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
       });
     }
   }
-  return { amountInWords: formatThaiBahtText(calculation.amountDue), calculation, payload, rpcPayload: { customer_snapshot: customer, id, internal_notes: payload.internalNotes, issue_date: issueDate, items: calculation.lines.map((line) => ({ description: line.description, discount_amount: line.discountAmount, name: line.name, position: line.position, quantity: line.quantity, unit: line.unit || null, unit_price: line.unitPrice, vat_rate: line.vatRate, vat_treatment: line.vatTreatment })), payment_methods: paymentMethods.map((method) => ({ account_name: method.accountName, account_number: method.accountNumber, account_type: method.accountType, bank_code: method.bankCode, bank_id: method.bankId, bank_logo_url: method.bankLogoUrl, bank_name: method.bankName, custom_bank_logo_url: method.customBankLogoUrl, custom_bank_name: method.customBankName, id: method.id, instructions: method.instructions, position: method.position, promptpay_id: method.promptPayId, provider_name: method.providerName, qr_image_url: method.qrImageUrl, qr_mode: method.qrMode, type: method.type })), public_notes: payload.publicNotes, reference: payload.reference, seller_snapshot: seller, subject: payload.subject, totals: { amountDue: calculation.amountDue, discountTotal: calculation.discountTotal, grandTotal: calculation.grandTotal, grossTotal: calculation.grossTotal, preTaxTotal: calculation.preTaxTotal, vatTotal: calculation.vatTotal, withholdingTaxTotal: calculation.withholdingTaxTotal }, valid_until: validUntil, validity_days: validityDays ? Number(validityDays) : null, withholding_tax_rate: payload.withholdingTaxRate } };
+  return { amountInWords: formatThaiBahtText(calculation.amountDue), calculation, payload, rpcPayload: { certification_snapshot: certificationSnapshotToJson(certification), customer_snapshot: customer, id, internal_notes: payload.internalNotes, issue_date: issueDate, items: calculation.lines.map((line) => ({ description: line.description, discount_amount: line.discountAmount, name: line.name, position: line.position, quantity: line.quantity, unit: line.unit || null, unit_price: line.unitPrice, vat_rate: line.vatRate, vat_treatment: line.vatTreatment })), payment_methods: paymentMethods.map((method) => ({ account_name: method.accountName, account_number: method.accountNumber, account_type: method.accountType, bank_code: method.bankCode, bank_id: method.bankId, bank_logo_url: method.bankLogoUrl, bank_name: method.bankName, custom_bank_logo_url: method.customBankLogoUrl, custom_bank_name: method.customBankName, id: method.id, instructions: method.instructions, position: method.position, promptpay_id: method.promptPayId, provider_name: method.providerName, qr_image_url: method.qrImageUrl, qr_mode: method.qrMode, type: method.type })), public_notes: payload.publicNotes, reference: payload.reference, seller_snapshot: seller, subject: payload.subject, totals: { amountDue: calculation.amountDue, discountTotal: calculation.discountTotal, grandTotal: calculation.grandTotal, grossTotal: calculation.grossTotal, preTaxTotal: calculation.preTaxTotal, vatTotal: calculation.vatTotal, withholdingTaxTotal: calculation.withholdingTaxTotal }, valid_until: validUntil, validity_days: validityDays ? Number(validityDays) : null, withholding_tax_rate: payload.withholdingTaxRate } };
 }

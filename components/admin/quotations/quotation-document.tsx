@@ -1,9 +1,10 @@
+import type { QuotationCalculation } from "../../../lib/quotation-calculator";
 import {
-  formatThaiBahtText,
-  type QuotationCalculation,
-} from "../../../lib/quotation-calculator";
+  buildQuotationDocumentViewModel,
+  type QuotationDocumentViewModel,
+} from "../../../lib/quotation-document-view";
 import { formatBaht, formatMoney } from "../../../lib/quotation-money";
-import { PAYMENT_ACCOUNT_TYPE_LABELS, type QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
+import { PAYMENT_ACCOUNT_TYPE_LABELS } from "../../../lib/quotation-payment-methods";
 import type { QuotationPayload } from "../../../lib/quotation-types";
 import {
   CreditCard,
@@ -13,23 +14,25 @@ import {
   Phone,
   ReceiptText,
 } from "lucide-react";
-import { renderThaiQRPaymentMatrix } from "thai-qr-payment";
+import { DocumentImage } from "./document-image";
 
 export function QuotationDocument({
   calculation,
   documentNumber,
   payload,
+  publicQrDataUrl,
 }: {
   calculation: QuotationCalculation;
   documentNumber: string | null;
   payload: QuotationPayload;
+  publicQrDataUrl?: string | null;
 }) {
-  const showItemDiscount = payload.items.some(
-    (item) => Number(item.discountAmount) > 0,
-  );
-  const showItemVat = payload.items.some(
-    (item) => item.vatTreatment !== "none",
-  );
+  const model = buildQuotationDocumentViewModel({
+    calculation,
+    documentNumber,
+    payload,
+    publicQrDataUrl,
+  });
   return (
     <article
       className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-900"
@@ -116,12 +119,12 @@ export function QuotationDocument({
           >
             <dt className="font-semibold">เลขที่เอกสาร</dt>
             <dd data-document-number className="whitespace-nowrap tabular-nums">
-              {documentNumber ?? "เลขที่ออกเมื่อบันทึก"}
+              {model.documentNumber}
             </dd>
             <dt className="font-semibold">วันที่ออก</dt>
-            <dd>{documentDate(payload.issueDate)}</dd>
+            <dd>{model.issueDate}</dd>
             <dt className="font-semibold">ใช้ได้ถึง</dt>
-            <dd>{documentDate(payload.validUntil)}</dd>
+            <dd>{model.validUntil}</dd>
             <dt className="font-semibold">อ้างอิง</dt>
             <dd>{payload.reference || "-"}</dd>
             {payload.subject ? (
@@ -167,10 +170,10 @@ export function QuotationDocument({
             <th className="w-[8%] p-2 text-right">จำนวน</th>
             <th className="w-[7%] p-2">หน่วย</th>
             <th className="w-[13%] p-2 text-right">ราคา</th>
-            {showItemDiscount ? (
+            {model.showItemDiscount ? (
               <th className="w-[10%] p-2 text-right">ส่วนลด</th>
             ) : null}
-            {showItemVat ? (
+            {model.showItemVat ? (
               <th className="w-[7%] p-2 text-right">VAT</th>
             ) : null}
             <th className="w-[15%] rounded-r-md p-2 text-right">
@@ -197,12 +200,12 @@ export function QuotationDocument({
               <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">
                 {formatMoney(item.unitPrice)}
               </td>
-              {showItemDiscount ? (
+              {model.showItemDiscount ? (
                 <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">
                   {formatMoney(item.discountAmount)}
                 </td>
               ) : null}
-              {showItemVat ? (
+              {model.showItemVat ? (
                 <td className="p-2 text-right">
                   {item.vatTreatment === "taxable"
                     ? `${item.vatRate}%`
@@ -237,7 +240,7 @@ export function QuotationDocument({
             <div className="flex items-start justify-between gap-3">
               <span className="shrink-0">จำนวนเงินทั้งสิ้น</span>
               <span className="text-right text-slate-600 [overflow-wrap:anywhere]">
-                {formatThaiBahtText(calculation.amountDue)}
+                {model.amountInWords}
               </span>
             </div>
           </div>
@@ -261,7 +264,7 @@ export function QuotationDocument({
         </div>
       </section>
 
-      {payload.paymentMethods.length ? (
+      {model.paymentMethods.length ? (
         <section
           className="border-b"
           data-document-payment-methods
@@ -275,15 +278,9 @@ export function QuotationDocument({
               ชำระเงิน
             </h2>
             <div className="divide-y" data-document-payment-list>
-              {[...payload.paymentMethods]
-                .sort((left, right) => left.position - right.position)
-                .map((method) => (
-                  <PaymentMethod
-                    amountDue={calculation.amountDue}
-                    key={method.id}
-                    method={method}
-                  />
-                ))}
+              {model.paymentMethods.map((method) => (
+                <PaymentMethod key={method.id} method={method} />
+              ))}
             </div>
           </div>
         </section>
@@ -303,16 +300,59 @@ export function QuotationDocument({
           </p>
         ) : null}
       </section>
+
+      {model.publicQrDataUrl ? (
+        <section className="flex items-center gap-3 border-b py-3" data-document-public-qr>
+          {/* eslint-disable-next-line @next/next/no-img-element -- Generated Data URLs are intentionally embedded for print. */}
+          <img
+            alt="QR สำหรับดูใบเสนอราคาออนไลน์"
+            className="size-20 object-contain"
+            src={model.publicQrDataUrl}
+          />
+          <p>สแกนเพื่อดูเอกสารออนไลน์</p>
+        </section>
+      ) : null}
+
+      <section
+        className="break-inside-avoid grid grid-cols-1 gap-4 py-5 text-center sm:grid-cols-3 print:grid-cols-3"
+        data-document-certification
+      >
+        <SignerSlot
+          issueDate={model.issueDate}
+          label="ผู้ออกเอกสาร"
+          signer={model.certification.issuer}
+        />
+        <SignerSlot
+          issueDate={model.issueDate}
+          label="ผู้อนุมัติ"
+          signer={model.certification.approver}
+        />
+        <div className="space-y-1" data-document-receiver>
+          <p className="font-semibold">ผู้รับเอกสาร</p>
+          <div className="h-20 border-b" aria-hidden="true" />
+          <p>ชื่อ ______________________________</p>
+          <p>ตำแหน่ง ___________________________</p>
+          <p>วันที่ _____________________________</p>
+        </div>
+        {model.certification.companyStampUrl ? (
+          <div className="flex min-h-16 items-center justify-center sm:col-span-2 print:col-span-2">
+            <DocumentImage
+              alt="ตราประทับบริษัท"
+              className="max-h-16 max-w-32 object-contain"
+              key={model.certification.companyStampUrl}
+              src={model.certification.companyStampUrl}
+            />
+          </div>
+        ) : null}
+      </section>
     </article>
   );
 }
 
 function PaymentMethod({
-  amountDue,
   method,
 }: {
-  amountDue: string;
-  method: QuotationPaymentMethod;
+  method: QuotationDocumentViewModel["paymentMethods"][number];
 }) {
   const bankName = method.customBankName || method.bankName;
   const bankLogo = method.customBankLogoUrl || method.bankLogoUrl;
@@ -327,11 +367,7 @@ function PaymentMethod({
     ? PAYMENT_ACCOUNT_TYPE_LABELS[method.accountType]
     : "";
   const accountNumberLine = [accountTypeLabel, method.accountNumber].filter(Boolean).join(" ");
-  const qr = method.qrMode === "auto_promptpay"
-    ? automaticPromptPayQr(method.promptPayId, amountDue)
-    : method.qrMode === "upload" && method.qrImageUrl
-      ? { ok: true as const, src: method.qrImageUrl }
-      : null;
+  const qrUnavailable = method.qrMode === "auto_promptpay" && !method.qrSource;
 
   return (
     <div className="break-inside-avoid min-w-0 py-2.5">
@@ -371,15 +407,15 @@ function PaymentMethod({
             </p>
           ) : null}
         </div>
-        {qr?.ok ? (
+        {method.qrSource ? (
           <picture className="h-28 w-28 shrink-0">
             <img
               alt={`QR ${title}`}
               className="h-28 w-28 object-contain"
-              src={qr.src}
+              src={method.qrSource}
             />
           </picture>
-        ) : qr ? (
+        ) : qrUnavailable ? (
           <p className="w-28 shrink-0 text-center text-slate-500">
             ไม่สามารถสร้าง QR ได้
           </p>
@@ -387,25 +423,6 @@ function PaymentMethod({
       </div>
     </div>
   );
-}
-
-function automaticPromptPayQr(
-  recipient: string,
-  amountDue: string,
-): { ok: true; src: string } | { ok: false } {
-  const amount = Number(amountDue);
-  if (!Number.isFinite(amount) || amount <= 0) return { ok: false };
-
-  try {
-    const svg = renderThaiQRPaymentMatrix({
-      amount,
-      recipient,
-      size: 160,
-    });
-    return { ok: true, src: `data:image/svg+xml,${encodeURIComponent(svg)}` };
-  } catch {
-    return { ok: false };
-  }
 }
 
 function office(snapshot: {
@@ -417,9 +434,33 @@ function office(snapshot: {
     : "สำนักงานใหญ่";
 }
 
-function documentDate(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
+function SignerSlot({
+  issueDate,
+  label,
+  signer,
+}: {
+  issueDate: string;
+  label: string;
+  signer: QuotationDocumentViewModel["certification"]["issuer"];
+}) {
+  return (
+    <div className="space-y-1" data-document-signer>
+      <p className="font-semibold">{label}</p>
+      <div className="flex h-20 items-end justify-center border-b">
+        {signer.signatureUrl ? (
+          <DocumentImage
+            alt={`ลายเซ็น${label}`}
+            className="max-h-16 w-full object-contain"
+            key={signer.signatureUrl}
+            src={signer.signatureUrl}
+          />
+        ) : null}
+      </div>
+      {signer.name ? <p>({signer.name})</p> : null}
+      {signer.position ? <p>{signer.position}</p> : null}
+      <p>วันที่ {issueDate}</p>
+    </div>
+  );
 }
 
 function Total({

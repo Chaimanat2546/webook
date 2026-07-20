@@ -5,10 +5,14 @@ import { revalidatePath } from "next/cache";
 import {
   buildQuotationAssetObjectKey,
   buildQuotationAssetUrl,
+  buildQuotationCertificationAssetObjectKey,
+  buildQuotationCertificationAssetUrl,
   buildQuotationPaymentAssetObjectKey,
   buildQuotationPaymentAssetUrl,
   validateQuotationAssetFile,
   validateQuotationAssetUrl,
+  validateQuotationCertificationAssetFile,
+  validateQuotationCertificationAssetUrl,
   validateQuotationPaymentAssetFile,
   validateQuotationPaymentAssetUrl,
 } from "../../../lib/quotation-assets";
@@ -19,12 +23,14 @@ import {
   getQuotationCompanyProfile,
   saveCompanyPaymentMethods,
   saveQuotation,
+  saveQuotationCompanyCertification,
   saveQuotationCompanyProfile,
   softDeleteQuotation,
 } from "../../../server/repositories/quotations";
 import { QuotationPaymentAssetOriginNotConfiguredError } from "../../../server/repositories/quotation-errors";
 import {
   prepareSellerSnapshot,
+  prepareCertificationSnapshot,
   prepareQuotationPayload,
   QuotationValidationError,
 } from "../../../server/services/quotations";
@@ -79,6 +85,24 @@ function paymentAssetErrors(paymentMethods: QuotationPayload["paymentMethods"]):
   return errors;
 }
 
+function certificationAssetErrors(certification: QuotationPayload["certification"]): Record<string, string> {
+  const workerUrl = getQuotationAssetEnv().workerUrl;
+  const errors: Record<string, string> = {};
+  for (const [key, url] of [
+    ["certification.issuer.signatureUrl", certification.issuer.signatureUrl],
+    ["certification.approver.signatureUrl", certification.approver.signatureUrl],
+    ["certification.companyStampUrl", certification.companyStampUrl],
+  ] as const) {
+    if (!url) continue;
+    try {
+      validateQuotationCertificationAssetUrl(url, workerUrl);
+    } catch {
+      errors[key] = "รูปการรับรองต้องมาจากพื้นที่จัดเก็บของระบบ";
+    }
+  }
+  return errors;
+}
+
 function missingPaymentAssetOrigin(): { fieldErrors: Record<string, string>; formError: string; ok: false } {
   return {
     fieldErrors: {},
@@ -106,6 +130,8 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
     }
     const paymentErrors = paymentAssetErrors(prepared.payload.paymentMethods);
     if (Object.keys(paymentErrors).length) return { fieldErrors: paymentErrors, formError: "", ok: false };
+    const certificationErrors = certificationAssetErrors(prepared.payload.certification);
+    if (Object.keys(certificationErrors).length) return { fieldErrors: certificationErrors, formError: "", ok: false };
     const saved = await saveQuotation(supabase, prepared.rpcPayload);
     revalidatePath("/admin/quotations");
     revalidatePath(`/admin/quotations/${encodeURIComponent(saved.id)}`);
@@ -227,6 +253,39 @@ export async function uploadQuotationPaymentAssetAction(
   }
 }
 
+export async function uploadQuotationCertificationAssetAction(
+  formData: FormData,
+): Promise<QuotationPaymentAssetActionResult> {
+  const { adminUser } = await requireAdmin();
+  if (!canUseQuotation(adminUser)) {
+    return { fieldErrors: {}, formError: "ไม่มีสิทธิ์จัดการใบเสนอราคา", ok: false };
+  }
+  try {
+    const file = formData.get("file");
+    if (!(file instanceof File)) throw new Error("กรุณาเลือกรูปการรับรอง");
+    validateQuotationCertificationAssetFile(file);
+    if (file.type !== "image/png") throw new Error("Certification image must be normalized to PNG");
+    const env = getQuotationAssetEnv();
+    const objectKey = buildQuotationCertificationAssetObjectKey();
+    await uploadQuotationAssetObject({
+      body: await file.arrayBuffer(),
+      contentType: "image/png",
+      objectKey,
+      ...env,
+    });
+    return { ok: true, url: buildQuotationCertificationAssetUrl(objectKey, env.workerUrl) };
+  } catch (error) {
+    console.error("Failed to upload quotation certification asset", error instanceof Error ? error.message : "Unknown error");
+    return {
+      fieldErrors: {},
+      formError: error instanceof Error && error.message.includes("2 MB")
+        ? error.message
+        : "ไม่สามารถอัปโหลดรูปการรับรองได้",
+      ok: false,
+    };
+  }
+}
+
 export async function saveCompanyPaymentMethodsAction(
   value: unknown,
 ): Promise<CompanyPaymentMethodsActionResult> {
@@ -250,5 +309,28 @@ export async function saveCompanyPaymentMethodsAction(
     }
     console.error("Failed to save company payment methods", error instanceof Error ? error.message : "Unknown error");
     return { fieldErrors: {}, formError: "ไม่สามารถบันทึกช่องทางชำระเงินได้", ok: false };
+  }
+}
+
+export async function saveCompanyCertificationAction(
+  value: unknown,
+): Promise<CompanyPaymentMethodsActionResult> {
+  const { adminUser, supabase } = await requireAdmin();
+  if (!canUseQuotation(adminUser)) {
+    return { fieldErrors: {}, formError: "ไม่มีสิทธิ์จัดการข้อมูลรับรอง", ok: false };
+  }
+  try {
+    const certification = prepareCertificationSnapshot(value);
+    const fieldErrors = certificationAssetErrors(certification);
+    if (Object.keys(fieldErrors).length) return { fieldErrors, formError: "", ok: false };
+    await saveQuotationCompanyCertification(supabase, certification);
+    revalidatePath("/admin/quotations/settings/company");
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof QuotationValidationError) {
+      return { fieldErrors: error.fieldErrors, formError: "", ok: false };
+    }
+    console.error("Failed to save company certification", error instanceof Error ? error.message : "Unknown error");
+    return { fieldErrors: {}, formError: "ไม่สามารถบันทึกข้อมูลรับรองได้ กรุณาลองอีกครั้ง", ok: false };
   }
 }

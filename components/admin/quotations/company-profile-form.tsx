@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 
-import { saveCompanyPaymentMethodsAction, saveCompanyProfileAction } from "../../../app/admin/quotations/actions";
+import { saveCompanyCertificationAction, saveCompanyPaymentMethodsAction, saveCompanyProfileAction } from "../../../app/admin/quotations/actions";
 import { validateQuotationAssetFile } from "../../../lib/quotation-assets";
+import type { CertificationSnapshot } from "../../../lib/quotation-certification";
 import { resizeQuotationImageToMax } from "../../../lib/quotation-image-resize";
 import type { BankOption, CompanyPaymentMethod } from "../../../lib/quotation-payment-methods";
 import type { SellerSnapshot } from "../../../lib/quotation-types";
@@ -12,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
+import { CertificationFields } from "./certification-fields";
 import { PaymentMethodList } from "./payment-method-list";
 
 export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSnapshot }) {
@@ -153,6 +155,46 @@ export function PaymentMethodsSettings({ banks, initialMethods }: { banks: BankO
     });
   }
   return <Card><CardHeader><CardTitle>ช่องทางชำระเงิน</CardTitle></CardHeader><CardContent className="grid gap-4"><PaymentMethodList banks={banks} errors={errors} methods={methods} mode="master" onChange={setMethods} /><p aria-live="polite" className={Object.keys(errors).length || message === "ไม่สามารถบันทึกช่องทางชำระเงินได้" ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>{message}</p><Button disabled={pending} onClick={save} type="button">{pending ? "กำลังบันทึก..." : "บันทึกช่องทางชำระเงิน"}</Button></CardContent></Card>;
+}
+
+export function CertificationSettings({ initialCertification }: { initialCertification: CertificationSnapshot }) {
+  const [certification, setCertification] = useState(initialCertification);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState("");
+  const [uploadingFields, setUploadingFields] = useState(new Set<string>());
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    if (uploadingFields.size) return;
+    setErrors({});
+    setMessage("");
+    startTransition(async () => {
+      const result = await saveCompanyCertificationAction(certification);
+      if (result.ok) setMessage("บันทึกข้อมูลรับรองแล้ว");
+      else {
+        setErrors(result.fieldErrors);
+        setMessage(result.formError || Object.values(result.fieldErrors)[0] || "ไม่สามารถบันทึกข้อมูลรับรองได้");
+      }
+    });
+  }
+
+  function updateUploadState(field: string, busy: boolean) {
+    setUploadingFields((current) => {
+      const next = new Set(current);
+      if (busy) next.add(field);
+      else next.delete(field);
+      return next;
+    });
+  }
+
+  return <Card>
+    <CardHeader><CardTitle>ข้อมูลรับรองหลัก</CardTitle></CardHeader>
+    <CardContent className="grid gap-4">
+      <CertificationFields disabled={pending} errors={errors} onChange={setCertification} onUploadStateChange={updateUploadState} value={certification} />
+      <p aria-live="polite" className={Object.keys(errors).length ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>{message}</p>
+      <Button disabled={pending || uploadingFields.size > 0} onClick={save} type="button">{pending ? "กำลังบันทึก..." : uploadingFields.size ? "กำลังอัปโหลดรูป..." : "บันทึกข้อมูลรับรอง"}</Button>
+    </CardContent>
+  </Card>;
 }
 
 function Field({ error, label, name, required, type = "text", value }: { error?: string; label: string; name: string; required?: boolean; type?: string; value: string }) {

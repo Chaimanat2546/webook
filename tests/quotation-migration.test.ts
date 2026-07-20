@@ -81,8 +81,65 @@ const accountTypeSql = readFileSync(
   new URL(`../supabase/migrations/${accountTypeMigrationName}`, import.meta.url),
   "utf8",
 );
+const certificationMigrationName = "20260720120000_quotation_pdf_qr_certification.sql";
+const certificationSql = readFileSync(
+  new URL(`../supabase/migrations/${certificationMigrationName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
+  it("persists certification snapshots through the owner-scoped save and public read RPCs", () => {
+    assert.match(certificationSql, /alter table public\.quotation_company_profiles[\s\S]*issuer_name text[\s\S]*approver_name text[\s\S]*company_stamp_url text/i);
+    assert.match(certificationSql, /alter table public\.quotations[\s\S]*certification_snapshot jsonb not null default '\{\}'::jsonb/i);
+    assert.match(certificationSql, /jsonb_typeof\(certification_snapshot\) = 'object'/i);
+    assert.match(certificationSql, /p_payload -> 'certification_snapshot'/i);
+    assert.match(certificationSql, /update public\.quotations[\s\S]*certification_snapshot = v_certification/i);
+    assert.match(certificationSql, /'certification_snapshot', q\.certification_snapshot/i);
+    assert.match(certificationSql, /validate_quotation_certification_asset_url/i);
+    assert.match(certificationSql, /quotations\/certification-assets/i);
+    assert.doesNotMatch(certificationSql, /drop table|drop column|truncate/i);
+  });
+
+  it("makes certification masters owner-scoped and writable only through validation", () => {
+    assert.match(certificationSql, /create or replace function private\.save_quotation_company_certification\(p_value jsonb\)/i);
+    assert.match(certificationSql, /update public\.quotation_company_profiles[\s\S]*where user_id = auth\.uid\(\)/i);
+    assert.match(certificationSql, /create or replace function public\.save_quotation_company_certification\(p_value jsonb\)/i);
+    assert.match(certificationSql, /revoke insert, update on public\.quotation_company_profiles from authenticated/i);
+    assert.match(certificationSql, /grant insert \([\s\S]*seller_name[\s\S]*updated_at[\s\S]*\) on public\.quotation_company_profiles to authenticated/i);
+    assert.match(certificationSql, /grant update \([\s\S]*seller_name[\s\S]*updated_at[\s\S]*\) on public\.quotation_company_profiles to authenticated/i);
+    const profilePrivileges = certificationSql.slice(
+      certificationSql.indexOf("revoke insert, update on public.quotation_company_profiles"),
+      certificationSql.indexOf("create or replace function private.validate_quotation_certification_asset_url"),
+    );
+    assert.doesNotMatch(profilePrivileges, /issuer_|approver_|company_stamp_url/i);
+    assert.match(certificationSql, /revoke all on function public\.save_quotation_company_certification\(jsonb\) from public, anon/i);
+    assert.match(certificationSql, /grant execute on function public\.save_quotation_company_certification\(jsonb\) to authenticated/i);
+  });
+
+  it("rejects non-string certification leaves before extracting text", () => {
+    assert.match(certificationSql, /coalesce\(jsonb_typeof\(v_issuer -> 'name'\), 'null'\) not in \('string', 'null'\)/i);
+    assert.match(certificationSql, /coalesce\(jsonb_typeof\(v_issuer -> 'position'\), 'null'\) not in \('string', 'null'\)/i);
+    assert.match(certificationSql, /coalesce\(jsonb_typeof\(v_issuer -> 'signature_url'\), 'null'\) not in \('string', 'null'\)/i);
+    assert.match(certificationSql, /coalesce\(jsonb_typeof\(v_approver -> 'name'\), 'null'\) not in \('string', 'null'\)/i);
+    assert.match(certificationSql, /coalesce\(jsonb_typeof\(v_approver -> 'position'\), 'null'\) not in \('string', 'null'\)/i);
+    assert.match(certificationSql, /coalesce\(jsonb_typeof\(v_approver -> 'signature_url'\), 'null'\) not in \('string', 'null'\)/i);
+    assert.match(certificationSql, /coalesce\(jsonb_typeof\(v_value -> 'company_stamp_url'\), 'null'\) not in \('string', 'null'\)/i);
+    const saveFunction = certificationSql.slice(
+      certificationSql.indexOf("create or replace function private.save_quotation_with_payments"),
+      certificationSql.indexOf("create or replace function private.get_public_quotation"),
+    );
+    assert.match(saveFunction, /v_certification jsonb;[\s\S]*if not private\.has_quotation_permission\(\)[\s\S]*v_certification := private\.normalize_quotation_certification/i);
+  });
+
+  it("extracts certification text before applying length checks", () => {
+    assert.match(certificationSql, /v_issuer_name text := btrim\(coalesce\(v_issuer ->> 'name', ''\)\)/i);
+    assert.match(certificationSql, /v_issuer_position text := btrim\(coalesce\(v_issuer ->> 'position', ''\)\)/i);
+    assert.match(certificationSql, /v_approver_name text := btrim\(coalesce\(v_approver ->> 'name', ''\)\)/i);
+    assert.match(certificationSql, /v_approver_position text := btrim\(coalesce\(v_approver ->> 'position', ''\)\)/i);
+    assert.match(certificationSql, /char_length\(v_issuer_name\) > 200[\s\S]*char_length\(v_approver_position\) > 200/i);
+    assert.doesNotMatch(certificationSql, /char_length\(btrim\(coalesce\(v_(?:issuer|approver) ->>/i);
+  });
+
   it("persists and validates bank account types at every database boundary", () => {
     assert.match(accountTypeSql, /alter table public\.quotation_company_payment_methods[\s\S]*add column account_type text not null default ''/i);
     assert.match(accountTypeSql, /alter table public\.quotation_payment_methods[\s\S]*add column account_type text not null default ''/i);

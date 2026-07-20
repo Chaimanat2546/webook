@@ -36,6 +36,7 @@ describe("quotation repository and actions", () => {
     assert.match(actions, /saveQuotation\(supabase, prepared\.rpcPayload\)/);
     assert.match(actions, /softDeleteQuotation\(supabase, id\)/);
     assert.match(actions, /uploadQuotationPaymentAssetAction/);
+    assert.match(actions, /uploadQuotationCertificationAssetAction/);
     assert.match(actions, /saveCompanyPaymentMethodsAction/);
   });
 
@@ -64,6 +65,32 @@ describe("quotation repository and actions", () => {
     assert.match(actions, /contentType: "image\/png"/);
     assert.match(actions, /validateQuotationPaymentAssetUrl\(url/);
     assert.match(actions, /prepareCompanyPaymentMethods\(value\)/);
+  });
+
+  it("validates and uploads normalized certification PNGs after permission checks", () => {
+    assert.match(actions, /validateQuotationCertificationAssetFile\(file\)/);
+    assert.match(actions, /file\.type !== "image\/png"/);
+    assert.match(actions, /buildQuotationCertificationAssetObjectKey\(\)/);
+    assert.match(actions, /contentType: "image\/png"/);
+    assert.match(actions, /validateQuotationCertificationAssetUrl\(url/);
+    assert.match(actions, /certification\.issuer\.signatureUrl/);
+    assert.match(actions, /certification\.approver\.signatureUrl/);
+    assert.match(actions, /certification\.companyStampUrl/);
+  });
+
+  it("saves the certification master through the validated owner-scoped RPC", () => {
+    assert.match(repository, /export async function saveQuotationCompanyCertification/);
+    assert.match(repository, /\.rpc\(\s*"save_quotation_company_certification"/);
+    assert.match(repository, /p_value: certificationSnapshotToJson\(certification\)/);
+    assert.doesNotMatch(repository, /issuer_name:\s*certification|approver_name:\s*certification|company_stamp_url:\s*certification/);
+
+    assert.match(actions, /export async function saveCompanyCertificationAction/);
+    assert.match(actions, /canUseQuotation\(adminUser\)/);
+    assert.match(actions, /prepareCertificationSnapshot\(value\)/);
+    assert.match(actions, /certificationAssetErrors\(certification\)/);
+    assert.match(actions, /saveQuotationCompanyCertification\(supabase, certification\)/);
+    assert.match(actions, /revalidatePath\("\/admin\/quotations\/settings\/company"\)/);
+    assert.doesNotMatch(actions, /certification_snapshot\s*:/);
   });
 
   it("hydrates ordered payment snapshots and returns the saved normalized payload", () => {

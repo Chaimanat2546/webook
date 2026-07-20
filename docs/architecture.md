@@ -19,7 +19,7 @@ Quotation Editor
   -> Server Action permission/validation
   -> shared quotation calculator
   -> transactional Supabase RPC
-  -> quotations + quotation_items
+  -> quotations + quotation_items + payment/certification snapshots
 
 Seller logo
   -> browser WebP normalization
@@ -33,6 +33,11 @@ Public /q/[token]
   -> private token-scoped security-definer function
   -> active quotation + items only
   -> shared QuotationDocument
+
+PDF Download (saved-clean only)
+  -> server-validated canonical QUOTATION_PUBLIC_ORIGIN
+  -> browser QR/image normalization
+  -> lazy React PDF renderer with bundled Noto Sans Thai
 ```
 
 Quotation access is enforced by `users.allow_tools.allow_quotation` in pages,
@@ -41,7 +46,8 @@ seller and customer snapshots, so later seller-profile changes do not modify
 saved quotations. Public sharing uses no anon table policy or service-role
 client: the exposed RPC is security invoker and calls the private,
 fixed-search-path security-definer function that returns only the active row's
-document fields and items.
+document fields, items, payments, and certification snapshot. Public links and
+QR codes use only the configured canonical HTTPS origin, never request Host.
 
 ## Deployment
 

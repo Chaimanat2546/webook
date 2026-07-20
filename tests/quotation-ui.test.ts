@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { emptyPaymentMethod, paymentMethodEditorState, updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
 
@@ -24,7 +24,7 @@ describe("quotation UI", () => {
     assert.match(document, /formatBaht\(calculation\.grandTotal\)/);
     assert.match(document, /ml-5 whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]/);
     assert.match(document, /data-document-payment-methods/);
-    assert.doesNotMatch(document, /internalNotes|signature/i);
+    assert.doesNotMatch(document, /internalNotes/);
   });
 
   it("styles document item descriptions as secondary text", () => {
@@ -69,7 +69,7 @@ describe("quotation UI", () => {
     const form = source("../components/admin/quotations/company-profile-form.tsx");
 
     assert.match(page, /searchParams: Promise<\{ section\?: string \}>/);
-    assert.match(page, /section === "payments" \? "payments" : "company"/);
+    assert.match(page, /section === "payments" \|\| section === "certification"/);
     assert.match(page, /\?section=company/);
     assert.match(page, /\?section=payments/);
     assert.match(page, /aria-current=\{selectedSection === item\.id \? "page" : undefined\}/);
@@ -77,6 +77,50 @@ describe("quotation UI", () => {
     assert.match(page, /selectedSection === "payments"[\s\S]*<PaymentMethodsSettings/);
     assert.match(form, /export function PaymentMethodsSettings/);
     assert.doesNotMatch(form, /<PaymentMethodsSettings[\s\S]*initialMethods=\{initialPaymentMethods\}/);
+  });
+
+  it("adds certification master settings with reusable image fields", () => {
+    const page = source("../app/admin/quotations/settings/company/page.tsx");
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+    const fieldsPath = new URL("../components/admin/quotations/certification-fields.tsx", import.meta.url);
+    const imageInputPath = new URL("../components/admin/quotations/quotation-png-image-input.tsx", import.meta.url);
+
+    assert.ok(existsSync(fieldsPath), "certification fields component should exist");
+    assert.ok(existsSync(imageInputPath), "shared quotation PNG image input should exist");
+    const fields = readFileSync(fieldsPath, "utf8");
+    const imageInput = readFileSync(imageInputPath, "utf8");
+
+    assert.match(page, /\?section=certification/);
+    assert.match(page, /selectedSection === "certification"/);
+    assert.match(page, /ข้อมูลรับรองหลัก/);
+    assert.match(page, /<CertificationSettings/);
+    assert.match(form, /บันทึกข้อมูลรับรอง/);
+    assert.match(fields, /ผู้ออกเอกสาร/);
+    assert.match(fields, /ผู้อนุมัติ/);
+    assert.match(fields, /ตราประทับบริษัท/);
+    assert.match(imageInput, /ลบรูป/);
+    assert.match(imageInput, /URL\.createObjectURL/);
+    assert.match(imageInput, /URL\.revokeObjectURL/);
+    assert.match(imageInput, /image\/png,image\/jpeg,image\/webp/);
+    assert.match(imageInput, /await onChange\(normalized\)/);
+    assert.ok(imageInput.indexOf("await onChange(normalized)") < imageInput.indexOf("setPreviewUrl(URL.createObjectURL(normalized))"));
+    assert.match(imageInput, /onRemove \? <Button/);
+    assert.match(fields, /throw new Error\(message\)/);
+    assert.match(fields, /onChange\(\(current\) => updateCertificationSigner/);
+    assert.match(fields, /onUploadStateChange\?\.\(field, busy\)/);
+    assert.match(form, /const \[uploadingFields, setUploadingFields\] = useState\(new Set<string>\(\)\)/);
+    assert.match(form, /if \(uploadingFields\.size\) return/);
+    assert.match(form, /disabled=\{pending \|\| uploadingFields\.size > 0\}/);
+    assert.match(imageInput, /onBusyChange\?\.\(true\)/);
+    assert.match(imageInput, /onBusyChange\?\.\(false\)/);
+    assert.match(imageInput, /inputRef\.current\.value = ""/);
+  });
+
+  it("loads only the data needed by the selected seller settings section", () => {
+    const page = source("../app/admin/quotations/settings/company/page.tsx");
+
+    assert.match(page, /const profile = selectedSection === "payments"\s*\? null\s*: await getQuotationCompanyProfile\(supabase, user\.id\)/);
+    assert.match(page, /selectedSection === "payments"\s*\? await Promise\.all\(\[\s*listQuotationBanks\(supabase\),\s*listCompanyPaymentMethods\(supabase, user\.id\),?\s*\]\)/);
   });
 
   it("uses clear Thai seller copy and previews a selected logo before save", () => {
@@ -105,13 +149,14 @@ describe("quotation UI", () => {
 
   it("renders saved payment methods once in the shared document", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
+    const viewModel = source("../lib/quotation-document-view.ts");
     const globalCss = source("../app/globals.css");
 
-    assert.match(document, /payload\.paymentMethods\.length/);
-    assert.match(document, /\.sort\(\(left, right\) => left\.position - right\.position\)/);
-    assert.match(document, /renderThaiQRPaymentMatrix/);
+    assert.match(document, /model\.paymentMethods\.length/);
+    assert.match(viewModel, /\.sort\(\(left, right\) => left\.position - right\.position\)/);
+    assert.match(viewModel, /renderThaiQRPaymentMatrix/);
     assert.match(document, /method\.qrMode === "auto_promptpay"/);
-    assert.match(document, /method\.qrImageUrl/);
+    assert.match(document, /method\.qrSource/);
     assert.match(document, /method\.customBankLogoUrl \|\| method\.bankLogoUrl/);
     assert.match(document, /method\.accountNumber/);
     assert.match(document, /method\.promptPayId/);
@@ -119,9 +164,31 @@ describe("quotation UI", () => {
     assert.match(document, /break-inside-avoid/);
     assert.match(document, /\[overflow-wrap:anywhere\]/);
     assert.match(document, /ไม่สามารถสร้าง QR ได้/);
-    assert.match(document, /amount <= 0/);
+    assert.match(viewModel, /amount <= 0/);
     assert.match(globalCss, /\[data-document-payment-methods\]\s*\{\s*break-inside:\s*auto\s*!important/);
     assert.doesNotMatch(document, /internalNotes/);
+  });
+
+  it("renders the optional Public QR and read-only certification document", () => {
+    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const imagePath = new URL("../components/admin/quotations/document-image.tsx", import.meta.url);
+
+    assert.ok(existsSync(imagePath), "document image fallback should exist");
+    const image = readFileSync(imagePath, "utf8");
+    assert.match(document, /data-document-public-qr/);
+    assert.match(document, /สแกนเพื่อดูเอกสารออนไลน์/);
+    assert.match(document, /data-document-certification/);
+    assert.equal(document.match(/<SignerSlot/g)?.length, 2);
+    assert.equal(document.match(/data-document-signer/g)?.length, 1);
+    assert.equal(document.match(/data-document-receiver/g)?.length, 1);
+    assert.match(document, /model\.issueDate/);
+    assert.match(document, /break-inside-avoid/);
+    assert.match(document, /grid-cols-1[\s\S]*sm:grid-cols-3[\s\S]*print:grid-cols-3/);
+    assert.match(document, /<DocumentImage[\s\S]*?object-contain/);
+    assert.doesNotMatch(document, /<(?:Input|input)[\s>]/);
+    assert.match(image, /useState\(false\)/);
+    assert.match(image, /onError=\{\(\) => setUnavailable\(true\)\}/);
+    assert.match(image, /if \(unavailable\) return null/);
   });
 
   it("uses the compact reference hierarchy for preview and print", () => {
@@ -310,14 +377,14 @@ describe("quotation UI", () => {
 
   it("keeps the native bank selection, image labels, and file input within the payment grid", () => {
     const payments = source("../components/admin/quotations/payment-method-list.tsx");
-    const imageInput = source("../components/admin/quotations/payment-image-input.tsx");
+    const imageInput = source("../components/admin/quotations/quotation-png-image-input.tsx");
 
     assert.match(payments, /<option value="OTHER">อื่น ๆ<\/option>/);
     assert.match(payments, /label="โลโก้ธนาคารอื่น"/);
     assert.match(payments, /label="รูป QR"/);
-    assert.match(imageInput, /label\?: string/);
-    assert.match(imageInput, /<span>\{label\}<\/span>/);
-    assert.match(imageInput, /className="grid w-full min-w-0 max-w-full gap-2 text-sm"/);
+    assert.match(imageInput, /label: string/);
+    assert.match(imageInput, /<Label htmlFor=\{inputId\}>\{label\}<\/Label>/);
+    assert.match(imageInput, /className="grid min-w-0 gap-2 text-sm"/);
     assert.match(imageInput, /className="w-full min-w-0 max-w-full"/);
   });
 
@@ -442,6 +509,10 @@ describe("quotation UI", () => {
     assert.match(editPage, /notFound\(\)/);
     assert.match(createPage, /canUseQuotation\(adminUser\)/);
     assert.match(editPage, /canUseQuotation\(adminUser\)/);
+    assert.match(createPage, /const publicOrigin = getQuotationPublicOrigin\(\)/);
+    assert.match(editPage, /const publicOrigin = getQuotationPublicOrigin\(\)/);
+    assert.match(createPage, /publicOrigin=\{publicOrigin\}/);
+    assert.match(editPage, /publicOrigin=\{publicOrigin\}/);
   });
 
   it("copies only default account payment masters into new quotation snapshots", () => {
@@ -455,6 +526,14 @@ describe("quotation UI", () => {
     assert.match(page, /id: crypto\.randomUUID\(\)/);
     assert.match(page, /position: index \+ 1/);
     assert.match(page, /<QuotationEditor banks=\{banks\}/);
+  });
+
+  it("copies the account certification master only when creating a quotation", () => {
+    const newPage = source("../app/admin/quotations/new/page.tsx");
+    const editPage = source("../app/admin/quotations/[id]/page.tsx");
+
+    assert.match(newPage, /companyProfileToCertification\(profile\)/);
+    assert.doesNotMatch(editPage, /companyProfileToCertification|getQuotationCompanyProfile/);
   });
 
   it("edits saved payment snapshots without merging current masters", () => {
@@ -474,8 +553,9 @@ describe("quotation UI", () => {
     assert.match(editor, /banks: BankOption\[\]/);
     assert.match(editor, /data-payment-methods/);
     assert.ok(editor.indexOf("data-sortable-items") < editor.indexOf("data-payment-methods"));
-    assert.match(editor, /<PaymentMethodList[\s\S]*banks=\{banks\}[\s\S]*methods=\{payload\.paymentMethods\}[\s\S]*mode="quotation"[\s\S]*onChange=\{\(paymentMethods\) => updateRoot\("paymentMethods", paymentMethods\)\}/);
-    assert.match(editor, /<h2[^>]*>04 ช่องทางชำระเงิน<\/h2>[\s\S]*<Button[\s\S]*disabled=\{!paymentListState\.canAdd\}[\s\S]*เพิ่มช่องทางชำระเงิน[\s\S]*<PaymentMethodList/);
+    assert.match(editor, /<PaymentMethodList[\s\S]*banks=\{banks\}[\s\S]*methods=\{payload\.paymentMethods\}[\s\S]*mode="quotation"[\s\S]*onChange=\{\(paymentMethods\) =>[\s\S]*updateRoot\("paymentMethods", paymentMethods\)[\s\S]*\}/);
+    assert.doesNotMatch(editor, /04 ช่องทางชำระเงิน/);
+    assert.match(editor, /<Button[\s\S]*disabled=\{!paymentListState\.canAdd\}[\s\S]*เพิ่มช่องทางชำระเงิน[\s\S]*<PaymentMethodList/);
     assert.match(editor, /showAddButton=\{false\}/);
     assert.doesNotMatch(payments, /saveCompanyPaymentMethodsAction/);
     assert.match(payments, /onChange\(normalizePaymentPositions\(move\(methods, event\) as T\[\]\)\)/);
@@ -493,13 +573,28 @@ describe("quotation UI", () => {
     assert.doesNotMatch(payments, /instructions:\s*""/);
   });
 
-  it("previews and prints only the latest successful save", () => {
+  it("previews the current draft and prints only the latest successful save", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
 
-    assert.match(editor, /const canUseSavedDocument = Boolean\(documentNumber && lastSavedPayload && !isPending\)/);
+    assert.match(editor, /const canUseSavedDocument = Boolean\([\s\S]*documentNumber &&[\s\S]*lastSavedPayload &&[\s\S]*publicToken &&[\s\S]*!isDirty &&[\s\S]*!isPending,[\s\S]*\)/);
     assert.match(editor, /setLastSavedPayload\(result\.payload\)/);
-    assert.match(editor, /previewEnabled=\{canUseSavedDocument\}/);
-    assert.match(editor, /<QuotationDocument[\s\S]*calculation=\{savedCalculation\}[\s\S]*payload=\{lastSavedPayload\}/);
+    assert.match(editor, /previewEnabled=\{Boolean\(calculation\)\}/);
+    assert.match(editor, /<Dialog[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{payload\}[\s\S]*<Dialog/);
+    assert.match(editor, /createPortal\([\s\S]*calculation=\{savedCalculation\}[\s\S]*payload=\{lastSavedPayload\}[\s\S]*document\.body/);
+    assert.match(editor, /title=\{documentNumber && isDirty \? "บันทึกการเปลี่ยนแปลงก่อน" : undefined\}/);
+  });
+
+  it("downloads only the saved clean quotation and blocks repeated activation", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(editor, /const \[isDownloading, setIsDownloading\] = useState\(false\)/);
+    assert.match(editor, /if \(!canUseSavedDocument \|\| !lastSavedPayload \|\| !savedCalculation \|\| !documentNumber \|\| isDownloading\) return/);
+    assert.match(editor, /payload: lastSavedPayload/);
+    assert.match(editor, /calculation: savedCalculation/);
+    assert.match(editor, /disabled=\{!canUseSavedDocument \|\| isDownloading\}/);
+    assert.match(editor, /onClick=\{downloadSaved\}/);
+    assert.match(editor, /isDownloading \? "กำลังสร้าง PDF…" : "ดาวน์โหลด"/);
+    assert.match(editor, /toast\.error\("ไม่สามารถสร้าง PDF ได้ กรุณาลองอีกครั้ง"\)/);
   });
 
   it("uses the approved full-width responsive quotation editor", () => {
@@ -580,10 +675,10 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /lg:grid-cols-\[minmax\(0,1fr\)_24rem\]/);
   });
 
-  it("disables save and close while a save is pending", () => {
+  it("disables save while a save or certification upload is pending", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /<DropdownMenuItem disabled=\{isPending\} onSelect=\{onSave\}/);
-    assert.equal(editor.match(/isPending=\{isPending\}/g)?.length, 1);
+    assert.match(editor, /<DropdownMenuItem disabled=\{saveDisabled\} onSelect=\{onSave\}/);
+    assert.equal(editor.match(/saveDisabled=\{isPending \|\| uploadingFields\.size > 0\}/g)?.length, 1);
   });
 
   it("uses consistent native select geometry", () => {
@@ -640,7 +735,43 @@ describe("quotation UI", () => {
     assert.match(editor, /data-quotation-totals[^>]*border-t-2/);
     assert.ok(editor.indexOf('data-field="publicNotes"') < editor.indexOf('data-field="internalNotes"'));
     assert.ok(editor.indexOf('data-field="internalNotes"') < editor.indexOf("data-quotation-totals"));
+    assert.ok(editor.indexOf("data-quotation-totals") < editor.indexOf("data-completion-tabs"));
     assert.doesNotMatch(editor, /data-internal-notes[^>]*rounded-xl/);
+  });
+
+  it("uses accessible payment-default completion tabs for per-quotation certification", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(editor, /role="tablist"/);
+    assert.match(editor, /role="tab"/);
+    assert.match(editor, /ช่องทางชำระเงิน/);
+    assert.match(editor, /การรับรอง/);
+    assert.match(editor, /activeCompletionTab/);
+    assert.match(editor, /useState<[\s\S]*"certification" \| "payments"[\s\S]*>\("payments"\)/);
+    assert.match(editor, /aria-selected=\{activeCompletionTab === "payments"\}/);
+    assert.match(editor, /aria-controls="quotation-completion-panel"/);
+    assert.match(editor, /<CertificationFields/);
+    assert.match(editor, /data-completion-tabs/);
+    assert.match(editor, /data-payment-methods/);
+    assert.match(editor, /data-certification-fields/);
+    assert.match(editor, /lg:col-start-1 lg:row-start-1/);
+    assert.match(editor, /lg:col-start-2 lg:row-span-2 lg:row-start-1/);
+    assert.match(editor, /lg:col-start-1 lg:row-start-2/);
+    assert.match(editor, /if \(firstField\?\.startsWith\("certification\."\)\) setActiveCompletionTab\("certification"\)/);
+    assert.match(editor, /if \(firstField\?\.startsWith\("paymentMethods"\)\) setActiveCompletionTab\("payments"\)/);
+  });
+
+  it("blocks quotation saves while certification assets upload", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(editor, /const \[uploadingFields, setUploadingFields\] = useState\(new Set<string>\(\)\)/);
+    assert.match(editor, /setUploadingFields\(\(current\) => \{/);
+    assert.match(editor, /if \(uploadingFields\.size\) return/);
+    assert.match(editor, /disabled=\{isPending \|\| uploadingFields\.size > 0\}/);
+    assert.match(editor, /onUploadStateChange=\{updateUploadState\}/);
+    assert.match(editor, /onChange=\{updateCertification\}/);
+    assert.match(editor, /data-payment-methods[\s\S]*hidden=\{activeCompletionTab !== "payments"\}/);
+    assert.match(editor, /data-certification-fields[\s\S]*hidden=\{activeCompletionTab !== "certification"\}/);
   });
 
   it("offers transient item discount and VAT document settings", () => {
@@ -722,7 +853,7 @@ describe("quotation UI", () => {
     assert.match(payments, /"aria-invalid": Boolean\(error\)/);
     assert.match(payments, /"aria-describedby": error \? errorId : undefined/);
     assert.match(payments, /id=\{errorId\}/);
-    const imageInput = source("../components/admin/quotations/payment-image-input.tsx");
+    const imageInput = source("../components/admin/quotations/quotation-png-image-input.tsx");
     assert.match(imageInput, /data-field=\{field\}/);
     assert.match(imageInput, /aria-describedby=\{message \? errorId : undefined\}/);
     assert.match(payments, /error=\{error\("type"\)\} field=\{`paymentMethods\.\$\{index\}\.type`\}/);
@@ -793,6 +924,10 @@ describe("quotation UI", () => {
     assert.match(editor, /setIsPrinting\(true\)/);
     assert.match(editor, /createPortal\([\s\S]*data-quotation-print[\s\S]*document\.body/);
     assert.match(editor, /window\.addEventListener\("afterprint", cleanup/);
+    assert.match(editor, /querySelectorAll<HTMLImageElement>\("\[data-quotation-print\] img"\)/);
+    assert.match(editor, /await waitForQuotationPrintImages/);
+    assert.match(editor, /AbortController/);
+    assert.ok(editor.indexOf("await waitForQuotationPrintImages") < editor.indexOf("window.print()"));
     assert.match(editor, /setIsPrinting\(false\)/);
     assert.match(css, /body > :not\(\[data-quotation-print\]\)/);
     assert.match(css, /display: none !important/);
@@ -826,8 +961,7 @@ describe("quotation UI", () => {
 
   it("prints the last saved quotation while a newer draft is dirty", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /const canUseSavedDocument = Boolean\(documentNumber && lastSavedPayload && !isPending\)/);
-    assert.match(editor, /const canPrint = canUseSavedDocument/);
+    assert.match(editor, /const canPrint = Boolean\([\s\S]*documentNumber && lastSavedPayload && !isPending && !publicQrPending/);
     assert.match(editor, /if \(!canPrint\) return/);
     assert.match(editor, /calculation=\{savedCalculation\}/);
     assert.match(editor, /payload=\{lastSavedPayload\}/);

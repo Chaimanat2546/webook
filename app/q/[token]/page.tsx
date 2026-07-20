@@ -3,6 +3,11 @@ import { notFound } from "next/navigation";
 
 import { QuotationDocument } from "../../../components/admin/quotations/quotation-document";
 import { calculateQuotation } from "../../../lib/quotation-calculator";
+import { getQuotationPublicOrigin } from "../../../lib/env";
+import {
+  buildQuotationPublicUrl,
+  createQuotationPublicQrDataUrl,
+} from "../../../lib/quotation-public-qr";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { getPublicQuotationByToken } from "../../../server/repositories/quotations";
 
@@ -22,6 +27,23 @@ export default async function PublicQuotationPage({ params }: { params: Promise<
   const quotation = await getPublicQuotationByToken(supabase, token);
   if (!quotation) notFound();
   const calculation = calculateQuotation(quotation.payload);
+  let publicQrDataUrl = "";
+  try {
+    const origin = getQuotationPublicOrigin();
+    const publicUrl = origin ? buildQuotationPublicUrl(origin, token) : "";
+    publicQrDataUrl = publicUrl ? await createQuotationPublicQrDataUrl(publicUrl) : "";
+  } catch {
+    publicQrDataUrl = "";
+  }
 
-  return <main className="min-h-screen overflow-auto bg-muted p-4 print:bg-white print:p-0"><QuotationDocument calculation={calculation} documentNumber={quotation.documentNumber} payload={quotation.payload} /></main>;
+  return (
+    <main className="min-h-screen overflow-auto bg-muted p-0 sm:p-4 print:bg-white print:p-0">
+      <QuotationDocument
+        calculation={calculation}
+        documentNumber={quotation.documentNumber}
+        payload={quotation.payload}
+        publicQrDataUrl={publicQrDataUrl}
+      />
+    </main>
+  );
 }

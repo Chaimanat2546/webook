@@ -3,6 +3,10 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { VatTreatment } from "../../lib/quotation-calculator.ts";
+import {
+  certificationSnapshotToJson,
+  type CertificationSnapshot,
+} from "../../lib/quotation-certification.ts";
 import type {
   BankOption,
   CompanyPaymentMethod,
@@ -20,12 +24,19 @@ import { quotationPersistenceError } from "./quotation-errors";
 
 export interface QuotationCompanyProfileRow {
   address: string;
+  approver_name: string | null;
+  approver_position: string | null;
+  approver_signature_url: string | null;
   branch_number: string;
   contact_email: string;
   contact_name: string;
   contact_phone: string;
+  company_stamp_url: string | null;
   email: string;
   id: string;
+  issuer_name: string | null;
+  issuer_position: string | null;
+  issuer_signature_url: string | null;
   logo_url: string;
   seller_name: string;
   office_type: "branch" | "head_office";
@@ -63,6 +74,7 @@ export interface SavedQuotation {
 const quotationSelect = `
   id,document_number,issue_date,valid_until,validity_days,reference,subject,
   seller_snapshot,customer_snapshot,public_token,withholding_tax_rate,
+  certification_snapshot,
   public_notes,internal_notes,
   quotation_items(
     id,position,name,description,quantity,unit,unit_price,
@@ -108,6 +120,7 @@ type DatabaseQuotationPaymentMethod = {
 };
 
 type DatabaseQuotationRow = {
+  certification_snapshot: unknown;
   customer_snapshot: unknown;
   id: unknown;
   internal_notes: unknown;
@@ -173,6 +186,24 @@ export function companyProfileToSeller(row: QuotationCompanyProfileRow): SellerS
   };
 }
 
+export function companyProfileToCertification(
+  row: QuotationCompanyProfileRow,
+): CertificationSnapshot {
+  return {
+    approver: {
+      name: stringValue(row.approver_name),
+      position: stringValue(row.approver_position),
+      signatureUrl: stringValue(row.approver_signature_url),
+    },
+    companyStampUrl: stringValue(row.company_stamp_url),
+    issuer: {
+      name: stringValue(row.issuer_name),
+      position: stringValue(row.issuer_position),
+      signatureUrl: stringValue(row.issuer_signature_url),
+    },
+  };
+}
+
 function sellerSnapshot(value: unknown): SellerSnapshot {
   const snapshot = objectValue(value);
   return {
@@ -202,8 +233,26 @@ function customerSnapshot(value: unknown): CustomerSnapshot {
   };
 }
 
+function certificationSnapshot(value: unknown): CertificationSnapshot {
+  const snapshot = objectValue(value);
+  const signer = (key: "approver" | "issuer") => {
+    const row = objectValue(snapshot[key]);
+    return {
+      name: stringValue(row.name),
+      position: stringValue(row.position),
+      signatureUrl: stringValue(row.signature_url),
+    };
+  };
+  return {
+    approver: signer("approver"),
+    companyStampUrl: stringValue(snapshot.company_stamp_url),
+    issuer: signer("issuer"),
+  };
+}
+
 export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPayload {
   return {
+    certification: certificationSnapshot(row.certification_snapshot),
     customer: customerSnapshot(row.customer_snapshot),
     id: stringValue(row.id),
     internalNotes: stringValue(row.internal_notes),
@@ -256,7 +305,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
 export async function getQuotationCompanyProfile(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("quotation_company_profiles")
-    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,updated_at")
+    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,updated_at")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -285,6 +334,18 @@ export async function saveQuotationCompanyProfile(
     website: seller.website,
   }, { onConflict: "user_id" });
   if (error) throw new Error(error.message);
+}
+
+export async function saveQuotationCompanyCertification(
+  supabase: SupabaseClient,
+  certification: CertificationSnapshot,
+): Promise<void> {
+  const { data, error } = await supabase.rpc(
+    "save_quotation_company_certification",
+    { p_value: certificationSnapshotToJson(certification) },
+  );
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Quotation company profile not found");
 }
 
 export async function listQuotationBanks(supabase: SupabaseClient): Promise<BankOption[]> {

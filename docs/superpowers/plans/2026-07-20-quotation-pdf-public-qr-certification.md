@@ -816,24 +816,12 @@ Add to `server/repositories/quotations.ts`:
 ```ts
 export async function saveQuotationCompanyCertification(
   supabase: SupabaseClient,
-  userId: string,
   certification: CertificationSnapshot,
 ): Promise<void> {
-  const { data, error } = await supabase
-    .from("quotation_company_profiles")
-    .update({
-      approver_name: certification.approver.name || null,
-      approver_position: certification.approver.position || null,
-      approver_signature_url: certification.approver.signatureUrl || null,
-      company_stamp_url: certification.companyStampUrl || null,
-      issuer_name: certification.issuer.name || null,
-      issuer_position: certification.issuer.position || null,
-      issuer_signature_url: certification.issuer.signatureUrl || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId)
-    .select("id")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc(
+    "save_quotation_company_certification",
+    { p_value: certificationSnapshotToJson(certification) },
+  );
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Quotation company profile not found");
 }
@@ -842,7 +830,7 @@ export async function saveQuotationCompanyCertification(
 Add `saveCompanyCertificationAction(value)` to actions. It must require admin
 quotation permission, normalize with the same `prepareCertificationSnapshot`
 used by quotation saves, validate three URLs through the certification asset
-validator, call the repository with `user.id`, revalidate the settings page,
+validator, call the owner-scoped validated repository RPC, revalidate the settings page,
 and return field errors without exposing raw database messages.
 
 - [ ] **Step 6: Add the URL-driven settings section**
@@ -1035,19 +1023,26 @@ git commit -m "feat: add quotation completion tabs"
 ### Task 6: Public QR And Shared HTML Certification Document
 
 **Files:**
+- Modify: `.env.example`
+- Modify: `lib/env.ts`
 - Create: `lib/quotation-public-qr.ts`
+- Create: `lib/quotation-print.ts`
 - Create: `lib/quotation-document-view.ts`
 - Create: `components/admin/quotations/document-image.tsx`
 - Modify: `components/admin/quotations/quotation-document.tsx`
 - Modify: `components/admin/quotations/quotation-editor.tsx`
 - Modify: `app/q/[token]/page.tsx`
 - Create: `tests/quotation-public-qr.test.ts`
+- Create: `tests/quotation-print.test.ts`
+- Modify: `tests/env.test.ts`
 - Modify: `tests/quotation-public-share.test.ts`
 - Modify: `tests/quotation-ui.test.ts`
 
 **Interfaces:**
 - Produces: `buildQuotationPublicUrl(origin, token): string`.
 - Produces: `createQuotationPublicQrDataUrl(url): Promise<string>`.
+- Produces: `getQuotationPublicOrigin(value?): string | null`.
+- Produces: `waitForQuotationPrintImages(images, options): Promise<boolean>`.
 - Produces: `buildQuotationDocumentViewModel({ calculation, documentNumber, payload, publicQrDataUrl })`.
 - Extends: `QuotationDocument` with optional `publicQrDataUrl`.
 
@@ -1176,24 +1171,26 @@ the company stamp near the first two slots without absolute overlap over text.
 
 - [ ] **Step 6: Generate QR in editor and Public page**
 
-In the editor, keep `publicQrDataUrl` state. Build the Public URL with
-`buildQuotationPublicUrl(window.location.origin, publicToken)` and use that
-same value for clipboard Share. An effect must set QR state to `""` when
-there is no token or the quotation is dirty; otherwise build the URL from
-`window.location.origin`, generate the QR, ignore stale effect completions, and
-show a toast only when generation fails. Pass it to current Preview and the
-saved Print portal.
+In both admin server pages, read `getQuotationPublicOrigin()` and pass its
+nullable result to the editor. Keep `publicQrDataUrl` state and build both the
+QR destination and clipboard Share URL only with that server-provided origin.
+Never derive a bearer-token URL from the browser or request origin. An effect
+must set QR state to `""` when there is no configured origin, no token, or the
+quotation is dirty; otherwise generate the QR, ignore stale effect completions,
+and show a toast only when generation fails. Missing or invalid configuration
+must disable Share with a clear Thai explanation while Preview and Print remain
+available without a Public QR. Pass the QR to current Preview and the saved
+Print portal. Before calling `window.print()`, wait for every image in
+the mounted print portal to load or decode. Use a bounded 1.5 second fallback,
+and abort the wait when the print request becomes stale or the portal unmounts.
 
-In `app/q/[token]/page.tsx`, use `headers()` to read the forwarded protocol and
-host for the same request:
+In `app/q/[token]/page.tsx`, read the canonical origin from the server-only
+`QUOTATION_PUBLIC_ORIGIN` environment variable. Accept only a bare HTTPS
+origin with no credentials, path, query, or fragment:
 
 ```ts
-const requestHeaders = await headers();
-const forwardedProtocol = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim();
-const protocol = forwardedProtocol === "https" ? "https" : "http";
-const host = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim()
-  || requestHeaders.get("host");
-const publicUrl = host ? buildQuotationPublicUrl(`${protocol}://${host}`, token) : "";
+const origin = getQuotationPublicOrigin();
+const publicUrl = origin ? buildQuotationPublicUrl(origin, token) : "";
 let publicQrDataUrl = "";
 try {
   publicQrDataUrl = publicUrl ? await createQuotationPublicQrDataUrl(publicUrl) : "";
@@ -1202,15 +1199,15 @@ try {
 }
 ```
 
-Pass the result to `QuotationDocument`. A missing host hides QR but must not
-make the saved Public document unavailable.
+Pass the result to `QuotationDocument`. Missing or invalid configuration hides
+the QR but must not make the saved Public document unavailable.
 
 - [ ] **Step 7: Run focused tests and typecheck**
 
 Run:
 
 ```powershell
-node --import ./tests/register-server-only.mjs --test tests/quotation-public-qr.test.ts tests/quotation-public-share.test.ts tests/quotation-ui.test.ts
+node --import ./tests/register-server-only.mjs --test tests/env.test.ts tests/quotation-public-qr.test.ts tests/quotation-public-share.test.ts tests/quotation-print.test.ts tests/quotation-ui.test.ts
 npm.cmd run typecheck
 ```
 
@@ -1219,7 +1216,7 @@ Expected: focused tests and typecheck PASS.
 - [ ] **Step 8: Commit Task 6**
 
 ```powershell
-git add -- lib/quotation-public-qr.ts lib/quotation-document-view.ts components/admin/quotations/document-image.tsx components/admin/quotations/quotation-document.tsx components/admin/quotations/quotation-editor.tsx app/q/[token]/page.tsx tests/quotation-public-qr.test.ts tests/quotation-public-share.test.ts tests/quotation-ui.test.ts
+git add -- .env.example lib/env.ts lib/quotation-public-qr.ts lib/quotation-print.ts lib/quotation-document-view.ts components/admin/quotations/document-image.tsx components/admin/quotations/quotation-document.tsx components/admin/quotations/quotation-editor.tsx app/admin/quotations/new/page.tsx app/admin/quotations/[id]/page.tsx app/q/[token]/page.tsx tests/env.test.ts tests/quotation-public-qr.test.ts tests/quotation-print.test.ts tests/quotation-public-share.test.ts tests/quotation-ui.test.ts docs/superpowers/plans/2026-07-20-quotation-pdf-public-qr-certification.md
 git commit -m "feat: add quotation Public QR and certification document"
 ```
 
