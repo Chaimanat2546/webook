@@ -66,6 +66,23 @@ describe("quotation service", () => {
     assert.equal(result.amountInWords, "หนึ่งหมื่นเจ็ดร้อยบาทถ้วน");
   });
 
+  it("includes the saved bank account type in the quotation snapshot payload", () => {
+    const payload = validPayload();
+    payload.paymentMethods = [{
+      ...promptPay("upload"),
+      accountNumber: "1234567890",
+      accountType: "savings",
+      bankCode: "KBANK",
+      bankId: "123e4567-e89b-42d3-a456-426614174003",
+      bankName: "Kasikornbank",
+      qrMode: "none",
+      type: "bank_transfer",
+    }];
+
+    const prepared = prepareQuotationPayload(payload);
+    assert.equal(prepared.rpcPayload.payment_methods[0]!.account_type, "savings");
+  });
+
   it("trims office and VAT enum strings before validation", () => {
     const payload = validPayload();
     const input = {

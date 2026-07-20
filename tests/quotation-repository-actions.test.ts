@@ -52,6 +52,9 @@ describe("quotation repository and actions", () => {
     assert.match(repository, /from\("quotation_company_payment_methods"\)/);
     assert.match(repository, /\.order\("position"\)/);
     assert.match(repository, /\.rpc\("save_quotation_company_payment_methods"/);
+    assert.match(repository, /account_type/);
+    assert.match(repository, /accountType:\s*stringValue\(method\.account_type\)/);
+    assert.match(repository, /account_type:\s*method\.accountType/);
   });
 
   it("validates and uploads normalized payment PNGs after permission checks", () => {

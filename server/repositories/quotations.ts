@@ -6,6 +6,7 @@ import type { VatTreatment } from "../../lib/quotation-calculator.ts";
 import type {
   BankOption,
   CompanyPaymentMethod,
+  PaymentAccountType,
   PaymentMethodType,
   PaymentQrMode,
 } from "../../lib/quotation-payment-methods.ts";
@@ -69,7 +70,7 @@ const quotationSelect = `
   ),
   quotation_payment_methods(
     id,type,bank_code,bank_name,bank_logo_url,custom_bank_name,
-    custom_bank_logo_url,account_number,account_name,promptpay_id,
+    custom_bank_logo_url,account_number,account_name,account_type,promptpay_id,
     provider_name,instructions,qr_mode,qr_image_url,position
   )
 `;
@@ -90,6 +91,7 @@ type DatabaseQuotationItem = {
 type DatabaseQuotationPaymentMethod = {
   account_name: unknown;
   account_number: unknown;
+  account_type: unknown;
   bank_code: unknown;
   bank_logo_url: unknown;
   bank_name: unknown;
@@ -224,7 +226,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
       .map((method) => ({
         accountName: stringValue(method.account_name),
         accountNumber: stringValue(method.account_number),
-        accountType: "" as const,
+        accountType: stringValue(method.account_type) as PaymentAccountType,
         bankCode: stringValue(method.bank_code),
         bankId: null,
         bankLogoUrl: stringValue(method.bank_logo_url),
@@ -307,7 +309,7 @@ export async function listCompanyPaymentMethods(
 ): Promise<CompanyPaymentMethod[]> {
   const { data, error } = await supabase
     .from("quotation_company_payment_methods")
-    .select("id,type,bank_id,custom_bank_name,custom_bank_logo_url,account_number,account_name,promptpay_id,provider_name,instructions,qr_mode,qr_image_url,is_default,position,banks(code,name,logo_path)")
+    .select("id,type,bank_id,custom_bank_name,custom_bank_logo_url,account_number,account_name,account_type,promptpay_id,provider_name,instructions,qr_mode,qr_image_url,is_default,position,banks(code,name,logo_path)")
     .eq("user_id", userId)
     .order("position");
   if (error) throw new Error(error.message);
@@ -316,7 +318,7 @@ export async function listCompanyPaymentMethods(
     return {
       accountName: stringValue(method.account_name),
       accountNumber: stringValue(method.account_number),
-      accountType: "" as const,
+      accountType: stringValue(method.account_type) as PaymentAccountType,
       bankCode: stringValue(bank?.code),
       bankId: method.bank_id == null ? null : stringValue(method.bank_id),
       bankLogoUrl: stringValue(bank?.logo_path),
@@ -344,6 +346,7 @@ export async function saveCompanyPaymentMethods(
     p_methods: methods.map((method) => ({
       account_name: method.accountName,
       account_number: method.accountNumber,
+      account_type: method.accountType,
       bank_id: method.bankId,
       custom_bank_logo_url: method.customBankLogoUrl,
       custom_bank_name: method.customBankName,

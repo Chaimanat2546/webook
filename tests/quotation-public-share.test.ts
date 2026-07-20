@@ -32,6 +32,7 @@ describe("quotation public share", () => {
 
     assert.match(page, /quotation\.payload/);
     assert.match(repository, /quotation_payment_methods/);
+    assert.match(repository, /quotation_payment_methods\([\s\S]*account_type/);
     assert.match(document, /payload\.paymentMethods/);
     assert.doesNotMatch(document, /internalNotes/);
   });
