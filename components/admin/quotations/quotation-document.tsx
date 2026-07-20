@@ -3,7 +3,7 @@ import {
   type QuotationCalculation,
 } from "../../../lib/quotation-calculator";
 import { formatBaht, formatMoney } from "../../../lib/quotation-money";
-import type { QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
+import { PAYMENT_ACCOUNT_TYPE_LABELS, type QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
 import type { QuotationPayload } from "../../../lib/quotation-types";
 import {
   CreditCard,
@@ -323,6 +323,10 @@ function PaymentMethod({
       : method.type === "qr_payment" || method.type === "other"
         ? method.providerName
         : "เงินสด";
+  const accountTypeLabel = method.accountType
+    ? PAYMENT_ACCOUNT_TYPE_LABELS[method.accountType]
+    : "";
+  const accountNumberLine = [accountTypeLabel, method.accountNumber].filter(Boolean).join(" ");
   const qr = method.qrMode === "auto_promptpay"
     ? automaticPromptPayQr(method.promptPayId, amountDue)
     : method.qrMode === "upload" && method.qrImageUrl
@@ -351,7 +355,7 @@ function PaymentMethod({
           <p>{title}</p>
           {method.type === "bank_transfer" ? (
             <>
-              <p className="font-semibold tabular-nums">{method.accountNumber}</p>
+              <p className="font-semibold tabular-nums">{accountNumberLine}</p>
               <p>{method.accountName}</p>
             </>
           ) : null}

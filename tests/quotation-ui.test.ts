@@ -151,7 +151,7 @@ describe("quotation UI", () => {
     );
     assert.match(
       document,
-      /data-document-payment-details[\s\S]*?\{title\}[\s\S]*?method\.accountNumber[\s\S]*?method\.accountName/,
+      /data-document-payment-details[\s\S]*?\{title\}[\s\S]*?accountNumberLine[\s\S]*?method\.accountName/,
     );
     assert.match(document, /data-document-payment-logo[\s\S]*?className="h-9 w-9/);
     assert.doesNotMatch(document, /grid-cols-2 gap-x-6 gap-y-4/);
@@ -280,6 +280,31 @@ describe("quotation UI", () => {
       paymentMethodEditorState({ bankCode: "", bankId: null, qrMode: "upload", type: "qr_payment" }),
       { bankSelectValue: "OTHER", hasCustomBankFields: false, showQrUpload: true },
     );
+  });
+
+  it("shows optional bank account types only for bank transfers and prints them with the snapshot account number", () => {
+    const paymentEditor = source("../components/admin/quotations/payment-method-list.tsx");
+    const bankEditorScope = paymentEditor.slice(
+      paymentEditor.indexOf('{method.type === "bank_transfer"'),
+      paymentEditor.indexOf('{method.type === "promptpay"'),
+    );
+    const promptPayEditorScope = paymentEditor.slice(
+      paymentEditor.indexOf('{method.type === "promptpay"'),
+      paymentEditor.indexOf('{method.type === "qr_payment"'),
+    );
+    const documentSource = source("../components/admin/quotations/quotation-document.tsx");
+
+    assert.match(bankEditorScope, /lg:grid-cols-5/);
+    assert.match(bankEditorScope, /label="ประเภทบัญชี"/);
+    assert.match(bankEditorScope, /update\("accountType"/);
+    assert.match(bankEditorScope, /<option value="">ไม่ระบุ<\/option>/);
+    assert.match(bankEditorScope, /<option value="savings">ออมทรัพย์<\/option>/);
+    assert.match(bankEditorScope, /<option value="current">กระแสรายวัน<\/option>/);
+    assert.match(bankEditorScope, /<option value="fixed">ฝากประจำ<\/option>/);
+    assert.doesNotMatch(promptPayEditorScope, /ประเภทบัญชี/);
+    assert.match(documentSource, /PAYMENT_ACCOUNT_TYPE_LABELS\[method\.accountType\]/);
+    assert.match(documentSource, /accountTypeLabel[\s\S]*method\.accountNumber/);
+    assert.match(documentSource, /\[accountTypeLabel, method\.accountNumber\]\.filter\(Boolean\)\.join\(" "\)/);
   });
 
   it("keeps the native bank selection, image labels, and file input within the payment grid", () => {
