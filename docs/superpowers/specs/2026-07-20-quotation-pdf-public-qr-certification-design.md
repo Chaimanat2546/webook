@@ -170,29 +170,32 @@ accent color provide hierarchy.
 
 ## Document Certification Layout
 
-Preview, Print, PDF, and Public Read-only render three signing slots:
+Preview, Print, PDF, and Public Read-only render one compact horizontal
+certification row after the document notes. The row is labelled **รับรอง** and
+contains five ordered slots:
 
-1. ผู้ออกเอกสาร;
-2. ผู้อนุมัติ;
-3. ผู้รับเอกสาร.
+1. **สแกนเพื่อเปิดด้วยเว็บไซต์** — the saved document's Public QR;
+2. **ผู้ออกเอกสาร** — signature, name, and quotation issue date;
+3. **ผู้อนุมัติเอกสาร** — signature, name, and quotation issue date;
+4. **ตราประทับ** — the saved company stamp;
+5. **ผู้รับเอกสาร (ลูกค้า)** — a blank manual-signature area, the quotation's
+   customer name, and a blank date line.
 
-The first two slots show the saved signature, name, and position when present.
-Their displayed date is the quotation `issue_date`; there is no independent
-signature-date field. Missing optional values leave a clean signing space
-rather than displaying placeholders.
+Signer positions are not displayed in this document section. There is no
+independent signer-date field; issuer and approver dates continue to use the
+quotation `issue_date`. The receiver has no online input or stored acceptance
+data in this MVP: only the customer name is derived from the existing customer
+snapshot, while its signature and date remain blank for handwriting.
 
-The receiver slot always leaves space for a manual signature, name, position,
-and date. It has no online input in this MVP.
+QR, signatures, and stamp preserve their aspect ratio with `contain` behavior.
+Missing optional images leave their slot clean and do not change the order or
+alignment of the remaining slots. Long signer and customer names wrap inside
+their own bounded column rather than widening the document.
 
-The company stamp is rendered near the seller-side signer area without
-obscuring names, dates, or signatures. Signature and stamp images use
-aspect-ratio-preserving `contain` behavior and are never stretched.
-
-The Public QR appears immediately before the signing row with the label
-**สแกนเพื่อดูเอกสารออนไลน์**. It points to `/q/{public_token}` on the
-application's configured public origin. The certification block stays together
-when space permits and moves to the next page rather than splitting signer
-slots across pages.
+The complete row stays together for HTML Print and PDF pagination. A4 Preview,
+Print, PDF, and Public Read-only keep the five-column document layout; narrow
+screens retain the existing horizontally scrollable A4 preview instead of
+recomposing the printed document.
 
 ## PDF Architecture
 
