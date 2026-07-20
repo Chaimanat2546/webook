@@ -55,6 +55,10 @@ declare
   v_issuer_signature text := btrim(coalesce(v_issuer ->> 'signature_url', ''));
   v_approver_signature text := btrim(coalesce(v_approver ->> 'signature_url', ''));
   v_stamp text := btrim(coalesce(v_value ->> 'company_stamp_url', ''));
+  v_issuer_name text := btrim(coalesce(v_issuer ->> 'name', ''));
+  v_issuer_position text := btrim(coalesce(v_issuer ->> 'position', ''));
+  v_approver_name text := btrim(coalesce(v_approver ->> 'name', ''));
+  v_approver_position text := btrim(coalesce(v_approver ->> 'position', ''));
 begin
   if jsonb_typeof(v_value) is distinct from 'object'
     or jsonb_typeof(v_issuer) is distinct from 'object'
@@ -66,11 +70,11 @@ begin
     or coalesce(jsonb_typeof(v_approver -> 'position'), 'null') not in ('string', 'null')
     or coalesce(jsonb_typeof(v_approver -> 'signature_url'), 'null') not in ('string', 'null')
     or coalesce(jsonb_typeof(v_value -> 'company_stamp_url'), 'null') not in ('string', 'null')
-    or char_length(btrim(coalesce(v_issuer ->> 'name', '))) > 200
-    or char_length(btrim(coalesce(v_issuer ->> 'position', '))) > 200
+    or char_length(v_issuer_name) > 200
+    or char_length(v_issuer_position) > 200
     or char_length(v_issuer_signature) > 2048
-    or char_length(btrim(coalesce(v_approver ->> 'name', '))) > 200
-    or char_length(btrim(coalesce(v_approver ->> 'position', '))) > 200
+    or char_length(v_approver_name) > 200
+    or char_length(v_approver_position) > 200
     or char_length(v_approver_signature) > 2048
     or char_length(v_stamp) > 2048
     or not private.validate_quotation_certification_asset_url(v_issuer_signature)
@@ -81,13 +85,13 @@ begin
 
   return jsonb_build_object(
     'issuer', jsonb_build_object(
-      'name', nullif(btrim(coalesce(v_issuer ->> 'name', '')), ''),
-      'position', nullif(btrim(coalesce(v_issuer ->> 'position', '')), ''),
+      'name', nullif(v_issuer_name, ''),
+      'position', nullif(v_issuer_position, ''),
       'signature_url', nullif(v_issuer_signature, '')
     ),
     'approver', jsonb_build_object(
-      'name', nullif(btrim(coalesce(v_approver ->> 'name', '')), ''),
-      'position', nullif(btrim(coalesce(v_approver ->> 'position', '')), ''),
+      'name', nullif(v_approver_name, ''),
+      'position', nullif(v_approver_position, ''),
       'signature_url', nullif(v_approver_signature, '')
     ),
     'company_stamp_url', nullif(v_stamp, '')

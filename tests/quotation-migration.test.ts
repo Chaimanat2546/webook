@@ -131,6 +131,15 @@ describe("quotation migration", () => {
     assert.match(saveFunction, /v_certification jsonb;[\s\S]*if not private\.has_quotation_permission\(\)[\s\S]*v_certification := private\.normalize_quotation_certification/i);
   });
 
+  it("extracts certification text before applying length checks", () => {
+    assert.match(certificationSql, /v_issuer_name text := btrim\(coalesce\(v_issuer ->> 'name', ''\)\)/i);
+    assert.match(certificationSql, /v_issuer_position text := btrim\(coalesce\(v_issuer ->> 'position', ''\)\)/i);
+    assert.match(certificationSql, /v_approver_name text := btrim\(coalesce\(v_approver ->> 'name', ''\)\)/i);
+    assert.match(certificationSql, /v_approver_position text := btrim\(coalesce\(v_approver ->> 'position', ''\)\)/i);
+    assert.match(certificationSql, /char_length\(v_issuer_name\) > 200[\s\S]*char_length\(v_approver_position\) > 200/i);
+    assert.doesNotMatch(certificationSql, /char_length\(btrim\(coalesce\(v_(?:issuer|approver) ->>/i);
+  });
+
   it("persists and validates bank account types at every database boundary", () => {
     assert.match(accountTypeSql, /alter table public\.quotation_company_payment_methods[\s\S]*add column account_type text not null default ''/i);
     assert.match(accountTypeSql, /alter table public\.quotation_payment_methods[\s\S]*add column account_type text not null default ''/i);
