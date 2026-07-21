@@ -110,6 +110,13 @@ Preview, Print, or Public Read-only.
 - Save success and task-level failure use Toast. Field validation remains next
   to its control, links error text with `aria-describedby`, and scrolls then
   focuses the first invalid field.
+- The editor exposes Back, Preview, and Save as primary actions. Saved documents
+  expose Share, Print, Download, and an explicit Delete action; there is no
+  redundant More menu.
+- Invalid saves show one Toast while keeping field-specific errors inline.
+- Leaving with unsaved changes and disabling item discount or VAT values use
+  an in-app confirmation dialog. Browser refresh and tab close continue to use
+  the browser-native unsaved-changes warning.
 - Preview uses the current draft. Print, PDF Download, and Public Share remain
   limited to the latest clean saved document.
 - Reference is optional and subject is labelled `เรื่อง / ชื่องาน`.

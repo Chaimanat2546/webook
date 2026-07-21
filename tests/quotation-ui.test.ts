@@ -714,7 +714,7 @@ describe("quotation UI", () => {
 
     assert.match(editor, /const canUseSavedDocument = Boolean\([\s\S]*documentNumber &&[\s\S]*lastSavedPayload &&[\s\S]*publicToken &&[\s\S]*!isDirty &&[\s\S]*!isPending,[\s\S]*\)/);
     assert.match(editor, /setLastSavedPayload\(result\.payload\)/);
-    assert.match(editor, /previewEnabled=\{Boolean\(calculation\)\}/);
+    assert.match(editor, /disabled=\{!calculation\}[\s\S]*onClick=\{\(\) => setPreviewOpen\(true\)\}/);
     assert.match(editor, /<Dialog[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{payload\}[\s\S]*<Dialog/);
     assert.match(editor, /createPortal\([\s\S]*calculation=\{savedCalculation\}[\s\S]*payload=\{lastSavedPayload\}[\s\S]*document\.body/);
     assert.match(editor, /title=\{documentNumber && isDirty \? "บันทึกการเปลี่ยนแปลงก่อน" : undefined\}/);
@@ -813,9 +813,7 @@ describe("quotation UI", () => {
 
   it("disables save while a save or certification upload is pending", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /<DropdownMenuItem disabled=\{saveDisabled\} onSelect=\{onSave\}/);
     assert.equal(editor.match(/const saveDisabled = isPending \|\| uploadingFields\.size > 0/g)?.length, 1);
-    assert.match(editor, /saveDisabled=\{saveDisabled\}/);
     assert.ok((editor.match(/disabled=\{saveDisabled\}/g)?.length ?? 0) >= 2);
   });
 
