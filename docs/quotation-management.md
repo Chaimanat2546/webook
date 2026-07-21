@@ -178,6 +178,19 @@ Print, or PDF; the Public QR remains required for PDF Download.
 - Link expiry, passwords, token rotation, e-signing, approval workflow, and
   orphaned-asset garbage collection remain outside this MVP.
 
+### Document surface consistency
+
+- Preview/Print is the visual reference; HTML and PDF consume the same
+  normalized document view model and keep the same supported section order.
+- Preview shows the current draft. Print uses the latest successful save. Share
+  and PDF Download require a clean saved quotation.
+- Public Read-only keeps the A4 document width on small screens inside an
+  intentional horizontal scrolling viewport.
+- Print avoids splitting HTML item rows. PDF keeps ordinary rows together and
+  leaves oversized validated descriptions breakable so content is not lost.
+- Invalid or removed public links show a generic Thai not-found state without
+  internal error details.
+
 ## Migration And Validation
 
 Migration `20260720120000_quotation_pdf_qr_certification.sql` adds the
