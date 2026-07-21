@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { getAwsS3ImageEnv } from "../lib/env.ts";
+import { getAwsS3ImageEnv, getQuotationPublicOrigin } from "../lib/env.ts";
 
 describe("environment helpers", () => {
   it("loads the AWS S3 image delete environment", () => {
@@ -40,6 +40,29 @@ describe("environment helpers", () => {
     } finally {
       restoreEnv("AWS_BUCKET", previousBucket);
     }
+  });
+
+  it("loads only a canonical HTTPS quotation Public origin", () => {
+    const previousOrigin = process.env.QUOTATION_PUBLIC_ORIGIN;
+    delete process.env.QUOTATION_PUBLIC_ORIGIN;
+
+    try {
+      assert.equal(getQuotationPublicOrigin(), null);
+      process.env.QUOTATION_PUBLIC_ORIGIN = "https://quotes.example.com/";
+      assert.equal(getQuotationPublicOrigin(), "https://quotes.example.com");
+    } finally {
+      restoreEnv("QUOTATION_PUBLIC_ORIGIN", previousOrigin);
+    }
+
+    for (const invalid of [
+      "",
+      "http://quotes.example.com",
+      "https://user:secret@quotes.example.com",
+      "https://quotes.example.com/app",
+      "https://quotes.example.com/?from=admin",
+      "https://quotes.example.com/#document",
+      "not-a-url",
+    ]) assert.equal(getQuotationPublicOrigin(invalid), null);
   });
 });
 

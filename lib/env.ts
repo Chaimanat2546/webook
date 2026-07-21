@@ -35,6 +35,30 @@ export function getHouseImageEnv() {
   return getAdvertisementImageEnv();
 }
 
+export function getQuotationAssetEnv() {
+  return getAdvertisementImageEnv();
+}
+
+export function getQuotationPublicOrigin(
+  value = process.env.QUOTATION_PUBLIC_ORIGIN,
+): string | null {
+  if (!value?.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash
+    ) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 export function getAwsS3ImageEnv() {
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
   const bucket = process.env.AWS_BUCKET;

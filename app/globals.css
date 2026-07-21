@@ -145,3 +145,28 @@
     cursor: not-allowed;
   }
 }
+
+@media print {
+  html.quotation-printing body > :not([data-quotation-print]) {
+    display: none !important;
+  }
+  html.quotation-printing [data-quotation-print] {
+    display: block !important;
+    width: 210mm;
+    margin: 0;
+  }
+  [data-quotation-document] {
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  [data-quotation-document] thead { display: table-header-group; }
+  [data-quotation-document] tr,
+  [data-quotation-document] section,
+  [data-document-summary] {
+    break-inside: avoid;
+  }
+  [data-document-payment-methods] {
+    break-inside: auto !important;
+  }
+}
