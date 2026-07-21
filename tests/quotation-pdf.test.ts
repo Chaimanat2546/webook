@@ -117,4 +117,54 @@ describe("quotation PDF", () => {
     assert.match(payment, /style=\{styles\.paymentCore\} wrap=\{false\}/);
     assert.match(payment, /<\/View>\s*\{method\.instructions \? <Text/);
   });
+
+  it("keeps HTML and PDF sections in the same approved order", () => {
+    const html = readFileSync(
+      "components/admin/quotations/quotation-document.tsx",
+      "utf8",
+    );
+    const htmlMarkers = [
+      "data-document-header",
+      "data-document-customer",
+      "data-document-items",
+      "data-document-summary",
+      "data-document-payment-methods",
+      "data-document-notes",
+      "data-document-certification",
+    ];
+    const pdfMarkers = [
+      "data-pdf-header",
+      "data-pdf-customer",
+      "data-pdf-items",
+      "data-pdf-totals",
+      "data-pdf-payment-methods",
+      "data-pdf-notes",
+      "data-pdf-certification",
+    ];
+
+    for (const [documentSource, markers] of [
+      [html, htmlMarkers],
+      [pdfSource, pdfMarkers],
+    ] as const) {
+      let previous = -1;
+      for (const marker of markers) {
+        const current = documentSource.indexOf(marker);
+        assert.ok(current > previous, `${marker} must follow the previous section`);
+        previous = current;
+      }
+    }
+  });
+
+  it("shows the same fallback for an empty reference", () => {
+    const html = readFileSync(
+      "components/admin/quotations/quotation-document.tsx",
+      "utf8",
+    );
+
+    assert.match(html, /payload\.reference \|\| "-"/);
+    assert.match(
+      pdfSource,
+      /function Detail[\s\S]*\{value \|\| "-"\}[\s\S]*<Detail label="อ้างอิง" value=\{payload\.reference\}/,
+    );
+  });
 });

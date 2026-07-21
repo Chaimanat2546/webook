@@ -127,7 +127,6 @@ git commit -m "feat: polish public quotation presentation"
 
 **Files:**
 - Modify: `tests/quotation-pdf.test.ts`
-- Modify: `components/admin/quotations/quotation-pdf.tsx`
 
 **Interfaces:**
 - Consumes: the existing `QuotationDocumentViewModel`, HTML `data-document-*` markers, and PDF `data-pdf-*` comments.
@@ -181,17 +180,15 @@ it("shows the same fallback for an empty reference", () => {
     "components/admin/quotations/quotation-document.tsx",
     "utf8",
   );
-  const pdfSource = readFileSync(
-    "components/admin/quotations/quotation-pdf.tsx",
-    "utf8",
-  );
-
   assert.match(html, /payload\.reference \|\| "-"/);
-  assert.match(pdfSource, /value=\{payload\.reference \|\| "-"\}/);
+  assert.match(
+    pdfSource,
+    /function Detail[\s\S]*\{value \|\| "-"\}[\s\S]*<Detail label="อ้างอิง" value=\{payload\.reference\}/,
+  );
 });
 ```
 
-- [ ] **Step 2: Run the PDF tests and confirm RED**
+- [ ] **Step 2: Run the PDF parity contract**
 
 Run:
 
@@ -199,20 +196,10 @@ Run:
 node --import ./tests/register-server-only.mjs --test tests/quotation-pdf.test.ts
 ```
 
-Expected: the section-order assertion passes against the current shared model,
-and the empty-reference assertion fails because PDF passes the empty string.
+Expected: PASS. PDF already centralizes the empty-value fallback in `Detail`;
+do not duplicate `|| "-"` at each caller.
 
-- [ ] **Step 3: Apply the minimal reference parity fix**
-
-In the PDF metadata block, change only the reference value:
-
-```tsx
-<Detail label="อ้างอิง" value={payload.reference || "-"} />
-```
-
-Do not copy HTML markup into the PDF renderer or add a new shared component.
-
-- [ ] **Step 4: Run focused checks**
+- [ ] **Step 3: Run focused checks**
 
 Run:
 
@@ -224,11 +211,11 @@ npm.cmd run typecheck
 Expected: PASS with the existing amount, optional-section, saved-state, and
 renderer tests unchanged.
 
-- [ ] **Step 5: Commit the parity slice**
+- [ ] **Step 4: Commit the parity contract**
 
 ```powershell
-git add -- components/admin/quotations/quotation-pdf.tsx tests/quotation-pdf.test.ts
-git commit -m "fix: align quotation document surfaces"
+git add -- tests/quotation-pdf.test.ts docs/superpowers/plans/2026-07-21-quotation-document-surfaces-ux-polish.md
+git commit -m "test: lock quotation surface parity"
 ```
 
 ---
@@ -261,8 +248,9 @@ Add:
 ```ts
 it("keeps ordinary PDF items together but leaves oversized items breakable", () => {
   assert.equal(canKeepQuotationPdfItemTogether("ค่าที่พัก", "รายละเอียด"), true);
-  assert.equal(canKeepQuotationPdfItemTogether("A".repeat(300), "B".repeat(300)), true);
-  assert.equal(canKeepQuotationPdfItemTogether("A".repeat(301), "B".repeat(300)), false);
+  assert.equal(canKeepQuotationPdfItemTogether("A".repeat(48 * 11), ""), true);
+  assert.equal(canKeepQuotationPdfItemTogether("A".repeat(48 * 12 + 1), ""), false);
+  assert.equal(canKeepQuotationPdfItemTogether("รายการ", "บรรทัด\n".repeat(12)), false);
 });
 ```
 
@@ -294,21 +282,29 @@ Expected: FAIL because the helper and row `wrap` expression do not exist.
 Append to `lib/quotation-pdf.ts`:
 
 ```ts
-const PDF_UNBREAKABLE_ITEM_TEXT_LIMIT = 600;
+const PDF_ITEM_ESTIMATED_CHARS_PER_LINE = 48;
+const PDF_UNBREAKABLE_ITEM_LINE_LIMIT = 12;
 
 export function canKeepQuotationPdfItemTogether(
   name: string,
   description: string,
 ): boolean {
-  // ponytail: character bound avoids oversized unbreakable rows; replace with
+  // ponytail: estimated lines avoid oversized unbreakable rows; replace with
   // measured layout only if real PDF fixtures show this approximation is wrong.
-  return name.length + description.length <= PDF_UNBREAKABLE_ITEM_TEXT_LIMIT;
+  const text = [name, description].filter(Boolean).join("\n");
+  const estimatedLines = text.split(/\r?\n/u).reduce(
+    (total, line) =>
+      total + Math.max(1, Math.ceil(line.length / PDF_ITEM_ESTIMATED_CHARS_PER_LINE)),
+    0,
+  );
+  return estimatedLines <= PDF_UNBREAKABLE_ITEM_LINE_LIMIT;
 }
 ```
 
-The limit is intentionally conservative. Normal rows become unbreakable and
-move intact to the next page; a validated item near the 2,000-character limit
-stays breakable so React PDF can render all content.
+The estimate is intentionally conservative and counts explicit newlines.
+Normal rows become unbreakable and move intact to the next page; a validated
+item near the 2,000-character limit or with many explicit lines stays breakable
+so React PDF can render all content.
 
 - [ ] **Step 4: Use the helper on PDF item rows**
 
