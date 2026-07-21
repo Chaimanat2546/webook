@@ -490,6 +490,21 @@ describe("quotation UI", () => {
     assert.doesNotMatch(list, /สถานะ/);
   });
 
+  it("shows complete quotation list loading, empty, and error feedback", () => {
+    const page = source("../app/admin/quotations/page.tsx");
+
+    assert.match(page, /import \{ Suspense \} from "react"/);
+    assert.match(page, /import \{ Input \} from "\.\.\/\.\.\/\.\.\/components\/ui\/input"/);
+    assert.match(page, /function QuotationListSkeleton/);
+    assert.match(page, /<Suspense fallback=\{<QuotationListSkeleton \/>\}>/);
+    assert.match(page, /<EmptyDescription>/);
+    assert.match(page, /สร้างใบเสนอราคาแรก/);
+    assert.match(page, /ไม่สามารถโหลดรายการใบเสนอราคาได้/);
+    assert.match(page, />ลองใหม่</);
+    assert.match(page, /pageSize: 20/);
+    assert.doesNotMatch(page, /subject:/);
+  });
+
   it("uses grouped money presentation and grouped money inputs", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const list = source("../components/admin/quotations/quotation-list.tsx");
