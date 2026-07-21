@@ -22,6 +22,15 @@ history.
 - `/admin/quotations/settings/company` - manage the current user's seller profile, payment masters, and certification master
 - `/q/[token]` - no-login, token-scoped public view of the latest saved quotation
 
+## Quotation List UX
+
+- The list keeps server-side account-scoped search and 20-row pagination.
+- Search covers document number, customer, reference, and subject; the list displays only fields already returned by the list RPC.
+- Mobile uses compact cards and Tablet/Desktop use a fixed-layout table.
+- A card or row opens the quotation with a mouse click. Keyboard users open it through the focused document-number link. Its action menu keeps edit, print, and soft-delete controls isolated from row navigation.
+- Loading uses a shape-preserving skeleton. Empty results show a relevant next action, and list-load failures show a contained retry state.
+- Soft delete still requires confirmation and reports success or failure through Toast without changing the existing ownership and permission checks.
+
 ## Master And Snapshot Rules
 
 - Each account has one seller profile, an ordered reusable payment list, and
