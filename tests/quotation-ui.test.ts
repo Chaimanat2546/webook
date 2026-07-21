@@ -511,9 +511,12 @@ describe("quotation UI", () => {
     assert.match(list, /import \{ toast \} from "sonner"/);
     assert.match(list, /function QuotationActionsMenu/);
     assert.match(list, /<DropdownMenu modal=\{false\}>/);
-    assert.match(list, /aria-label="เปิดเมนูจัดการใบเสนอราคา"/);
+    assert.match(list, /aria-label=\{`เปิดเมนูจัดการ \$\{quotation\.documentNumber\}`\}/);
     assert.match(list, /onClick=\{\(\) => openQuotation\(quotation\)\}/);
     assert.match(list, /aria-label=\{`เปิด \$\{quotation\.documentNumber\}`\}/);
+    assert.match(list, /function selectForDelete\(quotation: QuotationListItem\)[\s\S]*?setFormError\(""\)[\s\S]*?setSelected\(quotation\)/);
+    assert.match(list, /function closeDeleteDialog\(\)[\s\S]*?setFormError\(""\)[\s\S]*?setSelected\(null\)/);
+    assert.match(list, /onOpenChange=\{\(open\) => !open && closeDeleteDialog\(\)\}/);
     assert.match(list, /table-fixed/);
     assert.match(list, /toast\.success/);
     assert.match(list, /toast\.error/);

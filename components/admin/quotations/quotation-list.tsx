@@ -62,7 +62,7 @@ function QuotationActionsMenu({
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
-            aria-label="เปิดเมนูจัดการใบเสนอราคา"
+            aria-label={`เปิดเมนูจัดการ ${quotation.documentNumber}`}
             size="icon"
             type="button"
             variant="outline"
@@ -105,6 +105,16 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
     router.push(quotationHref(quotation.id));
   }
 
+  function selectForDelete(quotation: QuotationListItem) {
+    setFormError("");
+    setSelected(quotation);
+  }
+
+  function closeDeleteDialog() {
+    setFormError("");
+    setSelected(null);
+  }
+
   function deleteSelected() {
     if (!selected) return;
     setFormError("");
@@ -116,7 +126,7 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
         return;
       }
       toast.success(`ลบ ${selected.documentNumber} แล้ว`);
-      setSelected(null);
+      closeDeleteDialog();
       router.refresh();
     });
   }
@@ -148,7 +158,7 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
               </div>
               <QuotationActionsMenu
                 quotation={quotation}
-                onDelete={() => setSelected(quotation)}
+                onDelete={() => selectForDelete(quotation)}
               />
             </CardHeader>
             <CardContent>
@@ -213,7 +223,7 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
                 <TableCell className="text-right">
                   <QuotationActionsMenu
                     quotation={quotation}
-                    onDelete={() => setSelected(quotation)}
+                    onDelete={() => selectForDelete(quotation)}
                   />
                 </TableCell>
               </TableRow>
@@ -222,7 +232,7 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
         </Table>
       </Card>
 
-      <Dialog onOpenChange={(open) => !open && setSelected(null)} open={selected !== null}>
+      <Dialog onOpenChange={(open) => !open && closeDeleteDialog()} open={selected !== null}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>ลบใบเสนอราคา</DialogTitle>
@@ -238,7 +248,7 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
           <DialogFooter>
             <Button
               disabled={isPending}
-              onClick={() => setSelected(null)}
+              onClick={closeDeleteDialog}
               type="button"
               variant="outline"
             >
