@@ -113,6 +113,10 @@ describe("quotation PDF", () => {
     assert.doesNotMatch(header, /style=\{styles\.header\} wrap=\{false\}/);
     assert.doesNotMatch(customer, /style=\{styles\.customer\} wrap=\{false\}/);
     assert.doesNotMatch(items, /style=\{styles\.tableRow\} wrap=\{false\}/);
+    assert.match(
+      items,
+      /wrap=\{!canKeepQuotationPdfItemTogether\(item\.name, item\.description\)\}/,
+    );
     assert.doesNotMatch(payment, /style=\{styles\.payment\} wrap=\{false\}/);
     assert.match(payment, /style=\{styles\.paymentCore\} wrap=\{false\}/);
     assert.match(payment, /<\/View>\s*\{method\.instructions \? <Text/);

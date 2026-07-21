@@ -16,7 +16,10 @@ import {
 } from "../../../lib/quotation-document-view";
 import { formatBaht, formatMoney } from "../../../lib/quotation-money";
 import { PAYMENT_ACCOUNT_TYPE_LABELS } from "../../../lib/quotation-payment-methods";
-import { splitQuotationPdfWord } from "../../../lib/quotation-pdf";
+import {
+  canKeepQuotationPdfItemTogether,
+  splitQuotationPdfWord,
+} from "../../../lib/quotation-pdf";
 import type { QuotationPayload } from "../../../lib/quotation-types";
 
 Font.register({
@@ -310,7 +313,11 @@ function QuotationPdfDocument({
             <Text style={styles.moneyCell}>มูลค่าก่อนภาษี</Text>
           </View>
           {calculation.lines.map((item) => (
-            <View key={item.id} style={styles.tableRow}>
+            <View
+              key={item.id}
+              style={styles.tableRow}
+              wrap={!canKeepQuotationPdfItemTogether(item.name, item.description)}
+            >
               <View style={styles.descriptionCell}>
                 <Text style={styles.bold}>{item.position}. {item.name}</Text>
                 {item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}
