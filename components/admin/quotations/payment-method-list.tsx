@@ -4,8 +4,7 @@ import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
-import { cloneElement, isValidElement, useState, useTransition, type ReactElement, type ReactNode } from "react";
-import { toast } from "sonner";
+import { cloneElement, isValidElement, useState, type ReactElement, type ReactNode } from "react";
 
 import { uploadQuotationPaymentAssetAction } from "../../../app/admin/quotations/actions";
 import { emptyPaymentMethod, normalizePaymentPositions, paymentMethodEditorState, paymentMethodListState, updatePaymentMethodType, type BankOption, type QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
@@ -40,14 +39,13 @@ function Field({ children, className, error, field, label }: { children: ReactNo
 
 function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors, index, method, mode, onPatch, onRemove, onUploadStateChange }: { banks: BankOption[]; errors: Record<string, string>; index: number; method: T; mode: "master" | "quotation"; onPatch: (patch: Partial<T>) => void; onRemove: () => void; onUploadStateChange?: (field: string, busy: boolean) => void }) {
   const { handleRef, isDragging, ref } = useSortable({ group: "payment-methods", id: method.id, index });
-  const [uploadError, setUploadError] = useState("");
-  const [uploading, startUpload] = useTransition();
+  const [uploading, setUploading] = useState(false);
   const error = (name: string) => errors[`paymentMethods.${index}.${name}`];
   const editorState = paymentMethodEditorState(method);
   const update = <K extends keyof T>(name: K, value: T[K]) => onPatch({ [name]: value } as unknown as Partial<T>);
-  const upload = (name: "customBankLogoUrl" | "qrImageUrl", file: File) => startUpload(async () => {
+  const upload = async (name: "customBankLogoUrl" | "qrImageUrl", file: File) => {
     const field = `paymentMethods.${index}.${name}`;
-    setUploadError("");
+    setUploading(true);
     onUploadStateChange?.(field, true);
     const data = new FormData();
     data.set("file", file);
@@ -56,17 +54,16 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
       if (result.ok) update(name, result.url as T[typeof name]);
       else {
         const message = result.formError || Object.values(result.fieldErrors)[0] || "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้";
-        setUploadError(message);
-        toast.error(message);
+        throw new Error(message);
       }
-    } catch {
-      const message = "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้";
-      setUploadError(message);
-      toast.error(message);
+    } catch (cause) {
+      if (cause instanceof Error) throw cause;
+      throw new Error("ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้");
     } finally {
+      setUploading(false);
       onUploadStateChange?.(field, false);
     }
-  });
+  };
 
   function selectBank(value: string) {
     const bank = banks.find((option) => option.id === value);
@@ -85,7 +82,7 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
     {method.type === "qr_payment" ? <Field error={error("providerName")} field={`paymentMethods.${index}.providerName`} label="ผู้ให้บริการ"><Input className="h-8" onChange={(event) => update("providerName", event.target.value as T["providerName"])} value={method.providerName} /></Field> : null}
     {method.type === "other" ? <Field error={error("providerName")} field={`paymentMethods.${index}.providerName`} label="ชื่อช่องทาง"><Input className="h-8" onChange={(event) => update("providerName", event.target.value as T["providerName"])} value={method.providerName} /></Field> : null}
     {editorState.showQrUpload ? <div className="mt-3"><PaymentImageInput disabled={uploading} error={error("qrImageUrl")} field={`paymentMethods.${index}.qrImageUrl`} label="รูป QR" onChange={(file) => upload("qrImageUrl", file)} /></div> : null}
-    {mode !== "quotation" || method.type !== "bank_transfer" ? <Field error={error("instructions")} field={`paymentMethods.${index}.instructions`} label="หมายเหตุ"><Textarea className="mt-3 min-h-16" onChange={(event) => update("instructions", event.target.value as T["instructions"])} value={method.instructions} /></Field> : null}{uploadError ? <p aria-live="polite" className="mt-2 text-xs text-destructive">{uploadError}</p> : null}
+    {mode !== "quotation" || method.type !== "bank_transfer" ? <Field error={error("instructions")} field={`paymentMethods.${index}.instructions`} label="หมายเหตุ"><Textarea className="mt-3 min-h-16" onChange={(event) => update("instructions", event.target.value as T["instructions"])} value={method.instructions} /></Field> : null}
   </article>;
 }
 

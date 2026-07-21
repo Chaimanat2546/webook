@@ -163,6 +163,16 @@ describe("quotation UI", () => {
     assert.match(payments, /mode === "master" \? "md:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-5"/);
   });
 
+  it("waits for payment uploads before keeping local previews", () => {
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+
+    assert.match(payments, /const upload = async \(name:/);
+    assert.match(payments, /setUploading\(true\)/);
+    assert.match(payments, /throw new Error\(message\)/);
+    assert.match(payments, /setUploading\(false\)/);
+    assert.doesNotMatch(payments, /startUpload\(async/);
+  });
+
   it("uses compact certification settings and independent feedback", () => {
     const fields = source("../components/admin/quotations/certification-fields.tsx");
     const form = source("../components/admin/quotations/company-profile-form.tsx");
