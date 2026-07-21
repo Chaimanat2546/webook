@@ -51,7 +51,10 @@ describe("quotation public share", () => {
     assert.match(editor, /let stale = false/);
     assert.match(editor, /if \(stale\) return;[\s\S]*setPublicQrDataUrl/);
     assert.match(editor, /return \(\) => \{[\s\S]*stale = true/);
-    assert.match(editor, /const savedPublicQrDataUrl = publicOrigin && publicToken && publicQrSettledToken === publicToken/);
+    assert.match(
+      editor,
+      /const savedPublicQrDataUrl =\s*publicOrigin && publicToken && publicQrSettledToken === publicToken/,
+    );
     assert.match(editor, /const draftPublicQrDataUrl = !isDirty \? savedPublicQrDataUrl : ""/);
     assert.equal(editor.match(/publicQrDataUrl=\{draftPublicQrDataUrl\}/g)?.length, 1);
     assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 1);
