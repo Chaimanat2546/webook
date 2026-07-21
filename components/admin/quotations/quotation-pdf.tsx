@@ -369,7 +369,7 @@ function QuotationPdfDocument({
         </View>
 
         {/* data-pdf-certification */}
-        <View style={[styles.section, styles.row]} wrap={false}>
+        <View style={[styles.row, { paddingVertical: 8 }]} wrap={false}>
           <Text style={styles.sectionTitle}>รับรอง</Text>
           <View style={[styles.grow, styles.certification]}>
             {/* data-pdf-public-qr */}

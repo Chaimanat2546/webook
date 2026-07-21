@@ -97,6 +97,7 @@ describe("quotation PDF", () => {
     assert.doesNotMatch(signer, /signer\.position/);
     assert.doesNotMatch(pdfSource, /pageNumber|totalPages|styles\.footer/);
     assert.match(certification, /wrap=\{false\}/);
+    assert.doesNotMatch(certification, /styles\.section(?:,|\])/);
   });
 
   it("repeats the ledger heading in normal flow on continuation pages", () => {

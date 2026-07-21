@@ -268,6 +268,10 @@ describe("quotation UI", () => {
     );
 
     assert.match(certification, /grid-cols-5/);
+    assert.doesNotMatch(
+      certification,
+      /<section\s*className="[^"]*\bborder-b\b/,
+    );
     assert.match(certification, /data-document-public-qr/);
     assert.match(certification, /สแกนเพื่อเปิดด้วยเว็บไซต์/);
     assert.equal(certification.match(/<SignerSlot/g)?.length, 2);

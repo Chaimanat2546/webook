@@ -303,7 +303,7 @@ export function QuotationDocument({
       </section>
 
       <section
-        className="break-inside-avoid grid grid-cols-[16mm_minmax(0,1fr)] gap-5 border-b py-3"
+        className="break-inside-avoid grid grid-cols-[16mm_minmax(0,1fr)] gap-5 py-3"
         data-document-certification
       >
         <h2 className="flex items-start gap-1 font-semibold">
