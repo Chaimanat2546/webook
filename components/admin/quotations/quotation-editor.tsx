@@ -85,6 +85,11 @@ export interface QuotationEditorProps {
   publicOrigin: string | null;
   publicToken: string | null;
 }
+type PendingConfirmation =
+  | "close"
+  | "disable-discount"
+  | "disable-vat"
+  | null;
 type FieldProps = {
   children: React.ReactNode;
   error?: string;
@@ -633,6 +638,8 @@ export function QuotationEditor({
     );
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] =
+    useState<PendingConfirmation>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const autoPrintStarted = useRef(false);
@@ -707,15 +714,7 @@ export function QuotationEditor({
       return next;
     });
   }
-  function toggleItemDiscount(enabled: boolean) {
-    if (
-      !enabled &&
-      payload.items.some((item) => Number(item.discountAmount) > 0) &&
-      !window.confirm(
-        "การปิดส่วนลดเฉพาะรายการจะล้างส่วนลดทุกรายการ ต้องการดำเนินการต่อหรือไม่",
-      )
-    )
-      return;
+  function applyItemDiscount(enabled: boolean) {
     setShowItemDiscount(enabled);
     if (!enabled) {
       changed("items");
@@ -725,15 +724,17 @@ export function QuotationEditor({
       }));
     }
   }
-  function toggleItemVat(enabled: boolean) {
+  function toggleItemDiscount(enabled: boolean) {
     if (
       !enabled &&
-      payload.items.some((item) => Number(item.vatRate) > 0) &&
-      !window.confirm(
-        "การปิด VAT เฉพาะรายการจะล้างค่า VAT ทุกรายการ ต้องการดำเนินการต่อหรือไม่",
-      )
-    )
+      payload.items.some((item) => Number(item.discountAmount) > 0)
+    ) {
+      setPendingConfirmation("disable-discount");
       return;
+    }
+    applyItemDiscount(enabled);
+  }
+  function applyItemVat(enabled: boolean) {
     setShowItemVat(enabled);
     changed("items");
     setPayload((current) => ({
@@ -744,6 +745,16 @@ export function QuotationEditor({
         vatTreatment: enabled ? "taxable" : "none",
       })),
     }));
+  }
+  function toggleItemVat(enabled: boolean) {
+    if (
+      !enabled &&
+      payload.items.some((item) => Number(item.vatRate) > 0)
+    ) {
+      setPendingConfirmation("disable-vat");
+      return;
+    }
+    applyItemVat(enabled);
   }
   function setWithholdingEnabled(enabled: boolean) {
     changed("withholdingTaxRate");
@@ -1014,11 +1025,23 @@ export function QuotationEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
   function closeEditor() {
-    if (
-      !isDirty ||
-      window.confirm("มีการแก้ไขที่ยังไม่ได้บันทึก ต้องการปิดหรือไม่")
-    )
+    if (isDirty) {
+      setPendingConfirmation("close");
+      return;
+    }
+    router.push("/admin/quotations");
+  }
+  function confirmPendingAction() {
+    const action = pendingConfirmation;
+    setPendingConfirmation(null);
+    if (action === "close") {
+      setIsDirty(false);
       router.push("/admin/quotations");
+    } else if (action === "disable-discount") {
+      applyItemDiscount(false);
+    } else if (action === "disable-vat") {
+      applyItemVat(false);
+    }
   }
   async function shareSaved() {
     if (!canUseSavedDocument || !publicOrigin || !publicToken) return;
@@ -1082,6 +1105,24 @@ export function QuotationEditor({
     totalItems: payload.items.length,
   });
   const saveDisabled = isPending || uploadingFields.size > 0;
+  const confirmationCopy =
+    pendingConfirmation === "close"
+      ? {
+          title: "ออกจากหน้านี้โดยไม่บันทึก?",
+          description: "การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไป",
+          confirm: "ออกโดยไม่บันทึก",
+        }
+      : pendingConfirmation === "disable-discount"
+        ? {
+            title: "ปิดส่วนลดเฉพาะรายการ?",
+            description: "ส่วนลดของทุกรายการจะถูกล้าง",
+            confirm: "ปิดและล้างส่วนลด",
+          }
+        : {
+            title: "ปิด VAT เฉพาะรายการ?",
+            description: "ค่า VAT ของทุกรายการจะถูกล้าง",
+            confirm: "ปิดและล้าง VAT",
+          };
 
   return (
     <div
@@ -1804,6 +1845,33 @@ export function QuotationEditor({
           ) : (
             <p className="p-4">กรุณาแก้ไขข้อมูลก่อนดูตัวอย่าง</p>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        onOpenChange={(open) => !open && setPendingConfirmation(null)}
+        open={pendingConfirmation !== null}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmationCopy.title}</DialogTitle>
+            <DialogDescription>{confirmationCopy.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setPendingConfirmation(null)}
+              type="button"
+              variant="outline"
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={confirmPendingAction}
+              type="button"
+              variant="destructive"
+            >
+              {confirmationCopy.confirm}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog onOpenChange={setDeleteOpen} open={deleteOpen}>

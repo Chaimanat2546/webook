@@ -921,7 +921,7 @@ describe("quotation UI", () => {
     assert.match(editor, /VAT เฉพาะรายการ/);
     assert.match(editor, /initialPayload\.items\.some\(\(item\) => Number\(item\.discountAmount\) > 0\)/);
     assert.match(editor, /initialPayload\.items\.some\(\(item\) => item\.vatTreatment !== "none"\)/);
-    assert.match(editor, /!enabled\s*&&\s*payload\.items\.some\(\(item\) => Number\(item\.vatRate\) > 0\)[\s\S]*?!window\.confirm/);
+    assert.match(editor, /!enabled\s*&&\s*payload\.items\.some\(\(item\) => Number\(item\.vatRate\) > 0\)[\s\S]*?setPendingConfirmation\("disable-vat"\)/);
     assert.match(editor, /vatRate: enabled \? "7\.00" : "0",[\s\S]*?vatTreatment: enabled \? "taxable" : "none"/);
     assert.doesNotMatch(editor, /!enabled && payload\.items\.some\(\(item\) => item\.vatTreatment !== "none"\)/);
   });
@@ -1121,12 +1121,24 @@ describe("quotation UI", () => {
     assert.match(document, /payload\.subject/);
   });
 
-  it("guards dirty editor navigation and supports saved quotation deletion", () => {
+  it("uses a dialog for every quotation editor confirmation", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /type PendingConfirmation =\s*\| "close"\s*\| "disable-discount"\s*\| "disable-vat"\s*\| null/);
+    assert.match(editor, /setPendingConfirmation\("close"\)/);
+    assert.match(editor, /setPendingConfirmation\("disable-discount"\)/);
+    assert.match(editor, /setPendingConfirmation\("disable-vat"\)/);
+    assert.match(editor, /open=\{pendingConfirmation !== null\}/);
+    assert.doesNotMatch(editor, /window\.confirm/);
     assert.match(editor, /beforeunload/);
     assert.match(editor, /deleteQuotationAction/);
-    assert.match(editor, /window\.confirm/);
     assert.match(editor, /router\.push\("\/admin\/quotations"\)/);
+  });
+
+  it("preserves quotation values when a confirmation dialog is cancelled", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(editor, /onOpenChange=\{\(open\) => !open && setPendingConfirmation\(null\)\}/);
+    assert.match(editor, /onClick=\{\(\) => setPendingConfirmation\(null\)\}[\s\S]*ยกเลิก/);
   });
 
   it("loads an edit quotation with a one-time print option and isolates print CSS", () => {
