@@ -103,7 +103,6 @@ const styles = StyleSheet.create({
   },
   signatureBox: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 0.6, height: 60, justifyContent: "flex-end", marginBottom: 3 },
   certificationImage: { height: 48, objectFit: "contain", width: "100%" },
-  footer: { bottom: 16, color: colors.muted, fontSize: 7, left: 28.35, position: "absolute", right: 28.35, textAlign: "center" },
 });
 
 type ResolvedImages = Record<string, string>;
@@ -403,12 +402,6 @@ function QuotationPdfDocument({
             </View>
           </View>
         </View>
-
-        <Text
-          fixed
-          render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
-          style={styles.footer}
-        />
       </Page>
     </Document>
   );

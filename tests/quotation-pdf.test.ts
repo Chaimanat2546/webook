@@ -75,7 +75,7 @@ describe("quotation PDF", () => {
 
     const certification = pdfSource.slice(
       pdfSource.indexOf("data-pdf-certification"),
-      pdfSource.indexOf("style={styles.footer}"),
+      pdfSource.indexOf("</Page>", pdfSource.indexOf("data-pdf-certification")),
     );
     const signer = pdfSource.slice(
       pdfSource.indexOf("function Signer"),
@@ -95,7 +95,7 @@ describe("quotation PDF", () => {
     );
     assert.doesNotMatch(certification, /ตำแหน่ง/);
     assert.doesNotMatch(signer, /signer\.position/);
-    assert.match(pdfSource, /fixed[\s\S]*render=\{\(\{ pageNumber, totalPages \}\)/);
+    assert.doesNotMatch(pdfSource, /pageNumber|totalPages|styles\.footer/);
     assert.match(certification, /wrap=\{false\}/);
   });
 
