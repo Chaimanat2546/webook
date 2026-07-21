@@ -16,7 +16,10 @@ import {
 import { Input } from "../../../components/ui/input";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { canUseQuotation, requireAdmin } from "../../../server/auth/admin";
-import { listQuotations } from "../../../server/repositories/quotations";
+import {
+  listQuotations,
+  type QuotationListResult,
+} from "../../../server/repositories/quotations";
 
 function QuotationListSkeleton() {
   return (
@@ -40,15 +43,11 @@ function QuotationListSkeleton() {
   );
 }
 
-async function QuotationResults({
-  requestedPage,
-  search,
-  supabase,
-}: {
-  requestedPage: number;
-  search: string;
-  supabase: SupabaseClient;
-}) {
+async function loadQuotationResults(
+  supabase: SupabaseClient,
+  requestedPage: number,
+  search: string,
+): Promise<QuotationListResult | null> {
   try {
     let result = await listQuotations(supabase, {
       page: requestedPage,
@@ -62,45 +61,27 @@ async function QuotationResults({
         search,
       });
     }
-
-    if (result.items.length === 0) {
-      return (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>
-              {search ? "ไม่พบใบเสนอราคาที่ค้นหา" : "ยังไม่มีใบเสนอราคา"}
-            </EmptyTitle>
-            <EmptyDescription>
-              {search ? "ลองเปลี่ยนคำค้นหา" : "สร้างใบเสนอราคาแรกเพื่อเริ่มใช้งาน"}
-            </EmptyDescription>
-          </EmptyHeader>
-          {!search ? (
-            <EmptyContent>
-              <Button asChild>
-                <Link href="/admin/quotations/new">สร้างใบเสนอราคาแรก</Link>
-              </Button>
-            </EmptyContent>
-          ) : null}
-        </Empty>
-      );
-    }
-
-    return (
-      <>
-        <QuotationList quotations={result.items} />
-        <Pagination
-          basePath="/admin/quotations"
-          currentPage={result.page}
-          search={search}
-          totalPages={result.totalPages}
-        />
-      </>
-    );
+    return result;
   } catch (error) {
     console.error(
       "Failed to list quotations",
       error instanceof Error ? error.message : "Unknown error",
     );
+    return null;
+  }
+}
+
+async function QuotationResults({
+  requestedPage,
+  search,
+  supabase,
+}: {
+  requestedPage: number;
+  search: string;
+  supabase: SupabaseClient;
+}) {
+  const result = await loadQuotationResults(supabase, requestedPage, search);
+  if (!result) {
     return (
       <Empty role="alert">
         <EmptyHeader>
@@ -115,6 +96,40 @@ async function QuotationResults({
       </Empty>
     );
   }
+
+  if (result.items.length === 0) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>
+            {search ? "ไม่พบใบเสนอราคาที่ค้นหา" : "ยังไม่มีใบเสนอราคา"}
+          </EmptyTitle>
+          <EmptyDescription>
+            {search ? "ลองเปลี่ยนคำค้นหา" : "สร้างใบเสนอราคาแรกเพื่อเริ่มใช้งาน"}
+          </EmptyDescription>
+        </EmptyHeader>
+        {!search ? (
+          <EmptyContent>
+            <Button asChild>
+              <Link href="/admin/quotations/new">สร้างใบเสนอราคาแรก</Link>
+            </Button>
+          </EmptyContent>
+        ) : null}
+      </Empty>
+    );
+  }
+
+  return (
+    <>
+      <QuotationList quotations={result.items} />
+      <Pagination
+        basePath="/admin/quotations"
+        currentPage={result.page}
+        search={search}
+        totalPages={result.totalPages}
+      />
+    </>
+  );
 }
 
 export default async function QuotationsPage({

@@ -505,6 +505,23 @@ describe("quotation UI", () => {
     assert.doesNotMatch(page, /subject:/);
   });
 
+  it("uses responsive clickable quotation rows, a compact action menu, and delete toasts", () => {
+    const list = source("../components/admin/quotations/quotation-list.tsx");
+
+    assert.match(list, /import \{ toast \} from "sonner"/);
+    assert.match(list, /function QuotationActionsMenu/);
+    assert.match(list, /<DropdownMenu modal=\{false\}>/);
+    assert.match(list, /aria-label="เปิดเมนูจัดการใบเสนอราคา"/);
+    assert.match(list, /onClick=\{\(\) => openQuotation\(quotation\)\}/);
+    assert.match(list, /aria-label=\{`เปิด \$\{quotation\.documentNumber\}`\}/);
+    assert.match(list, /table-fixed/);
+    assert.match(list, /toast\.success/);
+    assert.match(list, /toast\.error/);
+    assert.match(list, /กำลังลบ…/);
+    assert.doesNotMatch(list, /<Button asChild size="sm" variant="outline"><Link/);
+    assert.doesNotMatch(list, /<TableHead>อัปเดต<\/TableHead>/);
+  });
+
   it("uses grouped money presentation and grouped money inputs", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const list = source("../components/admin/quotations/quotation-list.tsx");
