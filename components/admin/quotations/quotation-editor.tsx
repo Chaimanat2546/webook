@@ -666,7 +666,7 @@ export function QuotationEditor({
   const [publicQrDataUrl, setPublicQrDataUrl] = useState("");
   const [publicQrSettledToken, setPublicQrSettledToken] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [activeCompletionTab, setActiveCompletionTab] = useState<
     "certification" | "payments"
@@ -954,23 +954,15 @@ export function QuotationEditor({
       setActiveCompletionTab("payments");
     requestAnimationFrame(() => focusField(field));
   }
-  const focusableFieldErrors = Object.entries(fieldErrors)
-    .filter(
-      ([field]) =>
-        field === "items" ||
-        field === "seller.logoUrl" ||
-        document.querySelector(`[data-field="${CSS.escape(field)}"]`),
-    )
-    .map(([field, message]) => ({ field, message }));
   function save(close = false) {
     if (uploadingFields.size) return;
-    setFormError("");
     startTransition(async () => {
       const result = await saveQuotationAction(payload);
       if (!result.ok) {
         setFieldErrors(result.fieldErrors);
-        setFormError(result.formError);
         if (result.formError) toast.error(result.formError);
+        else if (Object.keys(result.fieldErrors).length)
+          toast.error("กรุณาตรวจสอบข้อมูลที่กรอก");
         const firstField = Object.keys(result.fieldErrors)[0];
         if (firstField) focusErrorField(firstField);
         return;
@@ -1112,12 +1104,20 @@ export function QuotationEditor({
       setIsDownloading(false);
     }
   }
+  function openDeleteDialog() {
+    setDeleteError("");
+    setDeleteOpen(true);
+  }
   function deleteQuotation() {
     if (!payload.id) return;
-    setFormError("");
+    setDeleteError("");
     startTransition(async () => {
       const result = await deleteQuotationAction(payload.id!);
-      if (!result.ok) return setFormError(result.formError);
+      if (!result.ok) {
+        setDeleteError(result.formError);
+        toast.error(result.formError);
+        return;
+      }
       setDeleteOpen(false);
       setIsDirty(false);
       toast.success(`ลบ ${documentNumber ?? "ใบเสนอราคา"} แล้ว`);
@@ -1175,27 +1175,6 @@ export function QuotationEditor({
           </Button>
         </div>
       </header>
-      {formError ? (
-        <Alert variant="destructive">
-          <AlertDescription>{formError}</AlertDescription>
-        </Alert>
-      ) : null}
-      {focusableFieldErrors.length ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            {focusableFieldErrors.map(({ field, message }) => (
-              <button
-                className="mr-2 underline"
-                key={field}
-                onClick={() => focusErrorField(field)}
-                type="button"
-              >
-                {message}
-              </button>
-            ))}
-          </AlertDescription>
-        </Alert>
-      ) : null}
       {calculationError ? (
         <Alert variant="destructive">
           <AlertDescription>{calculationError}</AlertDescription>
@@ -1285,7 +1264,7 @@ export function QuotationEditor({
           <DocumentMore
             deleteEnabled={Boolean(payload.id)}
             onClose={closeEditor}
-            onDelete={() => setDeleteOpen(true)}
+            onDelete={openDeleteDialog}
             onPreview={() => setPreviewOpen(true)}
             onSave={() => save()}
             previewEnabled={Boolean(calculation)}
@@ -1887,9 +1866,9 @@ export function QuotationEditor({
               {payload.customer.name || "ลูกค้ารายนี้"} ใช่หรือไม่
             </DialogDescription>
           </DialogHeader>
-          {formError ? (
+          {deleteError ? (
             <Alert variant="destructive">
-              <AlertDescription>{formError}</AlertDescription>
+              <AlertDescription>{deleteError}</AlertDescription>
             </Alert>
           ) : null}
           <DialogFooter>

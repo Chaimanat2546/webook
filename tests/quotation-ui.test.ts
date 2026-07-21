@@ -985,8 +985,26 @@ describe("quotation UI", () => {
     assert.match(editor, /focus\(\{ preventScroll: true \}\)/);
     assert.match(editor, /if \(result\.formError\) toast\.error\(result\.formError\)/);
     assert.match(editor, /toast\.success\("บันทึกใบเสนอราคาแล้ว"\)/);
-    assert.match(editor, /onClick=\{\(\) => focusErrorField\(field\)\}/);
     assert.match(editor, /if \(firstField\) focusErrorField\(firstField\)/);
+  });
+
+  it("keeps quotation field errors inline and emits one validation toast", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(editor, /Object\.keys\(result\.fieldErrors\)\.length[\s\S]*toast\.error\("กรุณาตรวจสอบข้อมูลที่กรอก"\)/);
+    assert.match(editor, /const firstField = Object\.keys\(result\.fieldErrors\)\[0\][\s\S]*focusErrorField\(firstField\)/);
+    assert.doesNotMatch(editor, /focusableFieldErrors/);
+    assert.doesNotMatch(editor, /<AlertDescription>\{formError\}<\/AlertDescription>/);
+    assert.match(editor, /<AlertDescription>\{calculationError\}<\/AlertDescription>/);
+  });
+
+  it("keeps quotation delete failures scoped to the delete dialog", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(editor, /const \[deleteError, setDeleteError\] = useState\(""\)/);
+    assert.match(editor, /if \(!result\.ok\) \{[\s\S]*setDeleteError\(result\.formError\)[\s\S]*toast\.error\(result\.formError\)/);
+    assert.match(editor, /<AlertDescription>\{deleteError\}<\/AlertDescription>/);
+    assert.doesNotMatch(editor, /const \[formError, setFormError\]/);
   });
 
   it("keeps invalid dates editable and exposes office and field-error controls", () => {
@@ -997,7 +1015,7 @@ describe("quotation UI", () => {
     assert.match(editor, /data-field="customer\.officeType"/);
     assert.match(editor, /field="customer\.branchNumber"/);
     assert.match(editor, /aria-invalid/);
-    assert.match(editor, /focusableFieldErrors/);
+    assert.match(editor, /<FieldError error=\{error\} field=\{field\} \/>/);
   });
 
   it("focuses the visible copy of responsive item controls", () => {
