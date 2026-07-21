@@ -134,9 +134,12 @@ describe("quotation UI", () => {
     assert.match(page, /QuotationSettingsNavLink/);
     assert.match(guard, /beforeunload/);
     assert.match(guard, /window\.confirm/);
+    assert.match(guard, /const \{ dirty, markSaved \} = useQuotationSettingsDirty\(\)/);
+    assert.match(guard, /if \(dirty\) \{[\s\S]*?if \(!window\.confirm\([\s\S]*?event\.preventDefault\(\);[\s\S]*?return;[\s\S]*?markSaved\(\);/);
     assert.match(guard, /aria-current=\{current \? "page" : undefined\}/);
     assert.match(form, /onChangeCapture=\{markDirty\}/);
     assert.match(form, /markSaved\(\)/);
+    assert.equal(form.match(/if \(busy\) markDirty\(\)/g)?.length, 2);
   });
 
   it("uses flat seller settings with semantic widths and an action footer", () => {
@@ -160,7 +163,8 @@ describe("quotation UI", () => {
     assert.match(payments, /data-master-payment-method=\{mode === "master" \? "" : undefined\}/);
     assert.match(payments, /mode === "master" \? "rounded-lg border p-4"/);
     assert.match(payments, /flex-wrap/);
-    assert.match(payments, /mode === "master" \? "md:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-5"/);
+    assert.match(payments, /mode === "master" \? "xl:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-5"/);
+    assert.match(payments, /mode === "master" \? "xl:col-span-2" : undefined/);
   });
 
   it("waits for payment uploads before keeping local previews", () => {
@@ -171,6 +175,21 @@ describe("quotation UI", () => {
     assert.match(payments, /throw new Error\(message\)/);
     assert.match(payments, /setUploading\(false\)/);
     assert.doesNotMatch(payments, /startUpload\(async/);
+  });
+
+  it("applies completed payment uploads by stable method id", () => {
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+
+    assert.match(payments, /useRef/);
+    assert.match(payments, /const methodsRef = useRef\(methods\)/);
+    assert.match(payments, /useLayoutEffect\(\(\) => \{ methodsRef\.current = methods; \}, \[methods\]\)/);
+    assert.match(payments, /const emit = \(next: T\[\]\) => \{ methodsRef\.current = next; onChange\(next\); \}/);
+    assert.match(payments, /const update = \(id: string, patch: Partial<T>\)/);
+    assert.match(payments, /emit\(normalizePaymentPositions\(methodsRef\.current\.map\(\(method\) => method\.id === id \? \{ \.\.\.method, \.\.\.patch \} : method\)\)\)/);
+    assert.match(payments, /onDragEnd=\{\(event\) => \{ if \(!event\.canceled\) emit\(/);
+    assert.match(payments, /onRemove=\{\(\) => emit\(/);
+    assert.match(payments, /onPatch=\{\(patch\) => update\(method\.id, patch\)\}/);
+    assert.doesNotMatch(payments, /onPatch=\{\(patch\) => update\(index, patch\)\}/);
   });
 
   it("uses compact certification settings and independent feedback", () => {
@@ -347,7 +366,7 @@ describe("quotation UI", () => {
     assert.match(payments, /isDefault/);
     assert.match(payments, /DragDropProvider/);
     assert.match(payments, /useSortable/);
-    assert.match(payments, /move\(methods, event\)/);
+    assert.match(payments, /move\(methodsRef\.current, event\)/);
     assert.match(payments, /PaymentImageInput/);
     assert.match(payments, /result\.formError/);
     assert.match(payments, /OTHER/);
@@ -675,7 +694,7 @@ describe("quotation UI", () => {
     assert.match(editor, /<Button[\s\S]*disabled=\{!paymentListState\.canAdd\}[\s\S]*เพิ่มช่องทางชำระเงิน[\s\S]*<PaymentMethodList/);
     assert.match(editor, /showAddButton=\{false\}/);
     assert.doesNotMatch(payments, /saveCompanyPaymentMethodsAction/);
-    assert.match(payments, /onChange\(normalizePaymentPositions\(move\(methods, event\) as T\[\]\)\)/);
+    assert.match(payments, /emit\(normalizePaymentPositions\(move\(methodsRef\.current, event\) as T\[\]\)\)/);
     assert.match(payments, /aria-live="polite"[\s\S]*rootError/);
   });
 

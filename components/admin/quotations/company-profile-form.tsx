@@ -196,6 +196,7 @@ export function PaymentMethodsSettings({ banks, initialMethods }: { banks: BankO
   }
 
   function updateUploadState(field: string, busy: boolean) {
+    if (busy) markDirty();
     setUploadingFields((current) => {
       const next = new Set(current);
       if (busy) next.add(field); else next.delete(field);
@@ -265,6 +266,7 @@ export function CertificationSettings({ initialCertification }: { initialCertifi
   }
 
   function updateUploadState(field: string, busy: boolean) {
+    if (busy) markDirty();
     setUploadingFields((current) => {
       const next = new Set(current);
       if (busy) next.add(field); else next.delete(field);

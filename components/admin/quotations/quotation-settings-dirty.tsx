@@ -35,7 +35,7 @@ export function useQuotationSettingsDirty() {
 }
 
 export function QuotationSettingsNavLink({ current = false, onClick, ...props }: ComponentProps<typeof Link> & { current?: boolean }) {
-  const { dirty } = useQuotationSettingsDirty();
+  const { dirty, markSaved } = useQuotationSettingsDirty();
 
   return <Link
     {...props}
@@ -43,7 +43,13 @@ export function QuotationSettingsNavLink({ current = false, onClick, ...props }:
     onClick={(event) => {
       onClick?.(event);
       if (event.defaultPrevented || current || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      if (dirty && !window.confirm("มีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากส่วนนี้หรือไม่")) event.preventDefault();
+      if (dirty) {
+        if (!window.confirm("มีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากส่วนนี้หรือไม่")) {
+          event.preventDefault();
+          return;
+        }
+        markSaved();
+      }
     }}
   />;
 }
