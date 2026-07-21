@@ -1101,11 +1101,18 @@ describe("quotation UI", () => {
     assert.match(editor, /setIsPrinting\(true\)/);
     assert.match(editor, /createPortal\([\s\S]*data-quotation-print[\s\S]*document\.body/);
     assert.match(editor, /window\.addEventListener\("afterprint", cleanup/);
-    assert.match(editor, /querySelectorAll<HTMLImageElement>\("\[data-quotation-print\] img"\)/);
+    assert.match(
+      editor,
+      /querySelectorAll<HTMLImageElement>\(\s*"\[data-quotation-print\] img"\s*,?\s*\)/,
+    );
     assert.match(editor, /await waitForQuotationPrintImages/);
     assert.match(editor, /AbortController/);
     assert.ok(editor.indexOf("await waitForQuotationPrintImages") < editor.indexOf("window.print()"));
     assert.match(editor, /setIsPrinting\(false\)/);
+    assert.match(
+      editor,
+      /catch \{[\s\S]*if \(!controller\.signal\.aborted\)[\s\S]*toast\.error\(\s*"ไม่สามารถเตรียมเอกสารสำหรับพิมพ์ได้ กรุณาลองอีกครั้ง"[\s\S]*cleanup\(\)/,
+    );
     assert.match(css, /body > :not\(\[data-quotation-print\]\)/);
     assert.match(css, /display: none !important/);
     assert.match(css, /thead \{ display: table-header-group/);

@@ -961,16 +961,28 @@ export function QuotationEditor({
 
     const frame = window.requestAnimationFrame(() => {
       void (async () => {
-        const images = document.querySelectorAll<HTMLImageElement>("[data-quotation-print] img");
-        const ready = await waitForQuotationPrintImages(images, {
-          signal: controller.signal,
-        });
-        if (!ready || controller.signal.aborted) return;
-        document.head.append(printStyle);
-        document.documentElement.classList.add("quotation-printing");
-        window.addEventListener("afterprint", cleanup, { once: true });
-        window.print();
-        if (!finished) timeout = window.setTimeout(cleanup, 1_000);
+        try {
+          const images =
+            document.querySelectorAll<HTMLImageElement>(
+              "[data-quotation-print] img",
+            );
+          const ready = await waitForQuotationPrintImages(images, {
+            signal: controller.signal,
+          });
+          if (!ready || controller.signal.aborted) return;
+          document.head.append(printStyle);
+          document.documentElement.classList.add("quotation-printing");
+          window.addEventListener("afterprint", cleanup, { once: true });
+          window.print();
+          if (!finished) timeout = window.setTimeout(cleanup, 1_000);
+        } catch {
+          if (!controller.signal.aborted) {
+            toast.error(
+              "ไม่สามารถเตรียมเอกสารสำหรับพิมพ์ได้ กรุณาลองอีกครั้ง",
+            );
+            cleanup();
+          }
+        }
       })();
     });
 
