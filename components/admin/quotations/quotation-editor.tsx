@@ -947,6 +947,13 @@ export function QuotationEditor({
     target?.scrollIntoView({ block: "center" });
     target?.focus({ preventScroll: true });
   }
+  function focusErrorField(field: string) {
+    if (field.startsWith("certification."))
+      setActiveCompletionTab("certification");
+    if (field.startsWith("paymentMethods"))
+      setActiveCompletionTab("payments");
+    requestAnimationFrame(() => focusField(field));
+  }
   const focusableFieldErrors = Object.entries(fieldErrors)
     .filter(
       ([field]) =>
@@ -963,11 +970,9 @@ export function QuotationEditor({
       if (!result.ok) {
         setFieldErrors(result.fieldErrors);
         setFormError(result.formError);
-        toast.error(result.formError);
+        if (result.formError) toast.error(result.formError);
         const firstField = Object.keys(result.fieldErrors)[0];
-        if (firstField?.startsWith("certification.")) setActiveCompletionTab("certification");
-        if (firstField?.startsWith("paymentMethods")) setActiveCompletionTab("payments");
-        if (firstField) requestAnimationFrame(() => focusField(firstField));
+        if (firstField) focusErrorField(firstField);
         return;
       }
       setLastSavedPayload(result.payload);
@@ -1182,7 +1187,7 @@ export function QuotationEditor({
               <button
                 className="mr-2 underline"
                 key={field}
-                onClick={() => focusField(field)}
+                onClick={() => focusErrorField(field)}
                 type="button"
               >
                 {message}

@@ -813,8 +813,8 @@ describe("quotation UI", () => {
     assert.match(editor, /lg:col-start-1 lg:row-start-1/);
     assert.match(editor, /lg:col-start-2 lg:row-span-2 lg:row-start-1/);
     assert.match(editor, /lg:col-start-1 lg:row-start-2/);
-    assert.match(editor, /if \(firstField\?\.startsWith\("certification\."\)\) setActiveCompletionTab\("certification"\)/);
-    assert.match(editor, /if \(firstField\?\.startsWith\("paymentMethods"\)\) setActiveCompletionTab\("payments"\)/);
+    assert.match(editor, /function focusErrorField\(field: string\)[\s\S]*?field\.startsWith\("certification\."\)[\s\S]*?setActiveCompletionTab\("certification"\)/);
+    assert.match(editor, /function focusErrorField\(field: string\)[\s\S]*?field\.startsWith\("paymentMethods"\)[\s\S]*?setActiveCompletionTab\("payments"\)/);
   });
 
   it("blocks quotation saves while certification assets upload", () => {
@@ -901,8 +901,10 @@ describe("quotation UI", () => {
     assert.match(editor, /id=\{fieldErrorId\(field\)\}/);
     assert.match(editor, /scrollIntoView\(\{ block: "center" \}\)/);
     assert.match(editor, /focus\(\{ preventScroll: true \}\)/);
-    assert.match(editor, /toast\.error\(result\.formError\)/);
+    assert.match(editor, /if \(result\.formError\) toast\.error\(result\.formError\)/);
     assert.match(editor, /toast\.success\("บันทึกใบเสนอราคาแล้ว"\)/);
+    assert.match(editor, /onClick=\{\(\) => focusErrorField\(field\)\}/);
+    assert.match(editor, /if \(firstField\) focusErrorField\(firstField\)/);
   });
 
   it("keeps invalid dates editable and exposes office and field-error controls", () => {
