@@ -31,6 +31,18 @@ history.
 - Loading uses a shape-preserving skeleton. Empty results show a relevant next action, and list-load failures show a contained retry state.
 - Soft delete still requires confirmation and reports success or failure through Toast without changing the existing ownership and permission checks.
 
+## Quotation Settings UX
+
+- Seller, payment, and certification remain separate URL-selected sections with independent save actions and selected-section-only server loading.
+- Desktop uses the local settings sidebar. Mobile uses the same real links in an intentionally horizontally scrollable row with `aria-current` on the active section.
+- Editing a mounted section marks it dirty. Moving to another section or returning to the list asks for confirmation; changing sections never autosaves. A successful save clears only the mounted section's dirty state.
+- Seller settings use one flat surface with content-shaped field widths and show the branch number only for a branch office. A selected logo is previewed before save.
+- Reusable payment methods render as responsive cards in settings while quotation-specific payment editing keeps its existing compact layout. Add, remove, drag order, defaults, and type-specific fields keep the same data behavior.
+- Certification keeps issuer and approver stacked on Mobile and side by side from Tablet. Signatures stay with their signer and the company stamp uses a compact asset row.
+- Every section keeps inline field errors and first-error focus, plus Toast for save/upload outcomes. Save is disabled while its section is saving or uploading.
+- Certification and payment images show a local preview while uploading. If upload fails, the temporary preview is removed and the previously saved asset remains visible and unchanged.
+- This UX polish does not change ownership, snapshots, RLS, upload actions, repositories, services, or database schema.
+
 ## Master And Snapshot Rules
 
 - Each account has one seller profile, an ordered reusable payment list, and

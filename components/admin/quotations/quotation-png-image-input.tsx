@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { validateQuotationPaymentAssetFile } from "../../../lib/quotation-assets";
 import { Button } from "../../ui/button";
@@ -57,10 +58,14 @@ export function QuotationPngImageInput({ disabled, error: serverError = "", fiel
     onBusyChange?.(true);
     try {
       const normalized = await normalizeQuotationPngImage(file);
+      const localPreviewUrl = URL.createObjectURL(normalized);
+      setPreviewUrl(localPreviewUrl);
       await onChange(normalized);
-      setPreviewUrl(URL.createObjectURL(normalized));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "ไม่สามารถเตรียมรูปภาพได้");
+      const uploadError = cause instanceof Error ? cause.message : "ไม่สามารถเตรียมรูปภาพได้";
+      setPreviewUrl("");
+      setError(uploadError);
+      toast.error(uploadError);
     } finally {
       setLoading(false);
       onBusyChange?.(false);

@@ -5,6 +5,7 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { cloneElement, isValidElement, useState, useTransition, type ReactElement, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { uploadQuotationPaymentAssetAction } from "../../../app/admin/quotations/actions";
 import { emptyPaymentMethod, normalizePaymentPositions, paymentMethodEditorState, paymentMethodListState, updatePaymentMethodType, type BankOption, type QuotationPaymentMethod } from "../../../lib/quotation-payment-methods";
@@ -21,22 +22,23 @@ export interface PaymentMethodListProps<T extends QuotationPaymentMethod> {
   methods: T[];
   mode: "master" | "quotation";
   onChange: (methods: T[]) => void;
+  onUploadStateChange?: (field: string, busy: boolean) => void;
   showAddButton?: boolean;
 }
 
 const paymentTypes = [["bank_transfer", "โอนเงินผ่านธนาคาร"], ["promptpay", "PromptPay"], ["qr_payment", "QR Payment"], ["cash", "เงินสด"], ["other", "อื่น ๆ"]] as const;
 
-function Field({ children, error, field, label }: { children: ReactNode; error?: string; field: string; label: string }) {
+function Field({ children, className, error, field, label }: { children: ReactNode; className?: string; error?: string; field: string; label: string }) {
   const errorId = `${field.replaceAll(".", "-")}-error`;
   const control = isValidElement(children) ? cloneElement(children as ReactElement<Record<string, unknown>>, {
     "aria-describedby": error ? errorId : undefined,
     "aria-invalid": Boolean(error),
     "data-field": field,
   }) : children;
-  return <label className="grid min-w-0 gap-1.5 text-sm"><span>{label}</span>{control}{error ? <span className="text-xs text-destructive" id={errorId}>{error}</span> : null}</label>;
+  return <label className={cn("grid min-w-0 gap-1.5 text-sm", className)}><span>{label}</span>{control}{error ? <span className="text-xs text-destructive" id={errorId}>{error}</span> : null}</label>;
 }
 
-function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors, index, method, mode, onPatch, onRemove }: { banks: BankOption[]; errors: Record<string, string>; index: number; method: T; mode: "master" | "quotation"; onPatch: (patch: Partial<T>) => void; onRemove: () => void }) {
+function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors, index, method, mode, onPatch, onRemove, onUploadStateChange }: { banks: BankOption[]; errors: Record<string, string>; index: number; method: T; mode: "master" | "quotation"; onPatch: (patch: Partial<T>) => void; onRemove: () => void; onUploadStateChange?: (field: string, busy: boolean) => void }) {
   const { handleRef, isDragging, ref } = useSortable({ group: "payment-methods", id: method.id, index });
   const [uploadError, setUploadError] = useState("");
   const [uploading, startUpload] = useTransition();
@@ -44,12 +46,26 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
   const editorState = paymentMethodEditorState(method);
   const update = <K extends keyof T>(name: K, value: T[K]) => onPatch({ [name]: value } as unknown as Partial<T>);
   const upload = (name: "customBankLogoUrl" | "qrImageUrl", file: File) => startUpload(async () => {
+    const field = `paymentMethods.${index}.${name}`;
     setUploadError("");
+    onUploadStateChange?.(field, true);
     const data = new FormData();
     data.set("file", file);
-    const result = await uploadQuotationPaymentAssetAction(data);
-    if (result.ok) update(name, result.url as T[typeof name]);
-    else setUploadError(result.formError || Object.values(result.fieldErrors)[0] || "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้");
+    try {
+      const result = await uploadQuotationPaymentAssetAction(data);
+      if (result.ok) update(name, result.url as T[typeof name]);
+      else {
+        const message = result.formError || Object.values(result.fieldErrors)[0] || "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้";
+        setUploadError(message);
+        toast.error(message);
+      }
+    } catch {
+      const message = "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้";
+      setUploadError(message);
+      toast.error(message);
+    } finally {
+      onUploadStateChange?.(field, false);
+    }
   });
 
   function selectBank(value: string) {
@@ -62,9 +78,9 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
     onPatch(updatePaymentMethodType(method, type) as Partial<T>);
   }
 
-  return <article className={cn("min-w-0 border-b py-4 last:border-b-0", isDragging && "opacity-60")} data-payment-method ref={ref}>
-    <header className="mb-3 flex items-center gap-2"><Button aria-label={`ลากเพื่อจัดลำดับช่องทางชำระเงิน ${index + 1}`} ref={handleRef} size="icon-xs" type="button" variant="ghost"><GripVertical aria-hidden="true" /></Button><Field error={error("type")} field={`paymentMethods.${index}.type`} label="ประเภท"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => updateType(event.target.value as T["type"])} value={method.type}>{paymentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>{mode === "master" ? <label className="ml-auto flex shrink-0 items-center gap-2 text-xs text-muted-foreground"><Switch checked={"isDefault" in method && method.isDefault === true} onCheckedChange={(checked) => onPatch({ isDefault: checked } as unknown as Partial<T>)} size="sm" />เลือกอัตโนมัติในใบใหม่</label> : null}<Button aria-label={`ลบช่องทางชำระเงิน ${index + 1}`} className="ml-auto" onClick={onRemove} size="icon-xs" type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button></header>
-    {method.type === "bank_transfer" ? <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-5"><Field error={error("bankId")} field={`paymentMethods.${index}.bankId`} label="ธนาคาร"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => selectBank(event.target.value)} value={editorState.bankSelectValue}><option value="OTHER">อื่น ๆ</option>{banks.filter((bank) => bank.code !== "OTHER").map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}</select></Field><Field error={error("accountType")} field={`paymentMethods.${index}.accountType`} label="ประเภทบัญชี"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => update("accountType", event.target.value as T["accountType"])} value={method.accountType}><option value="">ไม่ระบุ</option><option value="savings">ออมทรัพย์</option><option value="current">กระแสรายวัน</option><option value="fixed">ฝากประจำ</option></select></Field><Field error={error("accountName")} field={`paymentMethods.${index}.accountName`} label="ชื่อบัญชี"><Input className="h-8" onChange={(event) => update("accountName", event.target.value as T["accountName"])} value={method.accountName} /></Field><Field error={error("accountNumber")} field={`paymentMethods.${index}.accountNumber`} label="เลขที่บัญชี"><Input className="h-8" inputMode="numeric" onChange={(event) => update("accountNumber", event.target.value as T["accountNumber"])} value={method.accountNumber} /></Field><Field error={error("qrMode")} field={`paymentMethods.${index}.qrMode`} label="QR โอนเงิน"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => update("qrMode", event.target.value as T["qrMode"])} value={method.qrMode}><option value="none">ไม่ใช้</option><option value="upload">อัปโหลด QR</option></select></Field>{editorState.hasCustomBankFields ? <><Field error={error("customBankName")} field={`paymentMethods.${index}.customBankName`} label="ชื่อธนาคารอื่น"><Input className="h-8" onChange={(event) => update("customBankName", event.target.value as T["customBankName"])} value={method.customBankName} /></Field><PaymentImageInput disabled={uploading} error={error("customBankLogoUrl")} field={`paymentMethods.${index}.customBankLogoUrl`} label="โลโก้ธนาคารอื่น" onChange={(file) => upload("customBankLogoUrl", file)} /></> : null}</div> : null}
+  return <article className={cn("min-w-0", mode === "master" ? "rounded-lg border p-4" : "border-b py-4 last:border-b-0", isDragging && "opacity-60")} data-master-payment-method={mode === "master" ? "" : undefined} data-payment-method ref={ref}>
+    <header className="mb-3 flex flex-wrap items-center gap-2"><Button aria-label={`ลากเพื่อจัดลำดับช่องทางชำระเงิน ${index + 1}`} ref={handleRef} size="icon-xs" type="button" variant="ghost"><GripVertical aria-hidden="true" /></Button><Field error={error("type")} field={`paymentMethods.${index}.type`} label="ประเภท"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => updateType(event.target.value as T["type"])} value={method.type}>{paymentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>{mode === "master" ? <label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground sm:ml-auto"><Switch checked={"isDefault" in method && method.isDefault === true} onCheckedChange={(checked) => onPatch({ isDefault: checked } as unknown as Partial<T>)} size="sm" />เลือกอัตโนมัติในใบใหม่</label> : null}<Button aria-label={`ลบช่องทางชำระเงิน ${index + 1}`} className={cn(mode !== "master" && "ml-auto")} onClick={onRemove} size="icon-xs" type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button></header>
+    {method.type === "bank_transfer" ? <div className={cn("grid min-w-0 gap-3 sm:grid-cols-2", mode === "master" ? "md:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-5")}><Field className={mode === "master" ? "md:col-span-2" : undefined} error={error("bankId")} field={`paymentMethods.${index}.bankId`} label="ธนาคาร"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => selectBank(event.target.value)} value={editorState.bankSelectValue}><option value="OTHER">อื่น ๆ</option>{banks.filter((bank) => bank.code !== "OTHER").map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}</select></Field><Field error={error("accountType")} field={`paymentMethods.${index}.accountType`} label="ประเภทบัญชี"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => update("accountType", event.target.value as T["accountType"])} value={method.accountType}><option value="">ไม่ระบุ</option><option value="savings">ออมทรัพย์</option><option value="current">กระแสรายวัน</option><option value="fixed">ฝากประจำ</option></select></Field><Field className={mode === "master" ? "md:col-span-2" : undefined} error={error("accountName")} field={`paymentMethods.${index}.accountName`} label="ชื่อบัญชี"><Input className="h-8" onChange={(event) => update("accountName", event.target.value as T["accountName"])} value={method.accountName} /></Field><Field error={error("accountNumber")} field={`paymentMethods.${index}.accountNumber`} label="เลขที่บัญชี"><Input className="h-8" inputMode="numeric" onChange={(event) => update("accountNumber", event.target.value as T["accountNumber"])} value={method.accountNumber} /></Field><Field error={error("qrMode")} field={`paymentMethods.${index}.qrMode`} label="QR โอนเงิน"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => update("qrMode", event.target.value as T["qrMode"])} value={method.qrMode}><option value="none">ไม่ใช้</option><option value="upload">อัปโหลด QR</option></select></Field>{editorState.hasCustomBankFields ? <><Field className={mode === "master" ? "md:col-span-2" : undefined} error={error("customBankName")} field={`paymentMethods.${index}.customBankName`} label="ชื่อธนาคารอื่น"><Input className="h-8" onChange={(event) => update("customBankName", event.target.value as T["customBankName"])} value={method.customBankName} /></Field><PaymentImageInput disabled={uploading} error={error("customBankLogoUrl")} field={`paymentMethods.${index}.customBankLogoUrl`} label="โลโก้ธนาคารอื่น" onChange={(file) => upload("customBankLogoUrl", file)} /></> : null}</div> : null}
     {method.type === "promptpay" ? <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3"><Field error={error("accountName")} field={`paymentMethods.${index}.accountName`} label="ชื่อบัญชี"><Input className="h-8" onChange={(event) => update("accountName", event.target.value as T["accountName"])} value={method.accountName} /></Field><Field error={error("promptPayId")} field={`paymentMethods.${index}.promptPayId`} label="หมายเลข PromptPay"><Input className="h-8" inputMode="numeric" onChange={(event) => update("promptPayId", event.target.value as T["promptPayId"])} value={method.promptPayId} /></Field><Field error={error("qrMode")} field={`paymentMethods.${index}.qrMode`} label="QR PromptPay"><select className="h-8 w-full rounded-md border bg-transparent px-2 text-sm" onChange={(event) => update("qrMode", event.target.value as T["qrMode"])} value={method.qrMode}><option value="auto_promptpay">สร้างอัตโนมัติ</option><option value="upload">อัปโหลด QR</option></select></Field></div> : null}
     {method.type === "qr_payment" ? <Field error={error("providerName")} field={`paymentMethods.${index}.providerName`} label="ผู้ให้บริการ"><Input className="h-8" onChange={(event) => update("providerName", event.target.value as T["providerName"])} value={method.providerName} /></Field> : null}
     {method.type === "other" ? <Field error={error("providerName")} field={`paymentMethods.${index}.providerName`} label="ชื่อช่องทาง"><Input className="h-8" onChange={(event) => update("providerName", event.target.value as T["providerName"])} value={method.providerName} /></Field> : null}
@@ -73,9 +89,9 @@ function SortablePaymentMethod<T extends QuotationPaymentMethod>({ banks, errors
   </article>;
 }
 
-export function PaymentMethodList<T extends QuotationPaymentMethod>({ banks, errors, methods, mode, onChange, showAddButton = true }: PaymentMethodListProps<T>) {
+export function PaymentMethodList<T extends QuotationPaymentMethod>({ banks, errors, methods, mode, onChange, onUploadStateChange, showAddButton = true }: PaymentMethodListProps<T>) {
   const listState = paymentMethodListState(methods, errors);
   const update = (index: number, patch: Partial<T>) => onChange(normalizePaymentPositions(methods.map((method, current) => current === index ? { ...method, ...patch } : method)));
   const add = () => { if (listState.canAdd) onChange(normalizePaymentPositions([...methods, { ...emptyPaymentMethod(), ...(mode === "master" ? { isDefault: false } : {}) } as T])); };
-  return <section aria-label="ช่องทางชำระเงิน" className="min-w-0">{listState.rootError ? <p aria-live="polite" className="mb-3 text-sm text-destructive" data-field="paymentMethods" tabIndex={-1}>{listState.rootError}</p> : null}<DragDropProvider onDragEnd={(event) => { if (!event.canceled) onChange(normalizePaymentPositions(move(methods, event) as T[])); }}><div className="divide-y border-y">{methods.map((method, index) => <SortablePaymentMethod banks={banks} errors={errors} index={index} key={method.id} method={method} mode={mode} onPatch={(patch) => update(index, patch)} onRemove={() => onChange(normalizePaymentPositions(methods.filter((_, current) => current !== index)))} />)}</div></DragDropProvider>{showAddButton ? <Button className="mt-3" disabled={!listState.canAdd} onClick={add} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />เพิ่มช่องทางชำระเงิน</Button> : null}</section>;
+  return <section aria-label="ช่องทางชำระเงิน" className="min-w-0">{listState.rootError ? <p aria-live="polite" className="mb-3 text-sm text-destructive" data-field="paymentMethods" tabIndex={-1}>{listState.rootError}</p> : null}<DragDropProvider onDragEnd={(event) => { if (!event.canceled) onChange(normalizePaymentPositions(move(methods, event) as T[])); }}><div className={mode === "master" ? "grid gap-3" : "divide-y border-y"}>{methods.map((method, index) => <SortablePaymentMethod banks={banks} errors={errors} index={index} key={method.id} method={method} mode={mode} onPatch={(patch) => update(index, patch)} onRemove={() => onChange(normalizePaymentPositions(methods.filter((_, current) => current !== index)))} onUploadStateChange={onUploadStateChange} />)}</div></DragDropProvider>{showAddButton ? <Button className="mt-3" disabled={!listState.canAdd} onClick={add} size="sm" type="button" variant="outline"><Plus aria-hidden="true" />เพิ่มช่องทางชำระเงิน</Button> : null}</section>;
 }

@@ -72,7 +72,7 @@ describe("quotation UI", () => {
     assert.match(page, /section === "payments" \|\| section === "certification"/);
     assert.match(page, /\?section=company/);
     assert.match(page, /\?section=payments/);
-    assert.match(page, /aria-current=\{selectedSection === item\.id \? "page" : undefined\}/);
+    assert.match(page, /current=\{selectedSection === item\.id\}/);
     assert.match(page, /selectedSection === "company"[\s\S]*<CompanyProfileForm/);
     assert.match(page, /selectedSection === "payments"[\s\S]*<PaymentMethodsSettings/);
     assert.match(form, /export function PaymentMethodsSettings/);
@@ -103,14 +103,16 @@ describe("quotation UI", () => {
     assert.match(imageInput, /URL\.revokeObjectURL/);
     assert.match(imageInput, /image\/png,image\/jpeg,image\/webp/);
     assert.match(imageInput, /await onChange\(normalized\)/);
-    assert.ok(imageInput.indexOf("await onChange(normalized)") < imageInput.indexOf("setPreviewUrl(URL.createObjectURL(normalized))"));
+    assert.ok(imageInput.indexOf("setPreviewUrl(localPreviewUrl)") < imageInput.indexOf("await onChange(normalized)"));
+    assert.match(imageInput, /setPreviewUrl\(""\)/);
     assert.match(imageInput, /onRemove \? <Button/);
     assert.match(fields, /throw new Error\(message\)/);
     assert.match(fields, /onChange\(\(current\) => updateCertificationSigner/);
     assert.match(fields, /onUploadStateChange\?\.\(field, busy\)/);
     assert.match(form, /const \[uploadingFields, setUploadingFields\] = useState\(new Set<string>\(\)\)/);
     assert.match(form, /if \(uploadingFields\.size\) return/);
-    assert.match(form, /disabled=\{pending \|\| uploadingFields\.size > 0\}/);
+    assert.match(form, /const disabled = pending \|\| uploadingFields\.size > 0/);
+    assert.match(form, /disabled=\{disabled\}/);
     assert.match(imageInput, /onBusyChange\?\.\(true\)/);
     assert.match(imageInput, /onBusyChange\?\.\(false\)/);
     assert.match(imageInput, /inputRef\.current\.value = ""/);
@@ -121,6 +123,56 @@ describe("quotation UI", () => {
 
     assert.match(page, /const profile = selectedSection === "payments"\s*\? null\s*: await getQuotationCompanyProfile\(supabase, user\.id\)/);
     assert.match(page, /selectedSection === "payments"\s*\? await Promise\.all\(\[\s*listQuotationBanks\(supabase\),\s*listCompanyPaymentMethods\(supabase, user\.id\),?\s*\]\)/);
+  });
+
+  it("guards dirty quotation settings navigation", () => {
+    const page = source("../app/admin/quotations/settings/company/page.tsx");
+    const guard = source("../components/admin/quotations/quotation-settings-dirty.tsx");
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+
+    assert.match(page, /QuotationSettingsDirtyProvider/);
+    assert.match(page, /QuotationSettingsNavLink/);
+    assert.match(guard, /beforeunload/);
+    assert.match(guard, /window\.confirm/);
+    assert.match(guard, /aria-current=\{current \? "page" : undefined\}/);
+    assert.match(form, /onChangeCapture=\{markDirty\}/);
+    assert.match(form, /markSaved\(\)/);
+  });
+
+  it("uses flat seller settings with semantic widths and an action footer", () => {
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+
+    assert.match(form, /<SettingsGroup id="registration"/);
+    assert.match(form, /<SettingsGroup id="address"/);
+    assert.match(form, /<SettingsGroup id="contact"/);
+    assert.match(form, /<SettingsGroup id="logo"/);
+    assert.match(form, /data-settings-action-footer/);
+    assert.match(form, /sm:w-auto/);
+    assert.match(form, /officeType === "branch"/);
+    assert.match(form, /focusFirstSettingsError/);
+    assert.match(form, /toast\.success/);
+    assert.doesNotMatch(form, /<Card><CardHeader><CardTitle>/);
+  });
+
+  it("renders responsive master payment settings without a tablet five-column squeeze", () => {
+    const payments = source("../components/admin/quotations/payment-method-list.tsx");
+
+    assert.match(payments, /data-master-payment-method=\{mode === "master" \? "" : undefined\}/);
+    assert.match(payments, /mode === "master" \? "rounded-lg border p-4"/);
+    assert.match(payments, /flex-wrap/);
+    assert.match(payments, /mode === "master" \? "md:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-5"/);
+  });
+
+  it("uses compact certification settings and independent feedback", () => {
+    const fields = source("../components/admin/quotations/certification-fields.tsx");
+    const form = source("../components/admin/quotations/company-profile-form.tsx");
+
+    assert.match(fields, /data-certification-signer/);
+    assert.match(fields, /md:grid-cols-2/);
+    assert.match(fields, /data-certification-stamp/);
+    assert.match(form, /data-settings-action-footer/);
+    assert.match(form, /uploadingFields\.size > 0/);
+    assert.match(form, /toast\.error/);
   });
 
   it("uses clear Thai seller copy and previews a selected logo before save", () => {
@@ -143,7 +195,8 @@ describe("quotation UI", () => {
     assert.match(form, /URL\.createObjectURL\(file\)/);
     assert.match(form, /URL\.revokeObjectURL\(logoPreviewUrl\)/);
     assert.match(form, /onChange=\{handleLogoChange\}/);
-    assert.match(form, /<Input[^>]*onChange=\{handleLogoChange\}[^>]*disabled=\{disabled\}/);
+    assert.match(form, /<Input[^>]*onChange=\{handleLogoChange\}/);
+    assert.match(form, /<Input[^>]*disabled=\{disabled\}[^>]*id="logo"/);
     assert.match(form, /const displayedLogoUrl = logoPreviewUrl \|\| logoUrl/);
   });
 
