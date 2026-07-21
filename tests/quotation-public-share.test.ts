@@ -76,4 +76,28 @@ describe("quotation public share", () => {
     assert.match(document, /model\.paymentMethods/);
     assert.doesNotMatch(document, /internalNotes/);
   });
+
+  it("keeps the public A4 document inside an intentional horizontal viewport", () => {
+    const page = source("../app/q/[token]/page.tsx");
+    const document = source(
+      "../components/admin/quotations/quotation-document.tsx",
+    );
+
+    assert.match(page, /data-public-quotation-viewport/);
+    assert.match(page, /overflow-x-auto/);
+    assert.match(page, /overscroll-x-contain/);
+    assert.match(document, /w-\[210mm\]/);
+    assert.doesNotMatch(page, /grid-cols|data-public-card/);
+  });
+
+  it("uses a generic Thai not-found state for invalid public quotations", () => {
+    const notFoundPage = source("../app/q/[token]/not-found.tsx");
+
+    assert.match(notFoundPage, /ไม่พบใบเสนอราคา/);
+    assert.match(
+      notFoundPage,
+      /ลิงก์อาจไม่ถูกต้องหรือเอกสารถูกนำออกแล้ว/,
+    );
+    assert.doesNotMatch(notFoundPage, /token|database|Supabase|error/i);
+  });
 });

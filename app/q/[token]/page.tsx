@@ -37,7 +37,10 @@ export default async function PublicQuotationPage({ params }: { params: Promise<
   }
 
   return (
-    <main className="min-h-screen overflow-auto bg-muted p-0 sm:p-4 print:bg-white print:p-0">
+    <main
+      className="min-h-screen overflow-x-auto overscroll-x-contain bg-muted p-0 sm:p-4 print:overflow-visible print:bg-white print:p-0"
+      data-public-quotation-viewport
+    >
       <QuotationDocument
         calculation={calculation}
         documentNumber={quotation.documentNumber}
