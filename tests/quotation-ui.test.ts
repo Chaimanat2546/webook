@@ -965,8 +965,10 @@ describe("quotation UI", () => {
     assert.match(commandBar, /onClick=\{closeEditor\}[\s\S]*?>[\s\S]*?กลับ/);
     assert.match(commandBar, /onClick=\{\(\) => setPreviewOpen\(true\)\}[\s\S]*?>[\s\S]*?ดูตัวอย่าง/);
     assert.match(commandBar, /disabled=\{saveDisabled\}[\s\S]*?onClick=\{\(\) => save\(\)\}/);
-    assert.match(sellerStrip, /data-document-actions[\s\S]*<Share2[\s\S]*<Printer[\s\S]*<Download[\s\S]*<DocumentMore/);
-    assert.match(editor, /<DropdownMenuItem disabled=\{!previewEnabled\} onSelect=\{onPreview\}/);
+    assert.match(sellerStrip, /data-document-actions[\s\S]*<Share2[\s\S]*<Printer[\s\S]*<Download[\s\S]*ลบใบเสนอราคา/);
+    assert.match(sellerStrip, /\{payload\.id \? \([\s\S]*onClick=\{openDeleteDialog\}[\s\S]*variant="outline"/);
+    assert.doesNotMatch(editor, /function DocumentMore/);
+    assert.doesNotMatch(editor, /เพิ่มเติม/);
     assert.match(sellerStrip, /<Button[\s\S]*?disabled[\s\S]*?size="sm"[\s\S]*?title=/);
     assert.doesNotMatch(sellerStrip, /<Button disabled title=.*<Share2/);
     assert.match(editor, /data-mobile-command-bar/);

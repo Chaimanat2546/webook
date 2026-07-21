@@ -15,14 +15,10 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
   Download,
-  Eye,
   GripVertical,
-  MoreHorizontal,
   Printer,
-  Save,
   Share2,
   Trash2,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -73,7 +69,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
 import { Input } from "../../ui/input";
@@ -324,55 +319,6 @@ function itemGrid(showItemDiscount: boolean, showItemVat: boolean) {
     return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_8.5rem_2.5rem]";
   return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_8.5rem_2.5rem]";
 }
-function DocumentMore({
-  deleteEnabled,
-  onClose,
-  onDelete,
-  onPreview,
-  onSave,
-  previewEnabled,
-  saveDisabled,
-}: {
-  deleteEnabled: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-  onPreview: () => void;
-  onSave: () => void;
-  previewEnabled: boolean;
-  saveDisabled: boolean;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline">
-          <MoreHorizontal aria-hidden="true" className="size-4" />
-          เพิ่มเติม
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={!previewEnabled} onSelect={onPreview}>
-          <Eye aria-hidden="true" className="size-4" />
-          ดูตัวอย่าง
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={saveDisabled} onSelect={onSave}>
-          <Save aria-hidden="true" className="size-4" />
-          บันทึก
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onClose}>
-          <X aria-hidden="true" className="size-4" />
-          ปิด
-        </DropdownMenuItem>
-        {deleteEnabled ? (
-          <DropdownMenuItem onSelect={onDelete} variant="destructive">
-            <Trash2 aria-hidden="true" className="size-4" />
-            ลบ
-          </DropdownMenuItem>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 function SortableQuotationItem(props: ItemProps) {
   const { index, item, onRemove } = props;
   const { handleRef, isDragging, ref } = useSortable({
@@ -1261,15 +1207,18 @@ export function QuotationEditor({
               {shareUnavailableMessage}
             </p>
           ) : null}
-          <DocumentMore
-            deleteEnabled={Boolean(payload.id)}
-            onClose={closeEditor}
-            onDelete={openDeleteDialog}
-            onPreview={() => setPreviewOpen(true)}
-            onSave={() => save()}
-            previewEnabled={Boolean(calculation)}
-            saveDisabled={saveDisabled}
-          />
+          {payload.id ? (
+            <Button
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={openDeleteDialog}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+              ลบใบเสนอราคา
+            </Button>
+          ) : null}
         </div>
       </section>
       {sellerExpanded ? (
