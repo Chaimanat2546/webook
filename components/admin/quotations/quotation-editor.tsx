@@ -655,11 +655,13 @@ export function QuotationEditor({
     ? "ยังไม่ได้ตั้งค่า URL สาธารณะสำหรับใบเสนอราคา"
     : "";
   const publicQrPending = Boolean(
-    publicOrigin && publicToken && !isDirty && publicQrSettledToken !== publicToken,
+    publicOrigin && publicToken && publicQrSettledToken !== publicToken,
   );
-  const savedPublicQrDataUrl = !isDirty && publicOrigin && publicToken && publicQrSettledToken === publicToken
-    ? publicQrDataUrl
-    : "";
+  const savedPublicQrDataUrl =
+    publicOrigin && publicToken && publicQrSettledToken === publicToken
+      ? publicQrDataUrl
+      : "";
+  const draftPublicQrDataUrl = !isDirty ? savedPublicQrDataUrl : "";
   const canPrint = Boolean(
     documentNumber && lastSavedPayload && !isPending && !publicQrPending,
   );
@@ -1002,7 +1004,7 @@ export function QuotationEditor({
   }, [canPrint, printOnLoad, printSaved]);
   useEffect(() => {
     let stale = false;
-    if (!publicOrigin || !publicToken || isDirty) {
+    if (!publicOrigin || !publicToken) {
       queueMicrotask(() => {
         if (stale) return;
         setPublicQrDataUrl("");
@@ -1029,7 +1031,7 @@ export function QuotationEditor({
     return () => {
       stale = true;
     };
-  }, [isDirty, publicOrigin, publicToken]);
+  }, [publicOrigin, publicToken]);
   useEffect(() => {
     if (!isDirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -1852,7 +1854,7 @@ export function QuotationEditor({
               calculation={calculation}
               documentNumber={documentNumber}
               payload={payload}
-              publicQrDataUrl={savedPublicQrDataUrl}
+              publicQrDataUrl={draftPublicQrDataUrl}
             />
           ) : (
             <p className="p-4">กรุณาแก้ไขข้อมูลก่อนดูตัวอย่าง</p>

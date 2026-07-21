@@ -43,22 +43,25 @@ describe("quotation public share", () => {
     }
   });
 
-  it("keeps Public QR output scoped to a clean saved quotation", () => {
+  it("keeps draft QR clean-only while preserving the saved QR for print", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const \[publicQrDataUrl, setPublicQrDataUrl\] = useState\(""\)/);
-    assert.match(editor, /if \(!publicOrigin \|\| !publicToken \|\| isDirty\)[\s\S]*setPublicQrDataUrl\(""\)/);
+    assert.match(editor, /if \(!publicOrigin \|\| !publicToken\)[\s\S]*setPublicQrDataUrl\(""\)/);
     assert.match(editor, /createQuotationPublicQrDataUrl\(publicUrl\)/);
     assert.match(editor, /let stale = false/);
     assert.match(editor, /if \(stale\) return;[\s\S]*setPublicQrDataUrl/);
     assert.match(editor, /return \(\) => \{[\s\S]*stale = true/);
-    assert.match(editor, /const savedPublicQrDataUrl = !isDirty && publicOrigin && publicToken && publicQrSettledToken === publicToken/);
-    assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 2);
+    assert.match(editor, /const savedPublicQrDataUrl = publicOrigin && publicToken && publicQrSettledToken === publicToken/);
+    assert.match(editor, /const draftPublicQrDataUrl = !isDirty \? savedPublicQrDataUrl : ""/);
+    assert.equal(editor.match(/publicQrDataUrl=\{draftPublicQrDataUrl\}/g)?.length, 1);
+    assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 1);
   });
 
   it("waits for a clean saved quotation QR before printing", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const \[publicQrSettledToken, setPublicQrSettledToken\] = useState\(""\)/);
-    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*publicOrigin &&[\s\S]*publicQrSettledToken !== publicToken/);
+    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*publicOrigin &&[\s\S]*publicToken &&[\s\S]*publicQrSettledToken !== publicToken/);
+    assert.doesNotMatch(editor, /const publicQrPending = Boolean\([\s\S]*!isDirty[\s\S]*publicQrSettledToken !== publicToken/);
     assert.match(editor, /const canPrint = Boolean\([\s\S]*!publicQrPending/);
     assert.equal(editor.match(/setPublicQrSettledToken\(publicToken\)/g)?.length, 2);
   });
