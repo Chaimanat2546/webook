@@ -732,7 +732,9 @@ describe("quotation UI", () => {
   it("disables save while a save or certification upload is pending", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /<DropdownMenuItem disabled=\{saveDisabled\} onSelect=\{onSave\}/);
-    assert.equal(editor.match(/saveDisabled=\{isPending \|\| uploadingFields\.size > 0\}/g)?.length, 1);
+    assert.equal(editor.match(/const saveDisabled = isPending \|\| uploadingFields\.size > 0/g)?.length, 1);
+    assert.match(editor, /saveDisabled=\{saveDisabled\}/);
+    assert.ok((editor.match(/disabled=\{saveDisabled\}/g)?.length ?? 0) >= 2);
   });
 
   it("uses consistent native select geometry", () => {
@@ -821,7 +823,8 @@ describe("quotation UI", () => {
     assert.match(editor, /const \[uploadingFields, setUploadingFields\] = useState\(new Set<string>\(\)\)/);
     assert.match(editor, /setUploadingFields\(\(current\) => \{/);
     assert.match(editor, /if \(uploadingFields\.size\) return/);
-    assert.match(editor, /disabled=\{isPending \|\| uploadingFields\.size > 0\}/);
+    assert.match(editor, /const saveDisabled = isPending \|\| uploadingFields\.size > 0/);
+    assert.match(editor, /disabled=\{saveDisabled\}/);
     assert.match(editor, /onUploadStateChange=\{updateUploadState\}/);
     assert.match(editor, /onChange=\{updateCertification\}/);
     assert.match(editor, /data-payment-methods[\s\S]*hidden=\{activeCompletionTab !== "payments"\}/);
@@ -871,17 +874,35 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /accepted|rejected|approval|qrCode/i);
   });
 
-  it("places document actions in the seller strip and keeps command bar actions text-only", () => {
+  it("uses the approved workbench action hierarchy on desktop and mobile", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const commandBar = editor.slice(editor.indexOf("data-workbench-command-bar"), editor.indexOf("data-seller-strip"));
     const sellerStrip = editor.slice(editor.indexOf("data-seller-strip"), editor.indexOf("data-seller-edit"));
-    assert.match(commandBar, /<Button[\s\S]*?onClick=\{closeEditor\}[\s\S]*?variant="outline"/);
-    assert.match(commandBar, /onClick=\{\(\) => save\(\)\}[\s\S]*?\{isPending \?/);
-    assert.doesNotMatch(commandBar, /<X|<Save/);
+    assert.match(commandBar, /\{documentNumber \?\? "ใบเสนอราคาใหม่"\}/);
+    assert.match(commandBar, /className="hidden[^\"]*md:flex"[\s\S]*?data-desktop-command-actions/);
+    assert.match(commandBar, /onClick=\{closeEditor\}[\s\S]*?>[\s\S]*?กลับ/);
+    assert.match(commandBar, /onClick=\{\(\) => setPreviewOpen\(true\)\}[\s\S]*?>[\s\S]*?ดูตัวอย่าง/);
+    assert.match(commandBar, /disabled=\{saveDisabled\}[\s\S]*?onClick=\{\(\) => save\(\)\}/);
     assert.match(sellerStrip, /data-document-actions[\s\S]*<Share2[\s\S]*<Printer[\s\S]*<Download[\s\S]*<DocumentMore/);
     assert.match(editor, /<DropdownMenuItem disabled=\{!previewEnabled\} onSelect=\{onPreview\}/);
     assert.match(sellerStrip, /<Button[\s\S]*?disabled[\s\S]*?size="sm"[\s\S]*?title=/);
     assert.doesNotMatch(sellerStrip, /<Button disabled title=.*<Share2/);
+    assert.match(editor, /data-mobile-command-bar/);
+    assert.match(editor, /fixed inset-x-0 bottom-0[\s\S]*?md:hidden/);
+    assert.match(editor, /env\(safe-area-inset-bottom\)/);
+    assert.match(editor, /pb-24 md:pb-0/);
+    assert.match(editor, /const saveDisabled = isPending \|\| uploadingFields\.size > 0/);
+  });
+
+  it("links editor errors to controls and reports save results", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /function fieldErrorId\(field: string\)/);
+    assert.match(editor, /aria-describedby=\{error \? fieldErrorId\(field\) : undefined\}/);
+    assert.match(editor, /id=\{fieldErrorId\(field\)\}/);
+    assert.match(editor, /scrollIntoView\(\{ block: "center" \}\)/);
+    assert.match(editor, /focus\(\{ preventScroll: true \}\)/);
+    assert.match(editor, /toast\.error\(result\.formError\)/);
+    assert.match(editor, /toast\.success\("บันทึกใบเสนอราคาแล้ว"\)/);
   });
 
   it("keeps invalid dates editable and exposes office and field-error controls", () => {
@@ -942,7 +963,7 @@ describe("quotation UI", () => {
 
   it("shows desktop select errors beside VAT controls", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /const treatmentControl = labelled \?[\s\S]*?error=\{error\("vatTreatment"\)\}[\s\S]*?\{error\("vatTreatment"\) \?/);
+    assert.match(editor, /const treatmentControl = labelled \?[\s\S]*?error=\{error\("vatTreatment"\)\}[\s\S]*?<FieldError[\s\S]*?error=\{error\("vatTreatment"\)\}/);
   });
 
   it("keeps the total and delete controls last in every desktop item grid", () => {

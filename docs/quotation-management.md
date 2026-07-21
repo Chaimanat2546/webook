@@ -91,6 +91,15 @@ Preview, Print, or Public Read-only.
 ## Editor And Calculation Rules
 
 - Create/Edit uses the responsive Document Workbench; Preview/Print is A4.
+- The workbench header shows `ใบเสนอราคาใหม่` before the first save and the
+  document number afterward. Tablet/Desktop expose Back, Preview, and Save in
+  the header; Mobile keeps the same actions in a fixed bottom bar with content
+  clearance and safe-area padding.
+- Save success and task-level failure use Toast. Field validation remains next
+  to its control, links error text with `aria-describedby`, and scrolls then
+  focuses the first invalid field.
+- Preview uses the current draft. Print, PDF Download, and Public Share remain
+  limited to the latest clean saved document.
 - Reference is optional and subject is labelled `เรื่อง / ชื่องาน`.
 - Currency copy is always `บาท`.
 - Quantity is required and greater than zero; unit is optional.

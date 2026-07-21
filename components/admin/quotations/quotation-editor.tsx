@@ -136,13 +136,24 @@ function controlClassName(size: FieldSize, className?: string) {
   return cn(fieldSizeClassNames[size], className);
 }
 
+function fieldErrorId(field: string) {
+  return `quotation-field-error-${field.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
+
+function FieldError({ error, field }: { error?: string; field: string }) {
+  return error ? (
+    <span className="text-xs text-destructive" id={fieldErrorId(field)}>
+      {error}
+    </span>
+  ) : null;
+}
+
 function Field({ children, error, field, label }: FieldProps) {
-  void field;
   return (
     <label className="grid gap-1 text-sm">
       <span>{label}</span>
       {children}
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      <FieldError error={error} field={field} />
     </label>
   );
 }
@@ -174,6 +185,7 @@ function TextInput({
   const input = (
     <>
       <Input
+        aria-describedby={error ? fieldErrorId(field) : undefined}
         aria-invalid={Boolean(error)}
         aria-label={label ?? field}
         className={controlClassName(size, inputClassName)}
@@ -185,7 +197,7 @@ function TextInput({
         onFocus={onFocus}
         value={value}
       />
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      <FieldError error={error} field={field} />
     </>
   );
   return label ? (
@@ -240,6 +252,7 @@ function Numeric({
 
   const input = (
     <Input
+      aria-describedby={error ? fieldErrorId(field) : undefined}
       aria-invalid={Boolean(error)}
       aria-label={label ?? field}
       className={controlClassName(size, inputClassName)}
@@ -267,12 +280,12 @@ function Numeric({
   return label ? (
     <Field error={undefined} field={field} label={label}>
       {input}
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      <FieldError error={error} field={field} />
     </Field>
   ) : (
     <>
       {input}
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      <FieldError error={error} field={field} />
     </>
   );
 }
@@ -452,6 +465,9 @@ function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
   return (
     <div data-item-details className="grid gap-1">
       <Input
+        aria-describedby={
+          error("name") ? fieldErrorId(`items.${index}.name`) : undefined
+        }
         aria-invalid={Boolean(error("name"))}
         aria-label="ชื่อรายการ"
         data-field={`items.${index}.name`}
@@ -459,10 +475,13 @@ function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
         placeholder="รายการ"
         value={item.name}
       />
-      {error("name") ? (
-        <span className="text-xs text-destructive">{error("name")}</span>
-      ) : null}
+      <FieldError error={error("name")} field={`items.${index}.name`} />
       <Textarea
+        aria-describedby={
+          error("description")
+            ? fieldErrorId(`items.${index}.description`)
+            : undefined
+        }
         aria-invalid={Boolean(error("description"))}
         aria-label="รายละเอียด"
         data-field={`items.${index}.description`}
@@ -470,9 +489,10 @@ function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
         placeholder="รายละเอียด"
         value={item.description}
       />
-      {error("description") ? (
-        <span className="text-xs text-destructive">{error("description")}</span>
-      ) : null}
+      <FieldError
+        error={error("description")}
+        field={`items.${index}.description`}
+      />
     </div>
   );
 }
@@ -571,6 +591,11 @@ function ItemVatControls({
   const error = (field: string) => errors[`items.${index}.${field}`];
   const select = (
     <select
+      aria-describedby={
+        error("vatTreatment")
+          ? fieldErrorId(`items.${index}.vatTreatment`)
+          : undefined
+      }
       aria-invalid={Boolean(error("vatTreatment"))}
       aria-label={`items.${index}.vatTreatment`}
       className={cn("w-full min-w-0", selectClassName)}
@@ -599,11 +624,10 @@ function ItemVatControls({
   ) : (
     <>
       {select}
-      {error("vatTreatment") ? (
-        <span className="text-xs text-destructive">
-          {error("vatTreatment")}
-        </span>
-      ) : null}
+      <FieldError
+        error={error("vatTreatment")}
+        field={`items.${index}.vatTreatment`}
+      />
     </>
   );
   return (
@@ -917,10 +941,11 @@ export function QuotationEditor({
     const fields = document.querySelectorAll<HTMLElement>(
       `[data-field="${CSS.escape(field)}"]`,
     );
-    (
+    const target =
       Array.from(fields).find((element) => element.offsetParent !== null) ??
-      fields[0]
-    )?.focus();
+      fields[0];
+    target?.scrollIntoView({ block: "center" });
+    target?.focus({ preventScroll: true });
   }
   const focusableFieldErrors = Object.entries(fieldErrors)
     .filter(
@@ -938,6 +963,7 @@ export function QuotationEditor({
       if (!result.ok) {
         setFieldErrors(result.fieldErrors);
         setFormError(result.formError);
+        toast.error(result.formError);
         const firstField = Object.keys(result.fieldErrors)[0];
         if (firstField?.startsWith("certification.")) setActiveCompletionTab("certification");
         if (firstField?.startsWith("paymentMethods")) setActiveCompletionTab("payments");
@@ -950,6 +976,7 @@ export function QuotationEditor({
       setPublicToken(result.publicToken);
       setFieldErrors({});
       setIsDirty(false);
+      toast.success("บันทึกใบเสนอราคาแล้ว");
       if (close) router.push("/admin/quotations");
       else if (!payload.id)
         router.replace(
@@ -1103,27 +1130,43 @@ export function QuotationEditor({
     showItemVat,
     totalItems: payload.items.length,
   });
+  const saveDisabled = isPending || uploadingFields.size > 0;
 
   return (
-    <div className="space-y-4" data-dirty={isDirty} data-quotation-editor>
+    <div
+      className="space-y-4 pb-24 md:pb-0"
+      data-dirty={isDirty}
+      data-quotation-editor
+    >
       <header
         className="flex flex-wrap items-start justify-between gap-3 border-b border-foreground/25 pb-3"
         data-workbench-command-bar
       >
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
-            {documentNumber ? "แก้ไขใบเสนอราคา" : "สร้างใบเสนอราคา"}
+            {documentNumber ?? "ใบเสนอราคาใหม่"}
           </h1>
-          <p className="font-mono text-xs text-blue-700">
-            {documentNumber ?? "เลขที่ออกเมื่อบันทึก"}
-          </p>
+          {!documentNumber ? (
+            <p className="text-xs text-muted-foreground">เลขที่ออกเมื่อบันทึก</p>
+          ) : null}
         </div>
-        <div className="flex items-center gap-2" data-header-actions>
+        <div
+          className="hidden items-center gap-2 md:flex"
+          data-desktop-command-actions
+        >
           <Button onClick={closeEditor} type="button" variant="outline">
-            ปิด
+            กลับ
           </Button>
-          <Button disabled={isPending || uploadingFields.size > 0} onClick={() => save()} type="button">
-            {isPending ? "กำลังบันทึก" : "บันทึก"}
+          <Button
+            disabled={!calculation}
+            onClick={() => setPreviewOpen(true)}
+            type="button"
+            variant="outline"
+          >
+            ดูตัวอย่าง
+          </Button>
+          <Button disabled={saveDisabled} onClick={() => save()} type="button">
+            {isPending ? "กำลังบันทึก…" : "บันทึก"}
           </Button>
         </div>
       </header>
@@ -1241,7 +1284,7 @@ export function QuotationEditor({
             onPreview={() => setPreviewOpen(true)}
             onSave={() => save()}
             previewEnabled={Boolean(calculation)}
-            saveDisabled={isPending || uploadingFields.size > 0}
+            saveDisabled={saveDisabled}
           />
         </div>
       </section>
@@ -1263,6 +1306,11 @@ export function QuotationEditor({
             label="ที่อยู่"
           >
             <Textarea
+              aria-describedby={
+                fieldErrors["seller.address"]
+                  ? fieldErrorId("seller.address")
+                  : undefined
+              }
               aria-invalid={Boolean(fieldErrors["seller.address"])}
               data-field="seller.address"
               onChange={(event) => updateSeller("address", event.target.value)}
@@ -1283,6 +1331,11 @@ export function QuotationEditor({
             label="สำนักงานผู้ขาย"
           >
             <select
+              aria-describedby={
+                fieldErrors["seller.officeType"]
+                  ? fieldErrorId("seller.officeType")
+                  : undefined
+              }
               aria-invalid={Boolean(fieldErrors["seller.officeType"])}
               className={selectClassName}
               data-field="seller.officeType"
@@ -1362,6 +1415,11 @@ export function QuotationEditor({
                 label="ที่อยู่"
               >
                 <Textarea
+                  aria-describedby={
+                    fieldErrors["customer.address"]
+                      ? fieldErrorId("customer.address")
+                      : undefined
+                  }
                   aria-invalid={Boolean(fieldErrors["customer.address"])}
                   className={controlClassName("address")}
                   data-field="customer.address"
@@ -1386,6 +1444,11 @@ export function QuotationEditor({
               label="สำนักงานลูกค้า"
             >
               <select
+                aria-describedby={
+                  fieldErrors["customer.officeType"]
+                    ? fieldErrorId("customer.officeType")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors["customer.officeType"])}
                 className={controlClassName("identifier", selectClassName)}
                 data-field="customer.officeType"
@@ -1427,6 +1490,11 @@ export function QuotationEditor({
               label="วันที่ออก"
             >
               <Input
+                aria-describedby={
+                  fieldErrors.issueDate
+                    ? fieldErrorId("issueDate")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors.issueDate)}
                 className={controlClassName("date")}
                 data-field="issueDate"
@@ -1450,6 +1518,11 @@ export function QuotationEditor({
               label="ใช้ได้ถึง"
             >
               <Input
+                aria-describedby={
+                  fieldErrors.validUntil
+                    ? fieldErrorId("validUntil")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors.validUntil)}
                 className={controlClassName("date")}
                 data-field="validUntil"
@@ -1576,6 +1649,11 @@ export function QuotationEditor({
               label="หมายเหตุบนเอกสาร"
             >
               <Textarea
+                aria-describedby={
+                  fieldErrors.publicNotes
+                    ? fieldErrorId("publicNotes")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors.publicNotes)}
                 data-field="publicNotes"
                 onChange={(event) =>
@@ -1597,6 +1675,11 @@ export function QuotationEditor({
               label="หมายเหตุภายใน (ไม่แสดงในเอกสาร)"
             >
               <Textarea
+                aria-describedby={
+                  fieldErrors.internalNotes
+                    ? fieldErrorId("internalNotes")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors.internalNotes)}
                 data-field="internalNotes"
                 onChange={(event) =>
@@ -1753,6 +1836,25 @@ export function QuotationEditor({
             </div>
           </div>
         </section>
+      </div>
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 gap-2 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden print:hidden"
+        data-mobile-command-bar
+      >
+        <Button onClick={closeEditor} type="button" variant="outline">
+          กลับ
+        </Button>
+        <Button
+          disabled={!calculation}
+          onClick={() => setPreviewOpen(true)}
+          type="button"
+          variant="outline"
+        >
+          ดูตัวอย่าง
+        </Button>
+        <Button disabled={saveDisabled} onClick={() => save()} type="button">
+          {isPending ? "กำลังบันทึก…" : "บันทึก"}
+        </Button>
       </div>
       <Dialog onOpenChange={setPreviewOpen} open={previewOpen}>
         <DialogContent
