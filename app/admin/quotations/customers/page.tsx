@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SearchIcon } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
 
 import { Pagination } from "../../../../components/admin/houses/pagination";
-import { QuotationCustomerList } from "../../../../components/admin/quotations/customers/customer-list";
+import {
+  QuotationCustomerList,
+  QuotationCustomerToolbar,
+} from "../../../../components/admin/quotations/customers/customer-list";
 import { Button } from "../../../../components/ui/button";
 import {
   Empty,
@@ -74,21 +76,17 @@ async function CustomerResults({
 
   if (!result.items.length) {
     return (
-      <>
-        <QuotationCustomerList customers={[]} />
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>{search ? "ไม่พบลูกค้าที่ค้นหา" : active ? "ยังไม่มีข้อมูลลูกค้า" : "ไม่มีลูกค้าที่ปิดใช้งาน"}</EmptyTitle>
-            <EmptyDescription>{search ? "ลองเปลี่ยนคำค้นหา" : "เพิ่มลูกค้าหรือเลือกดูสถานะอื่น"}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      </>
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>{search ? "ไม่พบลูกค้าที่ค้นหา" : active ? "ยังไม่มีข้อมูลลูกค้า" : "ไม่มีลูกค้าที่ปิดใช้งาน"}</EmptyTitle>
+          <EmptyDescription>{search ? "ลองเปลี่ยนคำค้นหา" : "เพิ่มลูกค้าหรือเลือกดูสถานะอื่น"}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
     <>
-      <p className="mb-3 text-sm text-muted-foreground">ทั้งหมด {result.total.toLocaleString("th-TH")} รายการ</p>
       <QuotationCustomerList customers={result.items} />
       <Pagination
         basePath="/admin/quotations/customers"
@@ -138,8 +136,12 @@ export default async function QuotationCustomersPage({
         <p className="text-sm font-medium text-muted-foreground">Customer Master สำหรับใช้ในใบเสนอราคา</p>
       </div>
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <form className="flex min-w-0 gap-2 lg:max-w-xl lg:flex-1">
+      <QuotationCustomerToolbar
+        active={active}
+        activeHref={statusHref("active")}
+        inactiveHref={statusHref("inactive")}
+      >
+        <form className="flex min-w-0 basis-full gap-2 md:max-w-xl md:basis-auto md:flex-1">
           {!active ? <input name="status" type="hidden" value="inactive" /> : null}
           <label className="sr-only" htmlFor="quotation-customer-search">ค้นหาข้อมูลลูกค้า</label>
           <Input
@@ -152,11 +154,7 @@ export default async function QuotationCustomersPage({
           />
           <Button className="shrink-0" type="submit"><SearchIcon aria-hidden />ค้นหา</Button>
         </form>
-        <div aria-label="กรองสถานะลูกค้า" className="flex gap-2">
-          <Button asChild size="sm" variant={active ? "default" : "outline"}><Link href={statusHref("active")}>ใช้งาน</Link></Button>
-          <Button asChild size="sm" variant={!active ? "default" : "outline"}><Link href={statusHref("inactive")}>ปิดใช้งาน</Link></Button>
-        </div>
-      </div>
+      </QuotationCustomerToolbar>
 
       <Suspense fallback={<CustomerListSkeleton />}>
         <CustomerResults active={active} page={requestedPage} search={search} supabase={supabase} />

@@ -22,6 +22,23 @@ describe("quotation customer UI", () => {
     assert.match(list, /setQuotationCustomerActiveAction/);
   });
 
+  it("uses one status dropdown toolbar with add customer at the far right", () => {
+    const page = source("../app/admin/quotations/customers/page.tsx");
+    const list = source("../components/admin/quotations/customers/customer-list.tsx");
+    assert.match(page, /QuotationCustomerToolbar/);
+    assert.match(page, /params\.set\("q", search\)/);
+    assert.doesNotMatch(page, /params\.set\("page"/);
+    assert.doesNotMatch(page, /ทั้งหมด \{result\.total/);
+    assert.doesNotMatch(page, /<Link href=\{statusHref/);
+    assert.match(list, /export function QuotationCustomerToolbar/);
+    assert.match(list, /DropdownMenuRadioGroup/);
+    assert.match(list, /DropdownMenuRadioItem value="active">ใช้งานอยู่/);
+    assert.match(list, /DropdownMenuRadioItem value="inactive">ปิดใช้งานแล้ว/);
+    assert.match(list, /ChevronDownIcon/);
+    assert.match(list, /className="ml-auto"[\s\S]*เพิ่มลูกค้า/);
+    assert.ok((list.match(/<CustomerFormDialog/g) ?? []).length >= 2);
+  });
+
   it("shows DBD only for juristic customers and keeps contacts master-only", () => {
     const form = source("../components/admin/quotations/customers/customer-form.tsx");
     assert.match(form, /customerType === "juristic"/);

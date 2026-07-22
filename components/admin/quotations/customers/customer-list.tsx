@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ChevronDownIcon,
   EllipsisVerticalIcon,
   PencilLineIcon,
   PlusIcon,
@@ -8,7 +9,7 @@ import {
   RotateCcwIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { setQuotationCustomerActiveAction } from "../../../../app/admin/quotations/customers/actions";
@@ -28,6 +29,8 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "../../../ui/dropdown-menu";
 import {
@@ -100,21 +103,96 @@ function CustomerActions({
   );
 }
 
+function CustomerFormDialog({
+  customer,
+  onOpenChange,
+  open,
+}: {
+  customer: QuotationCustomerMaster | null;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+}) {
+  const router = useRouter();
+
+  function finishSaved() {
+    onOpenChange(false);
+    router.refresh();
+  }
+
+  return (
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{customer ? "แก้ไขข้อมูลลูกค้า" : "เพิ่มลูกค้า"}</DialogTitle>
+          <DialogDescription>ข้อมูลผู้ติดต่อเก็บเฉพาะใน Customer Master และไม่แสดงในใบเสนอราคา</DialogDescription>
+        </DialogHeader>
+        <QuotationCustomerForm
+          customer={customer}
+          key={customer?.id ?? "new"}
+          onCancel={() => onOpenChange(false)}
+          onSaved={finishSaved}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function QuotationCustomerToolbar({
+  active,
+  activeHref,
+  children,
+  inactiveHref,
+}: {
+  active: boolean;
+  activeHref: string;
+  children: ReactNode;
+  inactiveHref: string;
+}) {
+  const router = useRouter();
+  const [adding, setAdding] = useState(false);
+  const currentStatus = active ? "active" : "inactive";
+
+  function changeStatus(value: string) {
+    if (value === currentStatus) return;
+    router.push(value === "inactive" ? inactiveHref : activeHref);
+  }
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      {children}
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button aria-label="กรองสถานะลูกค้า" type="button" variant="secondary">
+            สถานะ: {active ? "ใช้งานอยู่" : "ปิดใช้งานแล้ว"}
+            <ChevronDownIcon aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuRadioGroup onValueChange={changeStatus} value={currentStatus}>
+            <DropdownMenuRadioItem value="active">ใช้งานอยู่</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="inactive">ปิดใช้งานแล้ว</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Button className="ml-auto" onClick={() => setAdding(true)} type="button">
+        <PlusIcon aria-hidden />
+        เพิ่มลูกค้า
+      </Button>
+      <CustomerFormDialog customer={null} onOpenChange={setAdding} open={adding} />
+    </div>
+  );
+}
+
 export function QuotationCustomerList({
   customers,
 }: {
   customers: QuotationCustomerMaster[];
 }) {
   const router = useRouter();
-  const [editing, setEditing] = useState<QuotationCustomerMaster | null | undefined>(undefined);
+  const [editing, setEditing] = useState<QuotationCustomerMaster | null>(null);
   const [toggleCustomer, setToggleCustomer] = useState<QuotationCustomerMaster | null>(null);
   const [toggleError, setToggleError] = useState("");
   const [isPending, startTransition] = useTransition();
-
-  function finishSaved() {
-    setEditing(undefined);
-    router.refresh();
-  }
 
   function confirmToggle() {
     if (!toggleCustomer) return;
@@ -133,13 +211,6 @@ export function QuotationCustomerList({
 
   return (
     <>
-      <div className="mb-3 flex justify-end">
-        <Button onClick={() => setEditing(null)} type="button">
-          <PlusIcon aria-hidden />
-          เพิ่มลูกค้า
-        </Button>
-      </div>
-
       {customers.length ? <div className="space-y-3 md:hidden">
         {customers.map((customer) => (
           <Card key={customer.id}>
@@ -195,20 +266,11 @@ export function QuotationCustomerList({
         </Table>
       </Card> : null}
 
-      <Dialog onOpenChange={(open) => !open && setEditing(undefined)} open={editing !== undefined}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editing ? "แก้ไขข้อมูลลูกค้า" : "เพิ่มลูกค้า"}</DialogTitle>
-            <DialogDescription>ข้อมูลผู้ติดต่อเก็บเฉพาะใน Customer Master และไม่แสดงในใบเสนอราคา</DialogDescription>
-          </DialogHeader>
-          <QuotationCustomerForm
-            customer={editing ?? null}
-            key={editing?.id ?? "new"}
-            onCancel={() => setEditing(undefined)}
-            onSaved={finishSaved}
-          />
-        </DialogContent>
-      </Dialog>
+      <CustomerFormDialog
+        customer={editing}
+        onOpenChange={(open) => !open && setEditing(null)}
+        open={editing !== null}
+      />
 
       <Dialog onOpenChange={(open) => !open && setToggleCustomer(null)} open={toggleCustomer !== null}>
         <DialogContent>
