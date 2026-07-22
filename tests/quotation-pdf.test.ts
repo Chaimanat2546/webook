@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { describe, it } from "node:test";
+
+const require = createRequire(import.meta.url);
 
 const source = (path: string) =>
   existsSync(path) ? readFileSync(path, "utf8") : "";
@@ -17,6 +20,30 @@ describe("quotation PDF", () => {
     assert.match(pdfSource, /registerHyphenationCallback/);
     assert.match(pdfSource, /size="A4"/);
     assert.match(pdfSource, /wrap/);
+  });
+
+  it("embeds fonts that cover both Latin values and Thai labels", () => {
+    const fontkit = require("fontkit") as {
+      openSync(path: string): {
+        hasGlyphForCodePoint(codePoint: number): boolean;
+      };
+    };
+    const requiredCharacters =
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-/%(): คืน";
+
+    for (const path of [
+      "public/fonts/NotoSansThai-Regular.ttf",
+      "public/fonts/NotoSansThai-SemiBold.ttf",
+    ]) {
+      const font = fontkit.openSync(path);
+      for (const character of requiredCharacters) {
+        assert.equal(
+          font.hasGlyphForCodePoint(character.codePointAt(0)!),
+          true,
+          `${path} must contain ${JSON.stringify(character)}`,
+        );
+      }
+    }
   });
 
   it("lets Thai font metrics determine line height at every text size", () => {
