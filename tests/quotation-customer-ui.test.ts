@@ -45,4 +45,17 @@ describe("quotation customer UI", () => {
     assert.match(form, /confirmReactivation/);
     assert.match(form, /ยืนยันเปิดใช้งานลูกค้าเดิม/);
   });
+
+  it("searches active customers and copies only the existing snapshot fields", () => {
+    const picker = source("../components/admin/quotations/customers/customer-picker-dialog.tsx");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(picker, /searchActiveQuotationCustomersAction/);
+    assert.match(picker, /QuotationCustomerForm/);
+    assert.match(picker, /quotationCustomerToSnapshot/);
+    assert.match(picker, /แทนที่ข้อมูลลูกค้า/);
+    assert.match(picker, /snapshotFields\.some\(\(field\) => String\(current\[field\]\)\.trim\(\) !== ""\)/);
+    assert.match(editor, /QuotationCustomerPickerDialog/);
+    assert.match(editor, /function replaceCustomerSnapshot/);
+    assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);
+  });
 });

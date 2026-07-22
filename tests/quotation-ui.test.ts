@@ -1230,4 +1230,12 @@ describe("quotation UI", () => {
     assert.match(editor, /printStyle\.textContent = "@page \{ size: A4; margin: 0; \}"/);
     assert.match(editor, /printStyle\.remove\(\)/);
   });
+
+  it("replaces the customer draft through the five-field snapshot contract", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /function replaceCustomerSnapshot\(customer: CustomerSnapshot\)/);
+    assert.match(editor, /\["name", "address", "taxId", "officeType", "branchNumber"\] as const/);
+    assert.match(editor, /changed\(`customer\.\$\{field\}`\)/);
+    assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);
+  });
 });

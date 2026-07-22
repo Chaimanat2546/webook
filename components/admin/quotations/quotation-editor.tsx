@@ -71,6 +71,7 @@ import { Input } from "../../ui/input";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Textarea } from "../../ui/textarea";
 import { CertificationFields } from "./certification-fields";
+import { QuotationCustomerPickerDialog } from "./customers/customer-picker-dialog";
 import { QuotationDocument } from "./quotation-document";
 import { PaymentMethodList } from "./payment-method-list";
 
@@ -797,6 +798,12 @@ export function QuotationEditor({
       customer: { ...current.customer, [key]: value },
     }));
   }
+  function replaceCustomerSnapshot(customer: CustomerSnapshot) {
+    for (const field of ["name", "address", "taxId", "officeType", "branchNumber"] as const) {
+      changed(`customer.${field}`);
+    }
+    setPayload((current) => ({ ...current, customer }));
+  }
   function updateSellerOfficeType(officeType: SellerSnapshot["officeType"]) {
     changed("seller.officeType");
     setPayload((current) => ({
@@ -1352,9 +1359,10 @@ export function QuotationEditor({
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">01 ลูกค้า</h2>
-            <span className="text-xs text-muted-foreground">
-              Snapshot เฉพาะใบ
-            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="text-xs text-muted-foreground">Snapshot เฉพาะใบ</span>
+              <QuotationCustomerPickerDialog current={payload.customer} onSelect={replaceCustomerSnapshot} />
+            </div>
           </div>
           <div data-customer-fields className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_max-content_minmax(0,1fr)]">
             <div className="sm:col-span-2 xl:col-span-3">
