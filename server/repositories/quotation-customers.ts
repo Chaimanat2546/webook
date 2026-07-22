@@ -141,23 +141,30 @@ export async function getQuotationCustomer(
   return data ? customerRow(data) : null;
 }
 
-export async function findQuotationCustomerByTaxId(
+export async function findQuotationCustomerByIdentity(
   supabase: SupabaseClient,
-  taxId: string,
+  input: QuotationCustomerInput,
 ): Promise<QuotationCustomerMaster | null> {
-  const { data, error } = await supabase.from("quotation_customers")
-    .select("*").eq("tax_id", taxId).maybeSingle();
+  let query = supabase.from("quotation_customers").select("*")
+    .eq("customer_type", input.customerType)
+    .eq("tax_id", input.taxId);
+  if (input.customerType === "juristic" && input.officeType === "branch") {
+    query = query.eq("office_type", "branch").eq("branch_number", input.branchNumber);
+  } else if (input.customerType === "juristic") {
+    query = query.in("office_type", ["head_office", "unspecified"]);
+  }
+  const { data, error } = await query.maybeSingle();
   if (error) throw new Error(error.message);
   return data ? customerRow(data) : null;
 }
 
 async function throwWriteError(
   supabase: SupabaseClient,
-  taxId: string,
+  input: QuotationCustomerInput,
   error: { code?: string; message: string },
 ): Promise<never> {
   if (error.code === "23505") {
-    const existing = await findQuotationCustomerByTaxId(supabase, taxId);
+    const existing = await findQuotationCustomerByIdentity(supabase, input);
     if (existing) throw new QuotationCustomerDuplicateError(existing);
   }
   throw new Error(error.message);
@@ -179,7 +186,7 @@ export async function insertQuotationCustomer(
     : { dbd_address: null, dbd_name: null, dbd_status: null, dbd_verified_at: null };
   const { data, error } = await supabase.from("quotation_customers")
     .insert({ ...writeValues(input), ...dbd, created_by: actorId, updated_by: actorId }).select("*").single();
-  if (error) return throwWriteError(supabase, input.taxId, error);
+  if (error) return throwWriteError(supabase, input, error);
   return customerRow(data);
 }
 
@@ -200,7 +207,7 @@ export async function updateQuotationCustomer(
     : editableValues(input);
   const { data, error } = await supabase.from("quotation_customers")
     .update({ ...values, updated_by: actorId }).eq("id", input.id).select("*").single();
-  if (error) return throwWriteError(supabase, input.taxId, error);
+  if (error) return throwWriteError(supabase, input, error);
   return customerRow(data);
 }
 

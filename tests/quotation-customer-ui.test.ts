@@ -40,6 +40,7 @@ describe("quotation customer UI", () => {
     assert.match(form, /dbdDefaults\.name/);
     assert.match(form, /dbdDefaults\.address/);
     assert.match(form, /existingCustomer/);
+    assert.match(form, /existingCustomer\.branchNumber/);
     assert.match(form, /setQuotationCustomerActiveAction/);
     assert.match(form, /กำลังตรวจสอบ DBD/);
     assert.match(form, /confirmReactivation/);
@@ -54,6 +55,7 @@ describe("quotation customer UI", () => {
     assert.match(picker, /searchActiveQuotationCustomersAction/);
     assert.match(picker, /QuotationCustomerForm/);
     assert.match(picker, /quotationCustomerToSnapshot/);
+    assert.match(picker, /customer\.branchNumber/);
     assert.match(picker, /แทนที่ข้อมูลลูกค้า/);
     assert.match(picker, /snapshotFields\.some\(\(field\) => String\(current\[field\]\)\.trim\(\) !== ""\)/);
     assert.match(picker, /searchError/);

@@ -33,4 +33,21 @@ describe("quotation customer migration", () => {
     assert.match(allSql, /for select[\s\S]*private\.has_quotation_permission\(\)/i);
     assert.match(allSql, /coalesce\(auth\.uid\(\),\s*new\.updated_by,\s*old\.updated_by\)/i);
   });
+
+  it("allows distinct juristic branches while keeping each customer identity unique", () => {
+    const branchMigration = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+      .find((entry) => entry.endsWith("_quotation_customer_branch_identity.sql"));
+    assert.ok(branchMigration, "branch identity migration must exist");
+    const branchSql = readFileSync(
+      new URL(`../supabase/migrations/${branchMigration}`, import.meta.url),
+      "utf8",
+    );
+
+    assert.match(branchSql, /drop constraint quotation_customers_tax_id_key/i);
+    assert.match(branchSql, /quotation_customers_individual_tax_id_uidx/i);
+    assert.match(branchSql, /quotation_customers_juristic_main_tax_id_uidx/i);
+    assert.match(branchSql, /quotation_customers_juristic_branch_uidx/i);
+    assert.match(branchSql, /unique index[\s\S]*\(tax_id, branch_number\)/i);
+    assert.doesNotMatch(branchSql, /where[^;]*is_active/i);
+  });
 });

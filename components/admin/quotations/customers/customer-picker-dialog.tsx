@@ -159,6 +159,13 @@ export function QuotationCustomerPickerDialog({
                     <Badge variant="outline">{customer.customerType === "juristic" ? "นิติบุคคล" : "บุคคลธรรมดา"}</Badge>
                   </div>
                   <p className="mt-1 font-mono text-xs text-muted-foreground">{customer.taxId}</p>
+                  {customer.customerType === "juristic" ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {customer.officeType === "branch"
+                        ? `สาขา ${customer.branchNumber}`
+                        : customer.officeType === "head_office" ? "สำนักงานใหญ่" : "ไม่ระบุสำนักงาน"}
+                    </p>
+                  ) : null}
                   <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{customer.address}</p>
                 </button>
               ))}

@@ -382,6 +382,11 @@ export function QuotationCustomerForm({
           <section className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
             <p className="font-medium">พบลูกค้าใน Master แล้ว</p>
             <p>{existingCustomer.name} · {existingCustomer.taxId}</p>
+            {existingCustomer.customerType === "juristic" ? (
+              <p>{existingCustomer.officeType === "branch"
+                ? `สาขา ${existingCustomer.branchNumber}`
+                : existingCustomer.officeType === "head_office" ? "สำนักงานใหญ่" : "ไม่ระบุสำนักงาน"}</p>
+            ) : null}
             <p>{existingCustomer.isActive ? "รายการนี้เปิดใช้งานอยู่" : "รายการนี้ปิดใช้งานอยู่"}</p>
             {!existingCustomer.isActive ? (
               <Button disabled={isPending} onClick={() => setConfirmReactivation(true)} size="sm" type="button" variant="outline">

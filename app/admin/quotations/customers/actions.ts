@@ -11,7 +11,7 @@ import type {
 import { createSupabaseAdminClient } from "../../../../lib/supabase/admin.ts";
 import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin.ts";
 import {
-  findQuotationCustomerByTaxId,
+  findQuotationCustomerByIdentity,
   getQuotationCustomer,
   insertQuotationCustomer,
   QuotationCustomerDuplicateError,
@@ -41,9 +41,16 @@ function failed(formError: string, fieldErrors: Record<string, string> = {}): Cu
 }
 
 function duplicate(customer: QuotationCustomerMaster): CustomerMutationResult {
+  const field = customer.customerType === "juristic" && customer.officeType === "branch"
+    ? "branchNumber"
+    : "taxId";
   return {
     existingCustomer: customer,
-    fieldErrors: { taxId: "เลขประจำตัวผู้เสียภาษีนี้มีอยู่แล้ว" },
+    fieldErrors: {
+      [field]: field === "branchNumber"
+        ? "เลขสาขานี้มีอยู่แล้วสำหรับเลขประจำตัวผู้เสียภาษีนี้"
+        : "เลขประจำตัวผู้เสียภาษีนี้มีอยู่แล้ว",
+    },
     formError: customer.isActive
       ? "พบลูกค้านี้ใน Master แล้ว กรุณาตรวจสอบรายการเดิม"
       : "พบลูกค้านี้ใน Master ที่ปิดใช้งาน กรุณาตรวจสอบและเปิดใช้งานรายการเดิม",
@@ -86,7 +93,6 @@ export async function saveQuotationCustomerAction(value: unknown): Promise<Custo
   try {
     const writeSupabase = requireQuotationCustomerWriteClient();
     const prepared = prepareQuotationCustomerInput(value);
-    const existing = await findQuotationCustomerByTaxId(supabase, prepared.taxId);
 
     if (prepared.id) {
       const stored = await getQuotationCustomer(supabase, prepared.id);
@@ -101,6 +107,7 @@ export async function saveQuotationCustomerAction(value: unknown): Promise<Custo
       revalidatePath("/admin/quotations/customers");
       return { customer, ok: true };
     }
+    const existing = await findQuotationCustomerByIdentity(supabase, prepared);
     if (existing) return duplicate(existing);
 
     let defaults = null;

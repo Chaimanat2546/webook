@@ -78,9 +78,12 @@ history.
 ## Customer Master And DBD
 
 - Customer types are `juristic` and `individual`. Both require an exact
-  13-ASCII-digit tax ID, unique across active and inactive rows. Customer type
-  and tax ID are immutable after the master is created so verified DBD defaults
-  cannot become attached to another identity.
+  13-ASCII-digit tax ID. An individual tax ID has one master row. A juristic
+  tax ID may have one main-office row and multiple rows with distinct,
+  trimmed branch numbers; leading zeroes remain significant. These identities
+  stay unique across active and inactive rows. Customer type and tax ID are
+  immutable after the master is created so verified DBD defaults cannot become
+  attached to another identity.
 - Contact name, phone, and email are optional and master-only. They never render
   in quotation preview, print, PDF, or Public Read-only.
 - Juristic customers may be checked or refreshed manually through the fixed DBD
@@ -246,7 +249,11 @@ Print, or PDF; the Public QR remains required for PDF Download.
 Migration `20260722090657_quotation_customer_master_dbd.sql` creates the shared
 Customer Master, exact tax-ID and DBD-completeness constraints, quotation
 permission RLS, update audit trigger, and the paginated active/inactive list
-RPC. Follow-up migration `20260722170000_harden_quotation_customer_mutations.sql`
+RPC. Follow-up migration
+`20260722102825_quotation_customer_branch_identity.sql` replaces tax-only
+uniqueness with customer identity uniqueness: individual tax ID, juristic main
+office tax ID, or juristic tax ID plus branch number. Inactive rows remain in
+that boundary. Migration `20260722170000_harden_quotation_customer_mutations.sql`
 limits authenticated quotation users to shared SELECT access and reserves
 INSERT/UPDATE for permission-checked Server Actions using the server-only
 service-role client. DELETE is not exposed; audit fields preserve the acting

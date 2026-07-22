@@ -37,6 +37,15 @@ describe("quotation customer service", () => {
     assert.equal(result.contactEmail, "account@example.com");
   });
 
+  it("trims branch identity without removing leading zeros", () => {
+    const result = prepareQuotationCustomerInput({
+      ...valid,
+      branchNumber: " 00001 ",
+      officeType: "branch",
+    });
+    assert.equal(result.branchNumber, "00001");
+  });
+
   it("rejects malformed tax ID, email, branch, and required fields", () => {
     assert.throws(() => prepareQuotationCustomerInput({
       ...valid,

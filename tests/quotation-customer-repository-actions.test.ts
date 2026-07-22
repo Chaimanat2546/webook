@@ -27,6 +27,13 @@ describe("quotation customer repository and actions", () => {
     assert.doesNotMatch(actions, /value\.dbd(?:Name|Address|Status|VerifiedAt)/);
   });
 
+  it("finds duplicates by customer identity instead of tax ID alone", () => {
+    assert.match(repository, /findQuotationCustomerByIdentity/);
+    assert.doesNotMatch(repository, /findQuotationCustomerByTaxId/);
+    assert.match(actions, /findQuotationCustomerByIdentity\(supabase, prepared\)/);
+    assert.match(actions, /customer\.customerType === "juristic" && customer\.officeType === "branch"/);
+  });
+
   it("surfaces non-normal DBD status and picker search failures", () => {
     assert.match(actions, /warning:\s*dbdStatusWarning/);
     assert.match(actions, /searchActiveQuotationCustomers\(supabase,/);

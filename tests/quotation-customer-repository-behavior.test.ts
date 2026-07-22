@@ -107,10 +107,17 @@ describe("quotation customer repository mutation boundary", () => {
     assert.deepEqual(payload, { is_active: false, updated_by: actorId });
   });
 
-  it("maps a unique conflict back to the inactive master", async () => {
-    const inactiveRow = { ...row, is_active: false };
+  it("maps a branch conflict back to the same inactive branch identity", async () => {
+    const branchInput = { ...input, branchNumber: "00001", officeType: "branch" as const };
+    const inactiveRow = {
+      ...row,
+      branch_number: branchInput.branchNumber,
+      is_active: false,
+      office_type: branchInput.officeType,
+    };
+    const filters: Array<[string, unknown]> = [];
     const chain = {
-      eq() { return chain; },
+      eq(column: string, value: unknown) { filters.push([column, value]); return chain; },
       insert() { return chain; },
       maybeSingle: async () => ({ data: inactiveRow, error: null }),
       select() { return chain; },
@@ -119,10 +126,16 @@ describe("quotation customer repository mutation boundary", () => {
     const client = { from: () => chain } as unknown as SupabaseClient;
 
     await assert.rejects(
-      insertQuotationCustomer(client, input, null, actorId),
+      insertQuotationCustomer(client, branchInput, null, actorId),
       (error: unknown) => error instanceof QuotationCustomerDuplicateError
         && error.customer.isActive === false,
     );
+    assert.deepEqual(Object.fromEntries(filters), {
+      branch_number: "00001",
+      customer_type: "juristic",
+      office_type: "branch",
+      tax_id: input.taxId,
+    });
   });
 });
 

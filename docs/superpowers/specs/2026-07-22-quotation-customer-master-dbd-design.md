@@ -20,7 +20,9 @@ quotations.
   customers.
 - Customer types are `juristic` and `individual`.
 - Every customer requires an exact 13-ASCII-digit tax ID.
-- A tax ID is unique across active and inactive master rows.
+- An individual tax ID has one master row. A juristic tax ID may have one
+  main-office row and multiple rows with distinct branch numbers. These
+  identities remain unique across active and inactive rows.
 - Juristic names and addresses are editable after DBD verification.
 - Stored DBD values remain available as defaults that the user can restore.
 - DBD refresh is manual and shows the last successful verification time.
@@ -57,12 +59,12 @@ quotations.
 - DBD lookup for individual customers.
 - Adding contact fields to the quotation snapshot or document.
 - Automatic synchronization between saved quotations and Customer Master.
-- Separate Customer Master rows for several branches of the same tax ID.
+- A separate branch table or branch CRUD module. Reusable juristic branches are
+  represented by Customer Master rows under the same tax ID.
 
-Ponytail ceiling: one tax ID maps to one master row. A quotation may override
-office type, branch number, name, or address in its own snapshot. Add a separate
-branch table only when the application has a demonstrated need to reuse several
-branches of the same juristic person.
+Ponytail ceiling: keep branches in the existing Customer Master table. Do not
+add a branch table or another abstraction while identity indexes can enforce
+the required behavior directly.
 
 ## Data Model
 
@@ -73,7 +75,7 @@ migration.
 |---|---|
 | `id uuid primary key` | Stable master identifier |
 | `customer_type text` | `juristic` or `individual` |
-| `tax_id text unique` | Required 13-ASCII-digit tax ID |
+| `tax_id text` | Required 13-ASCII-digit tax ID; part of the customer identity |
 | `name text` | Current editable display/billing name |
 | `address text` | Current editable display/billing address |
 | `office_type text` | Same values as the quotation `OfficeType` contract |
@@ -98,6 +100,8 @@ Required database checks:
   rules.
 - Individual rows have all DBD fields set to null.
 - An optional email must be syntactically valid after trimming.
+- Branch numbers are trimmed, nonblank for branch rows, and preserve leading
+  zeroes. `head_office` and `unspecified` share one main-office identity.
 
 DBD verification state is derived rather than stored separately:
 
@@ -105,9 +109,11 @@ DBD verification state is derived rather than stored separately:
 - `juristic` with `dbd_verified_at is null`: unverified.
 - `juristic` with `dbd_verified_at is not null`: verified.
 
-Keep inactive rows subject to the unique tax-ID constraint. Attempting to add an
-existing tax ID should return the existing row, including an inactive row, so
-the user can review or reactivate it instead of creating a duplicate.
+Keep inactive rows subject to customer identity uniqueness. Individual identity
+is `(customer_type, tax_id)`. Juristic main-office identity is its tax ID, while
+juristic branch identity is `(tax_id, branch_number)`. Attempting to add an
+existing identity should return the matching row, including an inactive row,
+so the user can review or reactivate it instead of creating a duplicate.
 
 ## Authorization And Data Access
 
@@ -246,7 +252,7 @@ input.
 | Case | Behavior |
 |---|---|
 | Invalid customer input | Return field-level messages; do not mutate the database |
-| Duplicate tax ID | Return the existing active or inactive row for review instead of inserting |
+| Duplicate customer identity | Return the matching active or inactive main office, branch, or individual row for review instead of inserting |
 | DBD timeout/network failure | Offer explicit unverified save for a new juristic customer; preserve existing data on refresh |
 | DBD not found | Offer explicit unverified save and retain the entered tax ID |
 | Invalid/non-JSON DBD response | Treat as provider failure; never expose the raw response |
@@ -262,7 +268,8 @@ Automated coverage must include:
   data, non-JSON responses, non-`1000` statuses, timeout, and network failure.
 - Customer normalization for both types, exact tax ID validation, optional
   contacts, branch rules, and reset behavior.
-- Duplicate tax-ID handling across active and inactive rows.
+- Duplicate individual, juristic main-office, and juristic branch identity
+  handling across active and inactive rows.
 - RLS verification that quotation users share customer rows and users without
   quotation permission cannot read or mutate them.
 - Repository list, search, status filter, create, update, deactivate, and
