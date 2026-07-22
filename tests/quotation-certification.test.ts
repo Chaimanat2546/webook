@@ -18,7 +18,7 @@ const validPayload = () => ({
     companyStampUrl: "",
     issuer: { name: "  ผู้ออกเอกสาร  ", position: "ฝ่ายขาย", signatureUrl: "" },
   },
-  customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "" },
+  customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "0200000000000" },
   id: null,
   internalNotes: "",
   issueDate: "2026-07-20",

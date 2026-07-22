@@ -17,7 +17,7 @@ import type { QuotationPayload } from "../lib/quotation-types.ts";
 function validPayload(): QuotationPayload {
   return {
     certification: emptyCertificationSnapshot(),
-    customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "" },
+    customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "0200000000000" },
     id: null,
     internalNotes: "",
     issueDate: "2026-07-14",
@@ -90,13 +90,13 @@ describe("quotation service", () => {
     const input = {
       ...payload,
       customer: { ...payload.customer, branchNumber: "002", officeType: " branch " },
-      items: [{ ...payload.items[0]!, vatRate: "0", vatTreatment: " exempt " }],
+      items: [{ ...payload.items[0]!, vatRate: "0", vatTreatment: " taxable " }],
       seller: { ...payload.seller, branchNumber: "001", officeType: " branch " },
     };
     const result = prepareQuotationPayload(input);
     assert.equal(result.payload.seller.officeType, "branch");
     assert.equal(result.payload.customer.officeType, "branch");
-    assert.equal(result.payload.items[0]!.vatTreatment, "exempt");
+    assert.equal(result.payload.items[0]!.vatTreatment, "taxable");
   });
 
   it("requires seller, customer, dates, and at least one valid item", () => {
@@ -140,7 +140,8 @@ describe("quotation service", () => {
   it("creates discount-off and VAT-off item defaults", () => {
     const payload = emptyQuotationPayload(validPayload().seller, new Date("2026-07-13T18:00:00.000Z"));
     assert.equal(payload.issueDate, "2026-07-14");
-    assert.equal(payload.validUntil, "2026-07-29");
+    assert.equal(payload.validityDays, "7");
+    assert.equal(payload.validUntil, "2026-07-21");
     assert.equal(payload.items[0]!.discountAmount, "0");
     assert.equal(payload.items[0]!.vatTreatment, "none");
     assert.equal(payload.items[0]!.vatRate, "0");
@@ -176,14 +177,33 @@ describe("quotation service", () => {
     );
   });
 
-  it("requires a zero rate for exempt and no-VAT items", () => {
-    for (const vatTreatment of ["exempt", "none"] as const) {
+  it("accepts only 7%, 0%, and no VAT", () => {
+    for (const [vatTreatment, vatRate] of [["taxable", "7"], ["taxable", "0"], ["none", "0"]] as const) {
       const value = validPayload();
-      value.items[0] = { ...value.items[0]!, vatRate: "7", vatTreatment };
+      value.items[0] = { ...value.items[0]!, vatRate, vatTreatment };
+      assert.doesNotThrow(() => prepareQuotationPayload(value));
+    }
+
+    for (const [vatTreatment, vatRate] of [["taxable", "1"], ["exempt", "0"], ["none", "7"]] as const) {
+      const value = validPayload();
+      value.items[0] = { ...value.items[0]!, vatRate, vatTreatment };
       assert.throws(
         () => prepareQuotationPayload(value),
         (error) => error instanceof QuotationValidationError
-          && Boolean(error.fieldErrors["items.0.vatRate"]),
+          && Boolean(error.fieldErrors[`items.0.${vatTreatment === "exempt" ? "vatTreatment" : "vatRate"}`]),
+      );
+    }
+  });
+
+  it("requires exact 13-digit seller and customer tax IDs", () => {
+    for (const taxId of ["", "123456789012", "12345678901234", "123456789012A"]) {
+      const value = validPayload();
+      value.seller.taxId = taxId;
+      value.customer.taxId = taxId;
+      assert.throws(() => prepareQuotationPayload(value), (error) =>
+        error instanceof QuotationValidationError
+          && Boolean(error.fieldErrors["seller.taxId"])
+          && Boolean(error.fieldErrors["customer.taxId"]),
       );
     }
   });
@@ -271,6 +291,20 @@ describe("quotation service", () => {
     assert.equal(prepared.payload.customer.branchNumber, "");
   });
 
+  it("supports unspecified offices without branch numbers", () => {
+    const value = validPayload();
+    value.seller.officeType = "unspecified";
+    value.seller.branchNumber = "001";
+    value.customer.officeType = "unspecified";
+    value.customer.branchNumber = "002";
+
+    const prepared = prepareQuotationPayload(value);
+    assert.equal(prepared.payload.seller.officeType, "unspecified");
+    assert.equal(prepared.payload.seller.branchNumber, "");
+    assert.equal(prepared.payload.customer.officeType, "unspecified");
+    assert.equal(prepared.payload.customer.branchNumber, "");
+  });
+
   it("keeps only quotation customer fields and persists the subject", () => {
     const input = {
       ...validPayload(),
@@ -291,7 +325,7 @@ describe("quotation service", () => {
       branchNumber: "",
       name: "Customer",
       officeType: "head_office",
-      taxId: "",
+      taxId: "0200000000000",
     });
     assert.equal(prepared.payload.subject, "งานบ้านพัก 3 คืน");
     assert.equal(prepared.rpcPayload.subject, "งานบ้านพัก 3 คืน");

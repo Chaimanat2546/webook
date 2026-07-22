@@ -36,7 +36,7 @@ history.
 - Seller, payment, and certification remain separate URL-selected sections with independent save actions and selected-section-only server loading.
 - Desktop uses the local settings sidebar. Mobile uses the same real links in an intentionally horizontally scrollable row with `aria-current` on the active section.
 - Editing a mounted section marks it dirty. Moving to another section or returning to the list asks for confirmation; changing sections never autosaves. A successful save clears only the mounted section's dirty state.
-- Seller settings use one flat surface with content-shaped field widths and show the branch number only for a branch office. A selected logo is previewed before save.
+- Seller settings use one flat surface with content-shaped field widths. Office type uses the horizontal Shadcn Radio Group with `ไม่ระบุ`, `สำนักงานใหญ่`, and `สาขา`; it defaults to head office. The same control is used for seller and customer snapshots in the editor. The branch-number input stays visible but disabled unless branch is selected. A selected logo is previewed before save.
 - Reusable payment methods render as responsive cards in settings while quotation-specific payment editing keeps its existing compact layout. Add, remove, drag order, defaults, and type-specific fields keep the same data behavior.
 - Certification keeps issuer and approver stacked on Mobile and side by side from Tablet. Signatures stay with their signer and the company stamp uses a compact asset row.
 - Every section keeps inline field errors and first-error focus, plus Toast for save/upload outcomes. Save is disabled while its section is saving or uploading.
@@ -52,6 +52,11 @@ history.
   snapshot. Existing quotations never merge later master changes.
 - Saving atomically stores seller, customer, item, and ordered payment
   snapshots. A quotation may have no payment methods.
+- Seller and customer names, addresses, and tax IDs are required. Both tax IDs
+  must contain exactly 13 ASCII digits. Seller and customer office snapshots
+  use the same three office choices; branch number is required only for a branch.
+- New quotations default to seven validity days. The validity-days input is
+  disabled; an operator may still set the explicit valid-until date.
 - Editing a master never changes an existing quotation. Deleting a master
   leaves its saved quotation snapshots intact.
 - Payment master and quotation snapshot tables are SELECT-only through the
@@ -103,6 +108,8 @@ Preview, Print, or Public Read-only.
 ## Editor And Calculation Rules
 
 - Create/Edit uses the responsive Document Workbench; Preview/Print is A4.
+- Newly created documents use `QO-YYYYMMDD0001`; saved legacy document numbers
+  remain unchanged when edited.
 - The workbench header shows `ใบเสนอราคาใหม่` before the first save and the
   document number afterward. Tablet/Desktop expose Back, Preview, and Save in
   the header; Mobile keeps the same actions in a fixed bottom bar with content
@@ -114,17 +121,24 @@ Preview, Print, or Public Read-only.
   expose Share, Print, Download, and an explicit Delete action; there is no
   redundant More menu.
 - Invalid saves show one Toast while keeping field-specific errors inline.
-- Leaving with unsaved changes and disabling item discount or VAT values use
-  an in-app confirmation dialog. Browser refresh and tab close continue to use
-  the browser-native unsaved-changes warning.
+- Leaving with unsaved changes uses an in-app confirmation dialog. Browser
+  refresh and tab close continue to use the browser-native unsaved-changes warning.
 - Preview uses the current draft. Print, PDF Download, and Public Share remain
   limited to the latest clean saved document.
-- Reference is optional and subject is labelled `เรื่อง / ชื่องาน`.
+- Reference and `เรื่อง / ชื่องาน (ถ้ามี)` are optional. Empty optional values
+  are omitted from Preview, Public, Print, and PDF instead of showing a placeholder.
 - Currency copy is always `บาท`.
 - Quantity is required and greater than zero; unit is optional.
-- Per-item fixed discount and VAT controls are enabled from document settings.
-- New quotations start with both optional item features off.
-- Enabling VAT starts items at 7%; disabling it stores no VAT at 0%.
+- Every item row always exposes fixed-discount and VAT controls; there is no
+  document-settings menu for hiding them.
+- VAT has exactly three choices: `7%`, `0%`, and `ไม่มี`. They persist as
+  taxable 7%, taxable 0%, and no VAT at 0%, respectively.
+- When legacy quotations are opened in the editor, exempt VAT maps to `ไม่มี`;
+  unsupported non-zero taxable rates map to `7%` so the editable choice,
+  calculation, and next save stay consistent. The saved Print/Public snapshot
+  remains unchanged until the admin saves the edited document.
+- Item names and descriptions remain free-text snapshots in this change. The
+  separate five-item catalogue and default-description behavior is deferred.
 - Money inputs accept grouped or ungrouped values; stored values are canonical
   decimal strings without commas.
 - Drag and drop order is persisted for items and payment methods.
@@ -159,8 +173,9 @@ Print, or PDF; the Public QR remains required for PDF Download.
 
 ## Certification, Public Share, And PDF
 
-- Payment and certification overrides are edited in tabs below document notes;
-  payment is the default tab and tab switches preserve unsaved state.
+- Payment and certification overrides start collapsed below document notes.
+  One show/hide button controls the whole tabs block, tab switches preserve
+  unsaved state, and matching validation errors expand the relevant tab.
 - Preview, Print, Public Read-only, and PDF show one compact certification row
   containing the Public QR, issuer, approver, company stamp, and customer
   receiver in that order.

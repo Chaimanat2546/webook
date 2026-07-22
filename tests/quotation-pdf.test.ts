@@ -187,16 +187,30 @@ describe("quotation PDF", () => {
     }
   });
 
-  it("shows the same fallback for an empty reference", () => {
+  it("omits an empty optional reference in HTML and PDF", () => {
     const html = readFileSync(
       "components/admin/quotations/quotation-document.tsx",
       "utf8",
     );
 
-    assert.match(html, /payload\.reference \|\| "-"/);
-    assert.match(
-      pdfSource,
-      /function Detail[\s\S]*\{value \|\| "-"\}[\s\S]*<Detail label="อ้างอิง" value=\{payload\.reference\}/,
+    assert.match(html, /\{payload\.reference \? \([\s\S]*อ้างอิง[\s\S]*payload\.reference[\s\S]*\) : null\}/);
+    assert.match(pdfSource, /\{payload\.reference \? <Detail label="อ้างอิง" value=\{payload\.reference\} \/> : null\}/);
+    assert.doesNotMatch(html, /payload\.reference \|\| "-"/);
+  });
+
+  it("keeps unspecified offices blank and uses generic VAT summary labels", () => {
+    const html = readFileSync(
+      "components/admin/quotations/quotation-document.tsx",
+      "utf8",
     );
+
+    for (const documentSource of [html, pdfSource]) {
+      assert.match(documentSource, /officeType === "unspecified"[\s\S]*return ""/);
+      assert.match(documentSource, /office\(payload\.customer\) \?/);
+      assert.match(documentSource, /function vatLabel[\s\S]*item\.vatTreatment === "taxable"[\s\S]*return `\$\{item\.vatRate\}%`[\s\S]*return ""/);
+      assert.match(documentSource, /label="มูลค่าก่อนภาษี"/);
+      assert.match(documentSource, /label="ภาษีมูลค่าเพิ่ม"/);
+      assert.doesNotMatch(documentSource, /label="(?:มูลค่าก่อนภาษี|ภาษีมูลค่าเพิ่ม) 7%"/);
+    }
   });
 });

@@ -20,7 +20,7 @@ import {
   canKeepQuotationPdfItemTogether,
   splitQuotationPdfWord,
 } from "../../../lib/quotation-pdf";
-import type { QuotationPayload } from "../../../lib/quotation-types";
+import type { OfficeType, QuotationPayload } from "../../../lib/quotation-types";
 
 Font.register({
   family: "Noto Sans Thai",
@@ -185,8 +185,15 @@ function Total({ emphasized = false, label, value }: { emphasized?: boolean; lab
   );
 }
 
-function office(value: { branchNumber: string; officeType: "branch" | "head_office" }) {
+function office(value: { branchNumber: string; officeType: OfficeType }) {
+  if (value.officeType === "unspecified") return "";
   return value.officeType === "branch" ? `สาขา ${value.branchNumber}` : "สำนักงานใหญ่";
+}
+
+function vatLabel(item: QuotationCalculation["lines"][number]) {
+  if (item.vatTreatment === "taxable") return `${item.vatRate}%`;
+  if (item.vatTreatment === "exempt") return "ยกเว้น";
+  return "";
 }
 
 function paymentTitle(method: QuotationDocumentViewModel["paymentMethods"][number]) {
@@ -265,6 +272,7 @@ function QuotationPdfDocument({
   model: QuotationDocumentViewModel;
 }) {
   const { calculation, payload } = model;
+  const sellerOffice = office(payload.seller);
   return (
     <Document author={payload.seller.name} title={model.documentNumber}>
       <Page size="A4" style={styles.page} wrap>
@@ -274,7 +282,7 @@ function QuotationPdfDocument({
             {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
             <Detail label="ผู้ขาย" value={payload.seller.name} />
             <Detail label="ที่อยู่" value={payload.seller.address} />
-            <Detail label="เลขที่ภาษี" value={`${payload.seller.taxId} (${office(payload.seller)})`} />
+            <Detail label="เลขที่ภาษี" value={`${payload.seller.taxId}${sellerOffice ? ` (${sellerOffice})` : ""}`} />
             {payload.seller.phone ? <Detail label="โทร" value={payload.seller.phone} /> : null}
             {payload.seller.email ? <Detail label="อีเมล" value={payload.seller.email} /> : null}
             {payload.seller.website ? <Detail label="เว็บไซต์" value={payload.seller.website} /> : null}
@@ -286,7 +294,7 @@ function QuotationPdfDocument({
               <Detail label="เลขที่เอกสาร" value={model.documentNumber} />
               <Detail label="วันที่ออก" value={model.issueDate} />
               <Detail label="ใช้ได้ถึง" value={model.validUntil} />
-              <Detail label="อ้างอิง" value={payload.reference} />
+              {payload.reference ? <Detail label="อ้างอิง" value={payload.reference} /> : null}
               {payload.subject ? <Detail label="เรื่อง / ชื่องาน" value={payload.subject} /> : null}
             </View>
           </View>
@@ -297,7 +305,7 @@ function QuotationPdfDocument({
           <Detail label="ลูกค้า" value={payload.customer.name} />
           <Detail label="ที่อยู่" value={payload.customer.address} />
           {payload.customer.taxId ? <Detail label="เลขที่ภาษี" value={payload.customer.taxId} /> : null}
-          <Detail label="สำนักงาน" value={office(payload.customer)} />
+          {office(payload.customer) ? <Detail label="สำนักงาน" value={office(payload.customer)} /> : null}
         </View>
 
         {/* data-pdf-items */}
@@ -327,7 +335,7 @@ function QuotationPdfDocument({
               {model.showItemDiscount ? <Text style={styles.discountCell}>{formatMoney(item.discountAmount)}</Text> : null}
               {model.showItemVat ? (
                 <Text style={styles.vatCell}>
-                  {item.vatTreatment === "taxable" ? `${item.vatRate}%` : item.vatTreatment === "exempt" ? "ยกเว้น" : "-"}
+                  {vatLabel(item)}
                 </Text>
               ) : null}
               <Text style={styles.moneyCell}>{formatMoney(item.preTaxAmount)}</Text>
@@ -339,8 +347,8 @@ function QuotationPdfDocument({
         <View style={[styles.section, styles.totals]} wrap={false}>
           <Text style={styles.sectionTitle}>สรุป</Text>
           <View style={styles.totalsWords}>
-            <Total label="มูลค่าก่อนภาษี 7%" value={formatBaht(calculation.preTaxTotal)} />
-            <Total label="ภาษีมูลค่าเพิ่ม 7%" value={formatBaht(calculation.vatTotal)} />
+            <Total label="มูลค่าก่อนภาษี" value={formatBaht(calculation.preTaxTotal)} />
+            <Total label="ภาษีมูลค่าเพิ่ม" value={formatBaht(calculation.vatTotal)} />
             <Text style={styles.muted}>{model.amountInWords}</Text>
           </View>
           <View style={styles.totalsBox}>

@@ -99,6 +99,12 @@ describe("quotation repository and actions", () => {
     assert.match(actions, /return \{ \.\.\.saved, ok: true, payload: prepared\.payload \}/);
   });
 
+  it("keeps legacy VAT snapshots lossless for saved and public documents", () => {
+    assert.match(repository, /return value === "taxable" \|\| value === "exempt" \? value : "none"/);
+    assert.match(repository, /vatRate: stringValue\(item\.vat_rate\)/);
+    assert.doesNotMatch(repository, /function vatRate/);
+  });
+
   it("returns field validation without leaking database errors", () => {
     assert.match(actions, /error instanceof QuotationValidationError/);
     assert.match(actions, /fieldErrors: error\.fieldErrors/);

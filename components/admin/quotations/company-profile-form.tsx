@@ -12,6 +12,7 @@ import type { SellerSnapshot } from "../../../lib/quotation-types";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
+import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Textarea } from "../../ui/textarea";
 import { CertificationFields } from "./certification-fields";
 import { PaymentMethodList } from "./payment-method-list";
@@ -159,9 +160,34 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
       <SettingsGroup id="registration" title="ข้อมูลจดทะเบียน">
         <div className="grid gap-4 md:grid-cols-12">
           <Field className="md:col-span-7" error={fieldErrors.name} label="ชื่อบริษัท / ผู้ขาย" name="name" required value={initialSeller.name} />
-          <Field className="md:col-span-5" error={fieldErrors.taxId} label="เลขประจำตัวผู้เสียภาษี" name="taxId" required value={initialSeller.taxId} />
-          <div className="grid gap-2 md:col-span-4"><Label htmlFor="officeType">ประเภทสำนักงาน</Label><select aria-describedby={fieldErrors.officeType ? "officeType-error" : undefined} aria-invalid={Boolean(fieldErrors.officeType)} className="h-9 rounded-md border bg-transparent px-3 text-sm" data-field="officeType" defaultValue={officeType} id="officeType" name="officeType" onChange={(event) => setOfficeType(event.target.value === "branch" ? "branch" : "head_office")}><option value="head_office">สำนักงานใหญ่</option><option value="branch">สาขา</option></select>{fieldErrors.officeType ? <p className="text-sm text-destructive" id="officeType-error">{fieldErrors.officeType}</p> : null}</div>
-          {officeType === "branch" ? <Field className="md:col-span-4" error={fieldErrors.branchNumber} label="เลขที่สาขา" name="branchNumber" required value={initialSeller.branchNumber} /> : <input name="branchNumber" type="hidden" value="" />}
+          <Field className="md:col-span-5" digitsOnly error={fieldErrors.taxId} label="เลขประจำตัวผู้เสียภาษี" name="taxId" required value={initialSeller.taxId} />
+          <fieldset className="grid gap-2 md:col-span-8">
+            <legend className="text-sm">ประเภทสำนักงาน</legend>
+            <RadioGroup
+              aria-describedby={fieldErrors.officeType ? "officeType-error" : undefined}
+              aria-invalid={Boolean(fieldErrors.officeType)}
+              className="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2"
+              name="officeType"
+              onValueChange={(value) => setOfficeType(value as SellerSnapshot["officeType"])}
+              value={officeType}
+            >
+              {([[
+                "unspecified",
+                "ไม่ระบุ",
+              ], ["head_office", "สำนักงานใหญ่"], ["branch", "สาขา"]] as const).map(([value, label]) => (
+                <Label htmlFor={`officeType-${value}`} key={value}>
+                  <RadioGroupItem
+                    data-field="officeType"
+                    id={`officeType-${value}`}
+                    value={value}
+                  />
+                  <span>{label}</span>
+                </Label>
+              ))}
+            </RadioGroup>
+            {fieldErrors.officeType ? <p className="text-sm text-destructive" id="officeType-error">{fieldErrors.officeType}</p> : null}
+          </fieldset>
+          <Field className="md:col-span-4" disabled={officeType !== "branch"} error={fieldErrors.branchNumber} label="เลขที่สาขา" name="branchNumber" required={officeType === "branch"} value={initialSeller.branchNumber} />
         </div>
       </SettingsGroup>
       <SettingsGroup id="address" title="ที่อยู่">
@@ -281,7 +307,7 @@ export function CertificationSettings({ initialCertification }: { initialCertifi
   </div>;
 }
 
-function Field({ className, error, label, name, required = false, type = "text", value }: { className?: string; error?: string; label: string; name: string; required?: boolean; type?: string; value: string }) {
+function Field({ className, digitsOnly = false, disabled = false, error, label, name, required = false, type = "text", value }: { className?: string; digitsOnly?: boolean; disabled?: boolean; error?: string; label: string; name: string; required?: boolean; type?: string; value: string }) {
   const errorId = `${name}-error`;
-  return <div className={`grid gap-2 ${className ?? ""}`}><Label htmlFor={name}>{label}</Label><Input aria-describedby={error ? errorId : undefined} aria-invalid={Boolean(error)} data-field={name} defaultValue={value} id={name} name={name} required={required} type={type} />{error ? <p className="text-sm text-destructive" id={errorId}>{error}</p> : null}</div>;
+  return <div className={`grid gap-2 ${className ?? ""}`}><Label htmlFor={name}>{label}</Label><Input aria-describedby={error ? errorId : undefined} aria-invalid={Boolean(error)} data-field={name} defaultValue={value} disabled={disabled} id={name} inputMode={digitsOnly ? "numeric" : undefined} maxLength={digitsOnly ? 13 : undefined} name={name} onInput={digitsOnly ? (event) => { event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 13); } : undefined} required={required} type={type} />{error ? <p className="text-sm text-destructive" id={errorId}>{error}</p> : null}</div>;
 }
