@@ -1113,6 +1113,14 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /<td className="p-2"><Item/);
   });
 
+  it("shows one visible label per desktop item column", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const header = editor.slice(editor.indexOf("itemGrid()"), editor.indexOf("<DragDropProvider"));
+
+    assert.ok(editor.includes("xl:[&_label>span:first-child]:sr-only"));
+    assert.match(header, /<span>หน่วย<\/span>/);
+  });
+
   it("surfaces optional item unit validation errors", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /function ItemUnitControl\([\s\S]*?errors\[`items\.\$\{index\}\.unit`\]/);

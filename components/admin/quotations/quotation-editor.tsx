@@ -429,7 +429,7 @@ function SortableQuotationItem(props: ItemProps) {
       </div>
       <div
         data-item-detail-grid
-        className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:contents"
+        className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:contents xl:[&_label>span:first-child]:sr-only"
       >
         <div className="xl:col-start-3 xl:row-start-1">
           <ItemQuantityControl {...props} labelled />
@@ -1522,7 +1522,7 @@ export function QuotationEditor({
           <span>#</span>
           <span>รายการ / รายละเอียด</span>
           <span>จำนวน</span>
-          <span></span>
+          <span>หน่วย</span>
           <span>ราคาต่อหน่วย</span>
           <span>ส่วนลด</span>
           <span>VAT</span>
