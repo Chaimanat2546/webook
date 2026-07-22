@@ -164,6 +164,9 @@ export default async function QuotationsPage({
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button asChild className="w-full sm:w-auto" variant="outline">
+            <Link href="/admin/quotations/customers">ข้อมูลลูกค้า</Link>
+          </Button>
+          <Button asChild className="w-full sm:w-auto" variant="outline">
             <Link href="/admin/quotations/settings/company">ตั้งค่าใบเสนอราคา</Link>
           </Button>
           <Button asChild className="w-full sm:w-auto">

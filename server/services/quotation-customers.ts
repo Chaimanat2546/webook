@@ -1,10 +1,10 @@
 import "server-only";
 
 import type {
-  DbdCustomerDefaults,
   QuotationCustomerInput,
   QuotationCustomerType,
 } from "../../lib/quotation-customer-types.ts";
+export { resetQuotationCustomerFromDbd } from "../../lib/quotation-customer-types.ts";
 import type { OfficeType } from "../../lib/quotation-types.ts";
 import { QuotationValidationError } from "./quotations.ts";
 
@@ -77,20 +77,4 @@ export function prepareQuotationCustomerInput(value: unknown): QuotationCustomer
   }
   if (Object.keys(errors).length) throw new QuotationValidationError(errors);
   return result;
-}
-
-export function resetQuotationCustomerFromDbd(
-  customer: QuotationCustomerInput,
-  defaults: DbdCustomerDefaults,
-): QuotationCustomerInput {
-  if (customer.customerType !== "juristic" || customer.taxId !== defaults.taxId) {
-    throw new QuotationValidationError({ taxId: "ข้อมูล DBD ไม่ตรงกับลูกค้า" });
-  }
-  return {
-    ...customer,
-    address: defaults.address,
-    branchNumber: "",
-    name: defaults.name,
-    officeType: "head_office",
-  };
 }

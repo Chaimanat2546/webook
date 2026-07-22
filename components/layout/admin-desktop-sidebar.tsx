@@ -1,6 +1,6 @@
 "use client";
 
-import { FileTextIcon, HouseIcon, LogOutIcon, MegaphoneIcon } from "lucide-react";
+import { FileTextIcon, HouseIcon, LogOutIcon, MegaphoneIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,6 +15,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "../ui/sidebar";
 import { TooltipProvider } from "../ui/tooltip";
@@ -104,6 +107,24 @@ export function AdminDesktopSidebar({
                         <span>ใบเสนอราคา</span>
                       </Link>
                     </SidebarMenuButton>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={pathname === "/admin/quotations"}>
+                          <Link href="/admin/quotations" onClick={closeMobileSidebar}>
+                            <FileTextIcon aria-hidden />
+                            <span>รายการใบเสนอราคา</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={pathname.startsWith("/admin/quotations/customers")}>
+                          <Link href="/admin/quotations/customers" onClick={closeMobileSidebar}>
+                            <UsersIcon aria-hidden />
+                            <span>ข้อมูลลูกค้า</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
                   </SidebarMenuItem>
                 ) : null}
               </SidebarMenu>

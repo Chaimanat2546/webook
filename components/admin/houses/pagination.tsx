@@ -13,11 +13,13 @@ import { cn } from "../../../lib/utils";
 export function Pagination({
   basePath = "/admin/houses",
   currentPage,
+  query,
   search,
   totalPages,
 }: {
   basePath?: string;
   currentPage: number;
+  query?: Record<string, string>;
   search: string;
   totalPages: number;
 }) {
@@ -29,6 +31,7 @@ export function Pagination({
   const items = getPaginationItems(safeCurrentPage, totalPages);
   const getHref = (page: number) => {
     const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query ?? {})) params.set(key, value);
     params.set("page", String(page));
     if (search) params.set("q", search);
     return `${basePath}?${params}`;

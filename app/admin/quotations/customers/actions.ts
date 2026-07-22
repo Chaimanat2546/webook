@@ -74,13 +74,21 @@ export async function saveQuotationCustomerAction(value: unknown): Promise<Custo
   try {
     const prepared = prepareQuotationCustomerInput(value);
     const existing = await findQuotationCustomerByTaxId(supabase, prepared.taxId);
-    if (existing && existing.id !== prepared.id) return duplicate(existing);
 
     if (prepared.id) {
+      const stored = await getQuotationCustomer(supabase, prepared.id);
+      if (!stored) return failed("ไม่พบข้อมูลลูกค้า");
+      if (prepared.taxId !== stored.taxId || prepared.customerType !== stored.customerType) {
+        return failed("", {
+          customerType: "ไม่สามารถเปลี่ยนประเภทลูกค้าหลังสร้าง Master แล้ว",
+          taxId: "ไม่สามารถเปลี่ยนเลขประจำตัวผู้เสียภาษีหลังสร้าง Master แล้ว",
+        });
+      }
       const customer = await updateQuotationCustomer(supabase, prepared);
       revalidatePath("/admin/quotations/customers");
       return { customer, ok: true };
     }
+    if (existing) return duplicate(existing);
 
     let defaults = null;
     if (prepared.customerType === "juristic" && !prepared.saveUnverified) {

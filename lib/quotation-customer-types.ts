@@ -57,6 +57,22 @@ export type DbdLookupActionResult =
   | { defaults: DbdCustomerDefaults; ok: true }
   | { formError: string; ok: false; reason: "not_found" | "unavailable" };
 
+export function resetQuotationCustomerFromDbd(
+  customer: QuotationCustomerInput,
+  defaults: DbdCustomerDefaults,
+): QuotationCustomerInput {
+  if (customer.customerType !== "juristic" || customer.taxId !== defaults.taxId) {
+    throw new Error("quotation_customer_dbd_mismatch");
+  }
+  return {
+    ...customer,
+    address: defaults.address,
+    branchNumber: "",
+    name: defaults.name,
+    officeType: "head_office",
+  };
+}
+
 export function quotationCustomerToSnapshot(
   customer: QuotationCustomerMaster,
 ): CustomerSnapshot {
