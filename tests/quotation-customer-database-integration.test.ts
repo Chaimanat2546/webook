@@ -1,0 +1,77 @@
+import assert from "node:assert/strict";
+import { after, before, describe, it } from "node:test";
+
+import { createClient } from "@supabase/supabase-js";
+
+const enabled = process.env.RUN_LOCAL_SUPABASE_TESTS === "1"
+  || process.env.RUN_QUOTATION_DB_TESTS === "1";
+const url = process.env.LOCAL_SUPABASE_URL ?? "";
+const anonKey = process.env.LOCAL_SUPABASE_ANON_KEY ?? "";
+const serviceRoleKey = process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY ?? "";
+const password = "Quotation-customer-local-test-2026!";
+
+describe("quotation customer local database integration", { skip: !enabled }, () => {
+  const options = { auth: { autoRefreshToken: false, persistSession: false } };
+  const service = createClient(url || "http://127.0.0.1:54321", serviceRoleKey || "local-test-skipped", options);
+  const allowed = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", options);
+  const otherAllowed = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", options);
+  const denied = createClient(url || "http://127.0.0.1:54321", anonKey || "local-test-skipped", options);
+  const userIds: string[] = [];
+  let customerId = "";
+
+  before(async () => {
+    assert.ok(url && anonKey && serviceRoleKey, "local Supabase environment is required");
+    const users = await Promise.all([
+      { client: allowed, permission: true, prefix: "allowed" },
+      { client: otherAllowed, permission: true, prefix: "other" },
+      { client: denied, permission: false, prefix: "denied" },
+    ].map(async ({ client, permission, prefix }) => {
+      const email = `quotation-customer-${prefix}-${crypto.randomUUID()}@example.test`;
+      const created = await service.auth.admin.createUser({ email, email_confirm: true, password });
+      assert.equal(created.error, null, created.error?.message);
+      const id = created.data.user!.id;
+      userIds.push(id);
+      return { client, email, id, permission };
+    }));
+
+    const inserted = await service.from("users").insert(users.map(({ email, id, permission }) => ({
+      allow_tools: permission ? { allow_quotation: true } : {},
+      email,
+      uid: id,
+    })));
+    assert.equal(inserted.error, null, inserted.error?.message);
+    for (const user of users) {
+      const signedIn = await user.client.auth.signInWithPassword({ email: user.email, password });
+      assert.equal(signedIn.error, null, signedIn.error?.message);
+    }
+  });
+
+  it("shares masters between quotation users and rejects denied users and hard delete", async () => {
+    const inserted = await allowed.from("quotation_customers").insert({
+      address: "Shared address",
+      customer_type: "juristic",
+      name: "Shared customer",
+      office_type: "head_office",
+      tax_id: "0107544000108",
+    }).select("id").single();
+    assert.equal(inserted.error, null, inserted.error?.message);
+    customerId = inserted.data.id;
+
+    const sharedRead = await otherAllowed.from("quotation_customers")
+      .select("id").eq("id", customerId).single();
+    assert.equal(sharedRead.error, null, sharedRead.error?.message);
+
+    const deniedRead = await denied.from("quotation_customers").select("id");
+    assert.equal(deniedRead.error, null, deniedRead.error?.message);
+    assert.deepEqual(deniedRead.data, []);
+
+    const hardDelete = await allowed.from("quotation_customers").delete().eq("id", customerId);
+    assert.equal(hardDelete.error?.code, "42501");
+  });
+
+  after(async () => {
+    if (customerId) await service.from("quotation_customers").delete().eq("id", customerId);
+    if (userIds.length) await service.from("users").delete().in("uid", userIds);
+    for (const id of userIds) await service.auth.admin.deleteUser(id);
+  });
+});
