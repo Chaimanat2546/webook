@@ -93,8 +93,34 @@ const inputRulesSql = readFileSync(
   new URL(`../supabase/migrations/${inputRulesMigrationName}`, import.meta.url),
   "utf8",
 );
+const itemCatalogueMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_item_catalog.sql"));
 
 describe("quotation migration", () => {
+  it("installs the read-only quotation item catalogue", () => {
+    assert.ok(itemCatalogueMigrationName, "quotation item catalogue migration must be created by the Supabase CLI");
+    const itemCatalogueSql = readFileSync(
+      new URL(`../supabase/migrations/${itemCatalogueMigrationName}`, import.meta.url),
+      "utf8",
+    );
+    assert.match(itemCatalogueSql, /create table public\.quotation_item_catalog/i);
+    assert.match(itemCatalogueSql, /name text primary key/i);
+    assert.match(itemCatalogueSql, /sort_order smallint not null unique check \(sort_order > 0\)/i);
+    for (const name of [
+      "ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 1/2)",
+      "ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 2/2)",
+      "ค่าที่พัก (ลูกค้าชำระเงินเต็มจำนวน)",
+      "ค่าบริการ",
+      "ประกันความเสียหาย",
+    ]) assert.ok(itemCatalogueSql.includes(name));
+    assert.match(itemCatalogueSql, /enable row level security/i);
+    assert.match(itemCatalogueSql, /revoke all privileges on table public\.quotation_item_catalog from anon, authenticated/i);
+    assert.match(itemCatalogueSql, /grant select on table public\.quotation_item_catalog to authenticated/i);
+    assert.match(itemCatalogueSql, /for select to authenticated[\s\S]*private\.has_quotation_permission\(\)/i);
+    assert.match(itemCatalogueSql, /quotation_items_name_catalog_fk[\s\S]*foreign key \(name\)[\s\S]*references public\.quotation_item_catalog\(name\)[\s\S]*not valid/i);
+    assert.doesNotMatch(itemCatalogueSql, /for (?:insert|update|delete)|grant (?:insert|update|delete)/i);
+  });
+
   it("enforces the approved quotation number, office, tax ID, and VAT boundaries", () => {
     assert.match(inputRulesSql, /create or replace function private\.next_quotation_number\(p_issue_date date\)/i);
     assert.match(inputRulesSql, /'QO-'\s*\|\|\s*to_char\(p_issue_date, 'YYYYMMDD'\)\s*\|\|/i);
