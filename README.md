@@ -20,12 +20,19 @@ Quotation management is an explicitly added admin module. Users need
 - `/admin/quotations` — list, search, print, and soft delete
 - `/admin/quotations/new` — create from the current seller profile
 - `/admin/quotations/[id]` — edit a saved quotation
+- `/admin/quotations/customers` — manage the shared Customer Master and DBD defaults
 - `/admin/quotations/settings/company` — manage seller, payment, and certification masters
 
 Preview uses the current draft; browser print uses the latest save; Share and
 PDF Download require a saved-clean quotation. Public Share is available at
 `/q/[token]`, excludes internal notes, and uses `QUOTATION_PUBLIC_ORIGIN` for
 canonical QR/link generation.
+
+Quotation users share one Customer Master. Juristic customers may be checked
+manually against DBD Open Data or explicitly saved unverified when DBD is
+unavailable; individual customers are entered manually. Every customer tax ID
+is exactly 13 ASCII digits. Optional contact details stay in the master and are
+never copied into quotation snapshots.
 See [quotation management](docs/quotation-management.md) for behavior and
 verification details.
 
@@ -357,6 +364,7 @@ Production owners should set the app runtime variables/secrets in their own Clou
 ```powershell
 npx.cmd wrangler secret put NEXT_PUBLIC_SUPABASE_URL
 npx.cmd wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
+npx.cmd wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 npx.cmd wrangler secret put ADVERTISEMENT_IMAGE_WORKER_URL
 npx.cmd wrangler secret put ADVERTISEMENT_IMAGE_WORKER_SECRET
 npx.cmd wrangler secret put AWS_REGION

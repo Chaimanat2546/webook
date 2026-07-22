@@ -8,9 +8,15 @@ import {
   type CertificationSnapshot,
 } from "../lib/quotation-certification.ts";
 import {
-  prepareQuotationPayload,
+  prepareQuotationPayload as prepareQuotationPayloadWithCatalog,
   QuotationValidationError,
 } from "../server/services/quotations.ts";
+
+const itemNames = ["ค่าบริการ"] as const;
+
+function prepareQuotationPayload(value: unknown) {
+  return prepareQuotationPayloadWithCatalog(value, itemNames);
+}
 
 const validPayload = () => ({
   certification: {
@@ -22,7 +28,7 @@ const validPayload = () => ({
   id: null,
   internalNotes: "",
   issueDate: "2026-07-20",
-  items: [{ description: "", discountAmount: "0", id: crypto.randomUUID(), name: "Room", position: 1, quantity: "1", unit: "คืน", unitPrice: "1000", vatRate: "0", vatTreatment: "none" }],
+  items: [{ description: "", discountAmount: "0", id: crypto.randomUUID(), name: "ค่าบริการ", position: 1, quantity: "1", unit: "คืน", unitPrice: "1000", vatRate: "0", vatTreatment: "none" }],
   paymentMethods: [],
   publicNotes: "",
   reference: "",

@@ -661,6 +661,34 @@ describe("quotation UI", () => {
     assert.match(editPage, /publicOrigin=\{publicOrigin\}/);
   });
 
+  it("loads the database item catalogue and uses it as the item-name select", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const createPage = source("../app/admin/quotations/new/page.tsx");
+    const editPage = source("../app/admin/quotations/[id]/page.tsx");
+    const itemDetails = editor.slice(
+      editor.indexOf("function ItemDetailsControls"),
+      editor.indexOf("function ItemQuantityControl"),
+    );
+
+    assert.match(createPage, /listQuotationItemNames\(supabase\)/);
+    assert.match(editPage, /listQuotationItemNames\(supabase\)/);
+    assert.match(createPage, /itemNames=\{itemNames\}/);
+    assert.match(editPage, /itemNames=\{itemNames\}/);
+    assert.match(editor, /itemNames: string\[\]/);
+    assert.match(itemDetails, /<select[\s\S]*aria-label="ชื่อรายการ"[\s\S]*itemNames\.map/);
+    assert.match(itemDetails, /onUpdate\("name", name\)[\s\S]*onUpdate\("description", name\)/);
+    assert.match(itemDetails, /disabled[\s\S]*ค่าเดิม[\s\S]*กรุณาเลือกใหม่/);
+    assert.doesNotMatch(itemDetails, /<Input/);
+  });
+
+  it("documents the fixed quotation item catalogue for admins", () => {
+    const manual = source("../docs/manuals/quotation/README.md");
+    assert.match(manual, /ชื่อรายการ.*เลือก/);
+    assert.match(manual, /ค่าที่พัก \(ลูกค้าชำระเงินครั้งที่ 1\/2\)/);
+    assert.match(manual, /ประกันความเสียหาย/);
+    assert.doesNotMatch(manual, /ชื่อและรายละเอียดรายการยังกรอกได้อิสระ/);
+  });
+
   it("copies only default account payment masters into new quotation snapshots", () => {
     const page = source("../app/admin/quotations/new/page.tsx");
 
@@ -685,7 +713,7 @@ describe("quotation UI", () => {
   it("edits saved payment snapshots without merging current masters", () => {
     const page = source("../app/admin/quotations/[id]/page.tsx");
 
-    assert.match(page, /Promise\.all\(\[getQuotationById\(supabase, id\), listQuotationBanks\(supabase\)\]\)/);
+    assert.match(page, /Promise\.all\(\[getQuotationById\(supabase, id\), listQuotationBanks\(supabase\), listQuotationItemNames\(supabase\)\]\)/);
     assert.match(page, /hydratePaymentMethodBanks\(quotation\.payload\.paymentMethods, banks\)/);
     assert.match(page, /initialPayload=\{initialPayload\}/);
     assert.match(page, /<QuotationEditor banks=\{banks\}/);
@@ -1085,6 +1113,14 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /<td className="p-2"><Item/);
   });
 
+  it("shows one visible label per desktop item column", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const header = editor.slice(editor.indexOf("itemGrid()"), editor.indexOf("<DragDropProvider"));
+
+    assert.ok(editor.includes("xl:[&_label>span:first-child]:sr-only"));
+    assert.match(header, /<span>หน่วย<\/span>/);
+  });
+
   it("surfaces optional item unit validation errors", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /function ItemUnitControl\([\s\S]*?errors\[`items\.\$\{index\}\.unit`\]/);
@@ -1201,5 +1237,13 @@ describe("quotation UI", () => {
     assert.match(editor, /payload=\{lastSavedPayload\}/);
     assert.match(editor, /printStyle\.textContent = "@page \{ size: A4; margin: 0; \}"/);
     assert.match(editor, /printStyle\.remove\(\)/);
+  });
+
+  it("replaces the customer draft through the five-field snapshot contract", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(editor, /function replaceCustomerSnapshot\(customer: CustomerSnapshot\)/);
+    assert.match(editor, /\["name", "address", "taxId", "officeType", "branchNumber"\] as const/);
+    assert.match(editor, /changed\(`customer\.\$\{field\}`\)/);
+    assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);
   });
 });

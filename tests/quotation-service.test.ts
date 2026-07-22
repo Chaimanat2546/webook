@@ -7,12 +7,24 @@ import {
 } from "../lib/quotation-dates.ts";
 import { emptyCertificationSnapshot } from "../lib/quotation-certification.ts";
 import {
-  prepareQuotationPayload,
+  prepareQuotationPayload as prepareQuotationPayloadWithCatalog,
   prepareSellerSnapshot,
   QuotationValidationError,
   emptyQuotationPayload,
 } from "../server/services/quotations.ts";
 import type { QuotationPayload } from "../lib/quotation-types.ts";
+
+const itemNames = [
+  "ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 1/2)",
+  "ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 2/2)",
+  "ค่าที่พัก (ลูกค้าชำระเงินเต็มจำนวน)",
+  "ค่าบริการ",
+  "ประกันความเสียหาย",
+] as const;
+
+function prepareQuotationPayload(value: unknown) {
+  return prepareQuotationPayloadWithCatalog(value, itemNames);
+}
 
 function validPayload(): QuotationPayload {
   return {
@@ -21,7 +33,7 @@ function validPayload(): QuotationPayload {
     id: null,
     internalNotes: "",
     issueDate: "2026-07-14",
-    items: [{ description: "", discountAmount: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "Service", position: 1, quantity: "1", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
+    items: [{ description: "", discountAmount: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "ค่าบริการ", position: 1, quantity: "1", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
     paymentMethods: [],
     publicNotes: "",
     reference: "",
@@ -193,6 +205,16 @@ describe("quotation service", () => {
           && Boolean(error.fieldErrors[`items.0.${vatTreatment === "exempt" ? "vatTreatment" : "vatRate"}`]),
       );
     }
+  });
+
+  it("rejects item names outside the database catalogue", () => {
+    const value = validPayload();
+    value.items[0]!.name = "รายการอื่น";
+    assert.throws(
+      () => prepareQuotationPayload(value),
+      (error) => error instanceof QuotationValidationError
+        && error.fieldErrors["items.0.name"] === "กรุณาเลือกชื่อรายการจากรายการที่กำหนด",
+    );
   });
 
   it("requires exact 13-digit seller and customer tax IDs", () => {

@@ -71,6 +71,7 @@ import { Input } from "../../ui/input";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Textarea } from "../../ui/textarea";
 import { CertificationFields } from "./certification-fields";
+import { QuotationCustomerPickerDialog } from "./customers/customer-picker-dialog";
 import { QuotationDocument } from "./quotation-document";
 import { PaymentMethodList } from "./payment-method-list";
 
@@ -78,6 +79,7 @@ export interface QuotationEditorProps {
   banks: BankOption[];
   documentNumber: string | null;
   initialPayload: QuotationPayload;
+  itemNames: string[];
   printOnLoad?: boolean;
   publicOrigin: string | null;
   publicToken: string | null;
@@ -94,6 +96,7 @@ type ItemProps = {
   errors: Record<string, string>;
   index: number;
   item: QuotationItemInput;
+  itemNames: string[];
   onRemove: () => void;
   onUpdate: <K extends keyof QuotationItemInput>(
     key: K,
@@ -426,7 +429,7 @@ function SortableQuotationItem(props: ItemProps) {
       </div>
       <div
         data-item-detail-grid
-        className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:contents"
+        className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:contents xl:[&_label>span:first-child]:sr-only"
       >
         <div className="xl:col-start-3 xl:row-start-1">
           <ItemQuantityControl {...props} labelled />
@@ -454,21 +457,38 @@ function SortableQuotationItem(props: ItemProps) {
   );
 }
 
-function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
+function ItemDetailsControls({ errors, index, item, itemNames, onUpdate }: ItemProps) {
   const error = (field: string) => errors[`items.${index}.${field}`];
+  const legacyItemName = item.name && !itemNames.includes(item.name)
+    ? item.name
+    : null;
   return (
     <div data-item-details className="grid gap-1">
-      <Input
+      <select
         aria-describedby={
           error("name") ? fieldErrorId(`items.${index}.name`) : undefined
         }
         aria-invalid={Boolean(error("name"))}
         aria-label="ชื่อรายการ"
+        className={cn("w-full", selectClassName)}
         data-field={`items.${index}.name`}
-        onChange={(event) => onUpdate("name", event.target.value)}
-        placeholder="รายการ"
+        onChange={(event) => {
+          const name = event.target.value;
+          onUpdate("name", name);
+          onUpdate("description", name);
+        }}
         value={item.name}
-      />
+      >
+        <option value="">เลือกรายการ</option>
+        {legacyItemName ? (
+          <option disabled value={legacyItemName}>
+            ค่าเดิม: {legacyItemName} — กรุณาเลือกใหม่
+          </option>
+        ) : null}
+        {itemNames.map((name) => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </select>
       <FieldError error={error("name")} field={`items.${index}.name`} />
       <Textarea
         aria-describedby={
@@ -634,6 +654,7 @@ export function QuotationEditor({
   banks,
   documentNumber: initialDocumentNumber,
   initialPayload,
+  itemNames,
   printOnLoad = false,
   publicOrigin,
   publicToken: initialPublicToken,
@@ -776,6 +797,12 @@ export function QuotationEditor({
       ...current,
       customer: { ...current.customer, [key]: value },
     }));
+  }
+  function replaceCustomerSnapshot(customer: CustomerSnapshot) {
+    for (const field of ["name", "address", "taxId", "officeType", "branchNumber"] as const) {
+      changed(`customer.${field}`);
+    }
+    setPayload((current) => ({ ...current, customer }));
   }
   function updateSellerOfficeType(officeType: SellerSnapshot["officeType"]) {
     changed("seller.officeType");
@@ -1093,6 +1120,7 @@ export function QuotationEditor({
     errors: fieldErrors,
     index,
     item,
+    itemNames,
     onRemove: () => removeItem(index),
     onUpdate: (key, value) => updateItem(index, key, value),
     totalItems: payload.items.length,
@@ -1331,9 +1359,10 @@ export function QuotationEditor({
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">01 ลูกค้า</h2>
-            <span className="text-xs text-muted-foreground">
-              Snapshot เฉพาะใบ
-            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="text-xs text-muted-foreground">Snapshot เฉพาะใบ</span>
+              <QuotationCustomerPickerDialog current={payload.customer} onSelect={replaceCustomerSnapshot} />
+            </div>
           </div>
           <div data-customer-fields className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_max-content_minmax(0,1fr)]">
             <div className="sm:col-span-2 xl:col-span-3">
@@ -1493,7 +1522,7 @@ export function QuotationEditor({
           <span>#</span>
           <span>รายการ / รายละเอียด</span>
           <span>จำนวน</span>
-          <span></span>
+          <span>หน่วย</span>
           <span>ราคาต่อหน่วย</span>
           <span>ส่วนลด</span>
           <span>VAT</span>

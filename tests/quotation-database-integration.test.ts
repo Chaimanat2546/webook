@@ -48,7 +48,7 @@ function payload(
     items: [{
       description: "",
       discount_amount: "0.00",
-      name: "Item",
+      name: "ค่าบริการ",
       position: 1,
       quantity: "1.000",
       unit,
@@ -143,6 +143,39 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       p_origin: null,
     });
     assert.equal(clearedAssetOrigin.error, null, clearedAssetOrigin.error?.message);
+  });
+
+  it("exposes the ordered item catalogue as read-only to quotation users", async () => {
+    const { data, error } = await allowed
+      .from("quotation_item_catalog")
+      .select("name")
+      .order("sort_order");
+    assert.equal(error, null, error?.message);
+    assert.deepEqual((data ?? []).map((row) => row.name), [
+      "ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 1/2)",
+      "ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 2/2)",
+      "ค่าที่พัก (ลูกค้าชำระเงินเต็มจำนวน)",
+      "ค่าบริการ",
+      "ประกันความเสียหาย",
+    ]);
+
+    const deniedRead = await denied.from("quotation_item_catalog").select("name");
+    assert.equal(deniedRead.error, null, deniedRead.error?.message);
+    assert.deepEqual(deniedRead.data, []);
+
+    const write = await allowed
+      .from("quotation_item_catalog")
+      .insert({ name: "รายการอื่น", sort_order: 6 });
+    assert.equal(write.error?.code, "42501");
+  });
+
+  it("rejects unsupported item names in the direct save RPC", async () => {
+    const invalid = payload(null);
+    invalid.items[0]!.name = "รายการอื่น";
+    const { error } = await allowed.rpc("save_quotation_with_payments", {
+      p_payload: invalid,
+    });
+    assert.equal(error?.code, "23503");
   });
 
   after(async () => {
