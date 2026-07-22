@@ -1,9 +1,13 @@
 ## Project overview
 
-This is an admin-only web application for managing pool villa data and pool villa images.
+Admin-only application covering:
 
-The current development focus is the house image management feature. Do not expand the scope into full house data management, public villa listing pages, SEO, booking, payment, or customer-facing features unless explicitly requested.
+- House and image management
+- Advertisement management
+- Quotation management
 
+The active task scope comes from the current user request or approved spec.
+Do not expand into adjacent modules without an explicit requirement.
 if Shadcn have new dependency aways allow to install.
 
 Critical flows:
@@ -33,8 +37,43 @@ Out of scope for the current feature:
 - Image storage: External image APIs / cloud storage, depending on the feature
 - Admin logic: Next.js Route Handlers and server-side modules
 - Package manager: npm
-- Testing: Vitest / Playwright
-- Deployment: not configured for the Next.js admin app in this repo; Cloudflare is only used for media Worker/R2 image storage
+- Testing: Node.js test runner (`node:test`)
+- Deployment: Cloudflare Workers through OpenNext
+
+## Subagent workflow
+
+For non-trivial development tasks, Codex should automatically use the
+project subagents without requiring the user to request delegation.
+
+A task is non-trivial when it involves one or more of:
+
+- Multiple files or architectural layers
+- Authentication or authorization
+- Supabase migrations, RLS, RPCs, or repositories
+- Uploads, storage, or external services
+- Money, dates, quotations, or public sharing
+- Bug fixes whose root cause is not already known
+- Changes with meaningful regression risk
+
+Workflow:
+
+1. Before editing, spawn `webook_explorer` in read-only mode.
+2. Wait for its findings and use them to determine the smallest correct change.
+3. Only the main agent may edit files.
+4. Run the relevant verification commands.
+5. After implementation, spawn `webook_reviewer` in read-only mode.
+6. Fix only reviewer findings that are supported by evidence.
+7. Run verification again before completion.
+
+Do not use subagents for:
+
+- Typo or copy changes
+- Obvious one-line changes
+- Pure formatting
+- Tasks that require only one direct tool call
+
+Subagents must not edit files, install dependencies, deploy, or modify
+remote databases.
 
 ## Commands
 

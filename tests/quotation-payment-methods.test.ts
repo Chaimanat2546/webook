@@ -1,0 +1,263 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, it } from "node:test";
+import { parsePayload, payloadFor } from "thai-qr-payment";
+
+import {
+  emptyPaymentMethod,
+  hydratePaymentMethodBanks,
+  MAX_PAYMENT_METHODS,
+  normalizePaymentPositions,
+  PAYMENT_ACCOUNT_TYPE_LABELS,
+  paymentMethodListState,
+  updatePaymentMethodType,
+} from "../lib/quotation-payment-methods.ts";
+import {
+  prepareCompanyPaymentMethods,
+  preparePaymentMethods,
+} from "../server/services/quotation-payment-methods.ts";
+import { QuotationValidationError } from "../server/services/quotations.ts";
+
+const bank = {
+  accountName: "Pool Villa Pattaya",
+  accountNumber: "137-1-17528-4",
+  accountType: "" as const,
+  bankCode: "004",
+  bankId: "123e4567-e89b-42d3-a456-426614174000",
+  bankLogoUrl: "/quotation/banks/kbank.svg",
+  bankName: "Kasikornbank",
+  customBankLogoUrl: "",
+  customBankName: "",
+  id: "123e4567-e89b-42d3-a456-426614174001",
+  instructions: "",
+  position: 9,
+  promptPayId: "",
+  providerName: "",
+  qrImageUrl: "",
+  qrMode: "none" as const,
+  type: "bank_transfer" as const,
+};
+
+function validationErrors(value: unknown): Record<string, string> {
+  try {
+    preparePaymentMethods(value);
+  } catch (error) {
+    if (error instanceof QuotationValidationError) return error.fieldErrors;
+    throw error;
+  }
+  assert.fail("Expected quotation payment validation to fail");
+}
+
+describe("quotation payment methods", () => {
+  it("normalizes and validates bank account types", () => {
+    assert.equal(emptyPaymentMethod().accountType, "");
+    assert.equal(PAYMENT_ACCOUNT_TYPE_LABELS.savings, "ออมทรัพย์");
+    assert.equal(PAYMENT_ACCOUNT_TYPE_LABELS.current, "กระแสรายวัน");
+    assert.equal(PAYMENT_ACCOUNT_TYPE_LABELS.fixed, "ฝากประจำ");
+
+    const [savings] = preparePaymentMethods([{ ...bank, accountType: "savings" }]);
+    assert.equal(savings?.accountType, "savings");
+    assert.throws(
+      () => preparePaymentMethods([{ ...bank, accountType: "invalid" }]),
+      (error) => error instanceof QuotationValidationError
+        && error.fieldErrors["paymentMethods.0.accountType"] === "ประเภทบัญชีไม่ถูกต้อง",
+    );
+    const [cash] = preparePaymentMethods([{ ...bank, accountType: "fixed", type: "cash" }]);
+    assert.equal(cash?.accountType, "");
+    assert.equal(preparePaymentMethods([{ ...bank, accountType: "invalid", type: "cash" }])[0]?.accountType, "");
+    assert.equal(updatePaymentMethodType({ ...emptyPaymentMethod(), accountType: "current" }, "promptpay").accountType, "");
+  });
+
+  it("builds a valid amount-bound PromptPay payload", () => {
+    const payload = payloadFor({ recipient: "0812345678", amount: 50 });
+    const parsed = parsePayload(payload);
+
+    assert.equal(payload, "00020101021229370016A000000677010111011300668123456785303764540550.005802TH63045197");
+    assert.equal(parsed.crc.valid, true);
+    assert.equal(parsed.currency, "764");
+    assert.equal(parsed.amount, 50);
+    assert.equal(parsed.merchant?.kind, "promptpay");
+    assert.equal(parsed.merchant?.recipient, "0812345678");
+  });
+
+  it("uses the payload API type field for a national ID", () => {
+    const payload = payloadFor({
+      amount: 50,
+      recipient: "1234567890123",
+      type: "nationalId",
+    });
+    const parsed = parsePayload(payload);
+
+    assert.equal(parsed.crc.valid, true);
+    assert.equal(parsed.amount, 50);
+    assert.equal(parsed.merchant?.recipient, "1234567890123");
+  });
+
+  it("exposes the list error and blocks a twenty-first method", () => {
+    assert.deepEqual(
+      paymentMethodListState(
+        Array.from({ length: MAX_PAYMENT_METHODS }, () => bank),
+        { paymentMethods: "Payment method IDs must be unique" },
+      ),
+      { canAdd: false, rootError: "Payment method IDs must be unique" },
+    );
+  });
+
+  it("allows no payment method and normalizes positions", () => {
+    assert.deepEqual(preparePaymentMethods([]), []);
+    assert.deepEqual(
+      normalizePaymentPositions([bank, { ...bank, id: crypto.randomUUID() }]).map((row) => row.position),
+      [1, 2],
+    );
+  });
+
+  it("normalizes PromptPay digits", () => {
+    const [method] = preparePaymentMethods([{
+      ...bank,
+      accountNumber: "",
+      bankCode: "",
+      bankId: null,
+      bankLogoUrl: "",
+      bankName: "",
+      promptPayId: "081-234-5678",
+      qrMode: "auto_promptpay",
+      type: "promptpay",
+    }]);
+    assert.equal(method?.promptPayId, "0812345678");
+  });
+
+  it("round-trips a saved built-in bank snapshot and falls back when its catalogue row disappears", () => {
+    const [saved] = preparePaymentMethods([bank]);
+    const snapshot = { ...saved!, bankId: null };
+    const catalogue = [{ code: "004", id: bank.bankId, logoUrl: "/quotation/banks/current.svg", name: "Current name" }];
+
+    const [hydrated] = hydratePaymentMethodBanks([snapshot], catalogue);
+    assert.equal(hydrated?.bankId, bank.bankId);
+    assert.equal(preparePaymentMethods([hydrated])[0]?.bankName, bank.bankName);
+
+    const [fallback] = hydratePaymentMethodBanks([snapshot], []);
+    assert.equal(fallback?.bankCode, "OTHER");
+    assert.equal(fallback?.customBankName, bank.bankName);
+    assert.equal(preparePaymentMethods([fallback])[0]?.customBankName, bank.bankName);
+  });
+
+  it("clears fields that do not belong to the selected payment type", () => {
+    const [cash] = preparePaymentMethods([{ ...bank, instructions: "Pay at reception", type: "cash" }]);
+    assert.deepEqual(cash, {
+      ...bank,
+      accountName: "",
+      accountNumber: "",
+      bankCode: "",
+      bankId: null,
+      bankLogoUrl: "",
+      bankName: "",
+      customBankLogoUrl: "",
+      customBankName: "",
+      instructions: "Pay at reception",
+      position: 1,
+      promptPayId: "",
+      providerName: "",
+      qrImageUrl: "",
+      qrMode: "none",
+      type: "cash",
+    });
+    const png = "/quotations/payment-assets/123e4567-e89b-42d3-a456-426614174099.png";
+    const [prompt] = preparePaymentMethods([{ ...bank, promptPayId: "0812345678", qrMode: "auto_promptpay", type: "promptpay" }]);
+    const [qr] = preparePaymentMethods([{ ...bank, providerName: "Provider", qrImageUrl: png, type: "qr_payment" }]);
+    const [other] = preparePaymentMethods([{ ...bank, providerName: "Cheque", type: "other" }]);
+    assert.equal(prompt?.accountNumber, "");
+    assert.equal(prompt?.qrImageUrl, "");
+    assert.equal(qr?.accountName, "");
+    assert.equal(qr?.qrMode, "upload");
+    assert.equal(other?.accountNumber, "");
+    assert.equal(other?.qrImageUrl, "");
+    const [builtIn] = preparePaymentMethods([{ ...bank, customBankLogoUrl: png, customBankName: "Hidden custom" }]);
+    assert.equal(builtIn?.customBankLogoUrl, "");
+    assert.equal(builtIn?.customBankName, "");
+    const [custom] = preparePaymentMethods([{ ...bank, bankCode: "legacy", bankId: null, bankName: "Hidden catalogue name", customBankName: "Custom" }]);
+    assert.equal(custom?.bankCode, "OTHER");
+    assert.equal(custom?.bankName, "");
+  });
+
+  it("requires an uploaded or automatic QR for PromptPay", () => {
+    assert.throws(
+      () => preparePaymentMethods([{
+        ...bank,
+        accountNumber: "",
+        bankCode: "",
+        bankId: null,
+        bankLogoUrl: "",
+        bankName: "",
+        promptPayId: "0812345678",
+        type: "promptpay",
+      }]),
+      (error) => error instanceof QuotationValidationError
+        && Boolean(error.fieldErrors["paymentMethods.0.qrMode"]),
+    );
+  });
+
+  it("rejects missing type-specific data", () => {
+    for (const [method, field] of [
+      [{ ...bank, accountName: "" }, "paymentMethods.0.accountName"],
+      [{ ...bank, accountNumber: "" }, "paymentMethods.0.accountNumber"],
+      [{ ...bank, bankId: null }, "paymentMethods.0.bankId"],
+      [{ ...bank, accountName: "", bankId: null, type: "promptpay" }, "paymentMethods.0.accountName"],
+      [{ ...bank, promptPayId: "123", type: "promptpay" }, "paymentMethods.0.promptPayId"],
+      [{ ...bank, providerName: "", type: "qr_payment" }, "paymentMethods.0.providerName"],
+      [{ ...bank, qrImageUrl: "", type: "qr_payment" }, "paymentMethods.0.qrImageUrl"],
+      [{ ...bank, providerName: "", type: "other" }, "paymentMethods.0.providerName"],
+      [{ ...bank, qrImageUrl: "", qrMode: "upload" }, "paymentMethods.0.qrImageUrl"],
+    ] as const) {
+      assert.throws(() => preparePaymentMethods([method]), (error) =>
+        error instanceof QuotationValidationError && Boolean(error.fieldErrors[field]),
+      );
+    }
+  });
+
+  it("rejects untrusted SVG payment assets", () => {
+    assert.throws(() => preparePaymentMethods([{ ...bank, qrImageUrl: "/quotations/payment-assets/qr.svg", qrMode: "upload" }]), /Quotation validation failed/);
+    assert.throws(() => preparePaymentMethods([{ ...bank, customBankLogoUrl: "data:image/svg+xml,<svg />" }]), /Quotation validation failed/);
+    assert.throws(() => preparePaymentMethods([{ ...bank, bankLogoUrl: "https://tracker.example/logo.svg" }]), /Quotation validation failed/);
+  });
+
+  it("rejects duplicate IDs and more than twenty methods", () => {
+    assert.throws(() => preparePaymentMethods([bank, { ...bank }]), /Quotation validation failed/);
+    assert.throws(() => preparePaymentMethods(Array.from({ length: 21 }, (_, index) => ({ ...bank, id: crypto.randomUUID(), position: index + 1 }))), /Quotation validation failed/);
+  });
+
+  it("rejects unsupported enums and oversized text", () => {
+    assert.throws(() => preparePaymentMethods([{ ...bank, type: "card" }]), /Quotation validation failed/);
+    assert.throws(() => preparePaymentMethods([{ ...bank, instructions: "x".repeat(2_001) }]), /Quotation validation failed/);
+    assert.equal(preparePaymentMethods([{ ...bank, qrMode: "auto_promptpay" }])[0]?.qrMode, "none");
+  });
+
+  it("returns clear Thai validation messages for every payment error", () => {
+    assert.equal(validationErrors({}).paymentMethods, "ข้อมูลช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors(Array.from({ length: 21 }, (_, index) => ({ ...bank, id: crypto.randomUUID(), position: index + 1 }))).paymentMethods, "เพิ่มช่องทางชำระเงินได้ไม่เกิน 20 รายการ");
+    assert.equal(validationErrors([bank, bank]).paymentMethods, "รหัสช่องทางชำระเงินต้องไม่ซ้ำกัน");
+    assert.equal(validationErrors([null])["paymentMethods.0"], "ข้อมูลช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, instructions: "x".repeat(2_001) }])["paymentMethods.0.instructions"], "ข้อมูลช่องทางชำระเงินยาวเกินกำหนด");
+    assert.equal(validationErrors([{ ...bank, type: "card" }])["paymentMethods.0.type"], "ประเภทช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, qrMode: "bad" }])["paymentMethods.0.qrMode"], "รูปแบบ QR ไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, id: "bad" }])["paymentMethods.0.id"], "รหัสช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, bankId: "bad" }])["paymentMethods.0.bankId"], "รหัสธนาคารไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, bankLogoUrl: "https://example.com/bank.svg" }])["paymentMethods.0.bankLogoUrl"], "โลโก้ธนาคารในระบบไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, bankId: null, customBankLogoUrl: "data:image/svg+xml,<svg />", customBankName: "Other" }])["paymentMethods.0.customBankLogoUrl"], "ลิงก์รูปช่องทางชำระเงินไม่ถูกต้อง");
+    assert.equal(validationErrors([{ ...bank, accountName: "" }])["paymentMethods.0.accountName"], "กรุณากรอกชื่อบัญชี");
+    assert.equal(validationErrors([{ ...bank, accountNumber: "" }])["paymentMethods.0.accountNumber"], "กรุณากรอกเลขที่บัญชี");
+    assert.equal(validationErrors([{ ...bank, bankId: null }])["paymentMethods.0.bankId"], "กรุณาเลือกธนาคาร");
+    assert.equal(validationErrors([{ ...bank, promptPayId: "123", qrMode: "auto_promptpay", type: "promptpay" }])["paymentMethods.0.promptPayId"], "หมายเลข PromptPay ต้องมี 10 หรือ 13 หลัก");
+    assert.equal(validationErrors([{ ...bank, promptPayId: "0812345678", type: "promptpay" }])["paymentMethods.0.qrMode"], "PromptPay ต้องใช้ QR ที่อัปโหลดหรือสร้างอัตโนมัติ");
+    assert.equal(validationErrors([{ ...bank, providerName: "", qrImageUrl: "/quotations/payment-assets/123e4567-e89b-42d3-a456-426614174099.png", type: "qr_payment" }])["paymentMethods.0.providerName"], "กรุณากรอกชื่อผู้ให้บริการ");
+    assert.equal(validationErrors([{ ...bank, providerName: "", type: "other" }])["paymentMethods.0.providerName"], "กรุณากรอกชื่อช่องทาง");
+    assert.equal(validationErrors([{ ...bank, providerName: "Provider", qrImageUrl: "", type: "qr_payment" }])["paymentMethods.0.qrImageUrl"], "กรุณาอัปโหลดรูป QR");
+
+    const service = readFileSync(new URL("../server/services/quotation-payment-methods.ts", import.meta.url), "utf8");
+    assert.doesNotMatch(service, /Payment value is too long|Invalid payment|Invalid QR|Invalid bank|Invalid built-in|Account name is required|Account number is required|Bank is required|PromptPay ID must|PromptPay requires|Provider name is required|Display name is required|QR image is required|Automatic PromptPay QR|Payment method count|Payment method IDs/);
+  });
+
+  it("preserves only boolean default flags for company methods", () => {
+    const [method] = prepareCompanyPaymentMethods([{ ...bank, isDefault: "yes" }, { ...bank, id: crypto.randomUUID(), isDefault: true }]);
+    assert.equal(method?.isDefault, false);
+  });
+});

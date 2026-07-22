@@ -60,4 +60,24 @@ describe("media worker", () => {
 
     assert.equal(response.status, 400);
   });
+
+  it("accepts quotation payment PNGs but rejects other payment content types", async () => {
+    const request = (contentType: string) => new Request("https://worker.example/quotations/payment-assets/123e4567-e89b-42d3-a456-426614174000.png", {
+      body: new Uint8Array([1]),
+      headers: { authorization: "Bearer secret", "content-type": contentType },
+      method: "PUT",
+    });
+    assert.equal((await worker.fetch(request("image/png"), env())).status, 200);
+    assert.equal((await worker.fetch(request("image/webp"), env())).status, 415);
+  });
+
+  it("accepts certification PNGs but rejects other certification content types", async () => {
+    const request = (contentType: string) => new Request("https://worker.example/quotations/certification-assets/123e4567-e89b-42d3-a456-426614174000.png", {
+      body: new Uint8Array([1]),
+      headers: { authorization: "Bearer secret", "content-type": contentType },
+      method: "PUT",
+    });
+    assert.equal((await worker.fetch(request("image/png"), env())).status, 200);
+    assert.equal((await worker.fetch(request("image/webp"), env())).status, 415);
+  });
 });

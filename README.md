@@ -7,9 +7,27 @@ Current focus:
 - House image management
 - House data management MVP
 - Advertisement management MVP
+- Quotation management MVP 1
 
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
 House/accommodation menu access currently requires `allow_tools.allow_accommodation = true`.
+
+## Quotation management MVP 1
+
+Quotation management is an explicitly added admin module. Users need
+`allow_tools.allow_quotation = true` to use its routes:
+
+- `/admin/quotations` — list, search, print, and soft delete
+- `/admin/quotations/new` — create from the current seller profile
+- `/admin/quotations/[id]` — edit a saved quotation
+- `/admin/quotations/settings/company` — manage seller, payment, and certification masters
+
+Preview uses the current draft; browser print uses the latest save; Share and
+PDF Download require a saved-clean quotation. Public Share is available at
+`/q/[token]`, excludes internal notes, and uses `QUOTATION_PUBLIC_ORIGIN` for
+canonical QR/link generation.
+See [quotation management](docs/quotation-management.md) for behavior and
+verification details.
 
 ## Tech Stack
 
@@ -96,6 +114,8 @@ NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=PASTE_LOCAL_ANON_KEY
 # Server-side only. Required for username sign-in lookup.
 SUPABASE_SERVICE_ROLE_KEY=PASTE_LOCAL_SERVICE_ROLE_KEY
+# Canonical bare HTTPS origin for quotation Public links and QR codes.
+QUOTATION_PUBLIC_ORIGIN=
 # Shared media Worker for advertisements and new house images.
 ADVERTISEMENT_IMAGE_WORKER_URL=
 ADVERTISEMENT_IMAGE_WORKER_SECRET=
@@ -360,6 +380,20 @@ Deploy the media Worker manually:
 ```powershell
 npx.cmd wrangler deploy --config workers/media/wrangler.jsonc
 ```
+
+After applying the quotation payment-asset migrations, configure the private
+database origin once from the same bare HTTPS origin used by
+`ADVERTISEMENT_IMAGE_WORKER_URL` (no trailing slash, path, query, or fragment):
+
+```sql
+insert into private.quotation_payment_asset_config (singleton, origin)
+values (true, 'https://webook-media.<account>.workers.dev')
+on conflict (singleton) do update set origin = excluded.origin;
+```
+
+Run this as the database owner in the Supabase SQL editor. `anon` and
+`authenticated` roles cannot read or modify this configuration. A custom media
+domain is supported by storing its exact HTTPS origin instead.
 
 ## Advertisement Media
 

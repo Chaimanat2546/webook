@@ -29,6 +29,7 @@
 .DS_Store
 *.pem
 .superpowers/
+/.worktrees/
 /doc/diary/
 
 # debug
