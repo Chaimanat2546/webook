@@ -661,6 +661,26 @@ describe("quotation UI", () => {
     assert.match(editPage, /publicOrigin=\{publicOrigin\}/);
   });
 
+  it("loads the database item catalogue and uses it as the item-name select", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const createPage = source("../app/admin/quotations/new/page.tsx");
+    const editPage = source("../app/admin/quotations/[id]/page.tsx");
+    const itemDetails = editor.slice(
+      editor.indexOf("function ItemDetailsControls"),
+      editor.indexOf("function ItemQuantityControl"),
+    );
+
+    assert.match(createPage, /listQuotationItemNames\(supabase\)/);
+    assert.match(editPage, /listQuotationItemNames\(supabase\)/);
+    assert.match(createPage, /itemNames=\{itemNames\}/);
+    assert.match(editPage, /itemNames=\{itemNames\}/);
+    assert.match(editor, /itemNames: string\[\]/);
+    assert.match(itemDetails, /<select[\s\S]*aria-label="ชื่อรายการ"[\s\S]*itemNames\.map/);
+    assert.match(itemDetails, /onUpdate\("name", name\)[\s\S]*onUpdate\("description", name\)/);
+    assert.match(itemDetails, /disabled[\s\S]*ค่าเดิม[\s\S]*กรุณาเลือกใหม่/);
+    assert.doesNotMatch(itemDetails, /<Input/);
+  });
+
   it("copies only default account payment masters into new quotation snapshots", () => {
     const page = source("../app/admin/quotations/new/page.tsx");
 
@@ -685,7 +705,7 @@ describe("quotation UI", () => {
   it("edits saved payment snapshots without merging current masters", () => {
     const page = source("../app/admin/quotations/[id]/page.tsx");
 
-    assert.match(page, /Promise\.all\(\[getQuotationById\(supabase, id\), listQuotationBanks\(supabase\)\]\)/);
+    assert.match(page, /Promise\.all\(\[getQuotationById\(supabase, id\), listQuotationBanks\(supabase\), listQuotationItemNames\(supabase\)\]\)/);
     assert.match(page, /hydratePaymentMethodBanks\(quotation\.payload\.paymentMethods, banks\)/);
     assert.match(page, /initialPayload=\{initialPayload\}/);
     assert.match(page, /<QuotationEditor banks=\{banks\}/);

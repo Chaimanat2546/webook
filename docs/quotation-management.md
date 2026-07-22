@@ -137,8 +137,13 @@ Preview, Print, or Public Read-only.
   unsupported non-zero taxable rates map to `7%` so the editable choice,
   calculation, and next save stay consistent. The saved Print/Public snapshot
   remains unchanged until the admin saves the edited document.
-- Item names and descriptions remain free-text snapshots in this change. The
-  separate five-item catalogue and default-description behavior is deferred.
+- Item names come from the read-only database catalogue and are limited to
+  `ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 1/2)`,
+  `ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 2/2)`,
+  `ค่าที่พัก (ลูกค้าชำระเงินเต็มจำนวน)`, `ค่าบริการ`, and
+  `ประกันความเสียหาย`. Every selection replaces the editable description with
+  the selected name. Legacy names remain readable but must be reselected before
+  saving.
 - Money inputs accept grouped or ungrouped values; stored values are canonical
   decimal strings without commas.
 - Drag and drop order is persisted for items and payment methods.

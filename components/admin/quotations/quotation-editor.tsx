@@ -78,6 +78,7 @@ export interface QuotationEditorProps {
   banks: BankOption[];
   documentNumber: string | null;
   initialPayload: QuotationPayload;
+  itemNames: string[];
   printOnLoad?: boolean;
   publicOrigin: string | null;
   publicToken: string | null;
@@ -94,6 +95,7 @@ type ItemProps = {
   errors: Record<string, string>;
   index: number;
   item: QuotationItemInput;
+  itemNames: string[];
   onRemove: () => void;
   onUpdate: <K extends keyof QuotationItemInput>(
     key: K,
@@ -454,21 +456,38 @@ function SortableQuotationItem(props: ItemProps) {
   );
 }
 
-function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
+function ItemDetailsControls({ errors, index, item, itemNames, onUpdate }: ItemProps) {
   const error = (field: string) => errors[`items.${index}.${field}`];
+  const legacyItemName = item.name && !itemNames.includes(item.name)
+    ? item.name
+    : null;
   return (
     <div data-item-details className="grid gap-1">
-      <Input
+      <select
         aria-describedby={
           error("name") ? fieldErrorId(`items.${index}.name`) : undefined
         }
         aria-invalid={Boolean(error("name"))}
         aria-label="ชื่อรายการ"
+        className={cn("w-full", selectClassName)}
         data-field={`items.${index}.name`}
-        onChange={(event) => onUpdate("name", event.target.value)}
-        placeholder="รายการ"
+        onChange={(event) => {
+          const name = event.target.value;
+          onUpdate("name", name);
+          onUpdate("description", name);
+        }}
         value={item.name}
-      />
+      >
+        <option value="">เลือกรายการ</option>
+        {legacyItemName ? (
+          <option disabled value={legacyItemName}>
+            ค่าเดิม: {legacyItemName} — กรุณาเลือกใหม่
+          </option>
+        ) : null}
+        {itemNames.map((name) => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </select>
       <FieldError error={error("name")} field={`items.${index}.name`} />
       <Textarea
         aria-describedby={
@@ -634,6 +653,7 @@ export function QuotationEditor({
   banks,
   documentNumber: initialDocumentNumber,
   initialPayload,
+  itemNames,
   printOnLoad = false,
   publicOrigin,
   publicToken: initialPublicToken,
@@ -1093,6 +1113,7 @@ export function QuotationEditor({
     errors: fieldErrors,
     index,
     item,
+    itemNames,
     onRemove: () => removeItem(index),
     onUpdate: (key, value) => updateItem(index, key, value),
     totalItems: payload.items.length,
