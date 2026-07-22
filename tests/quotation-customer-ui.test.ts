@@ -10,6 +10,7 @@ describe("quotation customer UI", () => {
     assert.match(page, /requireAdmin\(\)/);
     assert.match(page, /canUseQuotation\(adminUser\)/);
     assert.match(page, /listQuotationCustomers/);
+    assert.equal(page.match(/pageSize: 8/g)?.length, 2);
     assert.match(page, /ข้อมูลลูกค้า/);
   });
 

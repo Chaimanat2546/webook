@@ -38,9 +38,9 @@ async function loadCustomers(
   options: { active: boolean; page: number; search: string },
 ): Promise<QuotationCustomerListResult | null> {
   try {
-    let result = await listQuotationCustomers(supabase, { ...options, pageSize: 20 });
+    let result = await listQuotationCustomers(supabase, { ...options, pageSize: 8 });
     if (options.page > result.totalPages) {
-      result = await listQuotationCustomers(supabase, { ...options, page: result.totalPages, pageSize: 20 });
+      result = await listQuotationCustomers(supabase, { ...options, page: result.totalPages, pageSize: 8 });
     }
     return result;
   } catch (error) {
