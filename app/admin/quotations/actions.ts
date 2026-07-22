@@ -21,6 +21,7 @@ import { getQuotationAssetEnv } from "../../../lib/env";
 import { canUseQuotation, requireAdmin } from "../../../server/auth/admin";
 import {
   getQuotationCompanyProfile,
+  listQuotationItemNames,
   saveCompanyPaymentMethods,
   saveQuotation,
   saveQuotationCompanyCertification,
@@ -116,7 +117,8 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
   if (!canUseQuotation(adminUser)) return denied();
 
   try {
-    const prepared = prepareQuotationPayload(value);
+    const itemNames = await listQuotationItemNames(supabase);
+    const prepared = prepareQuotationPayload(value, itemNames);
     if (prepared.payload.seller.logoUrl) {
       try {
         validateQuotationAssetUrl(prepared.payload.seller.logoUrl, getQuotationAssetEnv().workerUrl);

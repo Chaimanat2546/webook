@@ -32,7 +32,8 @@ describe("quotation repository and actions", () => {
 
   it("checks the quotation permission before every action mutation", () => {
     assert.match(actions, /canUseQuotation\(adminUser\)/);
-    assert.match(actions, /prepareQuotationPayload\(value\)/);
+    assert.match(actions, /const itemNames = await listQuotationItemNames\(supabase\)/);
+    assert.match(actions, /prepareQuotationPayload\(value, itemNames\)/);
     assert.match(actions, /saveQuotation\(supabase, prepared\.rpcPayload\)/);
     assert.match(actions, /softDeleteQuotation\(supabase, id\)/);
     assert.match(actions, /uploadQuotationPaymentAssetAction/);
@@ -97,6 +98,11 @@ describe("quotation repository and actions", () => {
     assert.match(repository, /quotation_payment_methods\(/);
     assert.match(repository, /paymentMethods: \(row\.quotation_payment_methods \?\? \[\]\)/);
     assert.match(actions, /return \{ \.\.\.saved, ok: true, payload: prepared\.payload \}/);
+  });
+
+  it("loads quotation item names from the ordered database catalogue", () => {
+    assert.match(repository, /export async function listQuotationItemNames/);
+    assert.match(repository, /from\("quotation_item_catalog"\)[\s\S]*select\("name"\)[\s\S]*order\("sort_order"\)/);
   });
 
   it("keeps legacy VAT snapshots lossless for saved and public documents", () => {

@@ -350,6 +350,17 @@ export async function saveQuotationCompanyCertification(
   if (!data) throw new Error("Quotation company profile not found");
 }
 
+export async function listQuotationItemNames(
+  supabase: SupabaseClient,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("quotation_item_catalog")
+    .select("name")
+    .order("sort_order");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((item) => stringValue(item.name));
+}
+
 export async function listQuotationBanks(supabase: SupabaseClient): Promise<BankOption[]> {
   const { data, error } = await supabase
     .from("banks")

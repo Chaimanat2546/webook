@@ -133,7 +133,10 @@ export function emptyQuotationPayload(
   };
 }
 
-export function prepareQuotationPayload(value: unknown): PreparedQuotation {
+export function prepareQuotationPayload(
+  value: unknown,
+  itemNames: readonly string[],
+): PreparedQuotation {
   let source: Record<string, unknown>;
   try { source = objectValue(value, "quotation"); }
   catch { throw new QuotationValidationError({ _form: "Invalid quotation" }); }
@@ -180,7 +183,9 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
       errors[`${prefix}.vatRate`] = "ภาษีต้องเป็น 7%, 0% หรือไม่มี";
     }
     if (!UUID.test(itemId)) errors[`${prefix}.id`] = "รหัสรายการไม่ถูกต้อง";
-    const name = bounded(stringValue(item, "name"), 200, `${prefix}.name`, errors); if (!name) errors[`${prefix}.name`] = REQUIRED_MESSAGES.itemName;
+    const name = bounded(stringValue(item, "name"), 200, `${prefix}.name`, errors);
+    if (!name) errors[`${prefix}.name`] = REQUIRED_MESSAGES.itemName;
+    else if (!itemNames.includes(name)) errors[`${prefix}.name`] = "กรุณาเลือกชื่อรายการจากรายการที่กำหนด";
     const unit = bounded(stringValue(item, "unit"), 200, `${prefix}.unit`, errors);
     return { description: bounded(stringValue(item, "description"), 2_000, `${prefix}.description`, errors), discountAmount, id: itemId, name, position: index + 1, quantity: numeric(stringValue(item, "quantity"), QUANTITY, `${prefix}.quantity`, errors), unit, unitPrice: numeric(stringValue(item, "unitPrice"), MONEY, `${prefix}.unitPrice`, errors), vatRate, vatTreatment };
   }) : [];
