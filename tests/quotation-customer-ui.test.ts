@@ -43,6 +43,8 @@ describe("quotation customer UI", () => {
     assert.match(form, /setQuotationCustomerActiveAction/);
     assert.match(form, /กำลังตรวจสอบ DBD/);
     assert.match(form, /confirmReactivation/);
+    assert.match(form, /result\.warning/);
+    assert.match(form, /toast\.warning\(result\.warning\)/);
     assert.match(form, /ยืนยันเปิดใช้งานลูกค้าเดิม/);
   });
 
@@ -54,6 +56,9 @@ describe("quotation customer UI", () => {
     assert.match(picker, /quotationCustomerToSnapshot/);
     assert.match(picker, /แทนที่ข้อมูลลูกค้า/);
     assert.match(picker, /snapshotFields\.some\(\(field\) => String\(current\[field\]\)\.trim\(\) !== ""\)/);
+    assert.match(picker, /searchError/);
+    assert.match(picker, /role="alert"/);
+    assert.match(picker, /result\.ok/);
     assert.match(editor, /QuotationCustomerPickerDialog/);
     assert.match(editor, /function replaceCustomerSnapshot/);
     assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);

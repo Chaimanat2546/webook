@@ -46,13 +46,24 @@ describe("quotation customer local database integration", { skip: !enabled }, ()
     }
   });
 
-  it("shares masters between quotation users and rejects denied users and hard delete", async () => {
-    const inserted = await allowed.from("quotation_customers").insert({
+  it("shares reads while reserving mutations for the server boundary", async () => {
+    const directInsert = await allowed.from("quotation_customers").insert({
       address: "Shared address",
       customer_type: "juristic",
       name: "Shared customer",
       office_type: "head_office",
       tax_id: "0107544000108",
+    }).select("id").single();
+    assert.equal(directInsert.error?.code, "42501");
+
+    const inserted = await service.from("quotation_customers").insert({
+      address: "Shared address",
+      created_by: userIds[0],
+      customer_type: "juristic",
+      name: "Shared customer",
+      office_type: "head_office",
+      tax_id: "0107544000108",
+      updated_by: userIds[0],
     }).select("id").single();
     assert.equal(inserted.error, null, inserted.error?.message);
     customerId = inserted.data.id;
@@ -64,6 +75,29 @@ describe("quotation customer local database integration", { skip: !enabled }, ()
     const deniedRead = await denied.from("quotation_customers").select("id");
     assert.equal(deniedRead.error, null, deniedRead.error?.message);
     assert.deepEqual(deniedRead.data, []);
+
+    const directUpdate = await allowed.from("quotation_customers")
+      .update({ name: "Forged" }).eq("id", customerId);
+    assert.equal(directUpdate.error?.code, "42501");
+
+    const deactivated = await service.from("quotation_customers")
+      .update({ is_active: false, updated_by: userIds[0] }).eq("id", customerId);
+    assert.equal(deactivated.error, null, deactivated.error?.message);
+
+    const duplicateInactive = await service.from("quotation_customers").insert({
+      address: "Duplicate address",
+      created_by: userIds[0],
+      customer_type: "juristic",
+      name: "Duplicate customer",
+      office_type: "head_office",
+      tax_id: "0107544000108",
+      updated_by: userIds[0],
+    });
+    assert.equal(duplicateInactive.error?.code, "23505");
+
+    const reactivated = await service.from("quotation_customers")
+      .update({ is_active: true, updated_by: userIds[0] }).eq("id", customerId);
+    assert.equal(reactivated.error, null, reactivated.error?.message);
 
     const hardDelete = await allowed.from("quotation_customers").delete().eq("id", customerId);
     assert.equal(hardDelete.error?.code, "42501");

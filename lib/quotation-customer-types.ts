@@ -44,7 +44,7 @@ export interface QuotationCustomerInput {
 }
 
 export type CustomerMutationResult =
-  | { customer: QuotationCustomerMaster; ok: true }
+  | { customer: QuotationCustomerMaster; ok: true; warning?: string }
   | {
       existingCustomer?: QuotationCustomerMaster;
       fieldErrors: Record<string, string>;
@@ -52,6 +52,10 @@ export type CustomerMutationResult =
       ok: false;
       requiresUnverifiedConfirmation?: boolean;
     };
+
+export type QuotationCustomerSearchResult =
+  | { items: QuotationCustomerMaster[]; ok: true }
+  | { formError: string; ok: false };
 
 export type DbdLookupActionResult =
   | { defaults: DbdCustomerDefaults; ok: true }

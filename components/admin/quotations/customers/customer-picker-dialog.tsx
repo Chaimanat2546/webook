@@ -39,12 +39,14 @@ export function QuotationCustomerPickerDialog({
   const [query, setQuery] = useState("");
   const [customers, setCustomers] = useState<QuotationCustomerMaster[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [pendingSnapshot, setPendingSnapshot] = useState<CustomerSnapshot | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function close() {
     setOpen(false);
     setPendingSnapshot(null);
+    setSearchError("");
     setView("list");
   }
 
@@ -66,10 +68,16 @@ export function QuotationCustomerPickerDialog({
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSearchError("");
     startTransition(async () => {
       const result = await searchActiveQuotationCustomersAction(query);
-      setCustomers(result);
       setHasSearched(true);
+      if (!result.ok) {
+        setCustomers([]);
+        setSearchError(result.formError);
+        return;
+      }
+      setCustomers(result.items);
     });
   }
 
@@ -134,6 +142,11 @@ export function QuotationCustomerPickerDialog({
               เพิ่มลูกค้าใหม่
             </Button>
             <div aria-live="polite" className="space-y-2">
+              {searchError ? (
+                <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
+                  {searchError}
+                </p>
+              ) : null}
               {customers.map((customer) => (
                 <button
                   className="w-full rounded-lg border p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -149,7 +162,7 @@ export function QuotationCustomerPickerDialog({
                   <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{customer.address}</p>
                 </button>
               ))}
-              {hasSearched && !isPending && customers.length === 0 ? (
+              {hasSearched && !isPending && !searchError && customers.length === 0 ? (
                 <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">ไม่พบลูกค้าที่ค้นหา</p>
               ) : null}
               {!hasSearched ? (

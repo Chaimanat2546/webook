@@ -6,6 +6,10 @@ const name = readdirSync(new URL("../supabase/migrations/", import.meta.url))
   .find((entry) => entry.endsWith("_quotation_customer_master_dbd.sql"));
 assert.ok(name, "customer migration must be created by the Supabase CLI");
 const sql = readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8");
+const allSql = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .filter((entry) => entry.endsWith(".sql"))
+  .map((entry) => readFileSync(new URL(`../supabase/migrations/${entry}`, import.meta.url), "utf8"))
+  .join("\n");
 
 describe("quotation customer migration", () => {
   it("creates the shared customer boundary", () => {
@@ -21,5 +25,12 @@ describe("quotation customer migration", () => {
     assert.match(sql, /create trigger quotation_customers_touch/i);
     assert.match(sql, /create or replace function public\.list_quotation_customers/i);
     assert.doesNotMatch(sql, /^\s*(?:drop table|truncate)\b/im);
+  });
+
+  it("keeps browser sessions read-only and reserves mutations for server persistence", () => {
+    assert.match(allSql, /revoke\s+insert\s*,\s*update\s+on\s+table\s+public\.quotation_customers\s+from\s+authenticated/i);
+    assert.match(allSql, /drop policy\s+"Quotation users manage shared customers"/i);
+    assert.match(allSql, /for select[\s\S]*private\.has_quotation_permission\(\)/i);
+    assert.match(allSql, /coalesce\(auth\.uid\(\),\s*new\.updated_by,\s*old\.updated_by\)/i);
   });
 });

@@ -6,20 +6,25 @@ import type {
   CustomerMutationResult,
   DbdLookupActionResult,
   QuotationCustomerMaster,
+  QuotationCustomerSearchResult,
 } from "../../../../lib/quotation-customer-types.ts";
+import { createSupabaseAdminClient } from "../../../../lib/supabase/admin.ts";
 import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin.ts";
 import {
   findQuotationCustomerByTaxId,
   getQuotationCustomer,
   insertQuotationCustomer,
-  listQuotationCustomers,
   QuotationCustomerDuplicateError,
   setQuotationCustomerActive,
   updateQuotationCustomer,
   updateQuotationCustomerDbd,
 } from "../../../../server/repositories/quotation-customers.ts";
 import { lookupDbdJuristicPerson } from "../../../../server/services/dbd-juristic-person.ts";
-import { prepareQuotationCustomerInput } from "../../../../server/services/quotation-customers.ts";
+import { searchActiveQuotationCustomers } from "../../../../server/services/quotation-customer-search.ts";
+import {
+  dbdStatusWarning,
+  prepareQuotationCustomerInput,
+} from "../../../../server/services/quotation-customers.ts";
 import { QuotationValidationError } from "../../../../server/services/quotations.ts";
 
 const TAX_ID = /^[0-9]{13}$/;
@@ -50,6 +55,12 @@ function logFailure(operation: string, error: unknown): void {
   console.error(operation, error instanceof Error ? error.message : "unknown_error");
 }
 
+function requireQuotationCustomerWriteClient() {
+  const client = createSupabaseAdminClient();
+  if (!client) throw new Error("quotation_customer_service_role_missing");
+  return client;
+}
+
 export async function lookupQuotationCustomerDbdAction(
   taxId: string,
 ): Promise<DbdLookupActionResult> {
@@ -70,8 +81,10 @@ export async function lookupQuotationCustomerDbdAction(
 }
 
 export async function saveQuotationCustomerAction(value: unknown): Promise<CustomerMutationResult> {
-  const { supabase } = await requireQuotationAccess();
+  const context = await requireQuotationAccess();
+  const { supabase } = context;
   try {
+    const writeSupabase = requireQuotationCustomerWriteClient();
     const prepared = prepareQuotationCustomerInput(value);
     const existing = await findQuotationCustomerByTaxId(supabase, prepared.taxId);
 
@@ -84,7 +97,7 @@ export async function saveQuotationCustomerAction(value: unknown): Promise<Custo
           taxId: "ไม่สามารถเปลี่ยนเลขประจำตัวผู้เสียภาษีหลังสร้าง Master แล้ว",
         });
       }
-      const customer = await updateQuotationCustomer(supabase, prepared);
+      const customer = await updateQuotationCustomer(writeSupabase, prepared, context.user.id);
       revalidatePath("/admin/quotations/customers");
       return { customer, ok: true };
     }
@@ -105,9 +118,18 @@ export async function saveQuotationCustomerAction(value: unknown): Promise<Custo
       }
       defaults = lookup.defaults;
     }
-    const customer = await insertQuotationCustomer(supabase, prepared, defaults);
+    const customer = await insertQuotationCustomer(
+      writeSupabase,
+      prepared,
+      defaults,
+      context.user.id,
+    );
     revalidatePath("/admin/quotations/customers");
-    return { customer, ok: true };
+    return {
+      customer,
+      ok: true,
+      warning: defaults ? dbdStatusWarning(defaults.status) : undefined,
+    };
   } catch (error) {
     if (error instanceof QuotationValidationError) return failed("", error.fieldErrors);
     if (error instanceof QuotationCustomerDuplicateError) return duplicate(error.customer);
@@ -117,9 +139,11 @@ export async function saveQuotationCustomerAction(value: unknown): Promise<Custo
 }
 
 export async function refreshQuotationCustomerDbdAction(id: string): Promise<CustomerMutationResult> {
-  const { supabase } = await requireQuotationAccess();
+  const context = await requireQuotationAccess();
+  const { supabase } = context;
   if (!UUID.test(id)) return failed("รหัสลูกค้าไม่ถูกต้อง");
   try {
+    const writeSupabase = requireQuotationCustomerWriteClient();
     const stored = await getQuotationCustomer(supabase, id);
     if (!stored) return failed("ไม่พบข้อมูลลูกค้า");
     if (stored.customerType !== "juristic") return failed("ลูกค้าบุคคลธรรมดาไม่ใช้ข้อมูล DBD");
@@ -129,9 +153,18 @@ export async function refreshQuotationCustomerDbdAction(id: string): Promise<Cus
         ? "ไม่พบข้อมูลนิติบุคคลใน DBD"
         : "ไม่สามารถเชื่อมต่อ DBD ได้ กรุณาลองอีกครั้ง");
     }
-    const customer = await updateQuotationCustomerDbd(supabase, id, lookup.defaults);
+    const customer = await updateQuotationCustomerDbd(
+      writeSupabase,
+      id,
+      lookup.defaults,
+      context.user.id,
+    );
     revalidatePath("/admin/quotations/customers");
-    return { customer, ok: true };
+    return {
+      customer,
+      ok: true,
+      warning: dbdStatusWarning(lookup.defaults.status),
+    };
   } catch (error) {
     logFailure("quotation_customer_dbd_refresh_failed", error);
     return failed("ไม่สามารถอัปเดตข้อมูล DBD ได้ กรุณาลองอีกครั้ง");
@@ -142,10 +175,16 @@ export async function setQuotationCustomerActiveAction(
   id: string,
   isActive: boolean,
 ): Promise<CustomerMutationResult> {
-  const { supabase } = await requireQuotationAccess();
+  const context = await requireQuotationAccess();
   if (!UUID.test(id) || typeof isActive !== "boolean") return failed("ข้อมูลลูกค้าไม่ถูกต้อง");
   try {
-    const customer = await setQuotationCustomerActive(supabase, id, isActive);
+    const writeSupabase = requireQuotationCustomerWriteClient();
+    const customer = await setQuotationCustomerActive(
+      writeSupabase,
+      id,
+      isActive,
+      context.user.id,
+    );
     revalidatePath("/admin/quotations/customers");
     return { customer, ok: true };
   } catch (error) {
@@ -156,17 +195,7 @@ export async function setQuotationCustomerActiveAction(
 
 export async function searchActiveQuotationCustomersAction(
   search: string,
-): Promise<QuotationCustomerMaster[]> {
+): Promise<QuotationCustomerSearchResult> {
   const { supabase } = await requireQuotationAccess();
-  try {
-    return (await listQuotationCustomers(supabase, {
-      active: true,
-      page: 1,
-      pageSize: 50,
-      search: typeof search === "string" ? search : "",
-    })).items;
-  } catch (error) {
-    logFailure("quotation_customer_search_failed", error);
-    return [];
-  }
+  return searchActiveQuotationCustomers(supabase, search);
 }

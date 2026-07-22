@@ -116,6 +116,7 @@ export function QuotationCustomerForm({
           if (result.requiresUnverifiedConfirmation) setConfirmUnverified(true);
           return;
         }
+        if (result.warning) toast.warning(result.warning);
         toast.success(customer ? "บันทึกข้อมูลลูกค้าแล้ว" : "เพิ่มลูกค้าแล้ว");
         onSaved(result.customer);
       } finally {
@@ -142,6 +143,7 @@ export function QuotationCustomerForm({
           }
           const defaults = storedDefaults(refreshed.customer);
           setDbdDefaults(defaults);
+          if (refreshed.warning) toast.warning(refreshed.warning);
           toast.success("รีเฟรชข้อมูล DBD แล้ว");
           return;
         }

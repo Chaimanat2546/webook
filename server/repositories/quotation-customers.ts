@@ -90,6 +90,18 @@ function writeValues(input: QuotationCustomerInput) {
   };
 }
 
+function editableValues(input: QuotationCustomerInput) {
+  return {
+    address: input.address,
+    branch_number: input.branchNumber,
+    contact_email: input.contactEmail,
+    contact_name: input.contactName,
+    contact_phone: input.contactPhone,
+    name: input.name,
+    office_type: input.officeType,
+  };
+}
+
 function totalValue(value: unknown): number {
   const total = typeof value === "number" ? value : Number(value);
   return Number.isSafeInteger(total) && total >= 0 ? total : 0;
@@ -155,6 +167,7 @@ export async function insertQuotationCustomer(
   supabase: SupabaseClient,
   input: QuotationCustomerInput,
   defaults: DbdCustomerDefaults | null,
+  actorId: string,
 ): Promise<QuotationCustomerMaster> {
   const dbd = input.customerType === "juristic" && defaults
     ? {
@@ -165,7 +178,7 @@ export async function insertQuotationCustomer(
       }
     : { dbd_address: null, dbd_name: null, dbd_status: null, dbd_verified_at: null };
   const { data, error } = await supabase.from("quotation_customers")
-    .insert({ ...writeValues(input), ...dbd }).select("*").single();
+    .insert({ ...writeValues(input), ...dbd, created_by: actorId, updated_by: actorId }).select("*").single();
   if (error) return throwWriteError(supabase, input.taxId, error);
   return customerRow(data);
 }
@@ -173,19 +186,20 @@ export async function insertQuotationCustomer(
 export async function updateQuotationCustomer(
   supabase: SupabaseClient,
   input: QuotationCustomerInput,
+  actorId: string,
 ): Promise<QuotationCustomerMaster> {
   if (!input.id) throw new Error("quotation_customer_id_required");
   const values = input.customerType === "individual"
     ? {
-        ...writeValues(input),
+        ...editableValues(input),
         dbd_address: null,
         dbd_name: null,
         dbd_status: null,
         dbd_verified_at: null,
       }
-    : writeValues(input);
+    : editableValues(input);
   const { data, error } = await supabase.from("quotation_customers")
-    .update(values).eq("id", input.id).select("*").single();
+    .update({ ...values, updated_by: actorId }).eq("id", input.id).select("*").single();
   if (error) return throwWriteError(supabase, input.taxId, error);
   return customerRow(data);
 }
@@ -194,12 +208,14 @@ export async function updateQuotationCustomerDbd(
   supabase: SupabaseClient,
   id: string,
   defaults: DbdCustomerDefaults,
+  actorId: string,
 ): Promise<QuotationCustomerMaster> {
   const { data, error } = await supabase.from("quotation_customers").update({
     dbd_address: defaults.address,
     dbd_name: defaults.name,
     dbd_status: defaults.status,
     dbd_verified_at: defaults.verifiedAt,
+    updated_by: actorId,
   }).eq("id", id).eq("customer_type", "juristic").eq("tax_id", defaults.taxId)
     .select("*").single();
   if (error) throw new Error(error.message);
@@ -210,9 +226,10 @@ export async function setQuotationCustomerActive(
   supabase: SupabaseClient,
   id: string,
   isActive: boolean,
+  actorId: string,
 ): Promise<QuotationCustomerMaster> {
   const { data, error } = await supabase.from("quotation_customers")
-    .update({ is_active: isActive }).eq("id", id).select("*").single();
+    .update({ is_active: isActive, updated_by: actorId }).eq("id", id).select("*").single();
   if (error) throw new Error(error.message);
   return customerRow(data);
 }

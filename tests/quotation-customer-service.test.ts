@@ -6,6 +6,7 @@ import {
   type QuotationCustomerInput,
 } from "../lib/quotation-customer-types.ts";
 import {
+  dbdStatusWarning,
   prepareQuotationCustomerInput,
   resetQuotationCustomerFromDbd,
 } from "../server/services/quotation-customers.ts";
@@ -25,6 +26,11 @@ const valid: QuotationCustomerInput = {
 };
 
 describe("quotation customer service", () => {
+  it("warns when DBD reports a status other than active", () => {
+    assert.equal(dbdStatusWarning("ยังดำเนินกิจการอยู่"), undefined);
+    assert.match(dbdStatusWarning("เลิกกิจการ") ?? "", /กรุณาตรวจสอบก่อนใช้งาน/);
+  });
+
   it("trims valid input and keeps contacts optional", () => {
     const result = prepareQuotationCustomerInput(valid);
     assert.equal(result.name, "บริษัท ตัวอย่าง จำกัด");

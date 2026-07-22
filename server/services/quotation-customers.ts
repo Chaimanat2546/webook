@@ -8,6 +8,14 @@ export { resetQuotationCustomerFromDbd } from "../../lib/quotation-customer-type
 import type { OfficeType } from "../../lib/quotation-types.ts";
 import { QuotationValidationError } from "./quotations.ts";
 
+export const DBD_ACTIVE_STATUS = "ยังดำเนินกิจการอยู่";
+
+export function dbdStatusWarning(status: string): string | undefined {
+  return status === DBD_ACTIVE_STATUS
+    ? undefined
+    : "บันทึกแล้ว แต่สถานะนิติบุคคลจาก DBD ไม่ใช่ ‘ยังดำเนินกิจการอยู่’ กรุณาตรวจสอบก่อนใช้งาน";
+}
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TAX_ID = /^[0-9]{13}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
