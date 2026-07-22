@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { describe, it } from "node:test";
+
+const require = createRequire(import.meta.url);
 
 const source = (path: string) =>
   existsSync(path) ? readFileSync(path, "utf8") : "";
@@ -17,6 +20,30 @@ describe("quotation PDF", () => {
     assert.match(pdfSource, /registerHyphenationCallback/);
     assert.match(pdfSource, /size="A4"/);
     assert.match(pdfSource, /wrap/);
+  });
+
+  it("embeds fonts that cover both Latin values and Thai labels", () => {
+    const fontkit = require("fontkit") as {
+      openSync(path: string): {
+        hasGlyphForCodePoint(codePoint: number): boolean;
+      };
+    };
+    const requiredCharacters =
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-/%(): คืน";
+
+    for (const path of [
+      "public/fonts/NotoSansThai-Regular.ttf",
+      "public/fonts/NotoSansThai-SemiBold.ttf",
+    ]) {
+      const font = fontkit.openSync(path);
+      for (const character of requiredCharacters) {
+        assert.equal(
+          font.hasGlyphForCodePoint(character.codePointAt(0)!),
+          true,
+          `${path} must contain ${JSON.stringify(character)}`,
+        );
+      }
+    }
   });
 
   it("lets Thai font metrics determine line height at every text size", () => {
@@ -75,7 +102,7 @@ describe("quotation PDF", () => {
 
     const certification = pdfSource.slice(
       pdfSource.indexOf("data-pdf-certification"),
-      pdfSource.indexOf("style={styles.footer}"),
+      pdfSource.indexOf("</Page>", pdfSource.indexOf("data-pdf-certification")),
     );
     const signer = pdfSource.slice(
       pdfSource.indexOf("function Signer"),
@@ -95,8 +122,9 @@ describe("quotation PDF", () => {
     );
     assert.doesNotMatch(certification, /ตำแหน่ง/);
     assert.doesNotMatch(signer, /signer\.position/);
-    assert.match(pdfSource, /fixed[\s\S]*render=\{\(\{ pageNumber, totalPages \}\)/);
+    assert.doesNotMatch(pdfSource, /pageNumber|totalPages|styles\.footer/);
     assert.match(certification, /wrap=\{false\}/);
+    assert.doesNotMatch(certification, /styles\.section(?:,|\])/);
   });
 
   it("repeats the ledger heading in normal flow on continuation pages", () => {
@@ -113,8 +141,76 @@ describe("quotation PDF", () => {
     assert.doesNotMatch(header, /style=\{styles\.header\} wrap=\{false\}/);
     assert.doesNotMatch(customer, /style=\{styles\.customer\} wrap=\{false\}/);
     assert.doesNotMatch(items, /style=\{styles\.tableRow\} wrap=\{false\}/);
+    assert.match(
+      items,
+      /wrap=\{!canKeepQuotationPdfItemTogether\(item\.name, item\.description\)\}/,
+    );
     assert.doesNotMatch(payment, /style=\{styles\.payment\} wrap=\{false\}/);
     assert.match(payment, /style=\{styles\.paymentCore\} wrap=\{false\}/);
     assert.match(payment, /<\/View>\s*\{method\.instructions \? <Text/);
+  });
+
+  it("keeps HTML and PDF sections in the same approved order", () => {
+    const html = readFileSync(
+      "components/admin/quotations/quotation-document.tsx",
+      "utf8",
+    );
+    const htmlMarkers = [
+      "data-document-header",
+      "data-document-customer",
+      "data-document-items",
+      "data-document-summary",
+      "data-document-payment-methods",
+      "data-document-notes",
+      "data-document-certification",
+    ];
+    const pdfMarkers = [
+      "data-pdf-header",
+      "data-pdf-customer",
+      "data-pdf-items",
+      "data-pdf-totals",
+      "data-pdf-payment-methods",
+      "data-pdf-notes",
+      "data-pdf-certification",
+    ];
+
+    for (const [documentSource, markers] of [
+      [html, htmlMarkers],
+      [pdfSource, pdfMarkers],
+    ] as const) {
+      let previous = -1;
+      for (const marker of markers) {
+        const current = documentSource.indexOf(marker);
+        assert.ok(current > previous, `${marker} must follow the previous section`);
+        previous = current;
+      }
+    }
+  });
+
+  it("omits an empty optional reference in HTML and PDF", () => {
+    const html = readFileSync(
+      "components/admin/quotations/quotation-document.tsx",
+      "utf8",
+    );
+
+    assert.match(html, /\{payload\.reference \? \([\s\S]*อ้างอิง[\s\S]*payload\.reference[\s\S]*\) : null\}/);
+    assert.match(pdfSource, /\{payload\.reference \? <Detail label="อ้างอิง" value=\{payload\.reference\} \/> : null\}/);
+    assert.doesNotMatch(html, /payload\.reference \|\| "-"/);
+  });
+
+  it("keeps unspecified offices blank and uses generic VAT summary labels", () => {
+    const html = readFileSync(
+      "components/admin/quotations/quotation-document.tsx",
+      "utf8",
+    );
+
+    for (const documentSource of [html, pdfSource]) {
+      assert.match(documentSource, /officeType === "unspecified"[\s\S]*return ""/);
+      assert.match(documentSource, /office\(payload\.customer\) \?/);
+      assert.match(documentSource, /function vatLabel[\s\S]*item\.vatTreatment === "taxable"[\s\S]*return `\$\{item\.vatRate\}%`[\s\S]*return ""/);
+      assert.match(documentSource, /label="มูลค่าก่อนภาษี"/);
+      assert.match(documentSource, /label="ภาษีมูลค่าเพิ่ม"/);
+      assert.doesNotMatch(documentSource, /label="(?:มูลค่าก่อนภาษี|ภาษีมูลค่าเพิ่ม) 7%"/);
+    }
   });
 });

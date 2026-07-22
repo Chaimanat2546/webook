@@ -26,6 +26,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const MONEY = /^\d{1,12}(?:\.\d{1,2})?$/;
 const QUANTITY = /^\d{1,9}(?:\.\d{1,3})?$/;
 const PERCENT = /^\d{1,3}(?:\.\d{1,2})?$/;
+const TAX_ID = /^\d{13}$/;
 
 export class QuotationValidationError extends Error {
   readonly fieldErrors: Record<string, string>;
@@ -62,8 +63,8 @@ function optionalEmail(value: string, field: string, message: string, errors: Re
 function validDate(value: string): boolean { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const date = new Date(`${value}T00:00:00.000Z`); return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value; }
 function bounded(value: string, max: number, field: string, errors: Record<string, string>) { if (value.length > max) errors[field] = "ข้อมูลยาวเกินกำหนด"; return value; }
 function enumValue<T extends string>(value: unknown, values: readonly T[], field: string, errors: Record<string, string>, fallback: T): T { if (typeof value === "string" && values.includes(value as T)) return value as T; errors[field] = "ค่าที่เลือกไม่ถูกต้อง"; return fallback; }
-function branchNumber(source: Record<string, unknown>, officeType: "branch" | "head_office", field: string, errors: Record<string, string>): string {
-  if (officeType === "head_office") return "";
+function branchNumber(source: Record<string, unknown>, officeType: "branch" | "head_office" | "unspecified", field: string, errors: Record<string, string>): string {
+  if (officeType !== "branch") return "";
   const value = bounded(stringValue(source, "branchNumber"), 200, field, errors);
   if (!value) errors[field] = "กรุณากรอกเลขสาขา";
   return value;
@@ -102,13 +103,13 @@ export function prepareSellerSnapshot(value: unknown): SellerSnapshot {
   catch { throw new QuotationValidationError({ seller: "Invalid seller" }); }
   source.officeType = trimValue(source.officeType);
   const errors: Record<string, string> = {};
-  const office = enumValue(source.officeType, ["branch", "head_office"], "seller.officeType", errors, "head_office");
+  const office = enumValue(source.officeType, ["branch", "head_office", "unspecified"], "seller.officeType", errors, "head_office");
   const seller: SellerSnapshot = {
     address: bounded(stringValue(source, "address"), 2_000, "seller.address", errors), branchNumber: branchNumber(source, office, "seller.branchNumber", errors), contactEmail: bounded(stringValue(source, "contactEmail"), 200, "seller.contactEmail", errors), contactName: bounded(stringValue(source, "contactName"), 200, "seller.contactName", errors), contactPhone: bounded(stringValue(source, "contactPhone"), 200, "seller.contactPhone", errors), email: bounded(stringValue(source, "email"), 200, "seller.email", errors), logoUrl: bounded(stringValue(source, "logoUrl"), 2_048, "seller.logoUrl", errors), name: bounded(stringValue(source, "name"), 200, "seller.name", errors), officeType: office, phone: bounded(stringValue(source, "phone"), 200, "seller.phone", errors), taxId: bounded(stringValue(source, "taxId"), 200, "seller.taxId", errors), website: bounded(stringValue(source, "website"), 2_048, "seller.website", errors),
   };
   if (!seller.name) errors["seller.name"] = REQUIRED_MESSAGES.sellerName;
   if (!seller.address) errors["seller.address"] = REQUIRED_MESSAGES.sellerAddress;
-  if (!seller.taxId) errors["seller.taxId"] = REQUIRED_MESSAGES.sellerTaxId;
+  if (!TAX_ID.test(seller.taxId)) errors["seller.taxId"] = "เลขผู้เสียภาษีผู้ขายต้องเป็นตัวเลข 13 หลัก";
   optionalEmail(seller.email, "seller.email", "รูปแบบอีเมลผู้ขายไม่ถูกต้อง", errors);
   optionalEmail(seller.contactEmail, "seller.contactEmail", "รูปแบบอีเมลผู้ติดต่อไม่ถูกต้อง", errors);
   if (Object.keys(errors).length) throw new QuotationValidationError(errors);
@@ -121,7 +122,7 @@ export function emptyQuotationPayload(
   certification = emptyCertificationSnapshot(),
 ): QuotationPayload {
   const issueDate = getBangkokCalendarDate(now);
-  const validityDays = "15";
+  const validityDays = "7";
   return {
     certification,
     customer: { address: "", branchNumber: "", name: "", officeType: "head_office", taxId: "" },
@@ -147,10 +148,11 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
   let customerSource: Record<string, unknown>;
   try { customerSource = objectValue(source.customer, "customer"); } catch { errors.customer = "Invalid customer"; customerSource = {}; }
   customerSource.officeType = trimValue(customerSource.officeType);
-  const customerOffice = enumValue(customerSource.officeType, ["branch", "head_office"], "customer.officeType", errors, "head_office");
+  const customerOffice = enumValue(customerSource.officeType, ["branch", "head_office", "unspecified"], "customer.officeType", errors, "head_office");
   const customer: CustomerSnapshot = { address: bounded(stringValue(customerSource, "address"), 2_000, "customer.address", errors), branchNumber: branchNumber(customerSource, customerOffice, "customer.branchNumber", errors), name: bounded(stringValue(customerSource, "name"), 200, "customer.name", errors), officeType: customerOffice, taxId: bounded(stringValue(customerSource, "taxId"), 200, "customer.taxId", errors) };
   if (!customer.name) errors["customer.name"] = REQUIRED_MESSAGES.customerName;
   if (!customer.address) errors["customer.address"] = REQUIRED_MESSAGES.customerAddress;
+  if (!TAX_ID.test(customer.taxId)) errors["customer.taxId"] = "เลขผู้เสียภาษีลูกค้าต้องเป็นตัวเลข 13 หลัก";
   const id = source.id === null ? null : stringValue(source, "id"); if (id !== null && !UUID.test(id)) errors.id = "รหัสเอกสารไม่ถูกต้อง";
   const issueDate = stringValue(source, "issueDate"); if (!validDate(issueDate)) errors.issueDate = "วันที่ออกเอกสารไม่ถูกต้อง";
   const validityDays = stringValue(source, "validityDays"); if (validityDays && (!/^\d+$/.test(validityDays) || Number(validityDays) > 36_500)) errors.validityDays = "จำนวนวันใช้ได้ไม่ถูกต้อง";
@@ -169,10 +171,13 @@ export function prepareQuotationPayload(value: unknown): PreparedQuotation {
     item.vatTreatment = trimValue(item.vatTreatment);
     const itemId = stringValue(item, "id");
     const discountAmount = numeric(stringValue(item, "discountAmount") || "0", MONEY, `${prefix}.discountAmount`, errors);
-    const vatTreatment = enumValue(item.vatTreatment, ["exempt", "none", "taxable"], `${prefix}.vatTreatment`, errors, "none");
+    const vatTreatment = enumValue(item.vatTreatment, ["none", "taxable"], `${prefix}.vatTreatment`, errors, "none");
     const vatRate = numeric(stringValue(item, "vatRate") || "0", PERCENT, `${prefix}.vatRate`, errors, true);
-    if (vatTreatment !== "taxable" && Number(vatRate) !== 0) {
-      errors[`${prefix}.vatRate`] = "รายการที่ยกเว้นหรือไม่คิด VAT ต้องใช้อัตรา 0";
+    if (
+      (vatTreatment === "none" && Number(vatRate) !== 0)
+      || (vatTreatment === "taxable" && ![0, 7].includes(Number(vatRate)))
+    ) {
+      errors[`${prefix}.vatRate`] = "ภาษีต้องเป็น 7%, 0% หรือไม่มี";
     }
     if (!UUID.test(itemId)) errors[`${prefix}.id`] = "รหัสรายการไม่ถูกต้อง";
     const name = bounded(stringValue(item, "name"), 200, `${prefix}.name`, errors); if (!name) errors[`${prefix}.name`] = REQUIRED_MESSAGES.itemName;

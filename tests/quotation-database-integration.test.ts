@@ -14,7 +14,13 @@ const issueDate = "2099-12-31";
 const otherDate = new Date(
   Date.UTC(2100, 0, 1) + (Number.parseInt(crypto.randomUUID().slice(0, 8), 16) % 36525) * 86_400_000,
 ).toISOString().slice(0, 10);
-const seller = { name: "Seller", address: "Seller address", taxId: "0100000000000" };
+const seller = {
+  address: "Seller address",
+  branchNumber: "",
+  name: "Seller",
+  officeType: "head_office",
+  taxId: "0100000000000",
+};
 
 function payload(
   id: string | null,
@@ -28,7 +34,13 @@ function payload(
       company_stamp_url: null,
       issuer: { name: "Issuer", position: "Sales", signature_url: null },
     },
-    customer_snapshot: { name: "Customer", address: "Customer address" },
+    customer_snapshot: {
+      address: "Customer address",
+      branchNumber: "",
+      name: "Customer",
+      officeType: "head_office",
+      taxId: "0200000000000",
+    },
     company_profile_id: null as string | null,
     id,
     internal_notes: "",
@@ -152,17 +164,18 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     const deniedSave = await denied.rpc("save_quotation", { p_payload: payload(null) });
     assert.equal(deniedSave.error?.code, "42501");
     const created = await Promise.all(Array.from({ length: 12 }, () => save(allowed, payload(null))));
-    const dailyNumbers = created.map(({ document_number }) => Number(document_number.slice(document_number.lastIndexOf("-") + 1))).sort((left, right) => left - right);
+    for (const { document_number } of created) assert.match(document_number, /^QO-\d{12}$/);
+    const dailyNumbers = created.map(({ document_number }) => Number(document_number.slice(-4))).sort((left, right) => left - right);
     assert.deepEqual(dailyNumbers, Array.from({ length: 12 }, (_, index) => dailyNumbers[0] + index));
     const first = created[0];
     assert.equal((await save(allowed, payload(first.id, otherDate))).document_number, first.document_number);
     const otherDay = await Promise.all([save(allowed, payload(null, otherDate)), save(allowed, payload(null, otherDate))]);
-    const otherDayNumbers = otherDay.map(({ document_number }) => Number(document_number.slice(document_number.lastIndexOf("-") + 1))).sort((left, right) => left - right);
+    const otherDayNumbers = otherDay.map(({ document_number }) => Number(document_number.slice(-4))).sort((left, right) => left - right);
     assert.deepEqual(otherDayNumbers, [1, 2]);
     assert.equal((await allowed.rpc("soft_delete_quotation", { p_id: first.id })).error, null);
     assert.equal((await allowed.from("quotations").select("id").eq("id", first.id)).data?.length, 0);
     const nextDocumentNumber = (await save(allowed, payload(null))).document_number;
-    assert.equal(Number(nextDocumentNumber.slice(nextDocumentNumber.lastIndexOf("-") + 1)), dailyNumbers.at(-1)! + 1);
+    assert.equal(Number(nextDocumentNumber.slice(-4)), dailyNumbers.at(-1)! + 1);
     assert.deepEqual((await denied.from("quotations").select("id")).data, []);
   });
 

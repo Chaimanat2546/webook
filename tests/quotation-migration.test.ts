@@ -86,8 +86,27 @@ const certificationSql = readFileSync(
   new URL(`../supabase/migrations/${certificationMigrationName}`, import.meta.url),
   "utf8",
 );
+const inputRulesMigrationName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_input_rules.sql"));
+assert.ok(inputRulesMigrationName, "quotation input rules migration must be created by the Supabase CLI");
+const inputRulesSql = readFileSync(
+  new URL(`../supabase/migrations/${inputRulesMigrationName}`, import.meta.url),
+  "utf8",
+);
 
 describe("quotation migration", () => {
+  it("enforces the approved quotation number, office, tax ID, and VAT boundaries", () => {
+    assert.match(inputRulesSql, /create or replace function private\.next_quotation_number\(p_issue_date date\)/i);
+    assert.match(inputRulesSql, /'QO-'\s*\|\|\s*to_char\(p_issue_date, 'YYYYMMDD'\)\s*\|\|/i);
+    assert.doesNotMatch(inputRulesSql, /to_char\(p_issue_date, 'YYYYMMDD'\)\s*\|\|\s*'-'/i);
+    assert.match(inputRulesSql, /office_type in \('head_office', 'branch', 'unspecified'\)[\s\S]*not valid/i);
+    assert.match(inputRulesSql, /tax_id ~ '\^\[0-9\]\{13\}\$'[\s\S]*not valid/i);
+    assert.match(inputRulesSql, /seller_snapshot[\s\S]*customer_snapshot[\s\S]*\^\[0-9\]\{13\}\$[\s\S]*not valid/i);
+    assert.match(inputRulesSql, /vat_treatment in \('taxable', 'none'\)[\s\S]*not valid/i);
+    assert.match(inputRulesSql, /vat_treatment = 'taxable' and vat_rate in \(0, 7\)[\s\S]*vat_treatment = 'none' and vat_rate = 0[\s\S]*not valid/i);
+    assert.doesNotMatch(inputRulesSql, /^\s*(?:update|delete from|truncate)\b/im);
+  });
+
   it("persists certification snapshots through the owner-scoped save and public read RPCs", () => {
     assert.match(certificationSql, /alter table public\.quotation_company_profiles[\s\S]*issuer_name text[\s\S]*approver_name text[\s\S]*company_stamp_url text/i);
     assert.match(certificationSql, /alter table public\.quotations[\s\S]*certification_snapshot jsonb not null default '\{\}'::jsonb/i);

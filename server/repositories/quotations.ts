@@ -16,6 +16,7 @@ import type {
 } from "../../lib/quotation-payment-methods.ts";
 import type {
   CustomerSnapshot,
+  OfficeType,
   QuotationPayload,
   SellerSnapshot,
 } from "../../lib/quotation-types.ts";
@@ -39,7 +40,7 @@ export interface QuotationCompanyProfileRow {
   issuer_signature_url: string | null;
   logo_url: string;
   seller_name: string;
-  office_type: "branch" | "head_office";
+  office_type: OfficeType;
   phone: string;
   tax_id: string;
   updated_at: string;
@@ -151,8 +152,9 @@ function snapshotString(snapshot: Record<string, unknown>, camel: string, snake:
   return stringValue(snapshot[camel] ?? snapshot[snake]);
 }
 
-function officeType(value: unknown): "branch" | "head_office" {
-  return value === "branch" ? "branch" : "head_office";
+function officeType(value: unknown): OfficeType {
+  if (value === "branch" || value === "unspecified") return value;
+  return "head_office";
 }
 
 function vatTreatment(value: unknown): VatTreatment {

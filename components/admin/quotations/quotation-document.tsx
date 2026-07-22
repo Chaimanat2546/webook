@@ -5,7 +5,7 @@ import {
 } from "../../../lib/quotation-document-view";
 import { formatBaht, formatMoney } from "../../../lib/quotation-money";
 import { PAYMENT_ACCOUNT_TYPE_LABELS } from "../../../lib/quotation-payment-methods";
-import type { QuotationPayload } from "../../../lib/quotation-types";
+import type { OfficeType, QuotationPayload } from "../../../lib/quotation-types";
 import {
   CreditCard,
   Globe2,
@@ -34,6 +34,7 @@ export function QuotationDocument({
     payload,
     publicQrDataUrl,
   });
+  const sellerOffice = office(payload.seller);
   return (
     <article
       className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-900"
@@ -68,7 +69,7 @@ export function QuotationDocument({
               </dd>
               <dt className="font-semibold">เลขที่ภาษี</dt>
               <dd>
-                {payload.seller.taxId} ({office(payload.seller)})
+                {payload.seller.taxId}{sellerOffice ? ` (${sellerOffice})` : ""}
               </dd>
             </dl>
             <dl
@@ -126,8 +127,12 @@ export function QuotationDocument({
             <dd>{model.issueDate}</dd>
             <dt className="font-semibold">ใช้ได้ถึง</dt>
             <dd>{model.validUntil}</dd>
-            <dt className="font-semibold">อ้างอิง</dt>
-            <dd>{payload.reference || "-"}</dd>
+            {payload.reference ? (
+              <>
+                <dt className="font-semibold">อ้างอิง</dt>
+                <dd>{payload.reference}</dd>
+              </>
+            ) : null}
             {payload.subject ? (
               <>
                 <dt className="font-semibold">เรื่อง / ชื่องาน</dt>
@@ -156,8 +161,12 @@ export function QuotationDocument({
               <dd>{payload.customer.taxId}</dd>
             </>
           ) : null}
-          <dt className="font-semibold">สำนักงาน</dt>
-          <dd>{office(payload.customer)}</dd>
+          {office(payload.customer) ? (
+            <>
+              <dt className="font-semibold">สำนักงาน</dt>
+              <dd>{office(payload.customer)}</dd>
+            </>
+          ) : null}
         </dl>
       </section>
 
@@ -208,11 +217,7 @@ export function QuotationDocument({
               ) : null}
               {model.showItemVat ? (
                 <td className="p-2 text-right">
-                  {item.vatTreatment === "taxable"
-                    ? `${item.vatRate}%`
-                    : item.vatTreatment === "exempt"
-                      ? "ยกเว้น"
-                      : "-"}
+                  {vatLabel(item)}
                 </td>
               ) : null}
               <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">
@@ -234,10 +239,10 @@ export function QuotationDocument({
           </h2>
           <div className="space-y-1" data-document-summary-breakdown>
             <Total
-              label="มูลค่าก่อนภาษี 7%"
+              label="มูลค่าก่อนภาษี"
               value={formatBaht(calculation.preTaxTotal)}
             />
-            <Total label="ภาษีมูลค่าเพิ่ม 7%" value={formatBaht(calculation.vatTotal)} />
+            <Total label="ภาษีมูลค่าเพิ่ม" value={formatBaht(calculation.vatTotal)} />
             <div className="flex items-start justify-between gap-3">
               <span className="shrink-0">จำนวนเงินทั้งสิ้น</span>
               <span className="text-right text-slate-600 [overflow-wrap:anywhere]">
@@ -303,7 +308,7 @@ export function QuotationDocument({
       </section>
 
       <section
-        className="break-inside-avoid grid grid-cols-[16mm_minmax(0,1fr)] gap-5 border-b py-3"
+        className="break-inside-avoid grid grid-cols-[16mm_minmax(0,1fr)] gap-5 py-3"
         data-document-certification
       >
         <h2 className="flex items-start gap-1 font-semibold">
@@ -437,11 +442,18 @@ function PaymentMethod({
 
 function office(snapshot: {
   branchNumber: string;
-  officeType: "branch" | "head_office";
+  officeType: OfficeType;
 }) {
+  if (snapshot.officeType === "unspecified") return "";
   return snapshot.officeType === "branch"
     ? `สาขา ${snapshot.branchNumber}`
     : "สำนักงานใหญ่";
+}
+
+function vatLabel(item: QuotationCalculation["lines"][number]) {
+  if (item.vatTreatment === "taxable") return `${item.vatRate}%`;
+  if (item.vatTreatment === "exempt") return "ยกเว้น";
+  return "";
 }
 
 function SignerSlot({
