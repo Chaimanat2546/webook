@@ -681,6 +681,14 @@ describe("quotation UI", () => {
     assert.doesNotMatch(itemDetails, /<Input/);
   });
 
+  it("documents the fixed quotation item catalogue for admins", () => {
+    const manual = source("../docs/manuals/quotation/README.md");
+    assert.match(manual, /ชื่อรายการ.*เลือก/);
+    assert.match(manual, /ค่าที่พัก \(ลูกค้าชำระเงินครั้งที่ 1\/2\)/);
+    assert.match(manual, /ประกันความเสียหาย/);
+    assert.doesNotMatch(manual, /ชื่อและรายละเอียดรายการยังกรอกได้อิสระ/);
+  });
+
   it("copies only default account payment masters into new quotation snapshots", () => {
     const page = source("../app/admin/quotations/new/page.tsx");
 
