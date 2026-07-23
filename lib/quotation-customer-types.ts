@@ -61,6 +61,18 @@ export type DbdLookupActionResult =
   | { defaults: DbdCustomerDefaults; ok: true }
   | { formError: string; ok: false; reason: "not_found" | "unavailable" };
 
+export function changeQuotationCustomerType(
+  customer: QuotationCustomerInput,
+  customerType: QuotationCustomerType,
+): QuotationCustomerInput {
+  return {
+    ...customer,
+    branchNumber: "",
+    customerType,
+    officeType: customerType === "individual" ? "unspecified" : "head_office",
+  };
+}
+
 export function resetQuotationCustomerFromDbd(
   customer: QuotationCustomerInput,
   defaults: DbdCustomerDefaults,

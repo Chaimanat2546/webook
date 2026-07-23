@@ -10,6 +10,7 @@ import {
   setQuotationCustomerActiveAction,
 } from "../../../../app/admin/quotations/customers/actions";
 import {
+  changeQuotationCustomerType,
   resetQuotationCustomerFromDbd,
   type DbdCustomerDefaults,
   type QuotationCustomerInput,
@@ -97,6 +98,18 @@ export function QuotationCustomerForm({
   function update<K extends keyof QuotationCustomerInput>(key: K, next: QuotationCustomerInput[K]) {
     setValue((current) => ({ ...current, [key]: next }));
     setFieldErrors((current) => ({ ...current, [key]: "" }));
+    setExistingCustomer(null);
+    setConfirmReactivation(false);
+  }
+
+  function changeCustomerType(next: QuotationCustomerInput["customerType"]) {
+    setValue((current) => changeQuotationCustomerType(current, next));
+    setFieldErrors((current) => ({
+      ...current,
+      branchNumber: "",
+      customerType: "",
+      officeType: "",
+    }));
     setExistingCustomer(null);
     setConfirmReactivation(false);
   }
@@ -198,7 +211,7 @@ export function QuotationCustomerForm({
           <legend className="text-sm font-medium">ประเภทลูกค้า</legend>
           <RadioGroup
             className="flex flex-wrap gap-4"
-            onValueChange={(next) => update("customerType", next as QuotationCustomerInput["customerType"])}
+            onValueChange={(next) => changeCustomerType(next as QuotationCustomerInput["customerType"])}
             value={value.customerType}
           >
             <div className="flex items-center gap-2">
@@ -235,7 +248,7 @@ export function QuotationCustomerForm({
               ) : null}
             </div>
             <FieldError id="customer-taxId-error" message={inputError("taxId")} />
-            {customer ? <p className="text-xs text-muted-foreground">ประเภทลูกค้าและเลขผู้เสียภาษีเปลี่ยนไม่ได้หลังสร้าง Master</p> : null}
+            {customer ? <p className="text-xs text-muted-foreground">ประเภทลูกค้าและเลขผู้เสียภาษีเปลี่ยนไม่ได้หลังสร้างข้อมูลลูกค้า</p> : null}
             {pendingOperation === "dbd" ? <p className="text-sm text-muted-foreground" role="status">กำลังตรวจสอบ DBD…</p> : null}
           </div>
 
@@ -380,7 +393,7 @@ export function QuotationCustomerForm({
 
         {existingCustomer ? (
           <section className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
-            <p className="font-medium">พบลูกค้าใน Master แล้ว</p>
+            <p className="font-medium">พบข้อมูลลูกค้านี้แล้ว</p>
             <p>{existingCustomer.name} · {existingCustomer.taxId}</p>
             {existingCustomer.customerType === "juristic" ? (
               <p>{existingCustomer.officeType === "branch"

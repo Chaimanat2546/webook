@@ -52,8 +52,8 @@ function duplicate(customer: QuotationCustomerMaster): CustomerMutationResult {
         : "เลขประจำตัวผู้เสียภาษีนี้มีอยู่แล้ว",
     },
     formError: customer.isActive
-      ? "พบลูกค้านี้ใน Master แล้ว กรุณาตรวจสอบรายการเดิม"
-      : "พบลูกค้านี้ใน Master ที่ปิดใช้งาน กรุณาตรวจสอบและเปิดใช้งานรายการเดิม",
+      ? "พบข้อมูลลูกค้านี้แล้ว กรุณาตรวจสอบรายการเดิม"
+      : "พบข้อมูลลูกค้านี้ในรายการที่ปิดใช้งาน กรุณาตรวจสอบและเปิดใช้งานรายการเดิม",
     ok: false,
   };
 }
@@ -99,8 +99,8 @@ export async function saveQuotationCustomerAction(value: unknown): Promise<Custo
       if (!stored) return failed("ไม่พบข้อมูลลูกค้า");
       if (prepared.taxId !== stored.taxId || prepared.customerType !== stored.customerType) {
         return failed("", {
-          customerType: "ไม่สามารถเปลี่ยนประเภทลูกค้าหลังสร้าง Master แล้ว",
-          taxId: "ไม่สามารถเปลี่ยนเลขประจำตัวผู้เสียภาษีหลังสร้าง Master แล้ว",
+          customerType: "ไม่สามารถเปลี่ยนประเภทลูกค้าหลังสร้างข้อมูลลูกค้าแล้ว",
+          taxId: "ไม่สามารถเปลี่ยนเลขประจำตัวผู้เสียภาษีหลังสร้างข้อมูลลูกค้าแล้ว",
         });
       }
       const customer = await updateQuotationCustomer(writeSupabase, prepared, context.user.id);

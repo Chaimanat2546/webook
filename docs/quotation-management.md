@@ -78,14 +78,17 @@ history.
 ## ข้อมูลลูกค้า And DBD
 
 - Customer types are `juristic` and `individual`. Both require an exact
-  13-ASCII-digit tax ID. An individual tax ID has one master row. A juristic
-  tax ID may have one main-office row and multiple rows with distinct,
+  13-ASCII-digit tax ID. An individual tax ID has one customer-data row. A
+  juristic tax ID may have one main-office row and multiple rows with distinct,
   trimmed branch numbers; leading zeroes remain significant. These identities
   stay unique across active and inactive rows. Customer type and tax ID are
-  immutable after the master is created so verified DBD defaults cannot become
+  immutable after the customer data is created so verified DBD defaults cannot become
   attached to another identity.
-- Contact name, phone, and email are optional and master-only. They never render
+- Contact name, phone, and email are optional and stored only in ข้อมูลลูกค้า. They never render
   in quotation preview, print, PDF, or Public Read-only.
+- In Add Customer, selecting `บุคคลธรรมดา` sets office type to `ไม่ระบุ`;
+  selecting `นิติบุคคล` sets it to `สำนักงานใหญ่`. Switching type always
+  overwrites the office choice and clears the branch number.
 - Juristic customers may be checked or refreshed manually through the fixed DBD
   Open Data endpoint. Successful verification stores registered name, address,
   status, and verification time as reset defaults; the full provider response

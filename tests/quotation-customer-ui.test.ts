@@ -51,7 +51,16 @@ describe("quotation customer UI", () => {
 
   it("shows DBD only for juristic customers and keeps contacts in customer data", () => {
     const form = source("../components/admin/quotations/customers/customer-form.tsx");
+    const actions = source("../app/admin/quotations/customers/actions.ts");
     assert.match(form, /customerType === "juristic"/);
+    assert.match(form, /function changeCustomerType\(next: QuotationCustomerInput\["customerType"\]\)/);
+    assert.match(form, /setValue\(\(current\) => changeQuotationCustomerType\(current, next\)\)/);
+    assert.match(form, /onValueChange=\{\(next\) => changeCustomerType/);
+    assert.match(form, /branchNumber: customer\.branchNumber/);
+    assert.match(form, /officeType: customer\.officeType/);
+    assert.match(form, /<fieldset[\s\S]*disabled=\{isPending \|\| Boolean\(customer\)\}/);
+    assert.doesNotMatch(form, /หลังสร้าง Master|ใน Master/);
+    assert.doesNotMatch(actions, /หลังสร้าง Master|ใน Master/);
     assert.match(form, /lookupQuotationCustomerDbdAction/);
     assert.match(form, /บันทึกแบบยังไม่ยืนยัน/);
     assert.match(form, /resetQuotationCustomerFromDbd/);
