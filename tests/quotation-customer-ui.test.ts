@@ -22,6 +22,16 @@ describe("quotation customer UI", () => {
     assert.match(list, /setQuotationCustomerActiveAction/);
   });
 
+  it("uses the Thai customer-data label throughout customer UI", () => {
+    const customerUi = [
+      source("../app/admin/quotations/customers/page.tsx"),
+      source("../components/admin/quotations/customers/customer-list.tsx"),
+      source("../components/admin/quotations/customers/customer-picker-dialog.tsx"),
+    ].join("\n");
+    assert.doesNotMatch(customerUi, /Customer Master/);
+    assert.match(customerUi, /ข้อมูลลูกค้า/);
+  });
+
   it("uses one status dropdown toolbar with add customer at the far right", () => {
     const page = source("../app/admin/quotations/customers/page.tsx");
     const list = source("../components/admin/quotations/customers/customer-list.tsx");
@@ -39,7 +49,7 @@ describe("quotation customer UI", () => {
     assert.ok((list.match(/<CustomerFormDialog/g) ?? []).length >= 2);
   });
 
-  it("shows DBD only for juristic customers and keeps contacts master-only", () => {
+  it("shows DBD only for juristic customers and keeps contacts in customer data", () => {
     const form = source("../components/admin/quotations/customers/customer-form.tsx");
     assert.match(form, /customerType === "juristic"/);
     assert.match(form, /lookupQuotationCustomerDbdAction/);

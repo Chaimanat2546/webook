@@ -133,7 +133,7 @@ export default async function QuotationCustomersPage({
     <div>
       <div className="mb-4">
         <h1 className="text-xl font-semibold">ข้อมูลลูกค้า</h1>
-        <p className="text-sm font-medium text-muted-foreground">Customer Master สำหรับใช้ในใบเสนอราคา</p>
+        <p className="text-sm font-medium text-muted-foreground">ข้อมูลลูกค้าสำหรับใช้ในใบเสนอราคา</p>
       </div>
 
       <QuotationCustomerToolbar

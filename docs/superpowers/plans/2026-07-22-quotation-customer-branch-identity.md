@@ -4,7 +4,7 @@
 
 **Goal:** Allow one juristic tax ID to have one main-office customer and multiple uniquely numbered branch customers without weakening inactive duplicate protection or individual uniqueness.
 
-**Architecture:** Keep one Customer Master row per quotation-selectable location. PostgreSQL partial unique indexes remain the race-safe authority; the repository mirrors the same identity rules for friendly duplicate feedback. Existing server-only service-role writes, RLS reads, DBD flow, and five-field quotation snapshots remain unchanged.
+**Architecture:** Keep one ข้อมูลลูกค้า row per quotation-selectable location. PostgreSQL partial unique indexes remain the race-safe authority; the repository mirrors the same identity rules for friendly duplicate feedback. Existing server-only service-role writes, RLS reads, DBD flow, and five-field quotation snapshots remain unchanged.
 
 **Tech Stack:** Next.js App Router, TypeScript, Supabase PostgreSQL/RLS, Node.js `node:test`.
 
@@ -21,7 +21,7 @@
 
 ---
 
-### Task 1: Branch-aware Customer Master identity
+### Task 1: Branch-aware ข้อมูลลูกค้า identity
 
 **Files:**
 - Create: `supabase/migrations/*_quotation_customer_branch_identity.sql`

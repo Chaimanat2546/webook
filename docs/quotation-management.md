@@ -7,7 +7,7 @@ their own seller profile, reusable payment methods, optional certification
 master, and quotations. Every seller profile, payment master, and quotation is linked to the current
 Supabase Auth user. RLS combines that ownership check with the existing
 quotation permission, so one account cannot read or change another account's
-data. Customer Master is intentionally different: all quotation-authorized
+data. ข้อมูลลูกค้า is intentionally different: all quotation-authorized
 users share it and may add, edit, deactivate, or reactivate customers.
 
 The customer snapshot contains only name, address, tax ID, office type, and
@@ -20,7 +20,7 @@ history.
 - `/admin/quotations` - list, search, print, and soft-delete owned quotations
 - `/admin/quotations/new` - create from the current user's seller and default payment masters
 - `/admin/quotations/[id]` - edit saved seller and payment snapshots
-- `/admin/quotations/customers` - search and manage the shared Customer Master
+- `/admin/quotations/customers` - search and manage the shared ข้อมูลลูกค้า
 - `/admin/quotations/settings/company` - manage the current user's seller profile, payment masters, and certification master
 - `/q/[token]` - no-login, token-scoped public view of the latest saved quotation
 
@@ -75,7 +75,7 @@ history.
 - Public payment JSON contains only fields relevant to each saved payment type,
   including for legacy rows that may still contain hidden values.
 
-## Customer Master And DBD
+## ข้อมูลลูกค้า And DBD
 
 - Customer types are `juristic` and `individual`. Both require an exact
   13-ASCII-digit tax ID. An individual tax ID has one master row. A juristic
@@ -101,10 +101,11 @@ history.
 - Deactivation replaces deletion. Inactive customers remain unique and can be
   found through the inactive filter and reactivated after confirmation, but
   the quotation picker searches active rows only.
-- Selecting a master copies only name, address, tax ID, office type, and branch
-  number into the editable quotation snapshot. It does not store a master ID.
-  Later master edits do not change quotations, and quotation edits do not change
-  Master. Historical quotation customers are not imported automatically.
+- Selecting ข้อมูลลูกค้า copies only name, address, tax ID, office type, and
+  branch number into the editable quotation snapshot. It does not store a
+  customer-data record ID. Later ข้อมูลลูกค้า edits do not change quotations,
+  and quotation edits do not change ข้อมูลลูกค้า. Historical quotation customers
+  are not imported automatically.
 
 ## Payment Methods
 
@@ -247,7 +248,7 @@ Print, or PDF; the Public QR remains required for PDF Download.
 ## Migration And Validation
 
 Migration `20260722090657_quotation_customer_master_dbd.sql` creates the shared
-Customer Master, exact tax-ID and DBD-completeness constraints, quotation
+ข้อมูลลูกค้า, exact tax-ID and DBD-completeness constraints, quotation
 permission RLS, update audit trigger, and the paginated active/inactive list
 RPC. Follow-up migration
 `20260722102825_quotation_customer_branch_identity.sql` replaces tax-only
@@ -301,7 +302,7 @@ built-in bank metadata comes from the catalogue, and custom banks are stored as
 
 Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`.
 The normal test suite mocks DBD and never depends on the live service. To run
-the Customer Master sharing/RLS integration against an already configured local
+the ข้อมูลลูกค้า sharing/RLS integration against an already configured local
 Supabase environment:
 
 ```powershell

@@ -20,7 +20,7 @@ Quotation management is an explicitly added admin module. Users need
 - `/admin/quotations` — list, search, print, and soft delete
 - `/admin/quotations/new` — create from the current seller profile
 - `/admin/quotations/[id]` — edit a saved quotation
-- `/admin/quotations/customers` — manage the shared Customer Master and DBD defaults
+- `/admin/quotations/customers` — manage the shared ข้อมูลลูกค้า and DBD defaults
 - `/admin/quotations/settings/company` — manage seller, payment, and certification masters
 
 Preview uses the current draft; browser print uses the latest save; Share and
@@ -28,7 +28,7 @@ PDF Download require a saved-clean quotation. Public Share is available at
 `/q/[token]`, excludes internal notes, and uses `QUOTATION_PUBLIC_ORIGIN` for
 canonical QR/link generation.
 
-Quotation users share one Customer Master. Juristic customers may be checked
+Quotation users share one ข้อมูลลูกค้า dataset. Juristic customers may be checked
 manually against DBD Open Data or explicitly saved unverified when DBD is
 unavailable; individual customers are entered manually. Every customer tax ID
 is exactly 13 ASCII digits. Optional contact details stay in the master and are

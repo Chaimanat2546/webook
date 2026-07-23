@@ -112,7 +112,7 @@ export function QuotationCustomerPickerDialog({
           <>
             <DialogHeader>
               <DialogTitle>เพิ่มลูกค้าใหม่</DialogTitle>
-              <DialogDescription>บันทึกเข้า Customer Master แล้วเลือกใช้กับใบเสนอราคานี้</DialogDescription>
+              <DialogDescription>บันทึกไว้ในข้อมูลลูกค้าแล้วเลือกใช้กับใบเสนอราคานี้</DialogDescription>
             </DialogHeader>
             <QuotationCustomerForm customer={null} onCancel={() => setView("list")} onSaved={choose} />
           </>

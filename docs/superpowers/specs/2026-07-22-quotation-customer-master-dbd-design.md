@@ -1,4 +1,4 @@
-# Quotation Customer Master With DBD Design
+# Quotation ข้อมูลลูกค้า With DBD Design
 
 Date: 2026-07-22
 
@@ -6,7 +6,7 @@ Status: Approved
 
 ## Goal
 
-Add a shared Customer Master for quotation users. The master supports Thai
+Add shared ข้อมูลลูกค้า for quotation users. The data supports Thai
 juristic persons whose official defaults can be verified through DBD Open Data,
 and individual customers entered manually. Selecting a customer copies the
 existing quotation customer snapshot; later master changes must not alter saved
@@ -14,7 +14,7 @@ quotations.
 
 ## Confirmed Decisions
 
-- Customer Master is shared by every authenticated user with
+- ข้อมูลลูกค้า is shared by every authenticated user with
   `allow_tools.allow_quotation = true`.
 - All quotation users may view, create, edit, deactivate, and reactivate master
   customers.
@@ -29,10 +29,10 @@ quotations.
 - A juristic customer may be saved as unverified when DBD is unavailable or
   returns no matching record, after an explicit warning and confirmation.
 - Individual customers never use DBD and have no DBD verification state.
-- Contact name, phone, and email are optional and remain only in Customer
-  Master. They are not copied to or printed on quotations.
-- Editing a copied quotation snapshot never updates Customer Master.
-- Existing quotation customer snapshots are not imported into Customer Master.
+- Contact name, phone, and email are optional and remain only in ข้อมูลลูกค้า.
+  They are not copied to or printed on quotations.
+- Editing a copied quotation snapshot never updates ข้อมูลลูกค้า.
+- Existing quotation customer snapshots are not imported into ข้อมูลลูกค้า.
 - Deactivation replaces hard deletion.
 - No new dependency is required.
 
@@ -58,11 +58,11 @@ quotations.
 - Persisting the full DBD response.
 - DBD lookup for individual customers.
 - Adding contact fields to the quotation snapshot or document.
-- Automatic synchronization between saved quotations and Customer Master.
+- Automatic synchronization between saved quotations and ข้อมูลลูกค้า.
 - A separate branch table or branch CRUD module. Reusable juristic branches are
-  represented by Customer Master rows under the same tax ID.
+  represented by ข้อมูลลูกค้า rows under the same tax ID.
 
-Ponytail ceiling: keep branches in the existing Customer Master table. Do not
+Ponytail ceiling: keep branches in the existing ข้อมูลลูกค้า table. Do not
 add a branch table or another abstraction while identity indexes can enforce
 the required behavior directly.
 
@@ -278,8 +278,8 @@ Automated coverage must include:
 - UI source/behavior coverage for customer navigation, responsive table/cards,
   DBD controls, unverified confirmation, customer picker, inline creation, and
   snapshot copying.
-- Regression coverage proving quotation snapshot edits do not mutate Customer
-  Master and contact fields are not included in the snapshot.
+- Regression coverage proving quotation snapshot edits do not mutate ข้อมูลลูกค้า
+  and contact fields are not included in the snapshot.
 
 Tests mock the DBD request; the normal test suite must not depend on the live
 external service. Verify the completed UI at mobile, tablet, laptop, and desktop
@@ -310,7 +310,7 @@ Implementation updates:
 - Approved data model and RLS are represented by a new migration.
 - Both customer types work with the confirmed validation rules.
 - DBD defaults, manual override, refresh, reset, and unverified save work.
-- Customer Master is shared only among quotation-authorized users.
+- ข้อมูลลูกค้า is shared only among quotation-authorized users.
 - Quotation selection creates an independent snapshot without contacts.
 - Existing quotations and public quotation rendering remain unchanged.
 - Responsive and accessibility checks pass.
