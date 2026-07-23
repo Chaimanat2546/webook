@@ -157,6 +157,7 @@ export function QuotationCustomerPicker({
             open={open}
           >
             <ComboboxInput
+              aria-label="ลูกค้า"
               aria-describedby={error ? "quotation-customer-error" : undefined}
               aria-invalid={Boolean(error)}
               className="w-full"

@@ -896,7 +896,11 @@ export function QuotationEditor({
       if (!result.ok) {
         const errorFields = Object.keys(result.fieldErrors);
         const firstField = errorFields[0];
-        if (firstField) pendingFocusField.current = firstField;
+        if (firstField) {
+          pendingFocusField.current = firstField.startsWith("customer.")
+            ? "customer.name"
+            : firstField;
+        }
         setFieldErrors(result.fieldErrors);
         if (result.formError) toast.error(result.formError);
         else if (errorFields.length)

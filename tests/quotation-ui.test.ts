@@ -942,7 +942,7 @@ describe("quotation UI", () => {
     assert.match(editor, /const completionField = errorFields\.find[\s\S]*field === "certification"[\s\S]*field\.startsWith\("certification\."\)[\s\S]*field\.startsWith\("paymentMethods"\)/);
     assert.match(editor, /if \(completionField\)[\s\S]*setCompletionExpanded\(true\)[\s\S]*setActiveCompletionTab\([\s\S]*\? "payments"[\s\S]*: "certification"/);
     assert.match(editor, /useEffect\(\(\) => \{[\s\S]*const field = pendingFocusField\.current;[\s\S]*if \(!field \|\| isPending\) return;[\s\S]*pendingFocusField\.current = null;[\s\S]*focusField\(field\);[\s\S]*\}, \[activeCompletionTab, completionExpanded, fieldErrors, isPending\]\)/);
-    assert.match(editor, /if \(!result\.ok\) \{[\s\S]*const errorFields = Object\.keys\(result\.fieldErrors\);[\s\S]*const firstField = errorFields\[0\];[\s\S]*pendingFocusField\.current = firstField;[\s\S]*setFieldErrors\(result\.fieldErrors\)/);
+    assert.match(editor, /if \(!result\.ok\) \{[\s\S]*const errorFields = Object\.keys\(result\.fieldErrors\);[\s\S]*const firstField = errorFields\[0\];[\s\S]*pendingFocusField\.current = firstField\.startsWith\("customer\."\)[\s\S]*\? "customer\.name"[\s\S]*: firstField;[\s\S]*setFieldErrors\(result\.fieldErrors\)/);
   });
 
   it("blocks quotation saves while certification assets upload", () => {

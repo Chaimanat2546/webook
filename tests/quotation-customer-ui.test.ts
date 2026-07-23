@@ -95,6 +95,7 @@ describe("quotation customer UI", () => {
     );
 
     assert.match(picker, /ComboboxInput/);
+    assert.match(picker, /aria-label="ลูกค้า"/);
     assert.match(picker, /filter=\{null\}/);
     assert.match(picker, /searchActiveQuotationCustomersAction/);
     assert.match(picker, /search\.length === 1/);
@@ -113,6 +114,10 @@ describe("quotation customer UI", () => {
     assert.match(picker, /result\.ok/);
     assert.match(editor, /QuotationCustomerPicker/);
     assert.match(editor, /function replaceCustomerSnapshot/);
+    assert.match(
+      editor,
+      /firstField\.startsWith\("customer\."\)\s*\?\s*"customer\.name"\s*:\s*firstField/,
+    );
     assert.doesNotMatch(customerSection, /<TextInput|<Textarea|<OfficeTypeControls/);
     assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);
   });
