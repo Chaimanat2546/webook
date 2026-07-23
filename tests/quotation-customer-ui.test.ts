@@ -86,20 +86,34 @@ describe("quotation customer UI", () => {
     assert.match(form, /ยืนยันเปิดใช้งานลูกค้าเดิม/);
   });
 
-  it("searches active customers and copies only the existing snapshot fields", () => {
+  it("selects quotation customers only through the customer-data combobox", () => {
     const picker = source("../components/admin/quotations/customers/customer-picker-dialog.tsx");
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const customerSection = editor.slice(
+      editor.indexOf("data-customer-section"),
+      editor.indexOf("data-document-section"),
+    );
+
+    assert.match(picker, /ComboboxInput/);
+    assert.match(picker, /filter=\{null\}/);
     assert.match(picker, /searchActiveQuotationCustomersAction/);
+    assert.match(picker, /search\.length === 1/);
+    assert.match(picker, /requestIdRef\.current/);
+    assert.match(picker, /พิมพ์อย่างน้อย 2 ตัวอักษร/);
+    assert.match(picker, /เพิ่มลูกค้าใหม่/);
     assert.match(picker, /QuotationCustomerForm/);
     assert.match(picker, /quotationCustomerToSnapshot/);
     assert.match(picker, /customer\.branchNumber/);
+    assert.match(picker, /เปลี่ยนลูกค้า/);
+    assert.doesNotMatch(picker, /ComboboxClear|showClear/);
     assert.match(picker, /แทนที่ข้อมูลลูกค้า/);
     assert.match(picker, /snapshotFields\.some\(\(field\) => String\(current\[field\]\)\.trim\(\) !== ""\)/);
     assert.match(picker, /searchError/);
     assert.match(picker, /role="alert"/);
     assert.match(picker, /result\.ok/);
-    assert.match(editor, /QuotationCustomerPickerDialog/);
+    assert.match(editor, /QuotationCustomerPicker/);
     assert.match(editor, /function replaceCustomerSnapshot/);
+    assert.doesNotMatch(customerSection, /<TextInput|<Textarea|<OfficeTypeControls/);
     assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);
   });
 });

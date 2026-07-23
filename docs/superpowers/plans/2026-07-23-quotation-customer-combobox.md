@@ -162,7 +162,7 @@ it("selects quotation customers only through the customer-data combobox", () => 
   assert.match(picker, /ComboboxInput/);
   assert.match(picker, /filter=\{null\}/);
   assert.match(picker, /searchActiveQuotationCustomersAction/);
-  assert.match(picker, /query\.trim\(\)\.length === 1/);
+  assert.match(picker, /search\.length === 1/);
   assert.match(picker, /requestIdRef\.current/);
   assert.match(picker, /พิมพ์อย่างน้อย 2 ตัวอักษร/);
   assert.match(picker, /เพิ่มลูกค้าใหม่/);
@@ -286,20 +286,28 @@ useEffect(() => {
   if (!open) return;
   requestIdRef.current += 1;
   const search = query.trim();
-  if (search.length === 1) {
-    requestIdRef.current += 1;
-    setCustomers([]);
-    setHasLoaded(false);
-    setLoading(false);
-    setSearchError("");
-    return;
-  }
+  if (search.length === 1) return;
   const timeoutId = window.setTimeout(
     () => void loadCustomers(search),
     search.length >= 2 ? 250 : 0,
   );
   return () => window.clearTimeout(timeoutId);
 }, [loadCustomers, open, query]);
+```
+
+Reset one-character state from the input event instead of synchronously inside
+the effect:
+
+```ts
+function changeQuery(next: string) {
+  setQuery(next);
+  if (next.trim().length !== 1) return;
+  requestIdRef.current += 1;
+  setCustomers([]);
+  setHasLoaded(false);
+  setLoading(false);
+  setSearchError("");
+}
 ```
 
 When closing, invalidate pending requests:
@@ -309,8 +317,12 @@ function changeOpen(next: boolean) {
   setOpen(next);
   if (!next) {
     requestIdRef.current += 1;
+    setChanging(false);
+    setCustomers([]);
+    setHasLoaded(false);
     setLoading(false);
     setQuery("");
+    setSearchError("");
   }
 }
 ```
@@ -322,9 +334,9 @@ user clicked `เปลี่ยนลูกค้า`:
 <Combobox
   filter={null}
   inputValue={query}
-  itemToStringLabel={(customer: QuotationCustomerMaster) => customer.name}
+  itemToStringValue={(customer: QuotationCustomerMaster) => customer.name}
   items={customers}
-  onInputValueChange={setQuery}
+  onInputValueChange={changeQuery}
   onOpenChange={changeOpen}
   onValueChange={(customer) => customer && choose(customer)}
   open={open}

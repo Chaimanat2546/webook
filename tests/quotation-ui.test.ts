@@ -855,26 +855,22 @@ describe("quotation UI", () => {
     assert.ok((editor.match(/disabled=\{saveDisabled\}/g)?.length ?? 0) >= 2);
   });
 
-  it("uses horizontal shadcn office radios and the shared VAT select geometry", () => {
+  it("uses horizontal seller office radios and the shared VAT select geometry", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.doesNotMatch(editor, /minmax\(36px,1fr\)/);
-    assert.match(editor, /data-customer-fields[^>]*className="grid gap-3 sm:grid-cols-2 xl:grid-cols-\[minmax\(0,1fr\)_max-content_minmax\(0,1fr\)\]"/);
-    assert.ok((editor.match(/className="sm:col-span-2 xl:col-span-3"/g)?.length ?? 0) >= 2);
-    assert.match(editor, /<OfficeTypeControls[\s\S]*field="customer\.officeType"/);
     assert.match(editor, /data-document-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
     assert.match(editor, /const selectClassName =[\s\S]*?"h-8 rounded-lg/);
     assert.match(editor, /import \{ RadioGroup, RadioGroupItem \} from "\.\.\/\.\.\/ui\/radio-group"/);
     assert.match(editor, /function OfficeTypeControls[\s\S]*<RadioGroup[\s\S]*className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2"[\s\S]*<RadioGroupItem/);
     assert.match(editor, /\["unspecified",/);
     assert.match(editor, /<OfficeTypeControls[\s\S]*field="seller\.officeType"/);
-    assert.match(editor, /<OfficeTypeControls[\s\S]*field="customer\.officeType"/);
   });
 
   it("marks every editable native error control as invalid", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const customerPicker = source("../components/admin/quotations/customers/customer-picker-dialog.tsx");
     for (const [field, binding] of [
       ["seller\\.address", 'fieldErrors\\["seller\\.address"\\]'],
-      ["customer\\.address", 'fieldErrors\\["customer\\.address"\\]'],
       ["issueDate", "fieldErrors\\.issueDate"],
       ["validUntil", "fieldErrors\\.validUntil"],
       ["publicNotes", "fieldErrors\\.publicNotes"],
@@ -884,6 +880,7 @@ describe("quotation UI", () => {
     }
     assert.match(editor, /function OfficeTypeControls[\s\S]*<RadioGroup[\s\S]*aria-invalid=\{Boolean\(error\)\}[\s\S]*<RadioGroupItem[\s\S]*data-field=\{field\}/);
     assert.match(editor, /<select[^>]*aria-invalid=\{Boolean\(vatError\)\}[^>]*data-field=\{field\}/);
+    assert.match(customerPicker, /aria-invalid=\{Boolean\(error\)\}[\s\S]*data-field="customer\.name"/);
     assert.match(editor, /const selectClassName =[\s\S]*?disabled:bg-input\/50[^";]*aria-invalid:border-destructive[^";]*aria-invalid:ring-destructive\/20/);
     assert.doesNotMatch(editor, /const selectClassName =[\s\S]*?appearance-none[^";]*";/);
   });
@@ -995,14 +992,11 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /<option value="percent">%<\/option>/);
   });
 
-  it("clears branch numbers when head office is selected", () => {
+  it("clears seller branch numbers when head office is selected", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /function updateSellerOfficeType/);
     assert.match(editor, /branchNumber:[\s\S]*?officeType === "branch" \? current\.seller\.branchNumber : ""/);
-    assert.match(editor, /function updateCustomerOfficeType/);
-    assert.match(editor, /branchNumber:[\s\S]*?officeType === "branch" \? current\.customer\.branchNumber : ""/);
     assert.match(editor, /disabled=\{payload\.seller\.officeType !== "branch"\}/);
-    assert.match(editor, /disabled=\{payload\.customer\.officeType !== "branch"\}/);
   });
 
   it("does not add out-of-scope quotation workflow", () => {
@@ -1068,8 +1062,9 @@ describe("quotation UI", () => {
     assert.match(editor, /function recalculateValidUntil/);
     assert.match(editor, /field="seller\.officeType"/);
     assert.match(editor, /field="seller\.branchNumber"/);
-    assert.match(editor, /field="customer\.officeType"/);
-    assert.match(editor, /field="customer\.branchNumber"/);
+    assert.match(editor, /fieldErrors\["customer\.officeType"\]/);
+    assert.match(editor, /fieldErrors\["customer\.branchNumber"\]/);
+    assert.match(editor, /<QuotationCustomerPicker/);
     assert.match(editor, /aria-invalid/);
     assert.match(editor, /<FieldError error=\{error\} field=\{field\} \/>/);
   });
@@ -1245,5 +1240,18 @@ describe("quotation UI", () => {
     assert.match(editor, /\["name", "address", "taxId", "officeType", "branchNumber"\] as const/);
     assert.match(editor, /changed\(`customer\.\$\{field\}`\)/);
     assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);
+  });
+
+  it("keeps quotation customer identity read-only after customer-data selection", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const customerSection = editor.slice(
+      editor.indexOf("data-customer-section"),
+      editor.indexOf("data-document-section"),
+    );
+
+    assert.match(customerSection, /<QuotationCustomerPicker/);
+    assert.doesNotMatch(customerSection, /onChange=/);
+    assert.doesNotMatch(customerSection, /<TextInput|<Textarea|<OfficeTypeControls/);
+    assert.doesNotMatch(editor, /function updateCustomerOfficeType/);
   });
 });

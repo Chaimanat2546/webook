@@ -71,7 +71,7 @@ import { Input } from "../../ui/input";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Textarea } from "../../ui/textarea";
 import { CertificationFields } from "./certification-fields";
-import { QuotationCustomerPickerDialog } from "./customers/customer-picker-dialog";
+import { QuotationCustomerPicker } from "./customers/customer-picker-dialog";
 import { QuotationDocument } from "./quotation-document";
 import { PaymentMethodList } from "./payment-method-list";
 
@@ -788,16 +788,6 @@ export function QuotationEditor({
       seller: { ...current.seller, [key]: value },
     }));
   }
-  function updateCustomer<K extends keyof CustomerSnapshot>(
-    key: K,
-    value: CustomerSnapshot[K],
-  ) {
-    changed(`customer.${String(key)}`);
-    setPayload((current) => ({
-      ...current,
-      customer: { ...current.customer, [key]: value },
-    }));
-  }
   function replaceCustomerSnapshot(customer: CustomerSnapshot) {
     for (const field of ["name", "address", "taxId", "officeType", "branchNumber"] as const) {
       changed(`customer.${field}`);
@@ -812,20 +802,6 @@ export function QuotationEditor({
         ...current.seller,
         branchNumber:
           officeType === "branch" ? current.seller.branchNumber : "",
-        officeType,
-      },
-    }));
-  }
-  function updateCustomerOfficeType(
-    officeType: CustomerSnapshot["officeType"],
-  ) {
-    changed("customer.officeType");
-    setPayload((current) => ({
-      ...current,
-      customer: {
-        ...current.customer,
-        branchNumber:
-          officeType === "branch" ? current.customer.branchNumber : "",
         officeType,
       },
     }));
@@ -1359,72 +1335,21 @@ export function QuotationEditor({
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">01 ลูกค้า</h2>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <span className="text-xs text-muted-foreground">Snapshot เฉพาะใบ</span>
-              <QuotationCustomerPickerDialog current={payload.customer} onSelect={replaceCustomerSnapshot} />
-            </div>
+            <span className="text-xs text-muted-foreground">
+              เลือกจากข้อมูลลูกค้าเท่านั้น
+            </span>
           </div>
-          <div data-customer-fields className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_max-content_minmax(0,1fr)]">
-            <div className="sm:col-span-2 xl:col-span-3">
-              <TextInput
-                error={fieldErrors["customer.name"]}
-                field="customer.name"
-                label="ชื่อลูกค้า"
-                onChange={(value) => updateCustomer("name", value)}
-                size="name"
-                value={payload.customer.name}
-              />
-            </div>
-            <div className="sm:col-span-2 xl:col-span-3">
-              <Field
-                error={fieldErrors["customer.address"]}
-                field="customer.address"
-                label="ที่อยู่"
-              >
-                <Textarea
-                  aria-describedby={
-                    fieldErrors["customer.address"]
-                      ? fieldErrorId("customer.address")
-                      : undefined
-                  }
-                  aria-invalid={Boolean(fieldErrors["customer.address"])}
-                  className={controlClassName("address")}
-                  data-field="customer.address"
-                  onChange={(event) =>
-                    updateCustomer("address", event.target.value)
-                  }
-                  value={payload.customer.address}
-                />
-              </Field>
-            </div>
-            <TextInput
-              digitsOnly
-              error={fieldErrors["customer.taxId"]}
-              field="customer.taxId"
-              label="เลขผู้เสียภาษี"
-              onChange={(value) => updateCustomer("taxId", value)}
-              size="identifier"
-              value={payload.customer.taxId}
-            />
-            <div>
-              <OfficeTypeControls
-                error={fieldErrors["customer.officeType"]}
-                field="customer.officeType"
-                label="สำนักงานลูกค้า"
-                onChange={updateCustomerOfficeType}
-                value={payload.customer.officeType}
-              />
-            </div>
-            <TextInput
-              disabled={payload.customer.officeType !== "branch"}
-              error={fieldErrors["customer.branchNumber"]}
-              field="customer.branchNumber"
-              label="เลขสาขาลูกค้า"
-              onChange={(value) => updateCustomer("branchNumber", value)}
-              size="identifier"
-              value={payload.customer.branchNumber}
-            />
-          </div>
+          <QuotationCustomerPicker
+            current={payload.customer}
+            error={
+              fieldErrors["customer.name"]
+              || fieldErrors["customer.address"]
+              || fieldErrors["customer.taxId"]
+              || fieldErrors["customer.officeType"]
+              || fieldErrors["customer.branchNumber"]
+            }
+            onSelect={replaceCustomerSnapshot}
+          />
         </section>
         <section
           data-document-section

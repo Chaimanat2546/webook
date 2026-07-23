@@ -38,7 +38,7 @@ history.
 - Seller, payment, and certification remain separate URL-selected sections with independent save actions and selected-section-only server loading.
 - Desktop uses the local settings sidebar. Mobile uses the same real links in an intentionally horizontally scrollable row with `aria-current` on the active section.
 - Editing a mounted section marks it dirty. Moving to another section or returning to the list asks for confirmation; changing sections never autosaves. A successful save clears only the mounted section's dirty state.
-- Seller settings use one flat surface with content-shaped field widths. Office type uses the horizontal Shadcn Radio Group with `ไม่ระบุ`, `สำนักงานใหญ่`, and `สาขา`; it defaults to head office. The same control is used for seller and customer snapshots in the editor. The branch-number input stays visible but disabled unless branch is selected. A selected logo is previewed before save.
+- Seller settings use one flat surface with content-shaped field widths. Office type uses the horizontal Shadcn Radio Group with `ไม่ระบุ`, `สำนักงานใหญ่`, and `สาขา`; it defaults to head office. The seller branch-number input stays visible but disabled unless branch is selected. A selected logo is previewed before save.
 - Reusable payment methods render as responsive cards in settings while quotation-specific payment editing keeps its existing compact layout. Add, remove, drag order, defaults, and type-specific fields keep the same data behavior.
 - Certification keeps issuer and approver stacked on Mobile and side by side from Tablet. Signatures stay with their signer and the company stamp uses a compact asset row.
 - Every section keeps inline field errors and first-error focus, plus Toast for save/upload outcomes. Save is disabled while its section is saving or uploading.
@@ -104,8 +104,15 @@ history.
 - Deactivation replaces deletion. Inactive customers remain unique and can be
   found through the inactive filter and reactivated after confirmation, but
   the quotation picker searches active rows only.
+- A quotation customer is selected only from active `ข้อมูลลูกค้า` through a
+  Combobox. Opening it shows the five most recently updated customers; two or
+  more typed characters search by name or tax ID.
+- When no customer matches, Add Customer saves through the existing customer
+  flow and then selects the saved customer. The quotation stores only the
+  five-field snapshot, so later customer-data edits do not rewrite saved
+  quotations.
 - Selecting ข้อมูลลูกค้า copies only name, address, tax ID, office type, and
-  branch number into the editable quotation snapshot. It does not store a
+  branch number into the quotation snapshot. It does not store a
   customer-data record ID. Later ข้อมูลลูกค้า edits do not change quotations,
   and quotation edits do not change ข้อมูลลูกค้า. Historical quotation customers
   are not imported automatically.
