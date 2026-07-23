@@ -50,10 +50,12 @@ details.
 
 ### Selected state
 
-- After selection, replace the Combobox with a compact customer summary card.
-- The card shows name, tax ID, office, and address.
-- The only selection action is `เปลี่ยนลูกค้า`; the editor does not offer a
-  clear-to-empty action because a quotation requires a customer.
+- Keep the Input Combobox visible after selection and show the selected
+  customer's name in the input.
+- Clicking or typing in the same input opens customer selection immediately;
+  do not require a separate `เปลี่ยนลูกค้า` button.
+- Show the selected customer's tax ID, office, and address below the input.
+- Do not offer a clear-to-empty action because a quotation requires a customer.
 - If customer snapshot fields already contain data and a different customer is
   chosen, require confirmation before replacing them.
 
@@ -77,10 +79,10 @@ details.
 
 ## Responsive and accessibility
 
-- On mobile, the option list uses full-width rows and the summary card stacks
-  its actions below the customer details.
-- On tablet and desktop, the Combobox and summary remain within the existing
-  quotation customer section.
+- On mobile, the input, option list, and selected details use the full available
+  width.
+- On tablet and desktop, the Combobox and selected details remain within the
+  existing quotation customer section.
 - Support keyboard navigation, visible focus, accessible labels, loading/error
   announcements, and Escape to close without changing the selection.
 
@@ -91,6 +93,8 @@ details.
 - Name and tax-ID searches return selectable active customers.
 - No result can create, save, and auto-select a customer.
 - Failed create/search states preserve user input and existing selection.
+- The Input Combobox remains visible after selection and has no separate change
+  button.
 - Selecting or replacing a customer copies only the approved snapshot fields.
 - Existing saved quotations retain their stored snapshot.
 - Verify mobile, tablet, laptop, and desktop layouts.
