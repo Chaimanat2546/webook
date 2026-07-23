@@ -107,6 +107,10 @@ history.
 - A quotation customer is selected only from active `ข้อมูลลูกค้า` through a
   Combobox. Opening it shows the five most recently updated customers; two or
   more typed characters search by name or tax ID.
+- The customer Input Combobox remains visible after selection. The selected
+  customer name stays in the input, while tax ID, office, and address appear
+  below it. Clicking or typing in the input can replace the customer after the
+  existing confirmation; there is no separate change or clear-to-empty action.
 - When no customer matches, Add Customer saves through the existing customer
   flow and then selects the saved customer. The quotation stores only the
   five-field snapshot, so later customer-data edits do not rewrite saved

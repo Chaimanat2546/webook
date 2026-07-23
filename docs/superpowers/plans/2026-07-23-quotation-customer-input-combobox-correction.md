@@ -28,7 +28,7 @@
 - Consumes: `QuotationCustomerPicker({ current, error, onSelect })`
 - Produces: the same component interface with an always-visible Input Combobox
 
-- [ ] **Step 1: Write the failing UI regression test**
+- [x] **Step 1: Write the failing UI regression test**
 
 Update the existing quotation customer picker assertions:
 
@@ -38,7 +38,7 @@ assert.match(picker, /data-selected-customer-details/);
 assert.doesNotMatch(picker, /เปลี่ยนลูกค้า|data-customer-summary/);
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -48,7 +48,7 @@ node --import ./tests/register-server-only.mjs --test tests/quotation-customer-u
 
 Expected: FAIL because the selected state still renders `data-customer-summary` and `เปลี่ยนลูกค้า`.
 
-- [ ] **Step 3: Implement the smallest component correction**
+- [x] **Step 3: Implement the smallest component correction**
 
 In `customer-picker-dialog.tsx`:
 
@@ -60,9 +60,12 @@ In `customer-picker-dialog.tsx`:
 <Combobox
   filter={null}
   inputValue={open ? query : current.name}
+  itemToStringLabel={(customer: QuotationCustomerMaster) => customer.name}
   itemToStringValue={(customer: QuotationCustomerMaster) => customer.name}
   items={customers}
-  onInputValueChange={changeQuery}
+  onInputValueChange={(value, eventDetails) => {
+    if (eventDetails.reason === "input-change") changeQuery(value);
+  }}
   onOpenChange={changeOpen}
   onValueChange={(customer: QuotationCustomerMaster | null) => {
     if (customer) choose(customer);
@@ -72,10 +75,18 @@ In `customer-picker-dialog.tsx`:
 ```
 
 4. Keep the current Combobox content, create modal, and replacement dialog unchanged.
-5. Below the Combobox, show details only when the current snapshot has data:
+5. Treat the current snapshot as selected only when its name or tax ID has data,
+   so the default office type does not show empty details or require replacement
+   confirmation on the first selection:
+
+```ts
+const hasCurrent = current.name.trim() !== "" || current.taxId.trim() !== "";
+```
+
+6. Below the Combobox, show details only when the current snapshot has data:
 
 ```tsx
-{snapshotFields.some((field) => String(current[field]).trim() !== "") ? (
+{hasCurrent ? (
   <div
     className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm"
     data-selected-customer-details
@@ -87,7 +98,7 @@ In `customer-picker-dialog.tsx`:
 ) : null}
 ```
 
-- [ ] **Step 4: Update the behavior documentation**
+- [x] **Step 4: Update the behavior documentation**
 
 Replace the summary-card/change-button wording in `docs/quotation-management.md` with:
 
@@ -98,7 +109,7 @@ below it. Clicking or typing in the input can replace the customer after the
 existing confirmation; there is no separate change or clear-to-empty action.
 ```
 
-- [ ] **Step 5: Run focused verification and verify GREEN**
+- [x] **Step 5: Run focused verification and verify GREEN**
 
 Run:
 
@@ -110,7 +121,7 @@ npm.cmd run lint
 
 Expected: all tests pass, TypeScript reports no errors, and ESLint reports no errors.
 
-- [ ] **Step 6: Verify the local interaction**
+- [x] **Step 6: Verify the local interaction**
 
 On `/admin/quotations/new`, verify:
 
@@ -122,10 +133,9 @@ On `/admin/quotations/new`, verify:
 6. Cancelling or pressing Escape preserves the current customer.
 7. Tax ID, office, and address remain visible below the input.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
-git add -- components/admin/quotations/customers/customer-picker-dialog.tsx tests/quotation-customer-ui.test.ts docs/quotation-management.md
+git add -- components/admin/quotations/customers/customer-picker-dialog.tsx tests/quotation-customer-ui.test.ts docs/quotation-management.md docs/superpowers/plans/2026-07-23-quotation-customer-input-combobox-correction.md
 git commit -m "fix: keep quotation customer combobox visible"
 ```
-

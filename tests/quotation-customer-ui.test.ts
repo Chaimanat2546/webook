@@ -96,6 +96,14 @@ describe("quotation customer UI", () => {
 
     assert.match(picker, /ComboboxInput/);
     assert.match(picker, /aria-label="ลูกค้า"/);
+    assert.match(picker, /inputValue=\{open \? query : current\.name\}/);
+    assert.match(picker, /itemToStringLabel=\{\(customer: QuotationCustomerMaster\) => customer\.name\}/);
+    assert.match(picker, /eventDetails\.reason === "input-change"/);
+    assert.match(
+      picker,
+      /const hasCurrent = current\.name\.trim\(\) !== "" \|\| current\.taxId\.trim\(\) !== ""/,
+    );
+    assert.match(picker, /if \(hasCurrent && differs\)/);
     assert.match(picker, /filter=\{null\}/);
     assert.match(picker, /searchActiveQuotationCustomersAction/);
     assert.match(picker, /search\.length === 1/);
@@ -105,10 +113,10 @@ describe("quotation customer UI", () => {
     assert.match(picker, /QuotationCustomerForm/);
     assert.match(picker, /quotationCustomerToSnapshot/);
     assert.match(picker, /customer\.branchNumber/);
-    assert.match(picker, /เปลี่ยนลูกค้า/);
+    assert.match(picker, /data-selected-customer-details/);
+    assert.doesNotMatch(picker, /เปลี่ยนลูกค้า|data-customer-summary/);
     assert.doesNotMatch(picker, /ComboboxClear|showClear/);
     assert.match(picker, /แทนที่ข้อมูลลูกค้า/);
-    assert.match(picker, /snapshotFields\.some\(\(field\) => String\(current\[field\]\)\.trim\(\) !== ""\)/);
     assert.match(picker, /searchError/);
     assert.match(picker, /role="alert"/);
     assert.match(picker, /result\.ok/);

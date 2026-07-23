@@ -10,7 +10,6 @@ import {
 } from "../../../../lib/quotation-customer-types";
 import type { CustomerSnapshot } from "../../../../lib/quotation-types";
 import { Button } from "../../../ui/button";
-import { Card, CardContent } from "../../../ui/card";
 import {
   Combobox,
   ComboboxContent,
@@ -46,7 +45,6 @@ export function QuotationCustomerPicker({
   error,
   onSelect,
 }: QuotationCustomerPickerProps) {
-  const [changing, setChanging] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [customers, setCustomers] = useState<QuotationCustomerMaster[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -56,9 +54,7 @@ export function QuotationCustomerPicker({
   const [query, setQuery] = useState("");
   const [searchError, setSearchError] = useState("");
   const requestIdRef = useRef(0);
-  const hasCurrent = snapshotFields.some(
-    (field) => String(current[field]).trim() !== "",
-  );
+  const hasCurrent = current.name.trim() !== "" || current.taxId.trim() !== "";
 
   const loadCustomers = useCallback(async (search: string) => {
     const requestId = ++requestIdRef.current;
@@ -100,7 +96,6 @@ export function QuotationCustomerPicker({
     setOpen(next);
     if (!next) {
       requestIdRef.current += 1;
-      setChanging(false);
       setCustomers([]);
       setHasLoaded(false);
       setLoading(false);
@@ -121,7 +116,6 @@ export function QuotationCustomerPicker({
 
   function apply(snapshot: CustomerSnapshot) {
     onSelect(snapshot);
-    setChanging(false);
     setOpen(false);
     setPendingSnapshot(null);
     setQuery("");
@@ -129,33 +123,32 @@ export function QuotationCustomerPicker({
 
   function choose(customer: QuotationCustomerMaster) {
     const snapshot = quotationCustomerToSnapshot(customer);
-    const hasDraft = snapshotFields.some((field) => String(current[field]).trim() !== "");
     const differs = snapshotFields.some((field) => current[field] !== snapshot[field]);
-    if (hasDraft && differs) {
+    if (hasCurrent && differs) {
       setPendingSnapshot(snapshot);
       return;
     }
     apply(snapshot);
   }
 
-  const showPicker = !hasCurrent || changing;
-
   return (
     <>
       <div className="space-y-2">
-        {showPicker ? (
-          <Combobox
-            filter={null}
-            inputValue={query}
-            itemToStringValue={(customer: QuotationCustomerMaster) => customer.name}
-            items={customers}
-            onInputValueChange={(value) => changeQuery(value)}
-            onOpenChange={(next) => changeOpen(next)}
-            onValueChange={(customer: QuotationCustomerMaster | null) => {
-              if (customer) choose(customer);
-            }}
-            open={open}
-          >
+        <Combobox
+          filter={null}
+          inputValue={open ? query : current.name}
+          itemToStringLabel={(customer: QuotationCustomerMaster) => customer.name}
+          itemToStringValue={(customer: QuotationCustomerMaster) => customer.name}
+          items={customers}
+          onInputValueChange={(value, eventDetails) => {
+            if (eventDetails.reason === "input-change") changeQuery(value);
+          }}
+          onOpenChange={(next) => changeOpen(next)}
+          onValueChange={(customer: QuotationCustomerMaster | null) => {
+            if (customer) choose(customer);
+          }}
+          open={open}
+        >
             <ComboboxInput
               aria-label="ลูกค้า"
               aria-describedby={error ? "quotation-customer-error" : undefined}
@@ -220,36 +213,17 @@ export function QuotationCustomerPicker({
                 </div>
               ) : null}
             </ComboboxContent>
-          </Combobox>
-        ) : (
-          <Card
-            aria-describedby={error ? "quotation-customer-error" : undefined}
-            aria-invalid={Boolean(error)}
-            data-field="customer.name"
-            data-customer-summary
-            tabIndex={-1}
+        </Combobox>
+        {hasCurrent ? (
+          <div
+            className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm"
+            data-selected-customer-details
           >
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 space-y-1">
-                <p className="font-medium">{current.name}</p>
-                <p className="font-mono text-xs text-muted-foreground">{current.taxId}</p>
-                <p className="text-sm text-muted-foreground">{officeLabel(current)}</p>
-                <p className="whitespace-pre-line text-sm">{current.address}</p>
-              </div>
-              <Button
-                onClick={() => {
-                  setChanging(true);
-                  setOpen(true);
-                }}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                เปลี่ยนลูกค้า
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+            <p className="font-mono text-xs text-muted-foreground">{current.taxId}</p>
+            <p className="text-muted-foreground">{officeLabel(current)}</p>
+            <p className="whitespace-pre-line">{current.address}</p>
+          </div>
+        ) : null}
         {error ? (
           <p className="text-xs text-destructive" id="quotation-customer-error" role="alert">
             {error}
