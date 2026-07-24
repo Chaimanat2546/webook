@@ -4,22 +4,28 @@
 
 **Goal:** Add per-user quotation display defaults and an independently editable per-quotation snapshot that controls inputs, calculations, and every document surface.
 
-**Architecture:** Store the same validated seven-boolean JSON object on `quotation_company_profiles` and `quotations`. New drafts copy the profile default, saved quotations read only their snapshot, and one shared pure function clears values disabled by the snapshot before calculation or persistence. A focused modal edits the draft and optionally saves the user's future default.
+**Architecture:** Store the same validated ten-boolean JSON object on `quotation_company_profiles` and `quotations`. New drafts copy the profile default, saved quotations read only their snapshot, and one shared pure function clears values disabled by the snapshot before calculation or persistence. A focused modal groups quotation fields and certification display controls, edits the draft, and optionally saves the user's future default.
 
 **Tech Stack:** Next.js App Router, React 19, TypeScript strict mode, ShadcnUI, Supabase PostgreSQL/RLS/RPC, `node:test`, React PDF
 
 ## Global Constraints
 
-- The seven exact settings are `reference`, `notes`, `discount`, `unit`, `tax`, `preTax`, and `withholdingTax`.
+- The ten exact settings are `reference`, `notes`, `discount`, `unit`, `tax`, `preTax`, `withholdingTax`, `certificationQr`, `certificationDate`, and `certificationName`.
 - `reference` controls the existing `reference` field; do not add another reference field.
 - `notes` controls public document notes only; internal notes are unaffected.
 - Turning off reference, notes, discount, unit, tax, or withholding tax clears the corresponding values after confirmation; turning them on does not restore values.
 - `preTax` is display-only and never changes calculations.
-- Existing profiles and quotations migrate to all seven settings enabled.
+- `certificationQr`, `certificationDate`, and `certificationName` are display-only and never clear Public tokens, issue dates, signer names, or customer names.
+- `certificationName` controls issuer, approver, and customer receiver names.
+- `certificationDate` controls issuer and approver dates plus the receiver blank date line.
+- Turning off `certificationQr` hides its heading and image and skips QR generation; PDF download must not require a QR while it is off.
+- The certification row retains its five-slot structure when certification content is hidden.
+- Existing profiles and quotations migrate to all ten settings enabled.
 - Empty discount and VAT columns remain automatically omitted even when their settings are enabled.
 - The modal actions must be exactly `ใช้เฉพาะใบเสนอราคานี้` and `บันทึกเป็นค่าเริ่มต้นทุกใบ`.
 - The second action must explain `มีผลกับใบใหม่ในอนาคต ไม่เปลี่ยนใบที่บันทึกแล้ว`.
 - A failed default save must not change the draft or clear values.
+- The modal stacks `ข้อมูลใบเสนอราคา` (seven switches) and `การรับรอง` (three switches) as separate headed sections with a divider.
 - Use existing ShadcnUI primitives and installed dependencies; add no dependency.
 - Work locally only. Create a new migration but do not push it to any Supabase project or deploy Cloudflare without a separate explicit request.
 - Project subagents are read-only; only the main agent edits files.
@@ -31,7 +37,7 @@
 **Create**
 
 - `lib/quotation-document-display.ts` — exact type, defaults, validation, clear-impact detection, and value-clearing normalization.
-- `components/admin/quotations/quotation-document-display-dialog.tsx` — responsive modal, seven switches, scope actions, and destructive confirmation.
+- `components/admin/quotations/quotation-document-display-dialog.tsx` — responsive two-section modal, ten switches, scope actions, and destructive confirmation.
 - `supabase/migrations/20260723110000_quotation_document_display_settings.sql` — columns, checks, grants, snapshot save wrapper, and public read projection.
 
 **Modify**
@@ -43,6 +49,7 @@
 - `app/admin/quotations/actions.ts` — authenticated action for immediate default saving.
 - `app/admin/quotations/new/page.tsx` — seed new drafts from the profile default.
 - `components/admin/quotations/quotation-editor.tsx` — action-bar button, modal integration, conditional controls, and dirty-state behavior.
+- `app/q/[token]/page.tsx` — skip Public QR generation when the saved snapshot disables it.
 - `components/admin/quotations/quotation-document.tsx` — condition HTML document fields, columns, and totals.
 - `components/admin/quotations/quotation-pdf.tsx` — mirror the shared visibility flags in PDF.
 - `docs/quotation-management.md` — document defaults, snapshots, clearing, and affected surfaces.
@@ -56,6 +63,7 @@
 - `tests/quotation-public-share.test.ts`
 - `tests/quotation-ui.test.ts`
 - `tests/quotation-pdf.test.ts`
+- `tests/quotation-public-qr.test.ts`
 - `tests/quotation-database-integration.test.ts`
 
 ---
@@ -121,6 +129,9 @@ it("clears disabled document values before calculation and persistence", () => {
   };
   payload.withholdingTaxRate = "3";
   payload.documentDisplay = {
+    certificationDate: false,
+    certificationName: false,
+    certificationQr: false,
     discount: false,
     notes: false,
     preTax: false,
@@ -182,6 +193,9 @@ Create `lib/quotation-document-display.ts`:
 import type { QuotationPayload } from "./quotation-types.ts";
 
 export const QUOTATION_DOCUMENT_DISPLAY_KEYS = [
+  "certificationDate",
+  "certificationName",
+  "certificationQr",
   "reference",
   "notes",
   "discount",
@@ -200,6 +214,9 @@ export type QuotationDocumentDisplay = Record<
 >;
 
 export const QUOTATION_DOCUMENT_DISPLAY_DEFAULTS: QuotationDocumentDisplay = {
+  certificationDate: true,
+  certificationName: true,
+  certificationQr: true,
   discount: true,
   notes: true,
   preTax: true,
@@ -410,6 +427,9 @@ default. Extend the integration/public tests to assert:
 
 ```ts
 assert.deepEqual(saved.payload.documentDisplay, {
+  certificationDate: true,
+  certificationName: true,
+  certificationQr: true,
   discount: true,
   notes: true,
   preTax: true,
@@ -439,6 +459,9 @@ and wrapper logic:
 ```sql
 alter table public.quotation_company_profiles
   add column document_display_defaults jsonb not null default '{
+    "certificationDate": true,
+    "certificationName": true,
+    "certificationQr": true,
     "reference": true,
     "notes": true,
     "discount": true,
@@ -450,6 +473,9 @@ alter table public.quotation_company_profiles
 
 alter table public.quotations
   add column document_display_snapshot jsonb not null default '{
+    "certificationDate": true,
+    "certificationName": true,
+    "certificationQr": true,
     "reference": true,
     "notes": true,
     "discount": true,
@@ -464,14 +490,19 @@ alter table public.quotation_company_profiles
   check (
     jsonb_typeof(document_display_defaults) = 'object'
     and document_display_defaults ?& array[
+      'certificationDate', 'certificationName', 'certificationQr',
       'reference', 'notes', 'discount', 'unit', 'tax', 'preTax',
       'withholdingTax'
     ]
     and (
       document_display_defaults
+      - 'certificationDate' - 'certificationName' - 'certificationQr'
       - 'reference' - 'notes' - 'discount' - 'unit' - 'tax'
       - 'preTax' - 'withholdingTax'
     ) = '{}'::jsonb
+    and jsonb_typeof(document_display_defaults -> 'certificationDate') = 'boolean'
+    and jsonb_typeof(document_display_defaults -> 'certificationName') = 'boolean'
+    and jsonb_typeof(document_display_defaults -> 'certificationQr') = 'boolean'
     and jsonb_typeof(document_display_defaults -> 'reference') = 'boolean'
     and jsonb_typeof(document_display_defaults -> 'notes') = 'boolean'
     and jsonb_typeof(document_display_defaults -> 'discount') = 'boolean'
@@ -486,14 +517,19 @@ alter table public.quotations
   check (
     jsonb_typeof(document_display_snapshot) = 'object'
     and document_display_snapshot ?& array[
+      'certificationDate', 'certificationName', 'certificationQr',
       'reference', 'notes', 'discount', 'unit', 'tax', 'preTax',
       'withholdingTax'
     ]
     and (
       document_display_snapshot
+      - 'certificationDate' - 'certificationName' - 'certificationQr'
       - 'reference' - 'notes' - 'discount' - 'unit' - 'tax'
       - 'preTax' - 'withholdingTax'
     ) = '{}'::jsonb
+    and jsonb_typeof(document_display_snapshot -> 'certificationDate') = 'boolean'
+    and jsonb_typeof(document_display_snapshot -> 'certificationName') = 'boolean'
+    and jsonb_typeof(document_display_snapshot -> 'certificationQr') = 'boolean'
     and jsonb_typeof(document_display_snapshot -> 'reference') = 'boolean'
     and jsonb_typeof(document_display_snapshot -> 'notes') = 'boolean'
     and jsonb_typeof(document_display_snapshot -> 'discount') = 'boolean'
@@ -866,6 +902,11 @@ assert.match(dialog, /ใช้เฉพาะใบเสนอราคาน�
 assert.match(dialog, /บันทึกเป็นค่าเริ่มต้นทุกใบ/);
 assert.match(dialog, /มีผลกับใบใหม่ในอนาคต ไม่เปลี่ยนใบที่บันทึกแล้ว/);
 assert.match(dialog, /ข้อมูลต่อไปนี้จะถูกล้าง/);
+assert.match(dialog, /ข้อมูลใบเสนอราคา/);
+assert.match(dialog, /การรับรอง/);
+assert.match(dialog, /QR Code/);
+assert.match(dialog, /วันที่/);
+assert.match(dialog, /ชื่อ/);
 assert.match(editor, /payload\.documentDisplay\.reference/);
 assert.match(editor, /payload\.documentDisplay\.notes/);
 assert.match(editor, /payload\.documentDisplay\.discount/);
@@ -888,14 +929,17 @@ Expected: FAIL because the modal and conditionals do not exist.
 - [ ] **Step 3: Build the focused modal**
 
 Create `quotation-document-display-dialog.tsx` using existing `Button`,
-`Dialog`, `AlertDialog`, and `Switch` components. Use this exact configuration:
+`Dialog`, `AlertDialog`, `Separator`, and `Switch` components. Use these exact
+groups:
 
 ```ts
-const options: Array<{
+interface DisplayOption {
   description: string;
   key: QuotationDocumentDisplayKey;
   label: string;
-}> = [
+}
+
+const quotationOptions: DisplayOption[] = [
   { key: "reference", label: "อ้างอิงถึง", description: "แสดงช่องเลขอ้างอิง" },
   { key: "notes", label: "หมายเหตุ", description: "แสดงหมายเหตุบนเอกสาร" },
   { key: "discount", label: "ส่วนลด", description: "เปิดใช้ส่วนลดต่อรายการ" },
@@ -904,7 +948,25 @@ const options: Array<{
   { key: "preTax", label: "มูลค่าก่อนภาษี", description: "ซ่อนหรือแสดงยอดเท่านั้น" },
   { key: "withholdingTax", label: "หัก ณ ที่จ่าย", description: "เปิดใช้ภาษีหัก ณ ที่จ่าย" },
 ];
+
+const certificationOptions: DisplayOption[] = [
+  { key: "certificationQr", label: "QR Code", description: "แสดง QR Code สำหรับเปิดเอกสารบนเว็บไซต์" },
+  { key: "certificationDate", label: "วันที่", description: "แสดงวันที่ของผู้ลงนามและช่องวันที่ของลูกค้า" },
+  { key: "certificationName", label: "ชื่อ", description: "แสดงชื่อผู้ออก ผู้อนุมัติ และลูกค้า" },
+];
+
+const optionGroups = [
+  { title: "ข้อมูลใบเสนอราคา", options: quotationOptions },
+  { title: "การรับรอง", options: certificationOptions },
+] as const;
+
+const options = optionGroups.flatMap((group) => group.options);
 ```
+
+Render each group as a headed `<section>`, place `Separator` between the two
+sections, and keep one vertical scroll region for the dialog body. Do not use
+side-by-side groups on wide screens; the approved structure remains stacked on
+mobile, tablet, laptop, and desktop.
 
 The dialog copies `payload.documentDisplay` into local state whenever it opens.
 Both scope buttons call one `requestApply(saveAsDefault)` function. That
@@ -988,11 +1050,14 @@ git commit -m "feat: add quotation display settings modal"
 **Files:**
 
 - Modify: `lib/quotation-document-view.ts`
+- Modify: `components/admin/quotations/quotation-editor.tsx`
 - Modify: `components/admin/quotations/quotation-document.tsx`
 - Modify: `components/admin/quotations/quotation-pdf.tsx`
+- Modify: `app/q/[token]/page.tsx`
 - Modify: `tests/quotation-ui.test.ts`
 - Modify: `tests/quotation-pdf.test.ts`
 - Modify: `tests/quotation-public-share.test.ts`
+- Modify: `tests/quotation-public-qr.test.ts`
 
 **Interfaces:**
 
@@ -1000,6 +1065,9 @@ git commit -m "feat: add quotation display settings modal"
 
 ```ts
 showNotes: boolean;
+showCertificationDate: boolean;
+showCertificationName: boolean;
+showCertificationQr: boolean;
 showPreTax: boolean;
 showReference: boolean;
 showTax: boolean;
@@ -1017,6 +1085,9 @@ Add a view-model test matrix and source contracts:
 ```ts
 const payload = validPayload();
 payload.documentDisplay = {
+  certificationDate: false,
+  certificationName: false,
+  certificationQr: false,
   discount: false,
   notes: false,
   preTax: false,
@@ -1033,6 +1104,9 @@ const model = buildQuotationDocumentViewModel({
 assert.equal(model.showItemDiscount, false);
 assert.equal(model.showItemVat, false);
 assert.equal(model.showNotes, false);
+assert.equal(model.showCertificationDate, false);
+assert.equal(model.showCertificationName, false);
+assert.equal(model.showCertificationQr, false);
 assert.equal(model.showPreTax, false);
 assert.equal(model.showReference, false);
 assert.equal(model.showUnit, false);
@@ -1043,6 +1117,9 @@ Assert both HTML and PDF source consume the same flags:
 
 ```ts
 for (const flag of [
+  "showCertificationDate",
+  "showCertificationName",
+  "showCertificationQr",
   "showNotes",
   "showPreTax",
   "showReference",
@@ -1077,6 +1154,9 @@ showItemVat:
   payload.documentDisplay.tax
   && payload.items.some((item) => item.vatTreatment !== "none"),
 showNotes: payload.documentDisplay.notes && Boolean(payload.publicNotes),
+showCertificationDate: payload.documentDisplay.certificationDate,
+showCertificationName: payload.documentDisplay.certificationName,
+showCertificationQr: payload.documentDisplay.certificationQr,
 showPreTax: payload.documentDisplay.preTax,
 showReference:
   payload.documentDisplay.reference && Boolean(payload.reference),
@@ -1096,16 +1176,56 @@ In both renderers:
 - wrap VAT summary with `model.showTax`;
 - wrap withholding summary with `model.showWithholdingTax`;
 - wrap public notes with `model.showNotes`.
+- keep all five certification slot wrappers mounted;
+- inside the QR slot, wrap both its heading and image with
+  `model.showCertificationQr`;
+- inside issuer and approver slots, wrap signer names with
+  `model.showCertificationName` and dates with `model.showCertificationDate`;
+- inside the receiver slot, wrap the customer name with
+  `model.showCertificationName` and the blank date line with
+  `model.showCertificationDate`.
 
 Do not condition internal notes because neither document renderer receives or
 renders them.
+
+Condition QR preparation at every boundary:
+
+```ts
+const needsCertificationQr = payload.documentDisplay.certificationQr;
+const publicQrDataUrl = needsCertificationQr
+  ? await createQuotationPublicQrDataUrl(publicUrl)
+  : "";
+```
+
+- In `app/q/[token]/page.tsx`, call `createQuotationPublicQrDataUrl` only when
+  `quotation.payload.documentDisplay.certificationQr` is true.
+- In `quotation-editor.tsx`, include `payload.documentDisplay.certificationQr`
+  in the QR effect decision. When false, settle with an empty QR without
+  calling the generator. Printing must not wait for QR while false.
+- In PDF download, generate the QR only when the saved payload flag is true.
+- In `collectQuotationPdfImageSources`, include `model.publicQrDataUrl` only
+  when `model.showCertificationQr` is true.
+- Replace the unconditional PDF requirement with:
+
+```ts
+if (
+  model.showCertificationQr
+  && !images[model.publicQrDataUrl]
+) {
+  throw new Error("Public QR image is unavailable");
+}
+```
+
+Add a regression test that injects a QR generator which throws, disables
+`certificationQr`, and asserts PDF preparation succeeds without invoking the
+generator. Retain the existing failure test for the enabled state.
 
 - [ ] **Step 5: Run rendering and regression checks**
 
 Run:
 
 ```powershell
-node --import ./tests/register-server-only.mjs --test tests/quotation-ui.test.ts tests/quotation-pdf.test.ts tests/quotation-public-share.test.ts tests/quotation-print.test.ts
+node --import ./tests/register-server-only.mjs --test tests/quotation-ui.test.ts tests/quotation-pdf.test.ts tests/quotation-public-share.test.ts tests/quotation-public-qr.test.ts tests/quotation-print.test.ts
 npm.cmd run typecheck
 ```
 
@@ -1114,7 +1234,7 @@ Expected: all PASS.
 - [ ] **Step 6: Commit**
 
 ```powershell
-git add -- lib/quotation-document-view.ts components/admin/quotations/quotation-document.tsx components/admin/quotations/quotation-pdf.tsx tests/quotation-ui.test.ts tests/quotation-pdf.test.ts tests/quotation-public-share.test.ts
+git add -- lib/quotation-document-view.ts components/admin/quotations/quotation-editor.tsx components/admin/quotations/quotation-document.tsx components/admin/quotations/quotation-pdf.tsx app/q/[token]/page.tsx tests/quotation-ui.test.ts tests/quotation-pdf.test.ts tests/quotation-public-share.test.ts tests/quotation-public-qr.test.ts
 git commit -m "feat: apply quotation display snapshots"
 ```
 
@@ -1137,9 +1257,10 @@ Add a short `Document display settings` section covering:
 ```markdown
 ### Document display settings
 
-Each user has seven defaults for reference, public notes, item discount, unit,
-VAT, pre-tax total, and withholding tax. A new quotation copies those defaults
-into its own snapshot. Saved quotations never follow later default changes.
+Each user has ten defaults for reference, public notes, item discount, unit,
+VAT, pre-tax total, withholding tax, certification QR Code, certification
+dates, and certification names. A new quotation copies those defaults into its
+own snapshot. Saved quotations never follow later default changes.
 
 Create/Edit exposes the settings from the top action bar. “ใช้เฉพาะใบเสนอราคา
 นี้” changes the draft snapshot. “บันทึกเป็นค่าเริ่มต้นทุกใบ” also saves the
@@ -1148,6 +1269,11 @@ quotations.
 
 Turning off reference, public notes, discount, unit, VAT, or withholding tax
 requires confirmation when data would be cleared. Pre-tax is display-only.
+Certification QR Code, date, and name settings are also display-only and do
+not clear their source data. The modal groups the first seven controls under
+`ข้อมูลใบเสนอราคา` and the three certification controls under `การรับรอง`.
+Disabling certification QR skips QR generation and does not block PDF
+download.
 The snapshot controls Create/Edit, Preview, Print, PDF, and Public Share.
 ```
 
@@ -1175,12 +1301,16 @@ With the existing local dev server, verify at widths `390`, `768`, `1366`, and
 1. Open Create and confirm the action-bar button remains reachable.
 2. Toggle every switch and confirm both scope actions fit without horizontal
    scrolling.
+   Confirm `ข้อมูลใบเสนอราคา` and `การรับรอง` remain separate stacked sections.
 3. Turn off a populated field and confirm the consolidated warning appears.
 4. Cancel and confirm no value changes.
 5. Save only the current quotation and confirm a second new draft retains the
    previous user default.
 6. Save as default and confirm a new draft copies it.
 7. Confirm Preview, saved Print, PDF, and Public Share match the snapshot.
+   Disable each certification option separately and confirm the five-slot row
+   remains aligned while only the intended QR, dates, or names disappear.
+   Download PDF with QR disabled and confirm no QR error occurs.
 8. Edit a saved quotation and confirm changing the user default elsewhere does
    not change its snapshot.
 
@@ -1215,7 +1345,8 @@ separate focused fix commit before the documentation commit.
 
 ## Definition of Done
 
-- The seven switches have the approved labels and behavior.
+- The ten switches have the approved labels, two-section grouping, and
+  behavior.
 - Per-user defaults and per-quotation snapshots are both persisted and owner
   isolated.
 - Existing quotations start all enabled and remain independently editable.
