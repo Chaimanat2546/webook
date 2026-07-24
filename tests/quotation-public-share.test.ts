@@ -46,7 +46,7 @@ describe("quotation public share", () => {
   it("keeps draft QR clean-only while preserving the saved QR for print", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const \[publicQrDataUrl, setPublicQrDataUrl\] = useState\(""\)/);
-    assert.match(editor, /if \(!publicOrigin \|\| !publicToken\)[\s\S]*setPublicQrDataUrl\(""\)/);
+    assert.match(editor, /if \(!lastSavedPayload\?\.documentDisplay\.certificationQr \|\| !publicOrigin \|\| !publicToken\)[\s\S]*setPublicQrDataUrl\(""\)/);
     assert.match(editor, /createQuotationPublicQrDataUrl\(publicUrl\)/);
     assert.match(editor, /let stale = false/);
     assert.match(editor, /if \(stale\) return;[\s\S]*setPublicQrDataUrl/);
@@ -63,10 +63,10 @@ describe("quotation public share", () => {
   it("waits for a clean saved quotation QR before printing", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const \[publicQrSettledToken, setPublicQrSettledToken\] = useState\(""\)/);
-    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*publicOrigin &&[\s\S]*publicToken &&[\s\S]*publicQrSettledToken !== publicToken/);
+    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*documentDisplay\.certificationQr[\s\S]*publicOrigin[\s\S]*publicToken[\s\S]*publicQrSettledToken !== publicToken/);
     assert.doesNotMatch(editor, /const publicQrPending = Boolean\([\s\S]*!isDirty[\s\S]*publicQrSettledToken !== publicToken/);
     assert.match(editor, /const canPrint = Boolean\([\s\S]*!publicQrPending/);
-    assert.equal(editor.match(/setPublicQrSettledToken\(publicToken\)/g)?.length, 2);
+    assert.match(editor, /setPublicQrSettledToken\(publicToken \?\? ""\)/);
   });
 
   it("uses the same saved payment document for public read-only", () => {

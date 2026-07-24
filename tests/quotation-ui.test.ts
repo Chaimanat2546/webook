@@ -8,6 +8,22 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("groups quotation and certification display switches in one modal", () => {
+    const dialog = source("../components/admin/quotations/quotation-document-display-dialog.tsx");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(dialog, /ข้อมูลใบเสนอราคา/);
+    assert.match(dialog, /การรับรอง/);
+    assert.match(dialog, /certificationQr/);
+    assert.match(dialog, /certificationDate/);
+    assert.match(dialog, /certificationName/);
+    assert.match(editor, /QuotationDocumentDisplayDialog/);
+    assert.match(editor, /payload\.documentDisplay\.reference \?/);
+    assert.match(editor, /payload\.documentDisplay\.notes \?/);
+    assert.match(editor, /payload\.documentDisplay\.withholdingTax \?/);
+    assert.match(editor, /showUnit: payload\.documentDisplay\.unit/);
+    assert.match(editor, /showDiscount: payload\.documentDisplay\.discount/);
+    assert.match(editor, /showTax: payload\.documentDisplay\.tax/);
+  });
   it("adapts the shared A4 document to the approved quotation reference", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
 
@@ -268,6 +284,14 @@ describe("quotation UI", () => {
     );
 
     assert.match(certification, /grid-cols-5/);
+    assert.match(
+      certification,
+      /model\.showCertificationQr \? "grid-cols-5" : "grid-cols-4"/,
+    );
+    assert.match(
+      certification,
+      /\{model\.showCertificationQr \? \([\s\S]*data-document-public-qr[\s\S]*\) : null\}/,
+    );
     assert.doesNotMatch(
       certification,
       /<section\s*className="[^"]*\bborder-b\b/,
@@ -288,6 +312,24 @@ describe("quotation UI", () => {
     assert.doesNotMatch(certification, /ตำแหน่ง/);
     assert.doesNotMatch(signer, /signer\.position/);
     assert.match(certification, /break-inside-avoid/);
+    assert.match(
+      document,
+      /const compactCertification = !model\.showCertificationName && !model\.showCertificationDate/,
+    );
+    assert.equal(
+      certification.match(/compactCertification \? "h-12" : "h-20"/g)?.length,
+      3,
+    );
+    assert.equal(
+      certification.match(/compact=\{compactCertification\}/g)?.length,
+      2,
+    );
+    assert.match(signer, /compact \? "h-12" : "h-20"/);
+    assert.equal(
+      certification.match(/compactCertification \? "max-h-10" : "max-h-(?:16|20)"/g)?.length,
+      2,
+    );
+    assert.match(signer, /compact \? "max-h-10" : "max-h-16"/);
     assert.match(certification, /\[overflow-wrap:anywhere\]/);
     assert.match(certification, /<DocumentImage[\s\S]*?object-contain/);
     assert.doesNotMatch(document, /<(?:Input|input)[\s>]/);
@@ -985,7 +1027,7 @@ describe("quotation UI", () => {
     const item = editor.slice(editor.indexOf("function SortableQuotationItem"), editor.indexOf("function ItemDetailsControls"));
     const header = editor.slice(editor.indexOf("itemGrid()"), editor.indexOf("<DragDropProvider"));
     assert.match(item, /<span className="xl:sr-only">มูลค่าก่อนภาษี <\/span>/);
-    assert.match(header, /<span className="text-right">มูลค่าก่อนภาษี<\/span>/);
+    assert.match(header, /<span className="text-right xl:col-start-8">มูลค่าก่อนภาษี<\/span>/);
     assert.doesNotMatch(item + header, />รวม<|>รวม <|รวม<\/span>/);
     assert.match(document, /มูลค่าก่อนภาษี/);
     assert.doesNotMatch(editor + document, /documentDiscount|discountType|discountValue/);
@@ -1113,7 +1155,7 @@ describe("quotation UI", () => {
     const header = editor.slice(editor.indexOf("itemGrid()"), editor.indexOf("<DragDropProvider"));
 
     assert.ok(editor.includes("xl:[&_label>span:first-child]:sr-only"));
-    assert.match(header, /<span>หน่วย<\/span>/);
+    assert.match(header, /documentDisplay\.unit \? <span className="xl:col-start-4">หน่วย<\/span> : null/);
   });
 
   it("surfaces optional item unit validation errors", () => {
@@ -1133,7 +1175,7 @@ describe("quotation UI", () => {
     assert.match(editor, /function itemGrid\(\)[\s\S]*return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_9rem_8\.5rem_2\.5rem\]"/);
     assert.match(editor, /aria-label=\{`ลบรายการ[\s\S]*?className="xl:col-start-\[-2\]"/);
     assert.match(editor, /className="[^"]*xl:col-start-\[-3\][^"]*"[\s\S]*?<span className="xl:sr-only">มูลค่าก่อนภาษี/);
-    assert.doesNotMatch(editor, /xl:col-start-8/);
+    assert.match(editor, /className="text-right xl:col-start-8">มูลค่าก่อนภาษี/);
   });
 
   it("keeps item discount and VAT controls on the first desktop ledger row", () => {

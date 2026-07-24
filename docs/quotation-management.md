@@ -222,7 +222,8 @@ it. Upload failure preserves the previous saved asset and snapshot.
 Certification signatures and company stamps follow the same 2 MB PNG
 normalization boundary under `/quotations/certification-assets/<uuid>.png`.
 Failed optional document images are omitted without breaking Preview, Public,
-Print, or PDF; the Public QR remains required for PDF Download.
+Print, or PDF. The Public QR is required for PDF Download only when its
+document-display setting is enabled.
 
 ## Certification, Public Share, And PDF
 
@@ -245,6 +246,21 @@ Print, or PDF; the Public QR remains required for PDF Download.
   notes, and the compact five-slot certification row.
 - Link expiry, passwords, token rotation, e-signing, approval workflow, and
   orphaned-asset garbage collection remain outside this MVP.
+
+### Document display settings
+
+Create and Edit expose `ตั้งค่ารูปแบบเอกสาร` with two stacked sections:
+`ข้อมูลใบเสนอราคา` and `การรับรอง`. Each account has ten defaults, and every
+quotation saves an independent snapshot so later default changes do not alter
+existing documents.
+
+The certification switches independently control QR Code, dates, and names in
+Preview, Print, PDF, and Public Read-only. They are display-only: disabling
+them does not clear the Public token, issue date, signer names, or customer
+name. The certification row uses five equal slots while QR Code is enabled.
+When QR Code is disabled, its slot is removed and the remaining four slots
+shift left and expand evenly; QR generation is skipped and PDF Download does
+not require it.
 
 ### Document surface consistency
 

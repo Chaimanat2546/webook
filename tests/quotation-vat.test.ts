@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { normalizeQuotationVatChoices } from "../lib/quotation-vat.ts";
+import { QUOTATION_DOCUMENT_DISPLAY_DEFAULTS } from "../lib/quotation-document-display.ts";
 import type { QuotationPayload } from "../lib/quotation-types.ts";
 
 function payload(): QuotationPayload {
@@ -11,6 +12,7 @@ function payload(): QuotationPayload {
       companyStampUrl: "",
       issuer: { name: "", position: "", signatureUrl: "" },
     },
+    documentDisplay: { ...QUOTATION_DOCUMENT_DISPLAY_DEFAULTS },
     customer: { address: "Customer", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "0200000000000" },
     id: "quotation-id",
     internalNotes: "",

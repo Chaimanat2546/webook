@@ -7,6 +7,7 @@ import {
   updateCertificationSigner,
   type CertificationSnapshot,
 } from "../lib/quotation-certification.ts";
+import { QUOTATION_DOCUMENT_DISPLAY_DEFAULTS } from "../lib/quotation-document-display.ts";
 import {
   prepareQuotationPayload as prepareQuotationPayloadWithCatalog,
   QuotationValidationError,
@@ -24,6 +25,7 @@ const validPayload = () => ({
     companyStampUrl: "",
     issuer: { name: "  ผู้ออกเอกสาร  ", position: "ฝ่ายขาย", signatureUrl: "" },
   },
+  documentDisplay: { ...QUOTATION_DOCUMENT_DISPLAY_DEFAULTS },
   customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "0200000000000" },
   id: null,
   internalNotes: "",

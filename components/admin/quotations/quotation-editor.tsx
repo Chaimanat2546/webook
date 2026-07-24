@@ -26,7 +26,12 @@ import { toast } from "sonner";
 import {
   deleteQuotationAction,
   saveQuotationAction,
+  saveQuotationDocumentDisplayDefaultsAction,
 } from "../../../app/admin/quotations/actions";
+import {
+  applyQuotationDocumentDisplay,
+  type QuotationDocumentDisplay,
+} from "../../../lib/quotation-document-display";
 import {
   calculateQuotation,
   formatThaiBahtText,
@@ -73,6 +78,7 @@ import { Textarea } from "../../ui/textarea";
 import { CertificationFields } from "./certification-fields";
 import { QuotationCustomerPicker } from "./customers/customer-picker-dialog";
 import { QuotationDocument } from "./quotation-document";
+import { QuotationDocumentDisplayDialog } from "./quotation-document-display-dialog";
 import { PaymentMethodList } from "./payment-method-list";
 
 export interface QuotationEditorProps {
@@ -102,6 +108,9 @@ type ItemProps = {
     key: K,
     value: QuotationItemInput[K],
   ) => void;
+  showDiscount: boolean;
+  showTax: boolean;
+  showUnit: boolean;
   totalItems: number;
 };
 type FieldSize =
@@ -434,18 +443,18 @@ function SortableQuotationItem(props: ItemProps) {
         <div className="xl:col-start-3 xl:row-start-1">
           <ItemQuantityControl {...props} labelled />
         </div>
-        <div className="xl:col-start-4 xl:row-start-1">
+        {props.showUnit ? <div className="xl:col-start-4 xl:row-start-1">
           <ItemUnitControl {...props} labelled />
-        </div>
+        </div> : null}
         <div className="xl:col-start-5 xl:row-start-1">
           <ItemPriceControls {...props} labelled />
         </div>
-        <div className="xl:col-start-6 xl:row-start-1">
+        {props.showDiscount ? <div className="xl:col-start-6 xl:row-start-1">
           <ItemDiscountControls {...props} labelled />
-        </div>
-        <div className="xl:col-start-7 xl:row-start-1">
+        </div> : null}
+        {props.showTax ? <div className="xl:col-start-7 xl:row-start-1">
           <ItemVatControls {...props} labelled />
-        </div>
+        </div> : null}
       </div>
       <p className="mt-3 max-w-full border-t pt-2 text-right font-medium tabular-nums [overflow-wrap:anywhere] xl:col-start-[-3] xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
         <span className="xl:sr-only">มูลค่าก่อนภาษี </span>
@@ -708,7 +717,10 @@ export function QuotationEditor({
     ? "ยังไม่ได้ตั้งค่า URL สาธารณะสำหรับใบเสนอราคา"
     : "";
   const publicQrPending = Boolean(
-    publicOrigin && publicToken && publicQrSettledToken !== publicToken,
+    lastSavedPayload?.documentDisplay.certificationQr
+    && publicOrigin
+    && publicToken
+    && publicQrSettledToken !== publicToken,
   );
   const savedPublicQrDataUrl =
     publicOrigin && publicToken && publicQrSettledToken === publicToken
@@ -743,6 +755,22 @@ export function QuotationEditor({
       delete next[field];
       return next;
     });
+  }
+  async function applyDocumentDisplay(
+    value: QuotationDocumentDisplay,
+    saveAsDefault: boolean,
+  ): Promise<boolean> {
+    if (saveAsDefault) {
+      const result = await saveQuotationDocumentDisplayDefaultsAction(value);
+      if (!result.ok) {
+        toast.error(result.formError);
+        return false;
+      }
+    }
+    changed("documentDisplay");
+    setPayload((current) => applyQuotationDocumentDisplay(current, value));
+    if (saveAsDefault) toast.success("บันทึกค่าเริ่มต้นรูปแบบเอกสารแล้ว");
+    return true;
   }
   function updateRoot<K extends keyof QuotationPayload>(
     key: K,
@@ -999,11 +1027,11 @@ export function QuotationEditor({
   }, [canPrint, printOnLoad, printSaved]);
   useEffect(() => {
     let stale = false;
-    if (!publicOrigin || !publicToken) {
+    if (!lastSavedPayload?.documentDisplay.certificationQr || !publicOrigin || !publicToken) {
       queueMicrotask(() => {
         if (stale) return;
         setPublicQrDataUrl("");
-        setPublicQrSettledToken("");
+        setPublicQrSettledToken(publicToken ?? "");
       });
       return () => {
         stale = true;
@@ -1026,7 +1054,7 @@ export function QuotationEditor({
     return () => {
       stale = true;
     };
-  }, [publicOrigin, publicToken]);
+  }, [lastSavedPayload?.documentDisplay.certificationQr, publicOrigin, publicToken]);
   useEffect(() => {
     if (!isDirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -1056,12 +1084,15 @@ export function QuotationEditor({
   }
   async function downloadSaved() {
     if (!canUseSavedDocument || !lastSavedPayload || !savedCalculation || !documentNumber || isDownloading) return;
-    if (!publicOrigin || !publicToken) return;
+    const needsPublicQr = lastSavedPayload.documentDisplay.certificationQr;
+    if (needsPublicQr && (!publicOrigin || !publicToken)) return;
     setIsDownloading(true);
     try {
-      const publicQrDataUrl = savedPublicQrDataUrl || await createQuotationPublicQrDataUrl(
-        buildQuotationPublicUrl(publicOrigin, publicToken),
-      );
+      const publicQrDataUrl = needsPublicQr
+        ? savedPublicQrDataUrl || await createQuotationPublicQrDataUrl(
+          buildQuotationPublicUrl(publicOrigin!, publicToken!),
+        )
+        : "";
       const { downloadQuotationPdf } = await import("./quotation-pdf");
       await downloadQuotationPdf({
         calculation: savedCalculation,
@@ -1103,6 +1134,9 @@ export function QuotationEditor({
     itemNames,
     onRemove: () => removeItem(index),
     onUpdate: (key, value) => updateItem(index, key, value),
+    showDiscount: payload.documentDisplay.discount,
+    showTax: payload.documentDisplay.tax,
+    showUnit: payload.documentDisplay.unit,
     totalItems: payload.items.length,
   });
   const saveDisabled = isPending || uploadingFields.size > 0;
@@ -1200,6 +1234,11 @@ export function QuotationEditor({
           className="flex flex-wrap items-center gap-2"
           data-document-actions
         >
+          <QuotationDocumentDisplayDialog
+            disabled={isPending || uploadingFields.size > 0}
+            onApply={applyDocumentDisplay}
+            payload={payload}
+          />
           <Button
             aria-describedby={shareUnavailableMessage ? "quotation-share-unavailable" : undefined}
             disabled={!canUseSavedDocument}
@@ -1427,7 +1466,7 @@ export function QuotationEditor({
               size="name"
               value={payload.subject}
             />
-            <div className="sm:col-span-2">
+            {payload.documentDisplay.reference ? <div className="sm:col-span-2">
               <TextInput
                 error={fieldErrors.reference}
                 field="reference"
@@ -1436,7 +1475,7 @@ export function QuotationEditor({
                 size="identifier"
                 value={payload.reference}
               />
-            </div>
+            </div> : null}
           </div>
         </section>
       </div>
@@ -1448,14 +1487,14 @@ export function QuotationEditor({
             itemGrid(),
           )}
         >
-          <span>#</span>
-          <span>รายการ / รายละเอียด</span>
-          <span>จำนวน</span>
-          <span>หน่วย</span>
-          <span>ราคาต่อหน่วย</span>
-          <span>ส่วนลด</span>
-          <span>VAT</span>
-          <span className="text-right">มูลค่าก่อนภาษี</span>
+          <span className="xl:col-start-1">#</span>
+          <span className="xl:col-start-2">รายการ / รายละเอียด</span>
+          <span className="xl:col-start-3">จำนวน</span>
+          {payload.documentDisplay.unit ? <span className="xl:col-start-4">หน่วย</span> : null}
+          <span className="xl:col-start-5">ราคาต่อหน่วย</span>
+          {payload.documentDisplay.discount ? <span className="xl:col-start-6">ส่วนลด</span> : null}
+          {payload.documentDisplay.tax ? <span className="xl:col-start-7">VAT</span> : null}
+          <span className="text-right xl:col-start-8">มูลค่าก่อนภาษี</span>
         </div>
         <DragDropProvider
           onDragEnd={(event) => {
@@ -1496,7 +1535,7 @@ export function QuotationEditor({
           data-notes-grid
           className="grid gap-4 lg:col-start-1 lg:row-start-1 lg:grid-cols-2"
         >
-          <div data-public-notes>
+          {payload.documentDisplay.notes ? <div data-public-notes>
             <Field
               error={fieldErrors.publicNotes}
               field="publicNotes"
@@ -1516,7 +1555,7 @@ export function QuotationEditor({
                 value={payload.publicNotes}
               />
             </Field>
-          </div>
+          </div> : null}
           <div data-field="items" data-internal-notes tabIndex={-1}>
             {fieldErrors.items ? (
               <span className="text-xs text-destructive">
@@ -1565,7 +1604,7 @@ export function QuotationEditor({
             label="จำนวนเงินรวมทั้งสิ้น"
             value={money(calculation?.grandTotal)}
           />
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2">
+          {payload.documentDisplay.withholdingTax ? <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2">
             <label className="flex flex-wrap items-center gap-2 text-sm">
               <input
                 checked={payload.withholdingTaxRate !== null}
@@ -1590,7 +1629,7 @@ export function QuotationEditor({
             <output className="ml-auto max-w-full text-right tabular-nums [overflow-wrap:anywhere]">
               {money(calculation?.withholdingTaxTotal)}
             </output>
-          </div>
+          </div> : null}
           <Totals bold label="ยอดชำระ" value={money(calculation?.amountDue)} />
           <p className="text-sm">
             {calculation ? formatThaiBahtText(calculation.amountDue) : "—"}

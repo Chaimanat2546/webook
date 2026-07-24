@@ -41,6 +41,18 @@ function payload(
       officeType: "head_office",
       taxId: "0200000000000",
     },
+    document_display_snapshot: {
+      certificationDate: true,
+      certificationName: true,
+      certificationQr: true,
+      discount: true,
+      notes: true,
+      preTax: true,
+      reference: true,
+      tax: true,
+      unit: true,
+      withholdingTax: true,
+    },
     company_profile_id: null as string | null,
     id,
     internal_notes: "",
@@ -176,6 +188,28 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       p_payload: invalid,
     });
     assert.equal(error?.code, "23503");
+  });
+
+  it("validates and persists document display through both save RPCs", async () => {
+    const invalid = payload(null);
+    delete (invalid.document_display_snapshot as Partial<typeof invalid.document_display_snapshot>)
+      .certificationQr;
+    for (const rpc of ["save_quotation", "save_quotation_with_payments"] as const) {
+      const { error } = await allowed.rpc(rpc, { p_payload: invalid });
+      assert.equal(error?.code, "22023");
+    }
+
+    const value = payload(null);
+    value.document_display_snapshot.certificationQr = false;
+    value.document_display_snapshot.reference = false;
+    const created = await save(allowed, value);
+    const stored = await allowed
+      .from("quotations")
+      .select("document_display_snapshot")
+      .eq("id", created.id)
+      .single();
+    assert.equal(stored.error, null, stored.error?.message);
+    assert.deepEqual(stored.data.document_display_snapshot, value.document_display_snapshot);
   });
 
   after(async () => {

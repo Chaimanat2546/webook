@@ -97,6 +97,81 @@ const itemCatalogueMigrationName = readdirSync(new URL("../supabase/migrations/"
   .find((name) => name.endsWith("_quotation_item_catalog.sql"));
 
 describe("quotation migration", () => {
+  it("persists exact ten-flag document display defaults and snapshots", () => {
+    const sql = readFileSync(
+      "supabase/migrations/20260724120000_quotation_document_display_settings.sql",
+      "utf8",
+    );
+    assert.match(sql, /document_display_defaults jsonb not null/);
+    assert.match(sql, /document_display_snapshot jsonb not null/);
+    for (const key of [
+      "certificationDate",
+      "certificationName",
+      "certificationQr",
+      "discount",
+      "notes",
+      "preTax",
+      "reference",
+      "tax",
+      "unit",
+      "withholdingTax",
+    ]) {
+      assert.match(sql, new RegExp(`'${key}'`));
+    }
+    assert.match(sql, /'document_display_snapshot', q\.document_display_snapshot/);
+  });
+  it("keeps document display writes inside the private save boundary", () => {
+    const sql = readFileSync(
+      "supabase/migrations/20260724130000_quotation_document_display_save_boundary.sql",
+      "utf8",
+    );
+    assert.match(sql, /create or replace function private\.is_quotation_document_display\(value jsonb\)/i);
+    assert.match(sql, /drop constraint if exists quotations_document_display_snapshot_valid/i);
+    assert.doesNotMatch(sql, /set document_display_snapshot = document_display_snapshot \|\|/i);
+    assert.match(sql, /add constraint quotations_document_display_snapshot_valid[\s\S]*not valid/i);
+    assert.match(
+      sql,
+      /create or replace function private\.save_quotation_with_document_display\(p_payload jsonb\)[\s\S]*security definer/i,
+    );
+    assert.match(sql, /update public\.quotations q[\s\S]*q\.created_by = auth\.uid\(\)/i);
+    assert.match(
+      sql,
+      /create or replace function public\.save_quotation_with_payments\(p_payload jsonb\)[\s\S]*security invoker[\s\S]*private\.save_quotation_with_document_display\(p_payload\)/i,
+    );
+    const publicWrapper = sql.slice(
+      sql.indexOf("create or replace function public.save_quotation_with_payments"),
+    );
+    assert.doesNotMatch(publicWrapper, /update public\.quotations/i);
+  });
+  it("upgrades legacy seven-flag document display defaults", () => {
+    const sql = readFileSync(
+      "supabase/migrations/20260724140000_quotation_document_display_defaults.sql",
+      "utf8",
+    );
+    assert.match(sql, /alter column document_display_defaults set default/i);
+    assert.match(sql, /alter column document_display_snapshot set default/i);
+    for (const key of [
+      "certificationDate",
+      "certificationName",
+      "certificationQr",
+    ]) {
+      assert.match(sql, new RegExp(`"${key}"\\s*:\\s*true`));
+    }
+  });
+  it("backfills legacy display values and closes the legacy save RPC bypass", () => {
+    const sql = readFileSync(
+      "supabase/migrations/20260724150000_quotation_document_display_legacy_upgrade.sql",
+      "utf8",
+    );
+    assert.match(sql, /update public\.quotation_company_profiles[\s\S]*jsonb_build_object\([\s\S]*'certificationDate'[\s\S]*true[\s\S]*'certificationName'[\s\S]*true[\s\S]*'certificationQr'[\s\S]*true/i);
+    assert.match(sql, /update public\.quotations[\s\S]*jsonb_build_object\([\s\S]*'certificationDate'[\s\S]*true[\s\S]*'certificationName'[\s\S]*true[\s\S]*'certificationQr'[\s\S]*true/i);
+    assert.match(sql, /validate constraint quotation_company_profiles_document_display_defaults_valid/i);
+    assert.match(sql, /validate constraint quotations_document_display_snapshot_valid/i);
+    assert.match(
+      sql,
+      /create or replace function public\.save_quotation\(p_payload jsonb\)[\s\S]*private\.save_quotation_with_document_display\(p_payload\)/i,
+    );
+  });
   it("installs the read-only quotation item catalogue", () => {
     assert.ok(itemCatalogueMigrationName, "quotation item catalogue migration must be created by the Supabase CLI");
     const itemCatalogueSql = readFileSync(

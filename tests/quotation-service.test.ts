@@ -7,6 +7,10 @@ import {
 } from "../lib/quotation-dates.ts";
 import { emptyCertificationSnapshot } from "../lib/quotation-certification.ts";
 import {
+  QUOTATION_DOCUMENT_DISPLAY_DEFAULTS,
+  quotationDocumentDisplayClearImpact,
+} from "../lib/quotation-document-display.ts";
+import {
   prepareQuotationPayload as prepareQuotationPayloadWithCatalog,
   prepareSellerSnapshot,
   QuotationValidationError,
@@ -29,6 +33,7 @@ function prepareQuotationPayload(value: unknown) {
 function validPayload(): QuotationPayload {
   return {
     certification: emptyCertificationSnapshot(),
+    documentDisplay: { ...QUOTATION_DOCUMENT_DISPLAY_DEFAULTS },
     customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "0200000000000" },
     id: null,
     internalNotes: "",
@@ -68,6 +73,41 @@ function promptPay(qrMode: "auto_promptpay" | "upload", qrImageUrl = "") {
 }
 
 describe("quotation service", () => {
+  it("rejects an incomplete document display snapshot", () => {
+    const payload = validPayload();
+    payload.documentDisplay = { reference: true } as QuotationPayload["documentDisplay"];
+    assert.throws(
+      () => prepareQuotationPayload(payload),
+      (error: unknown) =>
+        error instanceof QuotationValidationError
+        && error.fieldErrors.documentDisplay === "รูปแบบเอกสารไม่ถูกต้อง",
+    );
+  });
+
+  it("clears disabled document values but preserves certification source data", () => {
+    const payload = validPayload();
+    payload.reference = "REF-1";
+    payload.publicNotes = "Public note";
+    payload.certification.issuer.name = "Issuer";
+    payload.withholdingTaxRate = "3";
+    payload.documentDisplay = Object.fromEntries(
+      Object.keys(QUOTATION_DOCUMENT_DISPLAY_DEFAULTS).map((key) => [key, false]),
+    ) as QuotationPayload["documentDisplay"];
+
+    const result = prepareQuotationPayload(payload);
+    assert.equal(result.payload.reference, "");
+    assert.equal(result.payload.publicNotes, "");
+    assert.equal(result.payload.items[0]?.discountAmount, "0");
+    assert.equal(result.payload.items[0]?.unit, "");
+    assert.equal(result.payload.items[0]?.vatTreatment, "none");
+    assert.equal(result.payload.withholdingTaxRate, null);
+    assert.equal(result.payload.certification.issuer.name, "Issuer");
+    assert.deepEqual(
+      quotationDocumentDisplayClearImpact(payload, payload.documentDisplay),
+      ["reference", "notes", "unit", "tax", "withholdingTax"],
+    );
+  });
+
   it("uses Bangkok dates and calendar-day validity", () => {
     assert.equal(getBangkokCalendarDate(new Date("2026-07-13T18:00:00.000Z")), "2026-07-14");
     assert.equal(addQuotationCalendarDays("2026-07-14", 15), "2026-07-29");

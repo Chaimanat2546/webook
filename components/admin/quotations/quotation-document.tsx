@@ -34,6 +34,7 @@ export function QuotationDocument({
     payload,
     publicQrDataUrl,
   });
+  const compactCertification = !model.showCertificationName && !model.showCertificationDate;
   const sellerOffice = office(payload.seller);
   return (
     <article
@@ -127,7 +128,7 @@ export function QuotationDocument({
             <dd>{model.issueDate}</dd>
             <dt className="font-semibold">ใช้ได้ถึง</dt>
             <dd>{model.validUntil}</dd>
-            {payload.reference ? (
+            {model.showReference ? (
               <>
                 <dt className="font-semibold">อ้างอิง</dt>
                 <dd>{payload.reference}</dd>
@@ -178,7 +179,7 @@ export function QuotationDocument({
           <tr className="bg-indigo-50 text-left">
             <th className="rounded-l-md p-2">คำอธิบาย</th>
             <th className="w-[8%] p-2 text-right">จำนวน</th>
-            <th className="w-[7%] p-2">หน่วย</th>
+            {model.showUnit ? <th className="w-[7%] p-2">หน่วย</th> : null}
             <th className="w-[13%] p-2 text-right">ราคา</th>
             {model.showItemDiscount ? (
               <th className="w-[10%] p-2 text-right">ส่วนลด</th>
@@ -206,7 +207,7 @@ export function QuotationDocument({
                 ) : null}
               </td>
               <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">{item.quantity}</td>
-              <td className="p-2 [overflow-wrap:anywhere]">{item.unit}</td>
+              {model.showUnit ? <td className="p-2 [overflow-wrap:anywhere]">{item.unit}</td> : null}
               <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">
                 {formatMoney(item.unitPrice)}
               </td>
@@ -238,11 +239,11 @@ export function QuotationDocument({
             สรุป
           </h2>
           <div className="space-y-1" data-document-summary-breakdown>
-            <Total
+            {model.showPreTax ? <Total
               label="มูลค่าก่อนภาษี"
               value={formatBaht(calculation.preTaxTotal)}
-            />
-            <Total label="ภาษีมูลค่าเพิ่ม" value={formatBaht(calculation.vatTotal)} />
+            /> : null}
+            {model.showTax ? <Total label="ภาษีมูลค่าเพิ่ม" value={formatBaht(calculation.vatTotal)} /> : null}
             <div className="flex items-start justify-between gap-3">
               <span className="shrink-0">จำนวนเงินทั้งสิ้น</span>
               <span className="text-right text-slate-600 [overflow-wrap:anywhere]">
@@ -258,10 +259,10 @@ export function QuotationDocument({
                 value={formatBaht(calculation.grandTotal)}
               />
             </div>
-            <Total
+            {model.showWithholdingTax ? <Total
               label="หักภาษี ณ ที่จ่าย"
               value={formatBaht(calculation.withholdingTaxTotal)}
-            />
+            /> : null}
             <Total
               label="จำนวนเงินที่ชำระ"
               value={formatBaht(calculation.amountDue)}
@@ -292,7 +293,7 @@ export function QuotationDocument({
         </section>
       ) : null}
 
-      <section
+      {model.showNotes ? <section
         className="grid grid-cols-[16mm_minmax(0,1fr)] gap-5 border-b py-3"
         data-document-notes
       >
@@ -305,7 +306,7 @@ export function QuotationDocument({
             {payload.publicNotes}
           </p>
         ) : null}
-      </section>
+      </section> : null}
 
       <section
         className="break-inside-avoid grid grid-cols-[16mm_minmax(0,1fr)] gap-5 py-3"
@@ -315,37 +316,49 @@ export function QuotationDocument({
           <Signature aria-hidden="true" className="mt-0.5 size-3" />
           รับรอง
         </h2>
-        <div className="grid min-w-0 grid-cols-5 gap-3 text-center">
-          <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-public-qr>
-            <p className="font-semibold">สแกนเพื่อเปิดด้วยเว็บไซต์</p>
-            <div className="flex h-20 items-center justify-center">
-              {model.publicQrDataUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- Generated Data URLs are intentionally embedded for print.
-                <img
-                  alt="QR สำหรับดูใบเสนอราคาออนไลน์"
-                  className="max-h-20 w-full object-contain"
-                  src={model.publicQrDataUrl}
-                />
-              ) : null}
+        <div
+          className={`grid min-w-0 gap-3 text-center ${
+            model.showCertificationQr ? "grid-cols-5" : "grid-cols-4"
+          }`}
+        >
+          {model.showCertificationQr ? (
+            <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-public-qr>
+              <p className="font-semibold">สแกนเพื่อเปิดด้วยเว็บไซต์</p>
+              <div className={`flex items-center justify-center ${compactCertification ? "h-12" : "h-20"}`}>
+                {model.publicQrDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- Generated Data URLs are intentionally embedded for print.
+                  <img
+                    alt="QR สำหรับดูใบเสนอราคาออนไลน์"
+                    className={`${compactCertification ? "max-h-10" : "max-h-20"} w-full object-contain`}
+                    src={model.publicQrDataUrl}
+                  />
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : null}
           <SignerSlot
+            compact={compactCertification}
             issueDate={model.issueDate}
             label="ผู้ออกเอกสาร"
+            showDate={model.showCertificationDate}
+            showName={model.showCertificationName}
             signer={model.certification.issuer}
           />
           <SignerSlot
+            compact={compactCertification}
             issueDate={model.issueDate}
             label="ผู้อนุมัติเอกสาร"
+            showDate={model.showCertificationDate}
+            showName={model.showCertificationName}
             signer={model.certification.approver}
           />
           <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-stamp>
             <p className="font-semibold">ตราประทับ</p>
-            <div className="flex h-20 items-center justify-center">
+            <div className={`flex items-center justify-center ${compactCertification ? "h-12" : "h-20"}`}>
               {model.certification.companyStampUrl ? (
                 <DocumentImage
                   alt="ตราประทับบริษัท"
-                  className="max-h-16 w-full object-contain"
+                  className={`${compactCertification ? "max-h-10" : "max-h-16"} w-full object-contain`}
                   key={model.certification.companyStampUrl}
                   src={model.certification.companyStampUrl}
                 />
@@ -354,9 +367,9 @@ export function QuotationDocument({
           </div>
           <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-receiver>
             <p className="font-semibold">ผู้รับเอกสาร (ลูกค้า)</p>
-            <div className="h-20 border-b" aria-hidden="true" />
-            <p>{model.payload.customer.name}</p>
-            <p>วันที่ __________________</p>
+            <div className={`${compactCertification ? "h-12" : "h-20"} border-b`} aria-hidden="true" />
+            {model.showCertificationName ? <p>{model.payload.customer.name}</p> : null}
+            {model.showCertificationDate ? <p>วันที่ __________________</p> : null}
           </div>
         </div>
       </section>
@@ -457,29 +470,35 @@ function vatLabel(item: QuotationCalculation["lines"][number]) {
 }
 
 function SignerSlot({
+  compact,
   issueDate,
   label,
+  showDate,
+  showName,
   signer,
 }: {
+  compact: boolean;
   issueDate: string;
   label: string;
+  showDate: boolean;
+  showName: boolean;
   signer: QuotationDocumentViewModel["certification"]["issuer"];
 }) {
   return (
     <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-signer>
       <p className="font-semibold">{label}</p>
-      <div className="flex h-20 items-end justify-center border-b">
+      <div className={`flex items-end justify-center border-b ${compact ? "h-12" : "h-20"}`}>
         {signer.signatureUrl ? (
           <DocumentImage
             alt={`ลายเซ็น${label}`}
-            className="max-h-16 w-full object-contain"
+            className={`${compact ? "max-h-10" : "max-h-16"} w-full object-contain`}
             key={signer.signatureUrl}
             src={signer.signatureUrl}
           />
         ) : null}
       </div>
-      {signer.name ? <p>({signer.name})</p> : null}
-      <p>วันที่ {issueDate}</p>
+      {showName && signer.name ? <p>({signer.name})</p> : null}
+      {showDate ? <p>วันที่ {issueDate}</p> : null}
     </div>
   );
 }

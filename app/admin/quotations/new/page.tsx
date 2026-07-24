@@ -5,7 +5,7 @@ import { Button } from "../../../../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../../../../components/ui/empty";
 import { getQuotationPublicOrigin } from "../../../../lib/env";
 import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin";
-import { companyProfileToCertification, companyProfileToSeller, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationItemNames } from "../../../../server/repositories/quotations";
+import { companyProfileToCertification, companyProfileToDocumentDisplay, companyProfileToSeller, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationItemNames } from "../../../../server/repositories/quotations";
 import { emptyQuotationPayload } from "../../../../server/services/quotations";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +26,7 @@ export default async function NewQuotationPage() {
     companyProfileToSeller(profile),
     new Date(),
     companyProfileToCertification(profile),
+    companyProfileToDocumentDisplay(profile),
   );
   initialPayload.paymentMethods = paymentMethods.filter((method) => method.isDefault).map((method, index) => {
     const snapshot = { ...method };

@@ -29,9 +29,13 @@ export default async function PublicQuotationPage({ params }: { params: Promise<
   const calculation = calculateQuotation(quotation.payload);
   let publicQrDataUrl = "";
   try {
+    if (!quotation.payload.documentDisplay.certificationQr) {
+      publicQrDataUrl = "";
+    } else {
     const origin = getQuotationPublicOrigin();
     const publicUrl = origin ? buildQuotationPublicUrl(origin, token) : "";
     publicQrDataUrl = publicUrl ? await createQuotationPublicQrDataUrl(publicUrl) : "";
+    }
   } catch {
     publicQrDataUrl = "";
   }

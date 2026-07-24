@@ -82,8 +82,8 @@ describe("quotation PDF", () => {
     assert.match(pdfSource, /catch/);
   });
 
-  it("fails the download instead of omitting the required Public QR", () => {
-    assert.match(pdfSource, /if \(!images\[model\.publicQrDataUrl\]\) throw new Error\("Public QR image is unavailable"\)/);
+  it("requires Public QR only when its certification setting is enabled", () => {
+    assert.match(pdfSource, /if \(model\.showCertificationQr && !images\[model\.publicQrDataUrl\]\) throw new Error\("Public QR image is unavailable"\)/);
   });
 
   it("keeps the approved order, paginated ledger, and five-slot certification row", () => {
@@ -110,6 +110,10 @@ describe("quotation PDF", () => {
     );
 
     assert.ok(certification.indexOf("data-pdf-public-qr") > -1);
+    assert.match(
+      certification,
+      /\{model\.showCertificationQr \? \([\s\S]*data-pdf-public-qr[\s\S]*\) : null\}/,
+    );
     assert.match(certification, /สแกนเพื่อเปิดด้วยเว็บไซต์/);
     assert.match(certification, /ผู้ออกเอกสาร/);
     assert.match(certification, /ผู้อนุมัติเอกสาร/);
@@ -124,6 +128,29 @@ describe("quotation PDF", () => {
     assert.doesNotMatch(signer, /signer\.position/);
     assert.doesNotMatch(pdfSource, /pageNumber|totalPages|styles\.footer/);
     assert.match(certification, /wrap=\{false\}/);
+    assert.match(
+      pdfSource,
+      /const compactCertification = !model\.showCertificationName && !model\.showCertificationDate/,
+    );
+    assert.match(pdfSource, /certificationAssetBoxCompact: \{ height: 36 \}/);
+    assert.match(pdfSource, /signatureBoxCompact: \{ height: 36 \}/);
+    assert.match(pdfSource, /certificationImageCompact: \{ height: 32 \}/);
+    assert.equal(
+      certification.match(/compact=\{compactCertification\}/g)?.length,
+      2,
+    );
+    assert.match(
+      certification,
+      /compactCertification\s*\?\s*\[styles\.certificationAssetBox, styles\.certificationAssetBoxCompact\]/g,
+    );
+    assert.match(
+      signer,
+      /compact\s*\?\s*\[styles\.signatureBox, styles\.signatureBoxCompact\]/,
+    );
+    assert.doesNotMatch(
+      certification + signer,
+      /&& styles\.(?:certificationAssetBoxCompact|signatureBoxCompact)/,
+    );
     assert.doesNotMatch(certification, /styles\.section(?:,|\])/);
   });
 
@@ -193,8 +220,8 @@ describe("quotation PDF", () => {
       "utf8",
     );
 
-    assert.match(html, /\{payload\.reference \? \([\s\S]*อ้างอิง[\s\S]*payload\.reference[\s\S]*\) : null\}/);
-    assert.match(pdfSource, /\{payload\.reference \? <Detail label="อ้างอิง" value=\{payload\.reference\} \/> : null\}/);
+    assert.match(html, /\{model\.showReference \? \([\s\S]*อ้างอิง[\s\S]*payload\.reference[\s\S]*\) : null\}/);
+    assert.match(pdfSource, /\{model\.showReference \? <Detail label="อ้างอิง" value=\{payload\.reference\} \/> : null\}/);
     assert.doesNotMatch(html, /payload\.reference \|\| "-"/);
   });
 

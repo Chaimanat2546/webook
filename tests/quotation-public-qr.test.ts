@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import type { QuotationCalculation } from "../lib/quotation-calculator.ts";
 import { buildQuotationDocumentViewModel } from "../lib/quotation-document-view.ts";
+import { QUOTATION_DOCUMENT_DISPLAY_DEFAULTS } from "../lib/quotation-document-display.ts";
 import { getQuotationPublicOrigin } from "../lib/env.ts";
 import {
   buildQuotationPublicUrl,
@@ -49,6 +50,7 @@ describe("quotation Public QR", () => {
         companyStampUrl: "",
         issuer: { name: "", position: "", signatureUrl: "" },
       },
+      documentDisplay: { ...QUOTATION_DOCUMENT_DISPLAY_DEFAULTS },
       customer: { address: "", branchNumber: "", name: "ลูกค้า", officeType: "head_office", taxId: "" },
       id: "quotation-id",
       internalNotes: "private",
