@@ -7,7 +7,8 @@ their own seller profile, reusable payment methods, optional certification
 master, and quotations. Every seller profile, payment master, and quotation is linked to the current
 Supabase Auth user. RLS combines that ownership check with the existing
 quotation permission, so one account cannot read or change another account's
-data.
+data. ข้อมูลลูกค้า is intentionally different: all quotation-authorized
+users share it and may add, edit, deactivate, or reactivate customers.
 
 The customer snapshot contains only name, address, tax ID, office type, and
 branch number. This MVP does not include approval, customer acceptance,
@@ -19,8 +20,30 @@ history.
 - `/admin/quotations` - list, search, print, and soft-delete owned quotations
 - `/admin/quotations/new` - create from the current user's seller and default payment masters
 - `/admin/quotations/[id]` - edit saved seller and payment snapshots
+- `/admin/quotations/customers` - search and manage the shared ข้อมูลลูกค้า
 - `/admin/quotations/settings/company` - manage the current user's seller profile, payment masters, and certification master
 - `/q/[token]` - no-login, token-scoped public view of the latest saved quotation
+
+## Quotation List UX
+
+- The list keeps server-side account-scoped search and 20-row pagination.
+- Search covers document number, customer, reference, and subject; the list displays only fields already returned by the list RPC.
+- Mobile uses compact cards and Tablet/Desktop use a fixed-layout table.
+- A card or row opens the quotation with a mouse click. Keyboard users open it through the focused document-number link. Its action menu keeps edit, print, and soft-delete controls isolated from row navigation.
+- Loading uses a shape-preserving skeleton. Empty results show a relevant next action, and list-load failures show a contained retry state.
+- Soft delete still requires confirmation and reports success or failure through Toast without changing the existing ownership and permission checks.
+
+## Quotation Settings UX
+
+- Seller, payment, and certification remain separate URL-selected sections with independent save actions and selected-section-only server loading.
+- Desktop uses the local settings sidebar. Mobile uses the same real links in an intentionally horizontally scrollable row with `aria-current` on the active section.
+- Editing a mounted section marks it dirty. Moving to another section or returning to the list asks for confirmation; changing sections never autosaves. A successful save clears only the mounted section's dirty state.
+- Seller settings use one flat surface with content-shaped field widths. Office type uses the horizontal Shadcn Radio Group with `ไม่ระบุ`, `สำนักงานใหญ่`, and `สาขา`; it defaults to head office. The seller branch-number input stays visible but disabled unless branch is selected. A selected logo is previewed before save.
+- Reusable payment methods render as responsive cards in settings while quotation-specific payment editing keeps its existing compact layout. Add, remove, drag order, defaults, and type-specific fields keep the same data behavior.
+- Certification keeps issuer and approver stacked on Mobile and side by side from Tablet. Signatures stay with their signer and the company stamp uses a compact asset row.
+- Every section keeps inline field errors and first-error focus, plus Toast for save/upload outcomes. Save is disabled while its section is saving or uploading.
+- Certification and payment images show a local preview while uploading. If upload fails, the temporary preview is removed and the previously saved asset remains visible and unchanged.
+- This UX polish does not change ownership, snapshots, RLS, upload actions, repositories, services, or database schema.
 
 ## Master And Snapshot Rules
 
@@ -31,6 +54,11 @@ history.
   snapshot. Existing quotations never merge later master changes.
 - Saving atomically stores seller, customer, item, and ordered payment
   snapshots. A quotation may have no payment methods.
+- Seller and customer names, addresses, and tax IDs are required. Both tax IDs
+  must contain exactly 13 ASCII digits. Seller and customer office snapshots
+  use the same three office choices; branch number is required only for a branch.
+- New quotations default to seven validity days. The validity-days input is
+  disabled; an operator may still set the explicit valid-until date.
 - Editing a master never changes an existing quotation. Deleting a master
   leaves its saved quotation snapshots intact.
 - Payment master and quotation snapshot tables are SELECT-only through the
@@ -46,6 +74,52 @@ history.
   full saved bank-account and PromptPay identifiers.
 - Public payment JSON contains only fields relevant to each saved payment type,
   including for legacy rows that may still contain hidden values.
+
+## ข้อมูลลูกค้า And DBD
+
+- Customer types are `juristic` and `individual`. Both require an exact
+  13-ASCII-digit tax ID. An individual tax ID has one customer-data row. A
+  juristic tax ID may have one main-office row and multiple rows with distinct,
+  trimmed branch numbers; leading zeroes remain significant. These identities
+  stay unique across active and inactive rows. Customer type and tax ID are
+  immutable after the customer data is created so verified DBD defaults cannot become
+  attached to another identity.
+- Contact name, phone, and email are optional and stored only in ข้อมูลลูกค้า. They never render
+  in quotation preview, print, PDF, or Public Read-only.
+- In Add Customer, selecting `บุคคลธรรมดา` sets office type to `ไม่ระบุ`;
+  selecting `นิติบุคคล` sets it to `สำนักงานใหญ่`. Switching type always
+  overwrites the office choice and clears the branch number.
+- Juristic customers may be checked or refreshed manually through the fixed DBD
+  Open Data endpoint. Successful verification stores registered name, address,
+  status, and verification time as reset defaults; the full provider response
+  is neither stored nor logged. A successful save or refresh warns when DBD
+  reports a status other than `ยังดำเนินกิจการอยู่`.
+- Current name and address remain editable. Refresh replaces only the stored DBD
+  defaults and preserves current overrides and contacts. Reset copies the DBD
+  name/address into current fields, selects head office, and clears branch
+  number; contacts remain unchanged.
+- When DBD times out, is unavailable, returns invalid data, or has no matching
+  record, a new juristic customer may be saved unverified only after explicit
+  confirmation. Individual customers never call DBD or display a DBD state.
+- Deactivation replaces deletion. Inactive customers remain unique and can be
+  found through the inactive filter and reactivated after confirmation, but
+  the quotation picker searches active rows only.
+- A quotation customer is selected only from active `ข้อมูลลูกค้า` through a
+  Combobox. Opening it shows the five most recently updated customers; two or
+  more typed characters search by name or tax ID.
+- The customer Input Combobox remains visible after selection. The selected
+  customer name stays in the input, while tax ID, office, and address appear
+  below it. Clicking or typing in the input can replace the customer after the
+  existing confirmation; there is no separate change or clear-to-empty action.
+- When no customer matches, Add Customer saves through the existing customer
+  flow and then selects the saved customer. The quotation stores only the
+  five-field snapshot, so later customer-data edits do not rewrite saved
+  quotations.
+- Selecting ข้อมูลลูกค้า copies only name, address, tax ID, office type, and
+  branch number into the quotation snapshot. It does not store a
+  customer-data record ID. Later ข้อมูลลูกค้า edits do not change quotations,
+  and quotation edits do not change ข้อมูลลูกค้า. Historical quotation customers
+  are not imported automatically.
 
 ## Payment Methods
 
@@ -82,12 +156,42 @@ Preview, Print, or Public Read-only.
 ## Editor And Calculation Rules
 
 - Create/Edit uses the responsive Document Workbench; Preview/Print is A4.
-- Reference is optional and subject is labelled `เรื่อง / ชื่องาน`.
+- Newly created documents use `QO-YYYYMMDD0001`; saved legacy document numbers
+  remain unchanged when edited.
+- The workbench header shows `ใบเสนอราคาใหม่` before the first save and the
+  document number afterward. Tablet/Desktop expose Back, Preview, and Save in
+  the header; Mobile keeps the same actions in a fixed bottom bar with content
+  clearance and safe-area padding.
+- Save success and task-level failure use Toast. Field validation remains next
+  to its control, links error text with `aria-describedby`, and scrolls then
+  focuses the first invalid field.
+- The editor exposes Back, Preview, and Save as primary actions. Saved documents
+  expose Share, Print, Download, and an explicit Delete action; there is no
+  redundant More menu.
+- Invalid saves show one Toast while keeping field-specific errors inline.
+- Leaving with unsaved changes uses an in-app confirmation dialog. Browser
+  refresh and tab close continue to use the browser-native unsaved-changes warning.
+- Preview uses the current draft. Print, PDF Download, and Public Share remain
+  limited to the latest clean saved document.
+- Reference and `เรื่อง / ชื่องาน (ถ้ามี)` are optional. Empty optional values
+  are omitted from Preview, Public, Print, and PDF instead of showing a placeholder.
 - Currency copy is always `บาท`.
 - Quantity is required and greater than zero; unit is optional.
-- Per-item fixed discount and VAT controls are enabled from document settings.
-- New quotations start with both optional item features off.
-- Enabling VAT starts items at 7%; disabling it stores no VAT at 0%.
+- Every item row always exposes fixed-discount and VAT controls; there is no
+  document-settings menu for hiding them.
+- VAT has exactly three choices: `7%`, `0%`, and `ไม่มี`. They persist as
+  taxable 7%, taxable 0%, and no VAT at 0%, respectively.
+- When legacy quotations are opened in the editor, exempt VAT maps to `ไม่มี`;
+  unsupported non-zero taxable rates map to `7%` so the editable choice,
+  calculation, and next save stay consistent. The saved Print/Public snapshot
+  remains unchanged until the admin saves the edited document.
+- Item names come from the read-only database catalogue and are limited to
+  `ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 1/2)`,
+  `ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 2/2)`,
+  `ค่าที่พัก (ลูกค้าชำระเงินเต็มจำนวน)`, `ค่าบริการ`, and
+  `ประกันความเสียหาย`. Every selection replaces the editable description with
+  the selected name. Legacy names remain readable but must be reselected before
+  saving.
 - Money inputs accept grouped or ungrouped values; stored values are canonical
   decimal strings without commas.
 - Drag and drop order is persisted for items and payment methods.
@@ -118,12 +222,14 @@ it. Upload failure preserves the previous saved asset and snapshot.
 Certification signatures and company stamps follow the same 2 MB PNG
 normalization boundary under `/quotations/certification-assets/<uuid>.png`.
 Failed optional document images are omitted without breaking Preview, Public,
-Print, or PDF; the Public QR remains required for PDF Download.
+Print, or PDF. The Public QR is required for PDF Download only when its
+document-display setting is enabled.
 
 ## Certification, Public Share, And PDF
 
-- Payment and certification overrides are edited in tabs below document notes;
-  payment is the default tab and tab switches preserve unsaved state.
+- Payment and certification overrides start collapsed below document notes.
+  One show/hide button controls the whole tabs block, tab switches preserve
+  unsaved state, and matching validation errors expand the relevant tab.
 - Preview, Print, Public Read-only, and PDF show one compact certification row
   containing the Public QR, issuer, approver, company stamp, and customer
   receiver in that order.
@@ -141,7 +247,48 @@ Print, or PDF; the Public QR remains required for PDF Download.
 - Link expiry, passwords, token rotation, e-signing, approval workflow, and
   orphaned-asset garbage collection remain outside this MVP.
 
+### Document display settings
+
+Create and Edit expose `ตั้งค่ารูปแบบเอกสาร` with two stacked sections:
+`ข้อมูลใบเสนอราคา` and `การรับรอง`. Each account has ten defaults, and every
+quotation saves an independent snapshot so later default changes do not alter
+existing documents.
+
+The certification switches independently control QR Code, dates, and names in
+Preview, Print, PDF, and Public Read-only. They are display-only: disabling
+them does not clear the Public token, issue date, signer names, or customer
+name. The certification row uses five equal slots while QR Code is enabled.
+When QR Code is disabled, its slot is removed and the remaining four slots
+shift left and expand evenly; QR generation is skipped and PDF Download does
+not require it.
+
+### Document surface consistency
+
+- Preview/Print is the visual reference; HTML and PDF consume the same
+  normalized document view model and keep the same supported section order.
+- Preview shows the current draft. Print uses the latest successful save. Share
+  and PDF Download require a clean saved quotation.
+- Public Read-only keeps the A4 document width on small screens inside an
+  intentional horizontal scrolling viewport.
+- Print avoids splitting HTML item rows. PDF keeps ordinary rows together and
+  leaves oversized validated descriptions breakable so content is not lost.
+- Invalid or removed public links show a generic Thai not-found state without
+  internal error details.
+
 ## Migration And Validation
+
+Migration `20260722090657_quotation_customer_master_dbd.sql` creates the shared
+ข้อมูลลูกค้า, exact tax-ID and DBD-completeness constraints, quotation
+permission RLS, update audit trigger, and the paginated active/inactive list
+RPC. Follow-up migration
+`20260722102825_quotation_customer_branch_identity.sql` replaces tax-only
+uniqueness with customer identity uniqueness: individual tax ID, juristic main
+office tax ID, or juristic tax ID plus branch number. Inactive rows remain in
+that boundary. Migration `20260722170000_harden_quotation_customer_mutations.sql`
+limits authenticated quotation users to shared SELECT access and reserves
+INSERT/UPDATE for permission-checked Server Actions using the server-only
+service-role client. DELETE is not exposed; audit fields preserve the acting
+authenticated user.
 
 Migration `20260720120000_quotation_pdf_qr_certification.sql` adds the
 account-owned certification master, per-quotation JSON snapshot, validated
@@ -184,6 +331,15 @@ built-in bank metadata comes from the catalogue, and custom banks are stored as
 ## Verification
 
 Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`.
+The normal test suite mocks DBD and never depends on the live service. To run
+the ข้อมูลลูกค้า sharing/RLS integration against an already configured local
+Supabase environment:
+
+```powershell
+$env:RUN_LOCAL_SUPABASE_TESTS = "1"
+node --import ./tests/register-server-only.mjs --test tests/quotation-customer-database-integration.test.ts
+```
+
 Inspect Preview, Print, PDF, and Public Read-only at 390, 768, 1280, and 1536 px,
 including long text, multiple reordered methods, missing images, uploaded QR,
 and automatic PromptPay QR. Confirm print output has no blank page, clipping,

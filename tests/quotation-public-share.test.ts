@@ -43,24 +43,30 @@ describe("quotation public share", () => {
     }
   });
 
-  it("keeps Public QR output scoped to a clean saved quotation", () => {
+  it("keeps draft QR clean-only while preserving the saved QR for print", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const \[publicQrDataUrl, setPublicQrDataUrl\] = useState\(""\)/);
-    assert.match(editor, /if \(!publicOrigin \|\| !publicToken \|\| isDirty\)[\s\S]*setPublicQrDataUrl\(""\)/);
+    assert.match(editor, /if \(!lastSavedPayload\?\.documentDisplay\.certificationQr \|\| !publicOrigin \|\| !publicToken\)[\s\S]*setPublicQrDataUrl\(""\)/);
     assert.match(editor, /createQuotationPublicQrDataUrl\(publicUrl\)/);
     assert.match(editor, /let stale = false/);
     assert.match(editor, /if \(stale\) return;[\s\S]*setPublicQrDataUrl/);
     assert.match(editor, /return \(\) => \{[\s\S]*stale = true/);
-    assert.match(editor, /const savedPublicQrDataUrl = !isDirty && publicOrigin && publicToken && publicQrSettledToken === publicToken/);
-    assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 2);
+    assert.match(
+      editor,
+      /const savedPublicQrDataUrl =\s*publicOrigin && publicToken && publicQrSettledToken === publicToken/,
+    );
+    assert.match(editor, /const draftPublicQrDataUrl = !isDirty \? savedPublicQrDataUrl : ""/);
+    assert.equal(editor.match(/publicQrDataUrl=\{draftPublicQrDataUrl\}/g)?.length, 1);
+    assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 1);
   });
 
   it("waits for a clean saved quotation QR before printing", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /const \[publicQrSettledToken, setPublicQrSettledToken\] = useState\(""\)/);
-    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*publicOrigin &&[\s\S]*publicQrSettledToken !== publicToken/);
+    assert.match(editor, /const publicQrPending = Boolean\([\s\S]*documentDisplay\.certificationQr[\s\S]*publicOrigin[\s\S]*publicToken[\s\S]*publicQrSettledToken !== publicToken/);
+    assert.doesNotMatch(editor, /const publicQrPending = Boolean\([\s\S]*!isDirty[\s\S]*publicQrSettledToken !== publicToken/);
     assert.match(editor, /const canPrint = Boolean\([\s\S]*!publicQrPending/);
-    assert.equal(editor.match(/setPublicQrSettledToken\(publicToken\)/g)?.length, 2);
+    assert.match(editor, /setPublicQrSettledToken\(publicToken \?\? ""\)/);
   });
 
   it("uses the same saved payment document for public read-only", () => {
@@ -75,5 +81,29 @@ describe("quotation public share", () => {
     assert.match(viewModel, /payload\.paymentMethods/);
     assert.match(document, /model\.paymentMethods/);
     assert.doesNotMatch(document, /internalNotes/);
+  });
+
+  it("keeps the public A4 document inside an intentional horizontal viewport", () => {
+    const page = source("../app/q/[token]/page.tsx");
+    const document = source(
+      "../components/admin/quotations/quotation-document.tsx",
+    );
+
+    assert.match(page, /data-public-quotation-viewport/);
+    assert.match(page, /overflow-x-auto/);
+    assert.match(page, /overscroll-x-contain/);
+    assert.match(document, /w-\[210mm\]/);
+    assert.doesNotMatch(page, /grid-cols|data-public-card/);
+  });
+
+  it("uses a generic Thai not-found state for invalid public quotations", () => {
+    const notFoundPage = source("../app/q/[token]/not-found.tsx");
+
+    assert.match(notFoundPage, /ไม่พบใบเสนอราคา/);
+    assert.match(
+      notFoundPage,
+      /ลิงก์อาจไม่ถูกต้องหรือเอกสารถูกนำออกแล้ว/,
+    );
+    assert.doesNotMatch(notFoundPage, /token|database|Supabase|error/i);
   });
 });

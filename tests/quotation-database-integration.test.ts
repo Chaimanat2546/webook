@@ -14,7 +14,13 @@ const issueDate = "2099-12-31";
 const otherDate = new Date(
   Date.UTC(2100, 0, 1) + (Number.parseInt(crypto.randomUUID().slice(0, 8), 16) % 36525) * 86_400_000,
 ).toISOString().slice(0, 10);
-const seller = { name: "Seller", address: "Seller address", taxId: "0100000000000" };
+const seller = {
+  address: "Seller address",
+  branchNumber: "",
+  name: "Seller",
+  officeType: "head_office",
+  taxId: "0100000000000",
+};
 
 function payload(
   id: string | null,
@@ -28,7 +34,25 @@ function payload(
       company_stamp_url: null,
       issuer: { name: "Issuer", position: "Sales", signature_url: null },
     },
-    customer_snapshot: { name: "Customer", address: "Customer address" },
+    customer_snapshot: {
+      address: "Customer address",
+      branchNumber: "",
+      name: "Customer",
+      officeType: "head_office",
+      taxId: "0200000000000",
+    },
+    document_display_snapshot: {
+      certificationDate: true,
+      certificationName: true,
+      certificationQr: true,
+      discount: true,
+      notes: true,
+      preTax: true,
+      reference: true,
+      tax: true,
+      unit: true,
+      withholdingTax: true,
+    },
     company_profile_id: null as string | null,
     id,
     internal_notes: "",
@@ -36,7 +60,7 @@ function payload(
     items: [{
       description: "",
       discount_amount: "0.00",
-      name: "Item",
+      name: "ค่าบริการ",
       position: 1,
       quantity: "1.000",
       unit,
@@ -133,6 +157,61 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal(clearedAssetOrigin.error, null, clearedAssetOrigin.error?.message);
   });
 
+  it("exposes the ordered item catalogue as read-only to quotation users", async () => {
+    const { data, error } = await allowed
+      .from("quotation_item_catalog")
+      .select("name")
+      .order("sort_order");
+    assert.equal(error, null, error?.message);
+    assert.deepEqual((data ?? []).map((row) => row.name), [
+      "ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 1/2)",
+      "ค่าที่พัก (ลูกค้าชำระเงินครั้งที่ 2/2)",
+      "ค่าที่พัก (ลูกค้าชำระเงินเต็มจำนวน)",
+      "ค่าบริการ",
+      "ประกันความเสียหาย",
+    ]);
+
+    const deniedRead = await denied.from("quotation_item_catalog").select("name");
+    assert.equal(deniedRead.error, null, deniedRead.error?.message);
+    assert.deepEqual(deniedRead.data, []);
+
+    const write = await allowed
+      .from("quotation_item_catalog")
+      .insert({ name: "รายการอื่น", sort_order: 6 });
+    assert.equal(write.error?.code, "42501");
+  });
+
+  it("rejects unsupported item names in the direct save RPC", async () => {
+    const invalid = payload(null);
+    invalid.items[0]!.name = "รายการอื่น";
+    const { error } = await allowed.rpc("save_quotation_with_payments", {
+      p_payload: invalid,
+    });
+    assert.equal(error?.code, "23503");
+  });
+
+  it("validates and persists document display through both save RPCs", async () => {
+    const invalid = payload(null);
+    delete (invalid.document_display_snapshot as Partial<typeof invalid.document_display_snapshot>)
+      .certificationQr;
+    for (const rpc of ["save_quotation", "save_quotation_with_payments"] as const) {
+      const { error } = await allowed.rpc(rpc, { p_payload: invalid });
+      assert.equal(error?.code, "22023");
+    }
+
+    const value = payload(null);
+    value.document_display_snapshot.certificationQr = false;
+    value.document_display_snapshot.reference = false;
+    const created = await save(allowed, value);
+    const stored = await allowed
+      .from("quotations")
+      .select("document_display_snapshot")
+      .eq("id", created.id)
+      .single();
+    assert.equal(stored.error, null, stored.error?.message);
+    assert.deepEqual(stored.data.document_display_snapshot, value.document_display_snapshot);
+  });
+
   after(async () => {
     await service.from("quotations").delete().in("issue_date", [issueDate, otherDate]);
     await service.from("quotation_company_profiles").delete().in("user_id", [allowedId, otherAllowedId]);
@@ -152,17 +231,18 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     const deniedSave = await denied.rpc("save_quotation", { p_payload: payload(null) });
     assert.equal(deniedSave.error?.code, "42501");
     const created = await Promise.all(Array.from({ length: 12 }, () => save(allowed, payload(null))));
-    const dailyNumbers = created.map(({ document_number }) => Number(document_number.slice(document_number.lastIndexOf("-") + 1))).sort((left, right) => left - right);
+    for (const { document_number } of created) assert.match(document_number, /^QO-\d{12}$/);
+    const dailyNumbers = created.map(({ document_number }) => Number(document_number.slice(-4))).sort((left, right) => left - right);
     assert.deepEqual(dailyNumbers, Array.from({ length: 12 }, (_, index) => dailyNumbers[0] + index));
     const first = created[0];
     assert.equal((await save(allowed, payload(first.id, otherDate))).document_number, first.document_number);
     const otherDay = await Promise.all([save(allowed, payload(null, otherDate)), save(allowed, payload(null, otherDate))]);
-    const otherDayNumbers = otherDay.map(({ document_number }) => Number(document_number.slice(document_number.lastIndexOf("-") + 1))).sort((left, right) => left - right);
+    const otherDayNumbers = otherDay.map(({ document_number }) => Number(document_number.slice(-4))).sort((left, right) => left - right);
     assert.deepEqual(otherDayNumbers, [1, 2]);
     assert.equal((await allowed.rpc("soft_delete_quotation", { p_id: first.id })).error, null);
     assert.equal((await allowed.from("quotations").select("id").eq("id", first.id)).data?.length, 0);
     const nextDocumentNumber = (await save(allowed, payload(null))).document_number;
-    assert.equal(Number(nextDocumentNumber.slice(nextDocumentNumber.lastIndexOf("-") + 1)), dailyNumbers.at(-1)! + 1);
+    assert.equal(Number(nextDocumentNumber.slice(-4)), dailyNumbers.at(-1)! + 1);
     assert.deepEqual((await denied.from("quotations").select("id")).data, []);
   });
 

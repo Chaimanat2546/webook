@@ -16,10 +16,15 @@ import type {
 } from "../../lib/quotation-payment-methods.ts";
 import type {
   CustomerSnapshot,
+  OfficeType,
   QuotationPayload,
   SellerSnapshot,
 } from "../../lib/quotation-types.ts";
 import type { PreparedQuotation } from "../services/quotations";
+import {
+  normalizeQuotationDocumentDisplay,
+  type QuotationDocumentDisplay,
+} from "../../lib/quotation-document-display.ts";
 import { quotationPersistenceError } from "./quotation-errors";
 
 export interface QuotationCompanyProfileRow {
@@ -31,6 +36,7 @@ export interface QuotationCompanyProfileRow {
   contact_email: string;
   contact_name: string;
   contact_phone: string;
+  document_display_defaults: unknown;
   company_stamp_url: string | null;
   email: string;
   id: string;
@@ -39,7 +45,7 @@ export interface QuotationCompanyProfileRow {
   issuer_signature_url: string | null;
   logo_url: string;
   seller_name: string;
-  office_type: "branch" | "head_office";
+  office_type: OfficeType;
   phone: string;
   tax_id: string;
   updated_at: string;
@@ -74,7 +80,7 @@ export interface SavedQuotation {
 const quotationSelect = `
   id,document_number,issue_date,valid_until,validity_days,reference,subject,
   seller_snapshot,customer_snapshot,public_token,withholding_tax_rate,
-  certification_snapshot,
+  certification_snapshot,document_display_snapshot,
   public_notes,internal_notes,
   quotation_items(
     id,position,name,description,quantity,unit,unit_price,
@@ -121,6 +127,7 @@ type DatabaseQuotationPaymentMethod = {
 
 type DatabaseQuotationRow = {
   certification_snapshot: unknown;
+  document_display_snapshot: unknown;
   customer_snapshot: unknown;
   id: unknown;
   internal_notes: unknown;
@@ -151,8 +158,9 @@ function snapshotString(snapshot: Record<string, unknown>, camel: string, snake:
   return stringValue(snapshot[camel] ?? snapshot[snake]);
 }
 
-function officeType(value: unknown): "branch" | "head_office" {
-  return value === "branch" ? "branch" : "head_office";
+function officeType(value: unknown): OfficeType {
+  if (value === "branch" || value === "unspecified") return value;
+  return "head_office";
 }
 
 function vatTreatment(value: unknown): VatTreatment {
@@ -253,6 +261,7 @@ function certificationSnapshot(value: unknown): CertificationSnapshot {
 export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPayload {
   return {
     certification: certificationSnapshot(row.certification_snapshot),
+    documentDisplay: normalizeQuotationDocumentDisplay(row.document_display_snapshot),
     customer: customerSnapshot(row.customer_snapshot),
     id: stringValue(row.id),
     internalNotes: stringValue(row.internal_notes),
@@ -305,11 +314,31 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
 export async function getQuotationCompanyProfile(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("quotation_company_profiles")
-    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,updated_at")
+    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,document_display_defaults,updated_at")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data as QuotationCompanyProfileRow | null;
+}
+
+export function companyProfileToDocumentDisplay(
+  row: QuotationCompanyProfileRow,
+): QuotationDocumentDisplay {
+  return normalizeQuotationDocumentDisplay(row.document_display_defaults);
+}
+
+export async function saveQuotationDocumentDisplayDefaults(
+  supabase: SupabaseClient,
+  value: QuotationDocumentDisplay,
+  userId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("quotation_company_profiles")
+    .update({ document_display_defaults: value, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
 }
 
 export async function saveQuotationCompanyProfile(
@@ -346,6 +375,17 @@ export async function saveQuotationCompanyCertification(
   );
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Quotation company profile not found");
+}
+
+export async function listQuotationItemNames(
+  supabase: SupabaseClient,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("quotation_item_catalog")
+    .select("name")
+    .order("sort_order");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((item) => stringValue(item.name));
 }
 
 export async function listQuotationBanks(supabase: SupabaseClient): Promise<BankOption[]> {

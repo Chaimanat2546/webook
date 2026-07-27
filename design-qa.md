@@ -1,72 +1,33 @@
-# Quotation Certification Layout Design QA
+# ข้อมูลลูกค้า Toolbar Design QA
 
-- Source visual truth: `C:\Users\POOLVI~1\AppData\Local\Temp\codex-clipboard-b0383ec2-5e46-4557-8378-0cd3a1293411.png`
-- Implementation screenshot: `C:\Users\POOLVI~1\AppData\Local\Temp\quotation-certification-preview-1280.png`
-- Public Read-only screenshot: `C:\Users\POOLVI~1\AppData\Local\Temp\quotation-public-viewport-1280.png`
-- Focused side-by-side comparison: `C:\tmp\quotation-certification-comparison.png`
-- Viewports checked: 390, 768, 1280, and 1536 CSS pixels
-- State: saved quotation Preview and token-scoped Public Read-only document
+## Comparison input
 
-## Full-view comparison evidence
+- Reference: `C:\Users\POOLVI~1\AppData\Local\Temp\codex-clipboard-2ca02b60-a2d8-44ce-ae95-4378182e4eb6.png` (593 x 48 px).
+- Implementation: `C:\Users\POOLVI~1\AppData\Local\Temp\webook-customer-toolbar-focused.png` (1136 x 32 px), captured at a 1440 x 900 desktop viewport.
+- Mobile verification: `C:\Users\POOLVI~1\AppData\Local\Temp\webook-customer-toolbar-mobile.png` (375 x 812 px), captured from a 390 x 844 browser viewport.
+- Route/state: `/admin/quotations/customers?q=เจเจ`, active-customer status.
 
-The rendered A4 document keeps notes immediately above one ruled certification
-row. The row uses the approved order: Public QR, issuer, approver, company
-stamp, and customer receiver. Preview and Public Read-only use the same shared
-renderer. At 390 and 768 pixels, the fixed A4 document scrolls inside its
-document container; the page itself does not gain horizontal overflow. At 1280
-and 1536 pixels, the row remains unchanged and fits the available document
-surface.
+## Interactions verified
 
-## Focused region comparison evidence
+- Status menu opens by click or keyboard and exposes exactly `ใช้งานอยู่` and `ปิดใช้งานแล้ว` as radio choices.
+- Changing to inactive preserves `q=เจเจ` and adds `status=inactive`.
+- Add Customer opens and closes the existing customer dialog.
+- The total-count summary is absent.
+- Mobile wraps search onto the first row and keeps status left/Add Customer right on the second row.
+- Mobile document width stays within the viewport; browser console reports no errors.
 
-The focused comparison places the supplied reference on the left and the
-implementation on the right. Both use a compact horizontal document grid,
-top-aligned labels, contained QR/stamp assets, aligned signing baselines, and a
-customer receiver at the far right. Dynamic content differs because the local
-quotation has different customer/signer data. The local signer image URLs are
-currently unavailable, and the specified optional-image fallback correctly
-leaves their signing areas clean without changing the grid.
+## Visual findings and history
 
-## Required fidelity surfaces
+1. Initial combined reference/implementation comparison: no P0, P1, or P2 mismatch found.
+2. The implementation intentionally maps the reference's compact muted filter-chip treatment to the approved single Thai status filter, while retaining the product's existing button, spacing, and typography tokens.
+3. The Add Customer action intentionally remains the existing primary style and is aligned at the far right of the same toolbar.
 
-- Fonts and typography: existing quotation type scale, Thai font, weights, and
-  wrapping are preserved; long values remain bounded by their slot.
-- Spacing and layout rhythm: the 16 mm section-title rail and five equal content
-  tracks align with neighboring document sections and the reference density.
-- Colors and visual tokens: the existing neutral rules, text colors, and white
-  paper surface are unchanged.
-- Image quality and asset fidelity: QR, signatures, and stamp use the existing
-  real assets with aspect-ratio-preserving `contain`; no placeholder or CSS art
-  was introduced.
-- Copy and content: labels match the approved Thai copy; positions are absent;
-  the receiver uses the saved customer name and leaves signature/date blank.
+## Previous QA record retained: quotation customer desktop row
 
-## Findings
-
-No actionable P0, P1, or P2 visual differences remain.
-
-## Primary interactions and runtime checks
-
-- Opened a saved quotation Preview from the document action menu.
-- Opened the same saved quotation through `/q/{public_token}` without admin UI.
-- Confirmed the five-slot order and absence of position text in both surfaces.
-- Confirmed the row height/order remains stable at all four required widths.
-- Checked browser warning/error logs; none were reported.
-
-## Comparison history
-
-The first comparison found no actionable P0/P1/P2 issue, so no visual-fix
-iteration was required.
-
-## Residual test gap
-
-The in-app browser did not expose the programmatic PDF download as a browser
-download event, so this QA pass could not rasterize the newly downloaded file.
-The mirrored React PDF source contract, PDF tests, typecheck, and production
-build all pass, but these checks prove structure and the `wrap={false}` guard;
-they do not visually prove clipping, pagination, or the absence of a trailing
-blank page. The `passed` result below applies to the browser-rendered Preview
-and Public surfaces. PDF raster comparison remains a separate manual check
-before claiming visual PDF fidelity.
+- Source: `C:\Users\POOLVI~1\AppData\Local\Temp\codex-clipboard-bac2ef1f-3268-4c39-b119-6cb087009ed2.png` (759 x 96 px).
+- Implementation: `C:\Users\POOLVI~1\AppData\Local\Temp\quotation-customer-desktop-tightened-1536x900.png` at a 1536 x 900 viewport.
+- State: new quotation, customer office type `head_office`.
+- Result: the tax, office, and branch controls share one desktop row with 12 px adjacent gaps; the existing responsive layouts had no horizontal overflow and no console errors.
+- Finding: no actionable P0, P1, or P2 mismatch.
 
 final result: passed

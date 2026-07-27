@@ -32,7 +32,8 @@ describe("quotation repository and actions", () => {
 
   it("checks the quotation permission before every action mutation", () => {
     assert.match(actions, /canUseQuotation\(adminUser\)/);
-    assert.match(actions, /prepareQuotationPayload\(value\)/);
+    assert.match(actions, /const itemNames = await listQuotationItemNames\(supabase\)/);
+    assert.match(actions, /prepareQuotationPayload\(value, itemNames\)/);
     assert.match(actions, /saveQuotation\(supabase, prepared\.rpcPayload\)/);
     assert.match(actions, /softDeleteQuotation\(supabase, id\)/);
     assert.match(actions, /uploadQuotationPaymentAssetAction/);
@@ -56,6 +57,19 @@ describe("quotation repository and actions", () => {
     assert.match(repository, /account_type/);
     assert.match(repository, /accountType:\s*stringValue\(method\.account_type\)/);
     assert.match(repository, /account_type:\s*method\.accountType/);
+  });
+
+  it("scopes document display default updates to the authenticated account", () => {
+    const saveDefaults = repository.slice(
+      repository.indexOf("export async function saveQuotationDocumentDisplayDefaults"),
+      repository.indexOf("export async function saveQuotationCompanyProfile"),
+    );
+    assert.match(saveDefaults, /userId: string/);
+    assert.match(saveDefaults, /\.update\([\s\S]*\.eq\("user_id", userId\)[\s\S]*\.select\("id"\)/);
+    assert.match(
+      actions,
+      /saveQuotationDocumentDisplayDefaults\(supabase, value, user\.id\)/,
+    );
   });
 
   it("validates and uploads normalized payment PNGs after permission checks", () => {
@@ -97,6 +111,17 @@ describe("quotation repository and actions", () => {
     assert.match(repository, /quotation_payment_methods\(/);
     assert.match(repository, /paymentMethods: \(row\.quotation_payment_methods \?\? \[\]\)/);
     assert.match(actions, /return \{ \.\.\.saved, ok: true, payload: prepared\.payload \}/);
+  });
+
+  it("loads quotation item names from the ordered database catalogue", () => {
+    assert.match(repository, /export async function listQuotationItemNames/);
+    assert.match(repository, /from\("quotation_item_catalog"\)[\s\S]*select\("name"\)[\s\S]*order\("sort_order"\)/);
+  });
+
+  it("keeps legacy VAT snapshots lossless for saved and public documents", () => {
+    assert.match(repository, /return value === "taxable" \|\| value === "exempt" \? value : "none"/);
+    assert.match(repository, /vatRate: stringValue\(item\.vat_rate\)/);
+    assert.doesNotMatch(repository, /function vatRate/);
   });
 
   it("returns field validation without leaking database errors", () => {

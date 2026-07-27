@@ -16,8 +16,11 @@ import {
 } from "../../../lib/quotation-document-view";
 import { formatBaht, formatMoney } from "../../../lib/quotation-money";
 import { PAYMENT_ACCOUNT_TYPE_LABELS } from "../../../lib/quotation-payment-methods";
-import { splitQuotationPdfWord } from "../../../lib/quotation-pdf";
-import type { QuotationPayload } from "../../../lib/quotation-types";
+import {
+  canKeepQuotationPdfItemTogether,
+  splitQuotationPdfWord,
+} from "../../../lib/quotation-pdf";
+import type { OfficeType, QuotationPayload } from "../../../lib/quotation-types";
 
 Font.register({
   family: "Noto Sans Thai",
@@ -98,9 +101,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 3,
   },
+  certificationAssetBoxCompact: { height: 36 },
   signatureBox: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 0.6, height: 60, justifyContent: "flex-end", marginBottom: 3 },
+  signatureBoxCompact: { height: 36 },
   certificationImage: { height: 48, objectFit: "contain", width: "100%" },
-  footer: { bottom: 16, color: colors.muted, fontSize: 7, left: 28.35, position: "absolute", right: 28.35, textAlign: "center" },
+  certificationImageCompact: { height: 32 },
 });
 
 type ResolvedImages = Record<string, string>;
@@ -119,7 +124,7 @@ export function collectQuotationPdfImageSources(
     issuer.signatureUrl,
     approver.signatureUrl,
     companyStampUrl,
-    model.publicQrDataUrl,
+    model.showCertificationQr ? model.publicQrDataUrl : "",
   ].filter(Boolean))];
 }
 
@@ -183,8 +188,15 @@ function Total({ emphasized = false, label, value }: { emphasized?: boolean; lab
   );
 }
 
-function office(value: { branchNumber: string; officeType: "branch" | "head_office" }) {
+function office(value: { branchNumber: string; officeType: OfficeType }) {
+  if (value.officeType === "unspecified") return "";
   return value.officeType === "branch" ? `สาขา ${value.branchNumber}` : "สำนักงานใหญ่";
+}
+
+function vatLabel(item: QuotationCalculation["lines"][number]) {
+  if (item.vatTreatment === "taxable") return `${item.vatRate}%`;
+  if (item.vatTreatment === "exempt") return "ยกเว้น";
+  return "";
 }
 
 function paymentTitle(method: QuotationDocumentViewModel["paymentMethods"][number]) {
@@ -231,26 +243,37 @@ function PaymentMethod({
 }
 
 function Signer({
+  compact,
   images,
   issueDate,
   label,
+  showDate,
+  showName,
   signer,
 }: {
+  compact: boolean;
   images: ResolvedImages;
   issueDate: string;
   label: string;
+  showDate: boolean;
+  showName: boolean;
   signer: QuotationDocumentViewModel["certification"]["issuer"];
 }) {
   return (
     <View style={styles.certificationSlot}>
       <Text style={styles.bold}>{label}</Text>
-      <View style={styles.signatureBox}>
+      <View style={compact ? [styles.signatureBox, styles.signatureBoxCompact] : styles.signatureBox}>
         {image(images, signer.signatureUrl) ? (
-          <PdfImage src={image(images, signer.signatureUrl)} style={styles.certificationImage} />
+          <PdfImage
+            src={image(images, signer.signatureUrl)}
+            style={compact
+              ? [styles.certificationImage, styles.certificationImageCompact]
+              : styles.certificationImage}
+          />
         ) : null}
       </View>
-      {signer.name ? <Text>({signer.name})</Text> : null}
-      <Text>วันที่ {issueDate}</Text>
+      {showName && signer.name ? <Text>({signer.name})</Text> : null}
+      {showDate ? <Text>วันที่ {issueDate}</Text> : null}
     </View>
   );
 }
@@ -263,6 +286,8 @@ function QuotationPdfDocument({
   model: QuotationDocumentViewModel;
 }) {
   const { calculation, payload } = model;
+  const compactCertification = !model.showCertificationName && !model.showCertificationDate;
+  const sellerOffice = office(payload.seller);
   return (
     <Document author={payload.seller.name} title={model.documentNumber}>
       <Page size="A4" style={styles.page} wrap>
@@ -272,7 +297,7 @@ function QuotationPdfDocument({
             {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
             <Detail label="ผู้ขาย" value={payload.seller.name} />
             <Detail label="ที่อยู่" value={payload.seller.address} />
-            <Detail label="เลขที่ภาษี" value={`${payload.seller.taxId} (${office(payload.seller)})`} />
+            <Detail label="เลขที่ภาษี" value={`${payload.seller.taxId}${sellerOffice ? ` (${sellerOffice})` : ""}`} />
             {payload.seller.phone ? <Detail label="โทร" value={payload.seller.phone} /> : null}
             {payload.seller.email ? <Detail label="อีเมล" value={payload.seller.email} /> : null}
             {payload.seller.website ? <Detail label="เว็บไซต์" value={payload.seller.website} /> : null}
@@ -284,7 +309,7 @@ function QuotationPdfDocument({
               <Detail label="เลขที่เอกสาร" value={model.documentNumber} />
               <Detail label="วันที่ออก" value={model.issueDate} />
               <Detail label="ใช้ได้ถึง" value={model.validUntil} />
-              <Detail label="อ้างอิง" value={payload.reference} />
+              {model.showReference ? <Detail label="อ้างอิง" value={payload.reference} /> : null}
               {payload.subject ? <Detail label="เรื่อง / ชื่องาน" value={payload.subject} /> : null}
             </View>
           </View>
@@ -295,7 +320,7 @@ function QuotationPdfDocument({
           <Detail label="ลูกค้า" value={payload.customer.name} />
           <Detail label="ที่อยู่" value={payload.customer.address} />
           {payload.customer.taxId ? <Detail label="เลขที่ภาษี" value={payload.customer.taxId} /> : null}
-          <Detail label="สำนักงาน" value={office(payload.customer)} />
+          {office(payload.customer) ? <Detail label="สำนักงาน" value={office(payload.customer)} /> : null}
         </View>
 
         {/* data-pdf-items */}
@@ -303,25 +328,29 @@ function QuotationPdfDocument({
           <View fixed style={styles.tableHeader} wrap={false}>
             <Text style={styles.descriptionCell}>คำอธิบาย</Text>
             <Text style={styles.qtyCell}>จำนวน</Text>
-            <Text style={styles.unitCell}>หน่วย</Text>
+            {model.showUnit ? <Text style={styles.unitCell}>หน่วย</Text> : null}
             <Text style={styles.moneyCell}>ราคา</Text>
             {model.showItemDiscount ? <Text style={styles.discountCell}>ส่วนลด</Text> : null}
             {model.showItemVat ? <Text style={styles.vatCell}>VAT</Text> : null}
             <Text style={styles.moneyCell}>มูลค่าก่อนภาษี</Text>
           </View>
           {calculation.lines.map((item) => (
-            <View key={item.id} style={styles.tableRow}>
+            <View
+              key={item.id}
+              style={styles.tableRow}
+              wrap={!canKeepQuotationPdfItemTogether(item.name, item.description)}
+            >
               <View style={styles.descriptionCell}>
                 <Text style={styles.bold}>{item.position}. {item.name}</Text>
                 {item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}
               </View>
               <Text style={styles.qtyCell}>{item.quantity}</Text>
-              <Text style={styles.unitCell}>{item.unit}</Text>
+              {model.showUnit ? <Text style={styles.unitCell}>{item.unit}</Text> : null}
               <Text style={styles.moneyCell}>{formatMoney(item.unitPrice)}</Text>
               {model.showItemDiscount ? <Text style={styles.discountCell}>{formatMoney(item.discountAmount)}</Text> : null}
               {model.showItemVat ? (
                 <Text style={styles.vatCell}>
-                  {item.vatTreatment === "taxable" ? `${item.vatRate}%` : item.vatTreatment === "exempt" ? "ยกเว้น" : "-"}
+                  {vatLabel(item)}
                 </Text>
               ) : null}
               <Text style={styles.moneyCell}>{formatMoney(item.preTaxAmount)}</Text>
@@ -333,13 +362,13 @@ function QuotationPdfDocument({
         <View style={[styles.section, styles.totals]} wrap={false}>
           <Text style={styles.sectionTitle}>สรุป</Text>
           <View style={styles.totalsWords}>
-            <Total label="มูลค่าก่อนภาษี 7%" value={formatBaht(calculation.preTaxTotal)} />
-            <Total label="ภาษีมูลค่าเพิ่ม 7%" value={formatBaht(calculation.vatTotal)} />
+            {model.showPreTax ? <Total label="มูลค่าก่อนภาษี" value={formatBaht(calculation.preTaxTotal)} /> : null}
+            {model.showTax ? <Total label="ภาษีมูลค่าเพิ่ม" value={formatBaht(calculation.vatTotal)} /> : null}
             <Text style={styles.muted}>{model.amountInWords}</Text>
           </View>
           <View style={styles.totalsBox}>
             <Total emphasized label="จำนวนเงินทั้งสิ้น" value={formatBaht(calculation.grandTotal)} />
-            <Total label="หักภาษี ณ ที่จ่าย" value={formatBaht(calculation.withholdingTaxTotal)} />
+            {model.showWithholdingTax ? <Total label="หักภาษี ณ ที่จ่าย" value={formatBaht(calculation.withholdingTaxTotal)} /> : null}
             <Total label="จำนวนเงินที่ชำระ" value={formatBaht(calculation.amountDue)} />
           </View>
         </View>
@@ -357,51 +386,60 @@ function QuotationPdfDocument({
         ) : null}
 
         {/* data-pdf-notes */}
-        <View style={[styles.section, styles.row, styles.notes]}>
+        {model.showNotes ? <View style={[styles.section, styles.row, styles.notes]}>
           <Text style={styles.sectionTitle}>หมายเหตุ</Text>
           <Text style={styles.grow}>{payload.publicNotes}</Text>
-        </View>
+        </View> : null}
 
         {/* data-pdf-certification */}
-        <View style={[styles.section, styles.row]} wrap={false}>
+        <View style={[styles.row, { paddingVertical: 8 }]} wrap={false}>
           <Text style={styles.sectionTitle}>รับรอง</Text>
           <View style={[styles.grow, styles.certification]}>
-            {/* data-pdf-public-qr */}
-            <View style={styles.certificationSlot}>
-              <Text style={styles.bold}>สแกนเพื่อเปิดด้วยเว็บไซต์</Text>
-              <View style={styles.certificationAssetBox}>
-                {image(images, model.publicQrDataUrl) ? (
-                  <PdfImage src={image(images, model.publicQrDataUrl)} style={styles.certificationImage} />
-                ) : null}
+            {model.showCertificationQr ? (
+              <View style={styles.certificationSlot}>
+                {/* data-pdf-public-qr */}
+                <Text style={styles.bold}>สแกนเพื่อเปิดด้วยเว็บไซต์</Text>
+                <View style={compactCertification
+                  ? [styles.certificationAssetBox, styles.certificationAssetBoxCompact]
+                  : styles.certificationAssetBox}>
+                  {image(images, model.publicQrDataUrl) ? (
+                    <PdfImage
+                      src={image(images, model.publicQrDataUrl)}
+                      style={compactCertification
+                        ? [styles.certificationImage, styles.certificationImageCompact]
+                        : styles.certificationImage}
+                    />
+                  ) : null}
+                </View>
               </View>
-            </View>
-            <Signer images={images} issueDate={model.issueDate} label="ผู้ออกเอกสาร" signer={model.certification.issuer} />
-            <Signer images={images} issueDate={model.issueDate} label="ผู้อนุมัติเอกสาร" signer={model.certification.approver} />
+            ) : null}
+            <Signer compact={compactCertification} images={images} issueDate={model.issueDate} label="ผู้ออกเอกสาร" showDate={model.showCertificationDate} showName={model.showCertificationName} signer={model.certification.issuer} />
+            <Signer compact={compactCertification} images={images} issueDate={model.issueDate} label="ผู้อนุมัติเอกสาร" showDate={model.showCertificationDate} showName={model.showCertificationName} signer={model.certification.approver} />
             <View style={styles.certificationSlot}>
               <Text style={styles.bold}>ตราประทับ</Text>
-              <View style={styles.certificationAssetBox}>
+              <View style={compactCertification
+                ? [styles.certificationAssetBox, styles.certificationAssetBoxCompact]
+                : styles.certificationAssetBox}>
                 {image(images, model.certification.companyStampUrl) ? (
                   <PdfImage
                     src={image(images, model.certification.companyStampUrl)}
-                    style={styles.certificationImage}
+                    style={compactCertification
+                      ? [styles.certificationImage, styles.certificationImageCompact]
+                      : styles.certificationImage}
                   />
                 ) : null}
               </View>
             </View>
             <View style={styles.certificationSlot}>
               <Text style={styles.bold}>ผู้รับเอกสาร (ลูกค้า)</Text>
-              <View style={styles.signatureBox} />
-              <Text>{payload.customer.name}</Text>
-              <Text>วันที่ ____________________</Text>
+              <View style={compactCertification
+                ? [styles.signatureBox, styles.signatureBoxCompact]
+                : styles.signatureBox} />
+              {model.showCertificationName ? <Text>{payload.customer.name}</Text> : null}
+              {model.showCertificationDate ? <Text>วันที่ ____________________</Text> : null}
             </View>
           </View>
         </View>
-
-        <Text
-          fixed
-          render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
-          style={styles.footer}
-        />
       </Page>
     </Document>
   );
@@ -420,7 +458,7 @@ export async function downloadQuotationPdf({
 }): Promise<void> {
   const model = buildQuotationDocumentViewModel({ calculation, documentNumber, payload, publicQrDataUrl });
   const images = await resolveQuotationPdfImages(collectQuotationPdfImageSources(model));
-  if (!images[model.publicQrDataUrl]) throw new Error("Public QR image is unavailable");
+  if (model.showCertificationQr && !images[model.publicQrDataUrl]) throw new Error("Public QR image is unavailable");
   const blob = await pdf(<QuotationPdfDocument images={images} model={model} />).toBlob();
   const url = URL.createObjectURL(blob);
   try {

@@ -38,6 +38,13 @@ PDF Download (saved-clean only)
   -> server-validated canonical QUOTATION_PUBLIC_ORIGIN
   -> browser QR/image normalization
   -> lazy React PDF renderer with bundled Noto Sans Thai
+
+ข้อมูลลูกค้า
+  -> permission-checked Server Component / Server Action
+  -> customer validation + fixed DBD Open Data adapter
+  -> authenticated read repository + service-role mutation repository
+  -> shared quotation_customers table protected by quotation RLS
+  -> five-field quotation snapshot copy (no master foreign key)
 ```
 
 Quotation access is enforced by `users.allow_tools.allow_quotation` in pages,
@@ -48,6 +55,20 @@ client: the exposed RPC is security invoker and calls the private,
 fixed-search-path security-definer function that returns only the active row's
 document fields, items, payments, and certification snapshot. Public links and
 QR codes use only the configured canonical HTTPS origin, never request Host.
+
+Unlike seller, payment, and certification masters, `quotation_customers` is
+shared by every authenticated user with `allow_tools.allow_quotation = true`.
+The browser never calls Supabase or DBD directly. DBD lookup uses the fixed
+`openapi.dbd.go.th/api/v1/juristic_person/{taxId}` endpoint from a server-only
+adapter with a five-second timeout and stores only normalized defaults, status,
+and verification time. RLS reuses `private.has_quotation_permission()` for
+shared reads. Authenticated browser sessions receive SELECT only; permission-
+checked Server Actions perform validated mutations with the existing server-only
+service-role client and record the authenticated actor. Deactivation/reactivation
+is the only removal flow.
+Selecting a master copies name, address, tax ID, office type, and branch number
+into the existing quotation snapshot. Contacts and master IDs are not copied,
+and later changes on either side do not synchronize.
 
 ## Deployment
 

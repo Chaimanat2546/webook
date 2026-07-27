@@ -15,14 +15,10 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
   Download,
-  Eye,
   GripVertical,
-  MoreHorizontal,
   Printer,
-  Save,
   Share2,
   Trash2,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -30,7 +26,12 @@ import { toast } from "sonner";
 import {
   deleteQuotationAction,
   saveQuotationAction,
+  saveQuotationDocumentDisplayDefaultsAction,
 } from "../../../app/admin/quotations/actions";
+import {
+  applyQuotationDocumentDisplay,
+  type QuotationDocumentDisplay,
+} from "../../../lib/quotation-document-display";
 import {
   calculateQuotation,
   formatThaiBahtText,
@@ -55,9 +56,11 @@ import {
 import { waitForQuotationPrintImages } from "../../../lib/quotation-print";
 import type {
   CustomerSnapshot,
+  OfficeType,
   QuotationPayload,
   SellerSnapshot,
 } from "../../../lib/quotation-types";
+import { normalizeQuotationVatChoices } from "../../../lib/quotation-vat";
 import { cn } from "../../../lib/utils";
 import { Alert, AlertDescription } from "../../ui/alert";
 import { Button } from "../../ui/button";
@@ -69,27 +72,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../../ui/dropdown-menu";
 import { Input } from "../../ui/input";
+import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Textarea } from "../../ui/textarea";
 import { CertificationFields } from "./certification-fields";
+import { QuotationCustomerPicker } from "./customers/customer-picker-dialog";
 import { QuotationDocument } from "./quotation-document";
+import { QuotationDocumentDisplayDialog } from "./quotation-document-display-dialog";
 import { PaymentMethodList } from "./payment-method-list";
 
 export interface QuotationEditorProps {
   banks: BankOption[];
   documentNumber: string | null;
   initialPayload: QuotationPayload;
+  itemNames: string[];
   printOnLoad?: boolean;
   publicOrigin: string | null;
   publicToken: string | null;
 }
+type PendingConfirmation = "close" | null;
 type FieldProps = {
   children: React.ReactNode;
   error?: string;
@@ -101,13 +102,15 @@ type ItemProps = {
   errors: Record<string, string>;
   index: number;
   item: QuotationItemInput;
+  itemNames: string[];
   onRemove: () => void;
   onUpdate: <K extends keyof QuotationItemInput>(
     key: K,
     value: QuotationItemInput[K],
   ) => void;
-  showItemDiscount: boolean;
-  showItemVat: boolean;
+  showDiscount: boolean;
+  showTax: boolean;
+  showUnit: boolean;
   totalItems: number;
 };
 type FieldSize =
@@ -136,18 +139,41 @@ function controlClassName(size: FieldSize, className?: string) {
   return cn(fieldSizeClassNames[size], className);
 }
 
+function fieldErrorId(field: string) {
+  return `quotation-field-error-${field.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
+
+function focusField(field: string) {
+  const fields = document.querySelectorAll<HTMLElement>(
+    `[data-field="${CSS.escape(field)}"]`,
+  );
+  const target =
+    Array.from(fields).find((element) => element.offsetParent !== null) ??
+    fields[0];
+  target?.scrollIntoView({ block: "center" });
+  target?.focus({ preventScroll: true });
+}
+
+function FieldError({ error, field }: { error?: string; field: string }) {
+  return error ? (
+    <span className="text-xs text-destructive" id={fieldErrorId(field)}>
+      {error}
+    </span>
+  ) : null;
+}
+
 function Field({ children, error, field, label }: FieldProps) {
-  void field;
   return (
     <label className="grid gap-1 text-sm">
       <span>{label}</span>
       {children}
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      <FieldError error={error} field={field} />
     </label>
   );
 }
 function TextInput({
   disabled,
+  digitsOnly,
   error,
   field,
   inputClassName,
@@ -160,6 +186,7 @@ function TextInput({
   value,
 }: {
   disabled?: boolean;
+  digitsOnly?: boolean;
   error?: string;
   field: string;
   inputClassName?: string;
@@ -174,18 +201,24 @@ function TextInput({
   const input = (
     <>
       <Input
+        aria-describedby={error ? fieldErrorId(field) : undefined}
         aria-invalid={Boolean(error)}
         aria-label={label ?? field}
         className={controlClassName(size, inputClassName)}
         data-field={field}
         disabled={disabled}
-        inputMode={inputMode}
+        inputMode={digitsOnly ? "numeric" : inputMode}
+        maxLength={digitsOnly ? 13 : undefined}
         onBlur={onBlur}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(
+          digitsOnly
+            ? event.target.value.replace(/\D/g, "").slice(0, 13)
+            : event.target.value,
+        )}
         onFocus={onFocus}
         value={value}
       />
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      <FieldError error={error} field={field} />
     </>
   );
   return label ? (
@@ -194,6 +227,55 @@ function TextInput({
     </Field>
   ) : (
     input
+  );
+}
+
+function OfficeTypeControls({
+  error,
+  field,
+  label,
+  onChange,
+  value,
+}: {
+  error?: string;
+  field: string;
+  label: string;
+  onChange: (value: OfficeType) => void;
+  value: OfficeType;
+}) {
+  const options = [
+    ["unspecified", "ไม่ระบุ"],
+    ["head_office", "สำนักงานใหญ่"],
+    ["branch", "สาขา"],
+  ] as const;
+  return (
+    <fieldset className="grid gap-1 text-sm">
+      <legend>{label}</legend>
+      <RadioGroup
+        aria-describedby={error ? fieldErrorId(field) : undefined}
+        aria-invalid={Boolean(error)}
+        className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2"
+        name={field}
+        onValueChange={(option) => onChange(option as OfficeType)}
+        value={value}
+      >
+        {options.map(([option, optionLabel]) => (
+          <label
+            className="flex items-center gap-2"
+            htmlFor={`${field}-${option}`}
+            key={option}
+          >
+            <RadioGroupItem
+              data-field={field}
+              id={`${field}-${option}`}
+              value={option}
+            />
+            <span>{optionLabel}</span>
+          </label>
+        ))}
+      </RadioGroup>
+      <FieldError error={error} field={field} />
+    </fieldset>
   );
 }
 function Numeric({
@@ -240,6 +322,7 @@ function Numeric({
 
   const input = (
     <Input
+      aria-describedby={error ? fieldErrorId(field) : undefined}
       aria-invalid={Boolean(error)}
       aria-label={label ?? field}
       className={controlClassName(size, inputClassName)}
@@ -267,12 +350,12 @@ function Numeric({
   return label ? (
     <Field error={undefined} field={field} label={label}>
       {input}
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      <FieldError error={error} field={field} />
     </Field>
   ) : (
     <>
       {input}
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      <FieldError error={error} field={field} />
     </>
   );
 }
@@ -302,64 +385,9 @@ function Totals({
 function positions(items: QuotationItemInput[]) {
   return items.map((item, index) => ({ ...item, position: index + 1 }));
 }
-function itemGrid(showItemDiscount: boolean, showItemVat: boolean) {
-  if (showItemDiscount && showItemVat)
-    return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_9rem_8.5rem_2.5rem]";
-  if (showItemDiscount)
-    return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_8.5rem_2.5rem]";
-  if (showItemVat)
-    return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_8.5rem_2.5rem]";
-  return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_8.5rem_2.5rem]";
+function itemGrid() {
+  return "xl:grid-cols-[2.5rem_minmax(16rem,1fr)_5rem_5rem_7.5rem_9rem_9rem_8.5rem_2.5rem]";
 }
-function DocumentMore({
-  deleteEnabled,
-  onClose,
-  onDelete,
-  onPreview,
-  onSave,
-  previewEnabled,
-  saveDisabled,
-}: {
-  deleteEnabled: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-  onPreview: () => void;
-  onSave: () => void;
-  previewEnabled: boolean;
-  saveDisabled: boolean;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline">
-          <MoreHorizontal aria-hidden="true" className="size-4" />
-          เพิ่มเติม
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={!previewEnabled} onSelect={onPreview}>
-          <Eye aria-hidden="true" className="size-4" />
-          ดูตัวอย่าง
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={saveDisabled} onSelect={onSave}>
-          <Save aria-hidden="true" className="size-4" />
-          บันทึก
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onClose}>
-          <X aria-hidden="true" className="size-4" />
-          ปิด
-        </DropdownMenuItem>
-        {deleteEnabled ? (
-          <DropdownMenuItem onSelect={onDelete} variant="destructive">
-            <Trash2 aria-hidden="true" className="size-4" />
-            ลบ
-          </DropdownMenuItem>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 function SortableQuotationItem(props: ItemProps) {
   const { index, item, onRemove } = props;
   const { handleRef, isDragging, ref } = useSortable({
@@ -372,7 +400,7 @@ function SortableQuotationItem(props: ItemProps) {
     <article
       className={cn(
         "rounded-md border p-3 xl:grid xl:items-start xl:gap-2 xl:rounded-none xl:border-x-0 xl:border-t-0 xl:px-0 xl:py-2",
-        itemGrid(props.showItemDiscount, props.showItemVat),
+        itemGrid(),
         isDragging && "opacity-60",
       )}
       data-sortable-item
@@ -410,32 +438,23 @@ function SortableQuotationItem(props: ItemProps) {
       </div>
       <div
         data-item-detail-grid
-        className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:contents"
+        className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:contents xl:[&_label>span:first-child]:sr-only"
       >
         <div className="xl:col-start-3 xl:row-start-1">
           <ItemQuantityControl {...props} labelled />
         </div>
-        <div className="xl:col-start-4 xl:row-start-1">
+        {props.showUnit ? <div className="xl:col-start-4 xl:row-start-1">
           <ItemUnitControl {...props} labelled />
-        </div>
+        </div> : null}
         <div className="xl:col-start-5 xl:row-start-1">
           <ItemPriceControls {...props} labelled />
         </div>
-        {props.showItemDiscount ? (
-          <div className="xl:col-start-6 xl:row-start-1">
-            <ItemDiscountControls {...props} labelled />
-          </div>
-        ) : null}
-        {props.showItemVat ? (
-          <div
-            className={cn(
-              "xl:row-start-1",
-              props.showItemDiscount ? "xl:col-start-7" : "xl:col-start-6",
-            )}
-          >
-            <ItemVatControls {...props} labelled />
-          </div>
-        ) : null}
+        {props.showDiscount ? <div className="xl:col-start-6 xl:row-start-1">
+          <ItemDiscountControls {...props} labelled />
+        </div> : null}
+        {props.showTax ? <div className="xl:col-start-7 xl:row-start-1">
+          <ItemVatControls {...props} labelled />
+        </div> : null}
       </div>
       <p className="mt-3 max-w-full border-t pt-2 text-right font-medium tabular-nums [overflow-wrap:anywhere] xl:col-start-[-3] xl:row-start-1 xl:mt-0 xl:border-0 xl:pt-2">
         <span className="xl:sr-only">มูลค่าก่อนภาษี </span>
@@ -447,22 +466,45 @@ function SortableQuotationItem(props: ItemProps) {
   );
 }
 
-function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
+function ItemDetailsControls({ errors, index, item, itemNames, onUpdate }: ItemProps) {
   const error = (field: string) => errors[`items.${index}.${field}`];
+  const legacyItemName = item.name && !itemNames.includes(item.name)
+    ? item.name
+    : null;
   return (
     <div data-item-details className="grid gap-1">
-      <Input
+      <select
+        aria-describedby={
+          error("name") ? fieldErrorId(`items.${index}.name`) : undefined
+        }
         aria-invalid={Boolean(error("name"))}
         aria-label="ชื่อรายการ"
+        className={cn("w-full", selectClassName)}
         data-field={`items.${index}.name`}
-        onChange={(event) => onUpdate("name", event.target.value)}
-        placeholder="รายการ"
+        onChange={(event) => {
+          const name = event.target.value;
+          onUpdate("name", name);
+          onUpdate("description", name);
+        }}
         value={item.name}
-      />
-      {error("name") ? (
-        <span className="text-xs text-destructive">{error("name")}</span>
-      ) : null}
+      >
+        <option value="">เลือกรายการ</option>
+        {legacyItemName ? (
+          <option disabled value={legacyItemName}>
+            ค่าเดิม: {legacyItemName} — กรุณาเลือกใหม่
+          </option>
+        ) : null}
+        {itemNames.map((name) => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </select>
+      <FieldError error={error("name")} field={`items.${index}.name`} />
       <Textarea
+        aria-describedby={
+          error("description")
+            ? fieldErrorId(`items.${index}.description`)
+            : undefined
+        }
         aria-invalid={Boolean(error("description"))}
         aria-label="รายละเอียด"
         data-field={`items.${index}.description`}
@@ -470,9 +512,10 @@ function ItemDetailsControls({ errors, index, item, onUpdate }: ItemProps) {
         placeholder="รายละเอียด"
         value={item.description}
       />
-      {error("description") ? (
-        <span className="text-xs text-destructive">{error("description")}</span>
-      ) : null}
+      <FieldError
+        error={error("description")}
+        field={`items.${index}.description`}
+      />
     </div>
   );
 }
@@ -569,29 +612,37 @@ function ItemVatControls({
   labelled?: boolean;
 }) {
   const error = (field: string) => errors[`items.${index}.${field}`];
+  const vatError = error("vatTreatment") ?? error("vatRate");
+  const field = `items.${index}.${error("vatRate") ? "vatRate" : "vatTreatment"}`;
   const select = (
     <select
-      aria-invalid={Boolean(error("vatTreatment"))}
+      aria-describedby={vatError ? fieldErrorId(field) : undefined}
+      aria-invalid={Boolean(vatError)}
       aria-label={`items.${index}.vatTreatment`}
       className={cn("w-full min-w-0", selectClassName)}
-      data-field={`items.${index}.vatTreatment`}
+      data-field={field}
       onChange={(event) => {
-        const vatTreatment = event.target
-          .value as QuotationItemInput["vatTreatment"];
-        onUpdate("vatTreatment", vatTreatment);
-        if (vatTreatment !== "taxable") onUpdate("vatRate", "0");
+        const choice = event.target.value;
+        onUpdate("vatTreatment", choice === "none" ? "none" : "taxable");
+        onUpdate("vatRate", choice === "7" ? "7" : "0");
       }}
-      value={item.vatTreatment}
+      value={
+        item.vatTreatment === "none"
+          ? "none"
+          : Number(item.vatRate) === 0
+            ? "0"
+            : "7"
+      }
     >
-      <option value="taxable">VAT</option>
-      <option value="exempt">ยกเว้น VAT</option>
-      <option value="none">ไม่คิด VAT</option>
+      <option value="7">7%</option>
+      <option value="0">0%</option>
+      <option value="none">ไม่มี</option>
     </select>
   );
   const treatmentControl = labelled ? (
     <Field
-      error={error("vatTreatment")}
-      field={`items.${index}.vatTreatment`}
+      error={vatError}
+      field={field}
       label="VAT"
     >
       {select}
@@ -599,61 +650,40 @@ function ItemVatControls({
   ) : (
     <>
       {select}
-      {error("vatTreatment") ? (
-        <span className="text-xs text-destructive">
-          {error("vatTreatment")}
-        </span>
-      ) : null}
+      <FieldError
+        error={vatError}
+        field={field}
+      />
     </>
   );
-  return (
-    <div
-      className={
-        labelled
-          ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2"
-          : "grid gap-1"
-      }
-    >
-      {treatmentControl}
-      <Numeric
-        error={error("vatRate")}
-        field={`items.${index}.vatRate`}
-        label={labelled ? "อัตรา" : undefined}
-        onChange={(value) => onUpdate("vatRate", value)}
-        size="money"
-        value={item.vatRate}
-      />
-    </div>
-  );
+  return <div className="grid gap-1">{treatmentControl}</div>;
 }
 
 export function QuotationEditor({
   banks,
   documentNumber: initialDocumentNumber,
   initialPayload,
+  itemNames,
   printOnLoad = false,
   publicOrigin,
   publicToken: initialPublicToken,
 }: QuotationEditorProps) {
   const router = useRouter();
-  const [payload, setPayload] = useState<QuotationPayload>(initialPayload);
+  const [payload, setPayload] = useState<QuotationPayload>(() =>
+    normalizeQuotationVatChoices(initialPayload),
+  );
   const [documentNumber, setDocumentNumber] = useState(initialDocumentNumber);
   const [publicToken, setPublicToken] = useState(initialPublicToken);
   const [publicQrDataUrl, setPublicQrDataUrl] = useState("");
   const [publicQrSettledToken, setPublicQrSettledToken] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [activeCompletionTab, setActiveCompletionTab] = useState<
     "certification" | "payments"
   >("payments");
+  const [completionExpanded, setCompletionExpanded] = useState(false);
   const [uploadingFields, setUploadingFields] = useState(new Set<string>());
-  const [showItemDiscount, setShowItemDiscount] = useState(() =>
-    initialPayload.items.some((item) => Number(item.discountAmount) > 0),
-  );
-  const [showItemVat, setShowItemVat] = useState(() =>
-    initialPayload.items.some((item) => item.vatTreatment !== "none"),
-  );
   const [isPending, startTransition] = useTransition();
   const [logoUnavailable, setLogoUnavailable] = useState(false);
   const [sellerExpanded, setSellerExpanded] = useState(false);
@@ -663,9 +693,18 @@ export function QuotationEditor({
     );
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] =
+    useState<PendingConfirmation>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const autoPrintStarted = useRef(false);
+  const pendingFocusField = useRef<string | null>(null);
+  useEffect(() => {
+    const field = pendingFocusField.current;
+    if (!field || isPending) return;
+    pendingFocusField.current = null;
+    focusField(field);
+  }, [activeCompletionTab, completionExpanded, fieldErrors, isPending]);
   const canUseSavedDocument = Boolean(
       documentNumber &&
       lastSavedPayload &&
@@ -678,11 +717,16 @@ export function QuotationEditor({
     ? "ยังไม่ได้ตั้งค่า URL สาธารณะสำหรับใบเสนอราคา"
     : "";
   const publicQrPending = Boolean(
-    publicOrigin && publicToken && !isDirty && publicQrSettledToken !== publicToken,
+    lastSavedPayload?.documentDisplay.certificationQr
+    && publicOrigin
+    && publicToken
+    && publicQrSettledToken !== publicToken,
   );
-  const savedPublicQrDataUrl = !isDirty && publicOrigin && publicToken && publicQrSettledToken === publicToken
-    ? publicQrDataUrl
-    : "";
+  const savedPublicQrDataUrl =
+    publicOrigin && publicToken && publicQrSettledToken === publicToken
+      ? publicQrDataUrl
+      : "";
+  const draftPublicQrDataUrl = !isDirty ? savedPublicQrDataUrl : "";
   const canPrint = Boolean(
     documentNumber && lastSavedPayload && !isPending && !publicQrPending,
   );
@@ -712,6 +756,22 @@ export function QuotationEditor({
       return next;
     });
   }
+  async function applyDocumentDisplay(
+    value: QuotationDocumentDisplay,
+    saveAsDefault: boolean,
+  ): Promise<boolean> {
+    if (saveAsDefault) {
+      const result = await saveQuotationDocumentDisplayDefaultsAction(value);
+      if (!result.ok) {
+        toast.error(result.formError);
+        return false;
+      }
+    }
+    changed("documentDisplay");
+    setPayload((current) => applyQuotationDocumentDisplay(current, value));
+    if (saveAsDefault) toast.success("บันทึกค่าเริ่มต้นรูปแบบเอกสารแล้ว");
+    return true;
+  }
   function updateRoot<K extends keyof QuotationPayload>(
     key: K,
     value: QuotationPayload[K],
@@ -737,44 +797,6 @@ export function QuotationEditor({
       return next;
     });
   }
-  function toggleItemDiscount(enabled: boolean) {
-    if (
-      !enabled &&
-      payload.items.some((item) => Number(item.discountAmount) > 0) &&
-      !window.confirm(
-        "การปิดส่วนลดเฉพาะรายการจะล้างส่วนลดทุกรายการ ต้องการดำเนินการต่อหรือไม่",
-      )
-    )
-      return;
-    setShowItemDiscount(enabled);
-    if (!enabled) {
-      changed("items");
-      setPayload((current) => ({
-        ...current,
-        items: current.items.map((item) => ({ ...item, discountAmount: "0" })),
-      }));
-    }
-  }
-  function toggleItemVat(enabled: boolean) {
-    if (
-      !enabled &&
-      payload.items.some((item) => Number(item.vatRate) > 0) &&
-      !window.confirm(
-        "การปิด VAT เฉพาะรายการจะล้างค่า VAT ทุกรายการ ต้องการดำเนินการต่อหรือไม่",
-      )
-    )
-      return;
-    setShowItemVat(enabled);
-    changed("items");
-    setPayload((current) => ({
-      ...current,
-      items: current.items.map((item) => ({
-        ...item,
-        vatRate: enabled ? "7.00" : "0",
-        vatTreatment: enabled ? "taxable" : "none",
-      })),
-    }));
-  }
   function setWithholdingEnabled(enabled: boolean) {
     changed("withholdingTaxRate");
     setPayload((current) => ({
@@ -794,15 +816,11 @@ export function QuotationEditor({
       seller: { ...current.seller, [key]: value },
     }));
   }
-  function updateCustomer<K extends keyof CustomerSnapshot>(
-    key: K,
-    value: CustomerSnapshot[K],
-  ) {
-    changed(`customer.${String(key)}`);
-    setPayload((current) => ({
-      ...current,
-      customer: { ...current.customer, [key]: value },
-    }));
+  function replaceCustomerSnapshot(customer: CustomerSnapshot) {
+    for (const field of ["name", "address", "taxId", "officeType", "branchNumber"] as const) {
+      changed(`customer.${field}`);
+    }
+    setPayload((current) => ({ ...current, customer }));
   }
   function updateSellerOfficeType(officeType: SellerSnapshot["officeType"]) {
     changed("seller.officeType");
@@ -812,20 +830,6 @@ export function QuotationEditor({
         ...current.seller,
         branchNumber:
           officeType === "branch" ? current.seller.branchNumber : "",
-        officeType,
-      },
-    }));
-  }
-  function updateCustomerOfficeType(
-    officeType: CustomerSnapshot["officeType"],
-  ) {
-    changed("customer.officeType");
-    setPayload((current) => ({
-      ...current,
-      customer: {
-        ...current.customer,
-        branchNumber:
-          officeType === "branch" ? current.customer.branchNumber : "",
         officeType,
       },
     }));
@@ -858,8 +862,8 @@ export function QuotationEditor({
           quantity: "1",
           unit: "",
           unitPrice: "0.00",
-          vatRate: showItemVat ? "7.00" : "0",
-          vatTreatment: showItemVat ? "taxable" : "none",
+          vatRate: "0",
+          vatTreatment: "none",
         },
       ]),
     }));
@@ -913,35 +917,36 @@ export function QuotationEditor({
         : current.validUntil,
     }));
   }
-  function focusField(field: string) {
-    const fields = document.querySelectorAll<HTMLElement>(
-      `[data-field="${CSS.escape(field)}"]`,
-    );
-    (
-      Array.from(fields).find((element) => element.offsetParent !== null) ??
-      fields[0]
-    )?.focus();
-  }
-  const focusableFieldErrors = Object.entries(fieldErrors)
-    .filter(
-      ([field]) =>
-        field === "items" ||
-        field === "seller.logoUrl" ||
-        document.querySelector(`[data-field="${CSS.escape(field)}"]`),
-    )
-    .map(([field, message]) => ({ field, message }));
   function save(close = false) {
     if (uploadingFields.size) return;
-    setFormError("");
     startTransition(async () => {
       const result = await saveQuotationAction(payload);
       if (!result.ok) {
+        const errorFields = Object.keys(result.fieldErrors);
+        const firstField = errorFields[0];
+        if (firstField) {
+          pendingFocusField.current = firstField.startsWith("customer.")
+            ? "customer.name"
+            : firstField;
+        }
         setFieldErrors(result.fieldErrors);
-        setFormError(result.formError);
-        const firstField = Object.keys(result.fieldErrors)[0];
-        if (firstField?.startsWith("certification.")) setActiveCompletionTab("certification");
-        if (firstField?.startsWith("paymentMethods")) setActiveCompletionTab("payments");
-        if (firstField) requestAnimationFrame(() => focusField(firstField));
+        if (result.formError) toast.error(result.formError);
+        else if (errorFields.length)
+          toast.error("กรุณาตรวจสอบข้อมูลที่กรอก");
+        const completionField = errorFields.find(
+          (field) =>
+            field === "certification" ||
+            field.startsWith("certification.") ||
+            field.startsWith("paymentMethods"),
+        );
+        if (completionField) {
+          setCompletionExpanded(true);
+          setActiveCompletionTab(
+            completionField.startsWith("paymentMethods")
+              ? "payments"
+              : "certification",
+          );
+        }
         return;
       }
       setLastSavedPayload(result.payload);
@@ -950,6 +955,7 @@ export function QuotationEditor({
       setPublicToken(result.publicToken);
       setFieldErrors({});
       setIsDirty(false);
+      toast.success("บันทึกใบเสนอราคาแล้ว");
       if (close) router.push("/admin/quotations");
       else if (!payload.id)
         router.replace(
@@ -980,16 +986,28 @@ export function QuotationEditor({
 
     const frame = window.requestAnimationFrame(() => {
       void (async () => {
-        const images = document.querySelectorAll<HTMLImageElement>("[data-quotation-print] img");
-        const ready = await waitForQuotationPrintImages(images, {
-          signal: controller.signal,
-        });
-        if (!ready || controller.signal.aborted) return;
-        document.head.append(printStyle);
-        document.documentElement.classList.add("quotation-printing");
-        window.addEventListener("afterprint", cleanup, { once: true });
-        window.print();
-        if (!finished) timeout = window.setTimeout(cleanup, 1_000);
+        try {
+          const images =
+            document.querySelectorAll<HTMLImageElement>(
+              "[data-quotation-print] img",
+            );
+          const ready = await waitForQuotationPrintImages(images, {
+            signal: controller.signal,
+          });
+          if (!ready || controller.signal.aborted) return;
+          document.head.append(printStyle);
+          document.documentElement.classList.add("quotation-printing");
+          window.addEventListener("afterprint", cleanup, { once: true });
+          window.print();
+          if (!finished) timeout = window.setTimeout(cleanup, 1_000);
+        } catch {
+          if (!controller.signal.aborted) {
+            toast.error(
+              "ไม่สามารถเตรียมเอกสารสำหรับพิมพ์ได้ กรุณาลองอีกครั้ง",
+            );
+            cleanup();
+          }
+        }
       })();
     });
 
@@ -1009,11 +1027,11 @@ export function QuotationEditor({
   }, [canPrint, printOnLoad, printSaved]);
   useEffect(() => {
     let stale = false;
-    if (!publicOrigin || !publicToken || isDirty) {
+    if (!lastSavedPayload?.documentDisplay.certificationQr || !publicOrigin || !publicToken) {
       queueMicrotask(() => {
         if (stale) return;
         setPublicQrDataUrl("");
-        setPublicQrSettledToken("");
+        setPublicQrSettledToken(publicToken ?? "");
       });
       return () => {
         stale = true;
@@ -1036,7 +1054,7 @@ export function QuotationEditor({
     return () => {
       stale = true;
     };
-  }, [isDirty, publicOrigin, publicToken]);
+  }, [lastSavedPayload?.documentDisplay.certificationQr, publicOrigin, publicToken]);
   useEffect(() => {
     if (!isDirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -1044,11 +1062,16 @@ export function QuotationEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
   function closeEditor() {
-    if (
-      !isDirty ||
-      window.confirm("มีการแก้ไขที่ยังไม่ได้บันทึก ต้องการปิดหรือไม่")
-    )
-      router.push("/admin/quotations");
+    if (isDirty) {
+      setPendingConfirmation("close");
+      return;
+    }
+    router.push("/admin/quotations");
+  }
+  function confirmPendingAction() {
+    setPendingConfirmation(null);
+    setIsDirty(false);
+    router.push("/admin/quotations");
   }
   async function shareSaved() {
     if (!canUseSavedDocument || !publicOrigin || !publicToken) return;
@@ -1061,12 +1084,15 @@ export function QuotationEditor({
   }
   async function downloadSaved() {
     if (!canUseSavedDocument || !lastSavedPayload || !savedCalculation || !documentNumber || isDownloading) return;
-    if (!publicOrigin || !publicToken) return;
+    const needsPublicQr = lastSavedPayload.documentDisplay.certificationQr;
+    if (needsPublicQr && (!publicOrigin || !publicToken)) return;
     setIsDownloading(true);
     try {
-      const publicQrDataUrl = savedPublicQrDataUrl || await createQuotationPublicQrDataUrl(
-        buildQuotationPublicUrl(publicOrigin, publicToken),
-      );
+      const publicQrDataUrl = needsPublicQr
+        ? savedPublicQrDataUrl || await createQuotationPublicQrDataUrl(
+          buildQuotationPublicUrl(publicOrigin!, publicToken!),
+        )
+        : "";
       const { downloadQuotationPdf } = await import("./quotation-pdf");
       await downloadQuotationPdf({
         calculation: savedCalculation,
@@ -1080,12 +1106,20 @@ export function QuotationEditor({
       setIsDownloading(false);
     }
   }
+  function openDeleteDialog() {
+    setDeleteError("");
+    setDeleteOpen(true);
+  }
   function deleteQuotation() {
     if (!payload.id) return;
-    setFormError("");
+    setDeleteError("");
     startTransition(async () => {
       const result = await deleteQuotationAction(payload.id!);
-      if (!result.ok) return setFormError(result.formError);
+      if (!result.ok) {
+        setDeleteError(result.formError);
+        toast.error(result.formError);
+        return;
+      }
       setDeleteOpen(false);
       setIsDirty(false);
       toast.success(`ลบ ${documentNumber ?? "ใบเสนอราคา"} แล้ว`);
@@ -1097,57 +1131,59 @@ export function QuotationEditor({
     errors: fieldErrors,
     index,
     item,
+    itemNames,
     onRemove: () => removeItem(index),
     onUpdate: (key, value) => updateItem(index, key, value),
-    showItemDiscount,
-    showItemVat,
+    showDiscount: payload.documentDisplay.discount,
+    showTax: payload.documentDisplay.tax,
+    showUnit: payload.documentDisplay.unit,
     totalItems: payload.items.length,
   });
+  const saveDisabled = isPending || uploadingFields.size > 0;
+  const confirmationCopy = {
+    title: "ออกจากหน้านี้โดยไม่บันทึก?",
+    description: "การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไป",
+    confirm: "ออกโดยไม่บันทึก",
+  };
 
   return (
-    <div className="space-y-4" data-dirty={isDirty} data-quotation-editor>
+    <div
+      className="space-y-4 pb-24 md:pb-0"
+      data-dirty={isDirty}
+      data-quotation-editor
+    >
       <header
         className="flex flex-wrap items-start justify-between gap-3 border-b border-foreground/25 pb-3"
         data-workbench-command-bar
       >
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
-            {documentNumber ? "แก้ไขใบเสนอราคา" : "สร้างใบเสนอราคา"}
+            {documentNumber ?? "ใบเสนอราคาใหม่"}
           </h1>
-          <p className="font-mono text-xs text-blue-700">
-            {documentNumber ?? "เลขที่ออกเมื่อบันทึก"}
-          </p>
+          {!documentNumber ? (
+            <p className="text-xs text-muted-foreground">เลขที่ออกเมื่อบันทึก</p>
+          ) : null}
         </div>
-        <div className="flex items-center gap-2" data-header-actions>
+        <div
+          className="hidden items-center gap-2 md:flex"
+          data-desktop-command-actions
+        >
           <Button onClick={closeEditor} type="button" variant="outline">
-            ปิด
+            กลับ
           </Button>
-          <Button disabled={isPending || uploadingFields.size > 0} onClick={() => save()} type="button">
-            {isPending ? "กำลังบันทึก" : "บันทึก"}
+          <Button
+            disabled={!calculation}
+            onClick={() => setPreviewOpen(true)}
+            type="button"
+            variant="outline"
+          >
+            ดูตัวอย่าง
+          </Button>
+          <Button disabled={saveDisabled} onClick={() => save()} type="button">
+            {isPending ? "กำลังบันทึก…" : "บันทึก"}
           </Button>
         </div>
       </header>
-      {formError ? (
-        <Alert variant="destructive">
-          <AlertDescription>{formError}</AlertDescription>
-        </Alert>
-      ) : null}
-      {focusableFieldErrors.length ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            {focusableFieldErrors.map(({ field, message }) => (
-              <button
-                className="mr-2 underline"
-                key={field}
-                onClick={() => focusField(field)}
-                type="button"
-              >
-                {message}
-              </button>
-            ))}
-          </AlertDescription>
-        </Alert>
-      ) : null}
       {calculationError ? (
         <Alert variant="destructive">
           <AlertDescription>{calculationError}</AlertDescription>
@@ -1179,7 +1215,9 @@ export function QuotationEditor({
             <p className="truncate text-sm text-muted-foreground">
               {payload.seller.officeType === "branch"
                 ? `สาขา ${payload.seller.branchNumber || "-"}`
-                : "สำนักงานใหญ่"}
+                : payload.seller.officeType === "head_office"
+                  ? "สำนักงานใหญ่"
+                  : "ไม่ระบุ"}
               {payload.seller.taxId ? ` · ${payload.seller.taxId}` : ""}
             </p>
           </div>
@@ -1196,6 +1234,11 @@ export function QuotationEditor({
           className="flex flex-wrap items-center gap-2"
           data-document-actions
         >
+          <QuotationDocumentDisplayDialog
+            disabled={isPending || uploadingFields.size > 0}
+            onApply={applyDocumentDisplay}
+            payload={payload}
+          />
           <Button
             aria-describedby={shareUnavailableMessage ? "quotation-share-unavailable" : undefined}
             disabled={!canUseSavedDocument}
@@ -1234,15 +1277,18 @@ export function QuotationEditor({
               {shareUnavailableMessage}
             </p>
           ) : null}
-          <DocumentMore
-            deleteEnabled={Boolean(payload.id)}
-            onClose={closeEditor}
-            onDelete={() => setDeleteOpen(true)}
-            onPreview={() => setPreviewOpen(true)}
-            onSave={() => save()}
-            previewEnabled={Boolean(calculation)}
-            saveDisabled={isPending || uploadingFields.size > 0}
-          />
+          {payload.id ? (
+            <Button
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={openDeleteDialog}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+              ลบใบเสนอราคา
+            </Button>
+          ) : null}
         </div>
       </section>
       {sellerExpanded ? (
@@ -1263,6 +1309,11 @@ export function QuotationEditor({
             label="ที่อยู่"
           >
             <Textarea
+              aria-describedby={
+                fieldErrors["seller.address"]
+                  ? fieldErrorId("seller.address")
+                  : undefined
+              }
               aria-invalid={Boolean(fieldErrors["seller.address"])}
               data-field="seller.address"
               onChange={(event) => updateSeller("address", event.target.value)}
@@ -1270,6 +1321,7 @@ export function QuotationEditor({
             />
           </Field>
           <TextInput
+            digitsOnly
             error={fieldErrors["seller.taxId"]}
             field="seller.taxId"
             inputClassName="max-w-72"
@@ -1277,36 +1329,22 @@ export function QuotationEditor({
             onChange={(value) => updateSeller("taxId", value)}
             value={payload.seller.taxId}
           />
-          <Field
+          <OfficeTypeControls
             error={fieldErrors["seller.officeType"]}
             field="seller.officeType"
             label="สำนักงานผู้ขาย"
-          >
-            <select
-              aria-invalid={Boolean(fieldErrors["seller.officeType"])}
-              className={selectClassName}
-              data-field="seller.officeType"
-              onChange={(event) =>
-                updateSellerOfficeType(
-                  event.target.value === "branch" ? "branch" : "head_office",
-                )
-              }
-              value={payload.seller.officeType}
-            >
-              <option value="head_office">สำนักงานใหญ่</option>
-              <option value="branch">สาขา</option>
-            </select>
-          </Field>
-          {payload.seller.officeType === "branch" ? (
-            <TextInput
-              error={fieldErrors["seller.branchNumber"]}
-              field="seller.branchNumber"
-              inputClassName="max-w-48"
-              label="เลขสาขาผู้ขาย"
-              onChange={(value) => updateSeller("branchNumber", value)}
-              value={payload.seller.branchNumber}
-            />
-          ) : null}
+            onChange={updateSellerOfficeType}
+            value={payload.seller.officeType}
+          />
+          <TextInput
+            disabled={payload.seller.officeType !== "branch"}
+            error={fieldErrors["seller.branchNumber"]}
+            field="seller.branchNumber"
+            inputClassName="max-w-48"
+            label="เลขสาขาผู้ขาย"
+            onChange={(value) => updateSeller("branchNumber", value)}
+            value={payload.seller.branchNumber}
+          />
           <TextInput
             error={fieldErrors["seller.phone"]}
             field="seller.phone"
@@ -1341,76 +1379,20 @@ export function QuotationEditor({
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">01 ลูกค้า</h2>
             <span className="text-xs text-muted-foreground">
-              Snapshot เฉพาะใบ
+              เลือกจากข้อมูลลูกค้าเท่านั้น
             </span>
           </div>
-          <div data-customer-fields className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <TextInput
-                error={fieldErrors["customer.name"]}
-                field="customer.name"
-                label="ชื่อลูกค้า"
-                onChange={(value) => updateCustomer("name", value)}
-                size="name"
-                value={payload.customer.name}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <Field
-                error={fieldErrors["customer.address"]}
-                field="customer.address"
-                label="ที่อยู่"
-              >
-                <Textarea
-                  aria-invalid={Boolean(fieldErrors["customer.address"])}
-                  className={controlClassName("address")}
-                  data-field="customer.address"
-                  onChange={(event) =>
-                    updateCustomer("address", event.target.value)
-                  }
-                  value={payload.customer.address}
-                />
-              </Field>
-            </div>
-            <TextInput
-              error={fieldErrors["customer.taxId"]}
-              field="customer.taxId"
-              label="เลขผู้เสียภาษี"
-              onChange={(value) => updateCustomer("taxId", value)}
-              size="identifier"
-              value={payload.customer.taxId}
-            />
-            <Field
-              error={fieldErrors["customer.officeType"]}
-              field="customer.officeType"
-              label="สำนักงานลูกค้า"
-            >
-              <select
-                aria-invalid={Boolean(fieldErrors["customer.officeType"])}
-                className={controlClassName("identifier", selectClassName)}
-                data-field="customer.officeType"
-                onChange={(event) =>
-                  updateCustomerOfficeType(
-                    event.target.value === "branch" ? "branch" : "head_office",
-                  )
-                }
-                value={payload.customer.officeType}
-              >
-                <option value="head_office">สำนักงานใหญ่</option>
-                <option value="branch">สาขา</option>
-              </select>
-            </Field>
-            {payload.customer.officeType === "branch" ? (
-              <TextInput
-                error={fieldErrors["customer.branchNumber"]}
-                field="customer.branchNumber"
-                label="เลขสาขาลูกค้า"
-                onChange={(value) => updateCustomer("branchNumber", value)}
-                size="identifier"
-                value={payload.customer.branchNumber}
-              />
-            ) : null}
-          </div>
+          <QuotationCustomerPicker
+            current={payload.customer}
+            error={
+              fieldErrors["customer.name"]
+              || fieldErrors["customer.address"]
+              || fieldErrors["customer.taxId"]
+              || fieldErrors["customer.officeType"]
+              || fieldErrors["customer.branchNumber"]
+            }
+            onSelect={replaceCustomerSnapshot}
+          />
         </section>
         <section
           data-document-section
@@ -1427,6 +1409,11 @@ export function QuotationEditor({
               label="วันที่ออก"
             >
               <Input
+                aria-describedby={
+                  fieldErrors.issueDate
+                    ? fieldErrorId("issueDate")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors.issueDate)}
                 className={controlClassName("date")}
                 data-field="issueDate"
@@ -1436,6 +1423,7 @@ export function QuotationEditor({
               />
             </Field>
             <TextInput
+              disabled
               error={fieldErrors.validityDays}
               field="validityDays"
               inputMode="numeric"
@@ -1450,6 +1438,11 @@ export function QuotationEditor({
               label="ใช้ได้ถึง"
             >
               <Input
+                aria-describedby={
+                  fieldErrors.validUntil
+                    ? fieldErrorId("validUntil")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors.validUntil)}
                 className={controlClassName("date")}
                 data-field="validUntil"
@@ -1468,12 +1461,12 @@ export function QuotationEditor({
             <TextInput
               error={fieldErrors.subject}
               field="subject"
-              label="เรื่อง / ชื่องาน"
+              label="เรื่อง / ชื่องาน (ถ้ามี)"
               onChange={(value) => updateRoot("subject", value)}
               size="name"
               value={payload.subject}
             />
-            <div className="sm:col-span-2">
+            {payload.documentDisplay.reference ? <div className="sm:col-span-2">
               <TextInput
                 error={fieldErrors.reference}
                 field="reference"
@@ -1482,53 +1475,26 @@ export function QuotationEditor({
                 size="identifier"
                 value={payload.reference}
               />
-            </div>
+            </div> : null}
           </div>
         </section>
       </div>
       <section className="space-y-3 border-t border-foreground/35 pt-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">03 รายการ</h2>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" type="button" variant="outline">
-                ตั้งค่าเอกสาร
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuCheckboxItem
-                checked={showItemDiscount}
-                onCheckedChange={(checked) =>
-                  toggleItemDiscount(checked === true)
-                }
-                onSelect={(event) => event.preventDefault()}
-              >
-                ส่วนลดเฉพาะรายการ
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={showItemVat}
-                onCheckedChange={(checked) => toggleItemVat(checked === true)}
-                onSelect={(event) => event.preventDefault()}
-              >
-                VAT เฉพาะรายการ
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <h2 className="text-sm font-semibold">03 รายการ</h2>
         <div
           className={cn(
             "hidden xl:grid xl:gap-2 xl:border-b xl:pb-2 xl:text-xs xl:text-muted-foreground",
-            itemGrid(showItemDiscount, showItemVat),
+            itemGrid(),
           )}
         >
-          <span>#</span>
-          <span>รายการ / รายละเอียด</span>
-          <span>จำนวน</span>
-          <span></span>
-          <span>ราคาต่อหน่วย</span>
-          {showItemDiscount ? <span>ส่วนลด</span> : null}
-          {showItemVat ? <span>VAT</span> : null}
-          <span className="text-right">มูลค่าก่อนภาษี</span>
+          <span className="xl:col-start-1">#</span>
+          <span className="xl:col-start-2">รายการ / รายละเอียด</span>
+          <span className="xl:col-start-3">จำนวน</span>
+          {payload.documentDisplay.unit ? <span className="xl:col-start-4">หน่วย</span> : null}
+          <span className="xl:col-start-5">ราคาต่อหน่วย</span>
+          {payload.documentDisplay.discount ? <span className="xl:col-start-6">ส่วนลด</span> : null}
+          {payload.documentDisplay.tax ? <span className="xl:col-start-7">VAT</span> : null}
+          <span className="text-right xl:col-start-8">มูลค่าก่อนภาษี</span>
         </div>
         <DragDropProvider
           onDragEnd={(event) => {
@@ -1569,13 +1535,18 @@ export function QuotationEditor({
           data-notes-grid
           className="grid gap-4 lg:col-start-1 lg:row-start-1 lg:grid-cols-2"
         >
-          <div data-public-notes>
+          {payload.documentDisplay.notes ? <div data-public-notes>
             <Field
               error={fieldErrors.publicNotes}
               field="publicNotes"
               label="หมายเหตุบนเอกสาร"
             >
               <Textarea
+                aria-describedby={
+                  fieldErrors.publicNotes
+                    ? fieldErrorId("publicNotes")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors.publicNotes)}
                 data-field="publicNotes"
                 onChange={(event) =>
@@ -1584,7 +1555,7 @@ export function QuotationEditor({
                 value={payload.publicNotes}
               />
             </Field>
-          </div>
+          </div> : null}
           <div data-field="items" data-internal-notes tabIndex={-1}>
             {fieldErrors.items ? (
               <span className="text-xs text-destructive">
@@ -1597,6 +1568,11 @@ export function QuotationEditor({
               label="หมายเหตุภายใน (ไม่แสดงในเอกสาร)"
             >
               <Textarea
+                aria-describedby={
+                  fieldErrors.internalNotes
+                    ? fieldErrorId("internalNotes")
+                    : undefined
+                }
                 aria-invalid={Boolean(fieldErrors.internalNotes)}
                 data-field="internalNotes"
                 onChange={(event) =>
@@ -1628,7 +1604,7 @@ export function QuotationEditor({
             label="จำนวนเงินรวมทั้งสิ้น"
             value={money(calculation?.grandTotal)}
           />
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2">
+          {payload.documentDisplay.withholdingTax ? <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2">
             <label className="flex flex-wrap items-center gap-2 text-sm">
               <input
                 checked={payload.withholdingTaxRate !== null}
@@ -1653,7 +1629,7 @@ export function QuotationEditor({
             <output className="ml-auto max-w-full text-right tabular-nums [overflow-wrap:anywhere]">
               {money(calculation?.withholdingTaxTotal)}
             </output>
-          </div>
+          </div> : null}
           <Totals bold label="ยอดชำระ" value={money(calculation?.amountDue)} />
           <p className="text-sm">
             {calculation ? formatThaiBahtText(calculation.amountDue) : "—"}
@@ -1663,6 +1639,26 @@ export function QuotationEditor({
           className="min-w-0 lg:col-start-1 lg:row-start-2"
           data-completion-tabs
         >
+          <div className="flex items-center justify-between gap-3 border-b py-2">
+            <h2 className="text-sm font-semibold">ข้อมูลท้ายใบเสนอราคา</h2>
+            <Button
+              aria-controls="quotation-completion-content"
+              aria-expanded={completionExpanded}
+              aria-label={`${completionExpanded ? "ซ่อน" : "แสดง"}ข้อมูลท้ายใบเสนอราคา`}
+              onClick={() =>
+                setCompletionExpanded((current) => !current)
+              }
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {completionExpanded ? "ซ่อน" : "แสดง"}
+            </Button>
+          </div>
+          <div
+            hidden={!completionExpanded}
+            id="quotation-completion-content"
+          >
           <div
             aria-label="ข้อมูลท้ายใบเสนอราคา"
             className="flex gap-5 border-b"
@@ -1752,7 +1748,27 @@ export function QuotationEditor({
               />
             </div>
           </div>
+          </div>
         </section>
+      </div>
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 gap-2 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden print:hidden"
+        data-mobile-command-bar
+      >
+        <Button onClick={closeEditor} type="button" variant="outline">
+          กลับ
+        </Button>
+        <Button
+          disabled={!calculation}
+          onClick={() => setPreviewOpen(true)}
+          type="button"
+          variant="outline"
+        >
+          ดูตัวอย่าง
+        </Button>
+        <Button disabled={saveDisabled} onClick={() => save()} type="button">
+          {isPending ? "กำลังบันทึก…" : "บันทึก"}
+        </Button>
       </div>
       <Dialog onOpenChange={setPreviewOpen} open={previewOpen}>
         <DialogContent
@@ -1764,11 +1780,38 @@ export function QuotationEditor({
               calculation={calculation}
               documentNumber={documentNumber}
               payload={payload}
-              publicQrDataUrl={savedPublicQrDataUrl}
+              publicQrDataUrl={draftPublicQrDataUrl}
             />
           ) : (
             <p className="p-4">กรุณาแก้ไขข้อมูลก่อนดูตัวอย่าง</p>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        onOpenChange={(open) => !open && setPendingConfirmation(null)}
+        open={pendingConfirmation !== null}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmationCopy.title}</DialogTitle>
+            <DialogDescription>{confirmationCopy.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setPendingConfirmation(null)}
+              type="button"
+              variant="outline"
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={confirmPendingAction}
+              type="button"
+              variant="destructive"
+            >
+              {confirmationCopy.confirm}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog onOpenChange={setDeleteOpen} open={deleteOpen}>
@@ -1780,9 +1823,9 @@ export function QuotationEditor({
               {payload.customer.name || "ลูกค้ารายนี้"} ใช่หรือไม่
             </DialogDescription>
           </DialogHeader>
-          {formError ? (
+          {deleteError ? (
             <Alert variant="destructive">
-              <AlertDescription>{formError}</AlertDescription>
+              <AlertDescription>{deleteError}</AlertDescription>
             </Alert>
           ) : null}
           <DialogFooter>

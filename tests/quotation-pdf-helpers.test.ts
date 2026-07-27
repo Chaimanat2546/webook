@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { splitQuotationPdfWord } from "../lib/quotation-pdf.ts";
+import {
+  canKeepQuotationPdfItemTogether,
+  splitQuotationPdfWord,
+} from "../lib/quotation-pdf.ts";
 
 describe("quotation PDF helpers", () => {
   it("provides dependency-free helpers that Node can execute", () => {
@@ -45,5 +48,24 @@ describe("quotation PDF helpers", () => {
   it("registers the Unicode-safe helper as the renderer callback", () => {
     const source = readFileSync("components/admin/quotations/quotation-pdf.tsx", "utf8");
     assert.match(source, /registerHyphenationCallback\(splitQuotationPdfWord\)/);
+  });
+
+  it("keeps ordinary PDF items together but leaves oversized items breakable", () => {
+    assert.equal(
+      canKeepQuotationPdfItemTogether("ค่าที่พัก", "รายละเอียด"),
+      true,
+    );
+    assert.equal(
+      canKeepQuotationPdfItemTogether("A".repeat(48 * 11), ""),
+      true,
+    );
+    assert.equal(
+      canKeepQuotationPdfItemTogether("A".repeat(48 * 12 + 1), ""),
+      false,
+    );
+    assert.equal(
+      canKeepQuotationPdfItemTogether("รายการ", "บรรทัด\n".repeat(12)),
+      false,
+    );
   });
 });

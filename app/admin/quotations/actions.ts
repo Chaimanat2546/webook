@@ -17,14 +17,17 @@ import {
   validateQuotationPaymentAssetUrl,
 } from "../../../lib/quotation-assets";
 import type { QuotationPayload } from "../../../lib/quotation-types";
+import { isQuotationDocumentDisplay } from "../../../lib/quotation-document-display";
 import { getQuotationAssetEnv } from "../../../lib/env";
 import { canUseQuotation, requireAdmin } from "../../../server/auth/admin";
 import {
   getQuotationCompanyProfile,
+  listQuotationItemNames,
   saveCompanyPaymentMethods,
   saveQuotation,
   saveQuotationCompanyCertification,
   saveQuotationCompanyProfile,
+  saveQuotationDocumentDisplayDefaults,
   softDeleteQuotation,
 } from "../../../server/repositories/quotations";
 import { QuotationPaymentAssetOriginNotConfiguredError } from "../../../server/repositories/quotation-errors";
@@ -55,6 +58,24 @@ export type CompanyPaymentMethodsActionResult =
 export type QuotationPaymentAssetActionResult =
   | { ok: true; url: string }
   | { fieldErrors: Record<string, string>; formError: string; ok: false };
+
+export async function saveQuotationDocumentDisplayDefaultsAction(
+  value: unknown,
+): Promise<{ ok: true } | { formError: string; ok: false }> {
+  const { adminUser, supabase, user } = await requireAdmin();
+  if (!canUseQuotation(adminUser)) {
+    return { formError: "ไม่มีสิทธิ์จัดการใบเสนอราคา", ok: false };
+  }
+  if (!isQuotationDocumentDisplay(value)) {
+    return { formError: "รูปแบบเอกสารไม่ถูกต้อง", ok: false };
+  }
+  try {
+    await saveQuotationDocumentDisplayDefaults(supabase, value, user.id);
+    return { ok: true };
+  } catch {
+    return { formError: "ไม่สามารถบันทึกค่าเริ่มต้นรูปแบบเอกสารได้", ok: false };
+  }
+}
 
 function formString(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -116,7 +137,8 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
   if (!canUseQuotation(adminUser)) return denied();
 
   try {
-    const prepared = prepareQuotationPayload(value);
+    const itemNames = await listQuotationItemNames(supabase);
+    const prepared = prepareQuotationPayload(value, itemNames);
     if (prepared.payload.seller.logoUrl) {
       try {
         validateQuotationAssetUrl(prepared.payload.seller.logoUrl, getQuotationAssetEnv().workerUrl);

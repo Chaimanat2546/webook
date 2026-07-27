@@ -7,10 +7,17 @@ import {
   updateCertificationSigner,
   type CertificationSnapshot,
 } from "../lib/quotation-certification.ts";
+import { QUOTATION_DOCUMENT_DISPLAY_DEFAULTS } from "../lib/quotation-document-display.ts";
 import {
-  prepareQuotationPayload,
+  prepareQuotationPayload as prepareQuotationPayloadWithCatalog,
   QuotationValidationError,
 } from "../server/services/quotations.ts";
+
+const itemNames = ["ค่าบริการ"] as const;
+
+function prepareQuotationPayload(value: unknown) {
+  return prepareQuotationPayloadWithCatalog(value, itemNames);
+}
 
 const validPayload = () => ({
   certification: {
@@ -18,11 +25,12 @@ const validPayload = () => ({
     companyStampUrl: "",
     issuer: { name: "  ผู้ออกเอกสาร  ", position: "ฝ่ายขาย", signatureUrl: "" },
   },
-  customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "" },
+  documentDisplay: { ...QUOTATION_DOCUMENT_DISPLAY_DEFAULTS },
+  customer: { address: "Customer address", branchNumber: "", name: "Customer", officeType: "head_office", taxId: "0200000000000" },
   id: null,
   internalNotes: "",
   issueDate: "2026-07-20",
-  items: [{ description: "", discountAmount: "0", id: crypto.randomUUID(), name: "Room", position: 1, quantity: "1", unit: "คืน", unitPrice: "1000", vatRate: "0", vatTreatment: "none" }],
+  items: [{ description: "", discountAmount: "0", id: crypto.randomUUID(), name: "ค่าบริการ", position: 1, quantity: "1", unit: "คืน", unitPrice: "1000", vatRate: "0", vatTreatment: "none" }],
   paymentMethods: [],
   publicNotes: "",
   reference: "",

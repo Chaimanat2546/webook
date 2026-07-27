@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const runUpgradeTests = process.env.RUN_QUOTATION_MIGRATION_UPGRADE_TESTS === "1";
@@ -18,6 +18,10 @@ const upgradeSql = readFileSync(
   new URL("20260718090000_quotation_user_payment_methods.sql", migrations),
   "utf8",
 );
+const catalogueMigrationName = readdirSync(migrations)
+  .find((name) => name.endsWith("_quotation_item_catalog.sql"));
+assert.ok(catalogueMigrationName, "quotation item catalogue migration must exist");
+const catalogueSql = readFileSync(new URL(catalogueMigrationName, migrations), "utf8");
 const bootstrapSql = `
 create schema auth;
 create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
@@ -97,6 +101,33 @@ function applyUpgrade(database: string, succeeds = true) {
 }
 
 describe("quotation ownership migration legacy upgrade", { skip: !runUpgradeTests }, () => {
+  it("preserves legacy item names while enforcing the catalogue for new rows", () => {
+    withLegacyDatabase((database) => {
+      sql(database, authUser("11111111-1111-1111-1111-111111111111", "one@example.com")
+        + legacyProfile
+        + quotation("11111111-1111-1111-1111-111111111111", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "aaaaaaaa-0000-0000-0000-000000000001", "QO-20260718-0001", "Snapshot seller"));
+      sql(database, catalogueSql);
+      sql(database, "do $$ begin if (select name from public.quotation_items where id = 'aaaaaaaa-0000-0000-0000-000000000001') <> 'Item' then raise exception 'legacy item name changed'; end if; end $$;");
+      const rejected = sql(database, `insert into public.quotation_items (
+        id, quotation_id, position, name, description, quantity, unit,
+        unit_price, discount_amount, vat_treatment, vat_rate
+      ) values (
+        'aaaaaaaa-0000-0000-0000-000000000002',
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 2, 'รายการอื่น', '', 1, null,
+        100, 0, 'none', 0
+      );`, false);
+      assert.match(rejected, /quotation_items_name_catalog_fk|foreign key/i);
+      sql(database, `insert into public.quotation_items (
+        id, quotation_id, position, name, description, quantity, unit,
+        unit_price, discount_amount, vat_treatment, vat_rate
+      ) values (
+        'aaaaaaaa-0000-0000-0000-000000000003',
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 2, 'ค่าบริการ', '', 1, null,
+        100, 0, 'none', 0
+      );`);
+    });
+  });
+
   it("clones a singleton profile for two owners and preserves quotation data", () => {
     withLegacyDatabase((database) => {
       sql(database, [
