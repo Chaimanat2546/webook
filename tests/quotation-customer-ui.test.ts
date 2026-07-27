@@ -22,6 +22,16 @@ describe("quotation customer UI", () => {
     assert.match(list, /setQuotationCustomerActiveAction/);
   });
 
+  it("uses the Thai customer-data label throughout customer UI", () => {
+    const customerUi = [
+      source("../app/admin/quotations/customers/page.tsx"),
+      source("../components/admin/quotations/customers/customer-list.tsx"),
+      source("../components/admin/quotations/customers/customer-picker-dialog.tsx"),
+    ].join("\n");
+    assert.doesNotMatch(customerUi, /Customer Master/);
+    assert.match(customerUi, /ข้อมูลลูกค้า/);
+  });
+
   it("uses one status dropdown toolbar with add customer at the far right", () => {
     const page = source("../app/admin/quotations/customers/page.tsx");
     const list = source("../components/admin/quotations/customers/customer-list.tsx");
@@ -39,9 +49,18 @@ describe("quotation customer UI", () => {
     assert.ok((list.match(/<CustomerFormDialog/g) ?? []).length >= 2);
   });
 
-  it("shows DBD only for juristic customers and keeps contacts master-only", () => {
+  it("shows DBD only for juristic customers and keeps contacts in customer data", () => {
     const form = source("../components/admin/quotations/customers/customer-form.tsx");
+    const actions = source("../app/admin/quotations/customers/actions.ts");
     assert.match(form, /customerType === "juristic"/);
+    assert.match(form, /function changeCustomerType\(next: QuotationCustomerInput\["customerType"\]\)/);
+    assert.match(form, /setValue\(\(current\) => changeQuotationCustomerType\(current, next\)\)/);
+    assert.match(form, /onValueChange=\{\(next\) => changeCustomerType/);
+    assert.match(form, /branchNumber: customer\.branchNumber/);
+    assert.match(form, /officeType: customer\.officeType/);
+    assert.match(form, /<fieldset[\s\S]*disabled=\{isPending \|\| Boolean\(customer\)\}/);
+    assert.doesNotMatch(form, /หลังสร้าง Master|ใน Master/);
+    assert.doesNotMatch(actions, /หลังสร้าง Master|ใน Master/);
     assert.match(form, /lookupQuotationCustomerDbdAction/);
     assert.match(form, /บันทึกแบบยังไม่ยืนยัน/);
     assert.match(form, /resetQuotationCustomerFromDbd/);
@@ -67,20 +86,47 @@ describe("quotation customer UI", () => {
     assert.match(form, /ยืนยันเปิดใช้งานลูกค้าเดิม/);
   });
 
-  it("searches active customers and copies only the existing snapshot fields", () => {
+  it("selects quotation customers only through the customer-data combobox", () => {
     const picker = source("../components/admin/quotations/customers/customer-picker-dialog.tsx");
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const customerSection = editor.slice(
+      editor.indexOf("data-customer-section"),
+      editor.indexOf("data-document-section"),
+    );
+
+    assert.match(picker, /ComboboxInput/);
+    assert.match(picker, /aria-label="ลูกค้า"/);
+    assert.match(picker, /inputValue=\{open \? query : current\.name\}/);
+    assert.match(picker, /itemToStringLabel=\{\(customer: QuotationCustomerMaster\) => customer\.name\}/);
+    assert.match(picker, /eventDetails\.reason === "input-change"/);
+    assert.match(
+      picker,
+      /const hasCurrent = current\.name\.trim\(\) !== "" \|\| current\.taxId\.trim\(\) !== ""/,
+    );
+    assert.match(picker, /if \(hasCurrent && differs\)/);
+    assert.match(picker, /filter=\{null\}/);
     assert.match(picker, /searchActiveQuotationCustomersAction/);
+    assert.match(picker, /search\.length === 1/);
+    assert.match(picker, /requestIdRef\.current/);
+    assert.match(picker, /พิมพ์อย่างน้อย 2 ตัวอักษร/);
+    assert.match(picker, /เพิ่มลูกค้าใหม่/);
     assert.match(picker, /QuotationCustomerForm/);
     assert.match(picker, /quotationCustomerToSnapshot/);
     assert.match(picker, /customer\.branchNumber/);
+    assert.match(picker, /data-selected-customer-details/);
+    assert.doesNotMatch(picker, /เปลี่ยนลูกค้า|data-customer-summary/);
+    assert.doesNotMatch(picker, /ComboboxClear|showClear/);
     assert.match(picker, /แทนที่ข้อมูลลูกค้า/);
-    assert.match(picker, /snapshotFields\.some\(\(field\) => String\(current\[field\]\)\.trim\(\) !== ""\)/);
     assert.match(picker, /searchError/);
     assert.match(picker, /role="alert"/);
     assert.match(picker, /result\.ok/);
-    assert.match(editor, /QuotationCustomerPickerDialog/);
+    assert.match(editor, /QuotationCustomerPicker/);
     assert.match(editor, /function replaceCustomerSnapshot/);
+    assert.match(
+      editor,
+      /firstField\.startsWith\("customer\."\)\s*\?\s*"customer\.name"\s*:\s*firstField/,
+    );
+    assert.doesNotMatch(customerSection, /<TextInput|<Textarea|<OfficeTypeControls/);
     assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);
   });
 });

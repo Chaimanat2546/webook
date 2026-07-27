@@ -6,7 +6,7 @@ Status: Approved
 
 ## Goal
 
-Replace the ambiguous active/inactive action-style buttons on Customer Master
+Replace the ambiguous active/inactive action-style buttons on ข้อมูลลูกค้า
 with one compact status dropdown based on the supplied toolbar reference.
 
 ## Approved Design

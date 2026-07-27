@@ -27,7 +27,7 @@
 - Print ทำได้หลังบันทึกครั้งแรกและมีเลขเอกสารแล้ว
 - Print ใช้ browser `window.print()` และ print CSS; ไม่เพิ่ม PDF dependency หรือ server-side PDF generator
 - ไม่มี autosave; ใช้ปุ่มบันทึกและเตือนเมื่อออกจากหน้าพร้อมข้อมูลที่ยังไม่บันทึก
-- ลูกค้ากรอกและเก็บเป็น snapshot แยกต่อใบ ไม่มี Customer Master ใน MVP 1-3
+- ลูกค้ากรอกและเก็บเป็น snapshot แยกต่อใบ ไม่มีข้อมูลลูกค้ากลางใน MVP 1-3
 - มีข้อมูลผู้ขายหลักหนึ่งชุด คัดลอกเป็น seller snapshot ตอนสร้างใบ และแก้ seller snapshot เฉพาะใบได้
 - ลบใบเสนอราคาแบบ soft delete; เลขเอกสารเดิมห้ามนำกลับมาใช้
 - เงินทุกจำนวนคำนวณด้วย scaled integer ไม่ใช้ floating point โดยตรง
@@ -829,7 +829,7 @@ MVP 2 and MVP 3 update the same feature document with their actual behavior. `do
 - View history or full audit log
 - Payment collection or payment status
 - Installment payment status
-- Customer Master
+- ข้อมูลลูกค้า
 - Product/SKU Master
 - Multiple currencies or exchange rates
 - Multiple seller companies or branches as separate profiles

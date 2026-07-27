@@ -8,6 +8,22 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("groups quotation and certification display switches in one modal", () => {
+    const dialog = source("../components/admin/quotations/quotation-document-display-dialog.tsx");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(dialog, /ข้อมูลใบเสนอราคา/);
+    assert.match(dialog, /การรับรอง/);
+    assert.match(dialog, /certificationQr/);
+    assert.match(dialog, /certificationDate/);
+    assert.match(dialog, /certificationName/);
+    assert.match(editor, /QuotationDocumentDisplayDialog/);
+    assert.match(editor, /payload\.documentDisplay\.reference \?/);
+    assert.match(editor, /payload\.documentDisplay\.notes \?/);
+    assert.match(editor, /payload\.documentDisplay\.withholdingTax \?/);
+    assert.match(editor, /showUnit: payload\.documentDisplay\.unit/);
+    assert.match(editor, /showDiscount: payload\.documentDisplay\.discount/);
+    assert.match(editor, /showTax: payload\.documentDisplay\.tax/);
+  });
   it("adapts the shared A4 document to the approved quotation reference", () => {
     const document = source("../components/admin/quotations/quotation-document.tsx");
 
@@ -268,6 +284,14 @@ describe("quotation UI", () => {
     );
 
     assert.match(certification, /grid-cols-5/);
+    assert.match(
+      certification,
+      /model\.showCertificationQr \? "grid-cols-5" : "grid-cols-4"/,
+    );
+    assert.match(
+      certification,
+      /\{model\.showCertificationQr \? \([\s\S]*data-document-public-qr[\s\S]*\) : null\}/,
+    );
     assert.doesNotMatch(
       certification,
       /<section\s*className="[^"]*\bborder-b\b/,
@@ -288,6 +312,24 @@ describe("quotation UI", () => {
     assert.doesNotMatch(certification, /ตำแหน่ง/);
     assert.doesNotMatch(signer, /signer\.position/);
     assert.match(certification, /break-inside-avoid/);
+    assert.match(
+      document,
+      /const compactCertification = !model\.showCertificationName && !model\.showCertificationDate/,
+    );
+    assert.equal(
+      certification.match(/compactCertification \? "h-12" : "h-20"/g)?.length,
+      3,
+    );
+    assert.equal(
+      certification.match(/compact=\{compactCertification\}/g)?.length,
+      2,
+    );
+    assert.match(signer, /compact \? "h-12" : "h-20"/);
+    assert.equal(
+      certification.match(/compactCertification \? "max-h-10" : "max-h-(?:16|20)"/g)?.length,
+      2,
+    );
+    assert.match(signer, /compact \? "max-h-10" : "max-h-16"/);
     assert.match(certification, /\[overflow-wrap:anywhere\]/);
     assert.match(certification, /<DocumentImage[\s\S]*?object-contain/);
     assert.doesNotMatch(document, /<(?:Input|input)[\s>]/);
@@ -855,26 +897,22 @@ describe("quotation UI", () => {
     assert.ok((editor.match(/disabled=\{saveDisabled\}/g)?.length ?? 0) >= 2);
   });
 
-  it("uses horizontal shadcn office radios and the shared VAT select geometry", () => {
+  it("uses horizontal seller office radios and the shared VAT select geometry", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.doesNotMatch(editor, /minmax\(36px,1fr\)/);
-    assert.match(editor, /data-customer-fields[^>]*className="grid gap-3 sm:grid-cols-2 xl:grid-cols-\[minmax\(0,1fr\)_max-content_minmax\(0,1fr\)\]"/);
-    assert.ok((editor.match(/className="sm:col-span-2 xl:col-span-3"/g)?.length ?? 0) >= 2);
-    assert.match(editor, /<OfficeTypeControls[\s\S]*field="customer\.officeType"/);
     assert.match(editor, /data-document-fields[^>]*className="grid gap-3 sm:grid-cols-2"/);
     assert.match(editor, /const selectClassName =[\s\S]*?"h-8 rounded-lg/);
     assert.match(editor, /import \{ RadioGroup, RadioGroupItem \} from "\.\.\/\.\.\/ui\/radio-group"/);
     assert.match(editor, /function OfficeTypeControls[\s\S]*<RadioGroup[\s\S]*className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2"[\s\S]*<RadioGroupItem/);
     assert.match(editor, /\["unspecified",/);
     assert.match(editor, /<OfficeTypeControls[\s\S]*field="seller\.officeType"/);
-    assert.match(editor, /<OfficeTypeControls[\s\S]*field="customer\.officeType"/);
   });
 
   it("marks every editable native error control as invalid", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const customerPicker = source("../components/admin/quotations/customers/customer-picker-dialog.tsx");
     for (const [field, binding] of [
       ["seller\\.address", 'fieldErrors\\["seller\\.address"\\]'],
-      ["customer\\.address", 'fieldErrors\\["customer\\.address"\\]'],
       ["issueDate", "fieldErrors\\.issueDate"],
       ["validUntil", "fieldErrors\\.validUntil"],
       ["publicNotes", "fieldErrors\\.publicNotes"],
@@ -884,6 +922,7 @@ describe("quotation UI", () => {
     }
     assert.match(editor, /function OfficeTypeControls[\s\S]*<RadioGroup[\s\S]*aria-invalid=\{Boolean\(error\)\}[\s\S]*<RadioGroupItem[\s\S]*data-field=\{field\}/);
     assert.match(editor, /<select[^>]*aria-invalid=\{Boolean\(vatError\)\}[^>]*data-field=\{field\}/);
+    assert.match(customerPicker, /aria-invalid=\{Boolean\(error\)\}[\s\S]*data-field="customer\.name"/);
     assert.match(editor, /const selectClassName =[\s\S]*?disabled:bg-input\/50[^";]*aria-invalid:border-destructive[^";]*aria-invalid:ring-destructive\/20/);
     assert.doesNotMatch(editor, /const selectClassName =[\s\S]*?appearance-none[^";]*";/);
   });
@@ -945,7 +984,7 @@ describe("quotation UI", () => {
     assert.match(editor, /const completionField = errorFields\.find[\s\S]*field === "certification"[\s\S]*field\.startsWith\("certification\."\)[\s\S]*field\.startsWith\("paymentMethods"\)/);
     assert.match(editor, /if \(completionField\)[\s\S]*setCompletionExpanded\(true\)[\s\S]*setActiveCompletionTab\([\s\S]*\? "payments"[\s\S]*: "certification"/);
     assert.match(editor, /useEffect\(\(\) => \{[\s\S]*const field = pendingFocusField\.current;[\s\S]*if \(!field \|\| isPending\) return;[\s\S]*pendingFocusField\.current = null;[\s\S]*focusField\(field\);[\s\S]*\}, \[activeCompletionTab, completionExpanded, fieldErrors, isPending\]\)/);
-    assert.match(editor, /if \(!result\.ok\) \{[\s\S]*const errorFields = Object\.keys\(result\.fieldErrors\);[\s\S]*const firstField = errorFields\[0\];[\s\S]*pendingFocusField\.current = firstField;[\s\S]*setFieldErrors\(result\.fieldErrors\)/);
+    assert.match(editor, /if \(!result\.ok\) \{[\s\S]*const errorFields = Object\.keys\(result\.fieldErrors\);[\s\S]*const firstField = errorFields\[0\];[\s\S]*pendingFocusField\.current = firstField\.startsWith\("customer\."\)[\s\S]*\? "customer\.name"[\s\S]*: firstField;[\s\S]*setFieldErrors\(result\.fieldErrors\)/);
   });
 
   it("blocks quotation saves while certification assets upload", () => {
@@ -988,21 +1027,18 @@ describe("quotation UI", () => {
     const item = editor.slice(editor.indexOf("function SortableQuotationItem"), editor.indexOf("function ItemDetailsControls"));
     const header = editor.slice(editor.indexOf("itemGrid()"), editor.indexOf("<DragDropProvider"));
     assert.match(item, /<span className="xl:sr-only">มูลค่าก่อนภาษี <\/span>/);
-    assert.match(header, /<span className="text-right">มูลค่าก่อนภาษี<\/span>/);
+    assert.match(header, /<span className="text-right xl:col-start-8">มูลค่าก่อนภาษี<\/span>/);
     assert.doesNotMatch(item + header, />รวม<|>รวม <|รวม<\/span>/);
     assert.match(document, /มูลค่าก่อนภาษี/);
     assert.doesNotMatch(editor + document, /documentDiscount|discountType|discountValue/);
     assert.doesNotMatch(editor, /<option value="percent">%<\/option>/);
   });
 
-  it("clears branch numbers when head office is selected", () => {
+  it("clears seller branch numbers when head office is selected", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(editor, /function updateSellerOfficeType/);
     assert.match(editor, /branchNumber:[\s\S]*?officeType === "branch" \? current\.seller\.branchNumber : ""/);
-    assert.match(editor, /function updateCustomerOfficeType/);
-    assert.match(editor, /branchNumber:[\s\S]*?officeType === "branch" \? current\.customer\.branchNumber : ""/);
     assert.match(editor, /disabled=\{payload\.seller\.officeType !== "branch"\}/);
-    assert.match(editor, /disabled=\{payload\.customer\.officeType !== "branch"\}/);
   });
 
   it("does not add out-of-scope quotation workflow", () => {
@@ -1068,8 +1104,9 @@ describe("quotation UI", () => {
     assert.match(editor, /function recalculateValidUntil/);
     assert.match(editor, /field="seller\.officeType"/);
     assert.match(editor, /field="seller\.branchNumber"/);
-    assert.match(editor, /field="customer\.officeType"/);
-    assert.match(editor, /field="customer\.branchNumber"/);
+    assert.match(editor, /fieldErrors\["customer\.officeType"\]/);
+    assert.match(editor, /fieldErrors\["customer\.branchNumber"\]/);
+    assert.match(editor, /<QuotationCustomerPicker/);
     assert.match(editor, /aria-invalid/);
     assert.match(editor, /<FieldError error=\{error\} field=\{field\} \/>/);
   });
@@ -1118,7 +1155,7 @@ describe("quotation UI", () => {
     const header = editor.slice(editor.indexOf("itemGrid()"), editor.indexOf("<DragDropProvider"));
 
     assert.ok(editor.includes("xl:[&_label>span:first-child]:sr-only"));
-    assert.match(header, /<span>หน่วย<\/span>/);
+    assert.match(header, /documentDisplay\.unit \? <span className="xl:col-start-4">หน่วย<\/span> : null/);
   });
 
   it("surfaces optional item unit validation errors", () => {
@@ -1138,7 +1175,7 @@ describe("quotation UI", () => {
     assert.match(editor, /function itemGrid\(\)[\s\S]*return "xl:grid-cols-\[2\.5rem_minmax\(16rem,1fr\)_5rem_5rem_7\.5rem_9rem_9rem_8\.5rem_2\.5rem\]"/);
     assert.match(editor, /aria-label=\{`ลบรายการ[\s\S]*?className="xl:col-start-\[-2\]"/);
     assert.match(editor, /className="[^"]*xl:col-start-\[-3\][^"]*"[\s\S]*?<span className="xl:sr-only">มูลค่าก่อนภาษี/);
-    assert.doesNotMatch(editor, /xl:col-start-8/);
+    assert.match(editor, /className="text-right xl:col-start-8">มูลค่าก่อนภาษี/);
   });
 
   it("keeps item discount and VAT controls on the first desktop ledger row", () => {
@@ -1245,5 +1282,18 @@ describe("quotation UI", () => {
     assert.match(editor, /\["name", "address", "taxId", "officeType", "branchNumber"\] as const/);
     assert.match(editor, /changed\(`customer\.\$\{field\}`\)/);
     assert.doesNotMatch(editor, /customer\.(contactName|contactPhone|contactEmail)/);
+  });
+
+  it("keeps quotation customer identity read-only after customer-data selection", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const customerSection = editor.slice(
+      editor.indexOf("data-customer-section"),
+      editor.indexOf("data-document-section"),
+    );
+
+    assert.match(customerSection, /<QuotationCustomerPicker/);
+    assert.doesNotMatch(customerSection, /onChange=/);
+    assert.doesNotMatch(customerSection, /<TextInput|<Textarea|<OfficeTypeControls/);
+    assert.doesNotMatch(editor, /function updateCustomerOfficeType/);
   });
 });

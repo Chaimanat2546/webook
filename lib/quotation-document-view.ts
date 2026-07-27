@@ -13,8 +13,17 @@ export interface QuotationDocumentViewModel {
   payload: QuotationPayload;
   paymentMethods: Array<QuotationPaymentMethod & { qrSource: string }>;
   publicQrDataUrl: string;
+  showCertificationDate: boolean;
+  showCertificationName: boolean;
+  showCertificationQr: boolean;
   showItemDiscount: boolean;
   showItemVat: boolean;
+  showNotes: boolean;
+  showPreTax: boolean;
+  showReference: boolean;
+  showTax: boolean;
+  showUnit: boolean;
+  showWithholdingTax: boolean;
   validUntil: string;
 }
 
@@ -40,8 +49,17 @@ export function buildQuotationDocumentViewModel({
       .sort((left, right) => left.position - right.position)
       .map((method) => ({ ...method, qrSource: paymentQrSource(method, calculation.amountDue) })),
     publicQrDataUrl: publicQrDataUrl ?? "",
-    showItemDiscount: payload.items.some((item) => Number(item.discountAmount) > 0),
-    showItemVat: payload.items.some((item) => item.vatTreatment !== "none"),
+    showCertificationDate: payload.documentDisplay.certificationDate,
+    showCertificationName: payload.documentDisplay.certificationName,
+    showCertificationQr: payload.documentDisplay.certificationQr,
+    showItemDiscount: payload.documentDisplay.discount && payload.items.some((item) => Number(item.discountAmount) > 0),
+    showItemVat: payload.documentDisplay.tax && payload.items.some((item) => item.vatTreatment !== "none"),
+    showNotes: payload.documentDisplay.notes && Boolean(payload.publicNotes),
+    showPreTax: payload.documentDisplay.preTax,
+    showReference: payload.documentDisplay.reference && Boolean(payload.reference),
+    showTax: payload.documentDisplay.tax,
+    showUnit: payload.documentDisplay.unit,
+    showWithholdingTax: payload.documentDisplay.withholdingTax,
     validUntil: documentDate(payload.validUntil),
   };
 }

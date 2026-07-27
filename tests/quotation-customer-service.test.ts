@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  changeQuotationCustomerType,
   quotationCustomerToSnapshot,
   type QuotationCustomerInput,
 } from "../lib/quotation-customer-types.ts";
@@ -44,6 +45,27 @@ describe("quotation customer service", () => {
       officeType: "branch",
     });
     assert.equal(result.branchNumber, "00001");
+  });
+
+  it("defaults office type and clears the branch when customer type changes", () => {
+    const branchCustomer = {
+      ...valid,
+      branchNumber: "00001",
+      officeType: "branch" as const,
+    };
+
+    assert.deepEqual(changeQuotationCustomerType(branchCustomer, "individual"), {
+      ...branchCustomer,
+      branchNumber: "",
+      customerType: "individual",
+      officeType: "unspecified",
+    });
+    assert.deepEqual(changeQuotationCustomerType(branchCustomer, "juristic"), {
+      ...branchCustomer,
+      branchNumber: "",
+      customerType: "juristic",
+      officeType: "head_office",
+    });
   });
 
   it("rejects malformed tax ID, email, branch, and required fields", () => {

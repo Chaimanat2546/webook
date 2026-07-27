@@ -39,7 +39,7 @@ PDF Download (saved-clean only)
   -> browser QR/image normalization
   -> lazy React PDF renderer with bundled Noto Sans Thai
 
-Customer Master
+ข้อมูลลูกค้า
   -> permission-checked Server Component / Server Action
   -> customer validation + fixed DBD Open Data adapter
   -> authenticated read repository + service-role mutation repository

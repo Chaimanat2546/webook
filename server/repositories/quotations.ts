@@ -21,6 +21,10 @@ import type {
   SellerSnapshot,
 } from "../../lib/quotation-types.ts";
 import type { PreparedQuotation } from "../services/quotations";
+import {
+  normalizeQuotationDocumentDisplay,
+  type QuotationDocumentDisplay,
+} from "../../lib/quotation-document-display.ts";
 import { quotationPersistenceError } from "./quotation-errors";
 
 export interface QuotationCompanyProfileRow {
@@ -32,6 +36,7 @@ export interface QuotationCompanyProfileRow {
   contact_email: string;
   contact_name: string;
   contact_phone: string;
+  document_display_defaults: unknown;
   company_stamp_url: string | null;
   email: string;
   id: string;
@@ -75,7 +80,7 @@ export interface SavedQuotation {
 const quotationSelect = `
   id,document_number,issue_date,valid_until,validity_days,reference,subject,
   seller_snapshot,customer_snapshot,public_token,withholding_tax_rate,
-  certification_snapshot,
+  certification_snapshot,document_display_snapshot,
   public_notes,internal_notes,
   quotation_items(
     id,position,name,description,quantity,unit,unit_price,
@@ -122,6 +127,7 @@ type DatabaseQuotationPaymentMethod = {
 
 type DatabaseQuotationRow = {
   certification_snapshot: unknown;
+  document_display_snapshot: unknown;
   customer_snapshot: unknown;
   id: unknown;
   internal_notes: unknown;
@@ -255,6 +261,7 @@ function certificationSnapshot(value: unknown): CertificationSnapshot {
 export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPayload {
   return {
     certification: certificationSnapshot(row.certification_snapshot),
+    documentDisplay: normalizeQuotationDocumentDisplay(row.document_display_snapshot),
     customer: customerSnapshot(row.customer_snapshot),
     id: stringValue(row.id),
     internalNotes: stringValue(row.internal_notes),
@@ -307,11 +314,31 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
 export async function getQuotationCompanyProfile(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("quotation_company_profiles")
-    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,updated_at")
+    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,document_display_defaults,updated_at")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data as QuotationCompanyProfileRow | null;
+}
+
+export function companyProfileToDocumentDisplay(
+  row: QuotationCompanyProfileRow,
+): QuotationDocumentDisplay {
+  return normalizeQuotationDocumentDisplay(row.document_display_defaults);
+}
+
+export async function saveQuotationDocumentDisplayDefaults(
+  supabase: SupabaseClient,
+  value: QuotationDocumentDisplay,
+  userId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("quotation_company_profiles")
+    .update({ document_display_defaults: value, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
 }
 
 export async function saveQuotationCompanyProfile(

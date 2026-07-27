@@ -7,7 +7,7 @@ their own seller profile, reusable payment methods, optional certification
 master, and quotations. Every seller profile, payment master, and quotation is linked to the current
 Supabase Auth user. RLS combines that ownership check with the existing
 quotation permission, so one account cannot read or change another account's
-data. Customer Master is intentionally different: all quotation-authorized
+data. ข้อมูลลูกค้า is intentionally different: all quotation-authorized
 users share it and may add, edit, deactivate, or reactivate customers.
 
 The customer snapshot contains only name, address, tax ID, office type, and
@@ -20,7 +20,7 @@ history.
 - `/admin/quotations` - list, search, print, and soft-delete owned quotations
 - `/admin/quotations/new` - create from the current user's seller and default payment masters
 - `/admin/quotations/[id]` - edit saved seller and payment snapshots
-- `/admin/quotations/customers` - search and manage the shared Customer Master
+- `/admin/quotations/customers` - search and manage the shared ข้อมูลลูกค้า
 - `/admin/quotations/settings/company` - manage the current user's seller profile, payment masters, and certification master
 - `/q/[token]` - no-login, token-scoped public view of the latest saved quotation
 
@@ -38,7 +38,7 @@ history.
 - Seller, payment, and certification remain separate URL-selected sections with independent save actions and selected-section-only server loading.
 - Desktop uses the local settings sidebar. Mobile uses the same real links in an intentionally horizontally scrollable row with `aria-current` on the active section.
 - Editing a mounted section marks it dirty. Moving to another section or returning to the list asks for confirmation; changing sections never autosaves. A successful save clears only the mounted section's dirty state.
-- Seller settings use one flat surface with content-shaped field widths. Office type uses the horizontal Shadcn Radio Group with `ไม่ระบุ`, `สำนักงานใหญ่`, and `สาขา`; it defaults to head office. The same control is used for seller and customer snapshots in the editor. The branch-number input stays visible but disabled unless branch is selected. A selected logo is previewed before save.
+- Seller settings use one flat surface with content-shaped field widths. Office type uses the horizontal Shadcn Radio Group with `ไม่ระบุ`, `สำนักงานใหญ่`, and `สาขา`; it defaults to head office. The seller branch-number input stays visible but disabled unless branch is selected. A selected logo is previewed before save.
 - Reusable payment methods render as responsive cards in settings while quotation-specific payment editing keeps its existing compact layout. Add, remove, drag order, defaults, and type-specific fields keep the same data behavior.
 - Certification keeps issuer and approver stacked on Mobile and side by side from Tablet. Signatures stay with their signer and the company stamp uses a compact asset row.
 - Every section keeps inline field errors and first-error focus, plus Toast for save/upload outcomes. Save is disabled while its section is saving or uploading.
@@ -75,17 +75,20 @@ history.
 - Public payment JSON contains only fields relevant to each saved payment type,
   including for legacy rows that may still contain hidden values.
 
-## Customer Master And DBD
+## ข้อมูลลูกค้า And DBD
 
 - Customer types are `juristic` and `individual`. Both require an exact
-  13-ASCII-digit tax ID. An individual tax ID has one master row. A juristic
-  tax ID may have one main-office row and multiple rows with distinct,
+  13-ASCII-digit tax ID. An individual tax ID has one customer-data row. A
+  juristic tax ID may have one main-office row and multiple rows with distinct,
   trimmed branch numbers; leading zeroes remain significant. These identities
   stay unique across active and inactive rows. Customer type and tax ID are
-  immutable after the master is created so verified DBD defaults cannot become
+  immutable after the customer data is created so verified DBD defaults cannot become
   attached to another identity.
-- Contact name, phone, and email are optional and master-only. They never render
+- Contact name, phone, and email are optional and stored only in ข้อมูลลูกค้า. They never render
   in quotation preview, print, PDF, or Public Read-only.
+- In Add Customer, selecting `บุคคลธรรมดา` sets office type to `ไม่ระบุ`;
+  selecting `นิติบุคคล` sets it to `สำนักงานใหญ่`. Switching type always
+  overwrites the office choice and clears the branch number.
 - Juristic customers may be checked or refreshed manually through the fixed DBD
   Open Data endpoint. Successful verification stores registered name, address,
   status, and verification time as reset defaults; the full provider response
@@ -101,10 +104,22 @@ history.
 - Deactivation replaces deletion. Inactive customers remain unique and can be
   found through the inactive filter and reactivated after confirmation, but
   the quotation picker searches active rows only.
-- Selecting a master copies only name, address, tax ID, office type, and branch
-  number into the editable quotation snapshot. It does not store a master ID.
-  Later master edits do not change quotations, and quotation edits do not change
-  Master. Historical quotation customers are not imported automatically.
+- A quotation customer is selected only from active `ข้อมูลลูกค้า` through a
+  Combobox. Opening it shows the five most recently updated customers; two or
+  more typed characters search by name or tax ID.
+- The customer Input Combobox remains visible after selection. The selected
+  customer name stays in the input, while tax ID, office, and address appear
+  below it. Clicking or typing in the input can replace the customer after the
+  existing confirmation; there is no separate change or clear-to-empty action.
+- When no customer matches, Add Customer saves through the existing customer
+  flow and then selects the saved customer. The quotation stores only the
+  five-field snapshot, so later customer-data edits do not rewrite saved
+  quotations.
+- Selecting ข้อมูลลูกค้า copies only name, address, tax ID, office type, and
+  branch number into the quotation snapshot. It does not store a
+  customer-data record ID. Later ข้อมูลลูกค้า edits do not change quotations,
+  and quotation edits do not change ข้อมูลลูกค้า. Historical quotation customers
+  are not imported automatically.
 
 ## Payment Methods
 
@@ -207,7 +222,8 @@ it. Upload failure preserves the previous saved asset and snapshot.
 Certification signatures and company stamps follow the same 2 MB PNG
 normalization boundary under `/quotations/certification-assets/<uuid>.png`.
 Failed optional document images are omitted without breaking Preview, Public,
-Print, or PDF; the Public QR remains required for PDF Download.
+Print, or PDF. The Public QR is required for PDF Download only when its
+document-display setting is enabled.
 
 ## Certification, Public Share, And PDF
 
@@ -231,6 +247,21 @@ Print, or PDF; the Public QR remains required for PDF Download.
 - Link expiry, passwords, token rotation, e-signing, approval workflow, and
   orphaned-asset garbage collection remain outside this MVP.
 
+### Document display settings
+
+Create and Edit expose `ตั้งค่ารูปแบบเอกสาร` with two stacked sections:
+`ข้อมูลใบเสนอราคา` and `การรับรอง`. Each account has ten defaults, and every
+quotation saves an independent snapshot so later default changes do not alter
+existing documents.
+
+The certification switches independently control QR Code, dates, and names in
+Preview, Print, PDF, and Public Read-only. They are display-only: disabling
+them does not clear the Public token, issue date, signer names, or customer
+name. The certification row uses five equal slots while QR Code is enabled.
+When QR Code is disabled, its slot is removed and the remaining four slots
+shift left and expand evenly; QR generation is skipped and PDF Download does
+not require it.
+
 ### Document surface consistency
 
 - Preview/Print is the visual reference; HTML and PDF consume the same
@@ -247,7 +278,7 @@ Print, or PDF; the Public QR remains required for PDF Download.
 ## Migration And Validation
 
 Migration `20260722090657_quotation_customer_master_dbd.sql` creates the shared
-Customer Master, exact tax-ID and DBD-completeness constraints, quotation
+ข้อมูลลูกค้า, exact tax-ID and DBD-completeness constraints, quotation
 permission RLS, update audit trigger, and the paginated active/inactive list
 RPC. Follow-up migration
 `20260722102825_quotation_customer_branch_identity.sql` replaces tax-only
@@ -301,7 +332,7 @@ built-in bank metadata comes from the catalogue, and custom banks are stored as
 
 Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`.
 The normal test suite mocks DBD and never depends on the live service. To run
-the Customer Master sharing/RLS integration against an already configured local
+the ข้อมูลลูกค้า sharing/RLS integration against an already configured local
 Supabase environment:
 
 ```powershell

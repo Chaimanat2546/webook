@@ -140,6 +140,26 @@ describe("quotation customer repository mutation boundary", () => {
 });
 
 describe("quotation customer picker search boundary", () => {
+  it("limits an empty search to the five most recently updated active customers", async () => {
+    let params: Record<string, unknown> = {};
+    const client = {
+      rpc: async (_name: string, value: Record<string, unknown>) => {
+        params = value;
+        return { data: [{ ...row, total_count: 1 }], error: null };
+      },
+    } as unknown as SupabaseClient;
+
+    const result = await searchActiveQuotationCustomers(client, "   ");
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(params, {
+      p_active: true,
+      p_page: 1,
+      p_page_size: 5,
+      p_search: "",
+    });
+  });
+
   it("requests active rows and returns repository results", async () => {
     let params: Record<string, unknown> = {};
     const client = {

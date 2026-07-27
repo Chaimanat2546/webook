@@ -230,7 +230,7 @@ Desktop ใช้พื้นที่เต็มความกว้างต
 ## Out Of Scope
 
 - Database migration, RLS, API contract หรือสูตรคำนวณใหม่
-- Customer master, document workflow, status, approval action หรือ revision history
+- ข้อมูลลูกค้า, document workflow, status, approval action หรือ revision history
 - Online acceptance, electronic signature หรือ payment collection
 - Notification Center
 - Autosave

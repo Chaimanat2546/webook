@@ -124,7 +124,7 @@ function CustomerFormDialog({
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{customer ? "แก้ไขข้อมูลลูกค้า" : "เพิ่มลูกค้า"}</DialogTitle>
-          <DialogDescription>ข้อมูลผู้ติดต่อเก็บเฉพาะใน Customer Master และไม่แสดงในใบเสนอราคา</DialogDescription>
+          <DialogDescription>ข้อมูลผู้ติดต่อเก็บไว้ในข้อมูลลูกค้าเท่านั้น และไม่แสดงในใบเสนอราคา</DialogDescription>
         </DialogHeader>
         <QuotationCustomerForm
           customer={customer}

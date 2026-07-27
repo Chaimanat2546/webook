@@ -1,8 +1,8 @@
-# Quotation Customer Master With DBD Implementation Plan
+# Quotation ข้อมูลลูกค้า With DBD Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a shared quotation Customer Master for juristic and individual customers, with optional contacts, manual DBD verification/default reset, and independent quotation snapshots.
+**Goal:** Add shared quotation ข้อมูลลูกค้า for juristic and individual customers, with optional contacts, manual DBD verification/default reset, and independent quotation snapshots.
 
 **Architecture:** A new RLS-protected `quotation_customers` table is shared by users who pass the existing quotation permission function. Focused server-only modules own DBD parsing, customer validation, and persistence; server actions are the only browser mutation/search boundary. The approved admin page reuses existing Shadcn primitives, and the quotation editor copies only the five existing customer snapshot fields.
 
@@ -33,12 +33,12 @@
 
 ### Create
 
-- `lib/quotation-customer-types.ts` — browser-safe Customer Master contracts and snapshot conversion.
+- `lib/quotation-customer-types.ts` — browser-safe ข้อมูลลูกค้า contracts and snapshot conversion.
 - `server/services/dbd-juristic-person.ts` — native-fetch DBD adapter and defensive parser.
-- `server/services/quotation-customers.ts` — Customer Master normalization and validation.
+- `server/services/quotation-customers.ts` — ข้อมูลลูกค้า normalization and validation.
 - `server/repositories/quotation-customers.ts` — Supabase row mapping, pagination, search, and mutations.
 - `app/admin/quotations/customers/actions.ts` — permission-checked customer/DBD server actions.
-- `app/admin/quotations/customers/page.tsx` — protected Customer Master page.
+- `app/admin/quotations/customers/page.tsx` — protected ข้อมูลลูกค้า page.
 - `components/admin/quotations/customers/customer-form.tsx` — reusable add/edit form and DBD controls.
 - `components/admin/quotations/customers/customer-list.tsx` — approved table/card list and row actions.
 - `components/admin/quotations/customers/customer-picker-dialog.tsx` — search/select/inline-create dialog for the editor.
@@ -52,8 +52,8 @@
 
 ### Modify
 
-- `components/layout/admin-desktop-sidebar.tsx` — quotation sub-navigation for list and Customer Master.
-- `app/admin/quotations/page.tsx` — visible Customer Master entry action.
+- `components/layout/admin-desktop-sidebar.tsx` — quotation sub-navigation for list and ข้อมูลลูกค้า.
+- `app/admin/quotations/page.tsx` — visible ข้อมูลลูกค้า entry action.
 - `components/admin/quotations/quotation-editor.tsx` — picker trigger and atomic snapshot replacement.
 - `README.md` — route/capability summary.
 - `docs/architecture.md` — DBD/server/RLS data flow.
@@ -720,7 +720,7 @@ Expected: targeted tests PASS.
 
 ---
 
-### Task 4: Customer Master Page, Form, List, And Navigation
+### Task 4: ข้อมูลลูกค้า Page, Form, List, And Navigation
 
 **Files:**
 - Create: `app/admin/quotations/customers/page.tsx`
@@ -865,7 +865,7 @@ Commit:
 
 ```powershell
 git add -- app/admin/quotations/customers/page.tsx components/admin/quotations/customers/customer-form.tsx components/admin/quotations/customers/customer-list.tsx components/layout/admin-desktop-sidebar.tsx app/admin/quotations/page.tsx tests/quotation-customer-ui.test.ts
-git commit -m "feat: add quotation customer master UI"
+git commit -m "feat: add quotation ข้อมูลลูกค้า UI"
 ```
 
 ---
@@ -956,7 +956,7 @@ Expected: PASS and the existing customer snapshot remains exactly five fields.
 
 ```powershell
 git add -- components/admin/quotations/customers/customer-picker-dialog.tsx components/admin/quotations/quotation-editor.tsx tests/quotation-customer-ui.test.ts tests/quotation-ui.test.ts
-git commit -m "feat: select customer masters in quotations"
+git commit -m "feat: select ข้อมูลลูกค้า in quotations"
 ```
 
 ---
@@ -1038,7 +1038,7 @@ Commit documentation and reviewer-supported corrections:
 ```powershell
 git status --short
 git add -- README.md docs/architecture.md docs/quotation-management.md
-git commit -m "docs: document quotation customer master"
+git commit -m "docs: document quotation ข้อมูลลูกค้า"
 ```
 
 Expected: clean `git status --short`, or only clearly identified unrelated user
@@ -1048,7 +1048,7 @@ changes remain.
 
 - Spec coverage: every approved data, DBD, sharing, UI, snapshot, testing, and
   documentation requirement maps to Tasks 1–6.
-- Scope: one cohesive Customer Master capability; no contact table, scheduler,
+- Scope: one cohesive ข้อมูลลูกค้า capability; no contact table, scheduler,
   import, branch master, or quotation schema expansion.
 - Type consistency: the stable interfaces at the top are consumed unchanged by
   services, repositories, actions, UI, and tests.

@@ -10,11 +10,12 @@ export async function searchActiveQuotationCustomers(
   search: string,
 ): Promise<QuotationCustomerSearchResult> {
   try {
+    const searchTerm = typeof search === "string" ? search.trim() : "";
     const result = await listQuotationCustomers(supabase, {
       active: true,
       page: 1,
-      pageSize: 50,
-      search: typeof search === "string" ? search : "",
+      pageSize: searchTerm ? 50 : 5,
+      search: searchTerm,
     });
     return { items: result.items, ok: true };
   } catch (error) {
