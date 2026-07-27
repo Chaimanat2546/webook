@@ -330,10 +330,12 @@ export function companyProfileToDocumentDisplay(
 export async function saveQuotationDocumentDisplayDefaults(
   supabase: SupabaseClient,
   value: QuotationDocumentDisplay,
+  userId: string,
 ): Promise<void> {
   const { error } = await supabase
     .from("quotation_company_profiles")
     .update({ document_display_defaults: value, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
     .select("id")
     .single();
   if (error) throw new Error(error.message);

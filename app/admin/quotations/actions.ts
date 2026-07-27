@@ -62,7 +62,7 @@ export type QuotationPaymentAssetActionResult =
 export async function saveQuotationDocumentDisplayDefaultsAction(
   value: unknown,
 ): Promise<{ ok: true } | { formError: string; ok: false }> {
-  const { adminUser, supabase } = await requireAdmin();
+  const { adminUser, supabase, user } = await requireAdmin();
   if (!canUseQuotation(adminUser)) {
     return { formError: "ไม่มีสิทธิ์จัดการใบเสนอราคา", ok: false };
   }
@@ -70,7 +70,7 @@ export async function saveQuotationDocumentDisplayDefaultsAction(
     return { formError: "รูปแบบเอกสารไม่ถูกต้อง", ok: false };
   }
   try {
-    await saveQuotationDocumentDisplayDefaults(supabase, value);
+    await saveQuotationDocumentDisplayDefaults(supabase, value, user.id);
     return { ok: true };
   } catch {
     return { formError: "ไม่สามารถบันทึกค่าเริ่มต้นรูปแบบเอกสารได้", ok: false };

@@ -9,6 +9,14 @@ const sql = readFileSync(
   new URL(`../supabase/migrations/${migrationName}`, import.meta.url),
   "utf8",
 );
+const performanceFollowUpName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
+  .find((name) => name.endsWith("_quotation_performance_follow_up.sql"));
+const performanceFollowUpSql = performanceFollowUpName
+  ? readFileSync(
+      new URL(`../supabase/migrations/${performanceFollowUpName}`, import.meta.url),
+      "utf8",
+    )
+  : "";
 const refinementName = readdirSync(new URL("../supabase/migrations/", import.meta.url))
   .find((name) => name.endsWith("_quotation_mvp1_editor_refinement.sql"));
 assert.ok(refinementName, "quotation editor refinement migration must exist");
@@ -97,6 +105,34 @@ const itemCatalogueMigrationName = readdirSync(new URL("../supabase/migrations/"
   .find((name) => name.endsWith("_quotation_item_catalog.sql"));
 
 describe("quotation migration", () => {
+  it("optimizes the item owner policy and indexes every reported foreign key", () => {
+    assert.ok(performanceFollowUpName, "quotation performance follow-up migration must exist");
+    assert.match(
+      performanceFollowUpSql,
+      /drop policy if exists "Quotation owners read items"\s+on public\.quotation_items/i,
+    );
+    assert.match(
+      performanceFollowUpSql,
+      /create policy "Quotation owners read items"[\s\S]*q\.created_by = \(select auth\.uid\(\)\)/i,
+    );
+    assert.match(
+      performanceFollowUpSql,
+      /\(select private\.has_quotation_permission\(\)\)/i,
+    );
+    assert.match(
+      performanceFollowUpSql,
+      /create index quotation_company_payment_methods_bank_id_idx[\s\S]*on public\.quotation_company_payment_methods \(bank_id\)/i,
+    );
+    assert.match(
+      performanceFollowUpSql,
+      /create index quotation_items_name_idx[\s\S]*on public\.quotation_items \(name\)/i,
+    );
+    assert.match(
+      performanceFollowUpSql,
+      /create index quotations_company_profile_id_idx[\s\S]*on public\.quotations \(company_profile_id\)/i,
+    );
+  });
+
   it("persists exact ten-flag document display defaults and snapshots", () => {
     const sql = readFileSync(
       "supabase/migrations/20260724120000_quotation_document_display_settings.sql",

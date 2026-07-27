@@ -59,6 +59,19 @@ describe("quotation repository and actions", () => {
     assert.match(repository, /account_type:\s*method\.accountType/);
   });
 
+  it("scopes document display default updates to the authenticated account", () => {
+    const saveDefaults = repository.slice(
+      repository.indexOf("export async function saveQuotationDocumentDisplayDefaults"),
+      repository.indexOf("export async function saveQuotationCompanyProfile"),
+    );
+    assert.match(saveDefaults, /userId: string/);
+    assert.match(saveDefaults, /\.update\([\s\S]*\.eq\("user_id", userId\)[\s\S]*\.select\("id"\)/);
+    assert.match(
+      actions,
+      /saveQuotationDocumentDisplayDefaults\(supabase, value, user\.id\)/,
+    );
+  });
+
   it("validates and uploads normalized payment PNGs after permission checks", () => {
     assert.match(actions, /validateQuotationPaymentAssetFile\(file\)/);
     assert.match(actions, /file\.type !== "image\/png"/);
