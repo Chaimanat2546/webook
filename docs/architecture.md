@@ -33,6 +33,21 @@ never cross the API boundary. A temporary password can appear only in the
 first completed operation response after operation state and audit persistence
 succeed; retry and reconciliation responses always omit it.
 
+Tenant onboarding and immediate token rotation run from an offline operator
+CLI. Persistent `provisioning_state` values and service-role-only atomic RPCs
+bind registration, rotation gating, encrypted token storage, verification,
+activation, and audit. Legacy direct register/token-write/activate RPCs are
+not executable by the service role. The target build receives no central or
+Cloudflare credentials; only target secret/deploy subprocesses receive the
+exact verified Cloudflare account credential.
+
+The token vault uses Tenant ID, token version, and KEK version as AES-GCM
+additional authenticated data. KEK rotation keeps the same Tenant token and
+fingerprint, produces a fresh IV/ciphertext, and uses a per-row CAS plus audit.
+During rotation the server keyring contains exactly the new current KEK and
+optional old previous KEK. Old-key removal is allowed only after the CLI
+confirms zero registry rows on the previous version.
+
 ## Quotation data flow
 
 ```text

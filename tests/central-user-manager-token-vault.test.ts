@@ -83,6 +83,27 @@ describe("Central User Manager token config", () => {
     assert.equal(config.keys.size, 1);
   });
 
+  it("loads one optional distinct previous KEK for resumable rotation", () => {
+    const config = getCentralUserManagerTokenKekConfig({
+      CENTRAL_USER_MANAGER_TOKEN_KEK: otherKek,
+      CENTRAL_USER_MANAGER_TOKEN_KEK_VERSION: "8",
+      CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS: kek,
+      CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS_VERSION: "7",
+    });
+    assert.equal(config.currentVersion, 8);
+    assert.deepEqual(config.keys.get(7), bytes(32));
+    assert.deepEqual(config.keys.get(8), bytes(64));
+    assert.equal(config.keys.size, 2);
+
+    const blankOptionalPair = getCentralUserManagerTokenKekConfig({
+      CENTRAL_USER_MANAGER_TOKEN_KEK: kek,
+      CENTRAL_USER_MANAGER_TOKEN_KEK_VERSION: "7",
+      CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS: "",
+      CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS_VERSION: "",
+    });
+    assert.equal(blankOptionalPair.keys.size, 1);
+  });
+
   it("fails closed for missing, malformed, noncanonical, or invalid-version config", () => {
     const invalidEnvironments = [
       {},
@@ -110,6 +131,23 @@ describe("Central User Manager token config", () => {
       {
         CENTRAL_USER_MANAGER_TOKEN_KEK: `${"A".repeat(42)}B`,
         CENTRAL_USER_MANAGER_TOKEN_KEK_VERSION: "1",
+      },
+      {
+        CENTRAL_USER_MANAGER_TOKEN_KEK: kek,
+        CENTRAL_USER_MANAGER_TOKEN_KEK_VERSION: "2",
+        CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS: otherKek,
+      },
+      {
+        CENTRAL_USER_MANAGER_TOKEN_KEK: kek,
+        CENTRAL_USER_MANAGER_TOKEN_KEK_VERSION: "2",
+        CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS: otherKek,
+        CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS_VERSION: "2",
+      },
+      {
+        CENTRAL_USER_MANAGER_TOKEN_KEK: kek,
+        CENTRAL_USER_MANAGER_TOKEN_KEK_VERSION: "2",
+        CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS: otherKek,
+        CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS_VERSION: "3",
       },
     ];
 

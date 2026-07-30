@@ -32,6 +32,34 @@ They never expose Tenant Agent destinations, project references, Bearer token
 material, ciphertext, IV/KEK metadata, attestation digests, or raw provider
 errors. Explicit reconciliation never returns a temporary password.
 
+## Tenant Agent Bearer API
+
+The central server calls only the fixed HTTPS origin stored for an active
+Tenant and never accepts a Browser-supplied destination. Requests use:
+
+```text
+Authorization: Bearer {tenant-specific-256-bit-token}
+Content-Type: application/json
+```
+
+```text
+GET  /api/internal/central-user-manager/v1/health
+POST /api/internal/central-user-manager/v1/operations
+```
+
+The target Agent verifies its configured Tenant UUID, Supabase project ref,
+Agent/schema versions, token version, and Auth-attestation identity. Operation
+requests bind Tenant, operation UUID, actor UID, action, normalized payload,
+and request hash. Redirects, oversized/non-JSON envelopes, extra fields,
+identity mismatches, and unknown statuses fail closed.
+
+Bearer tokens never appear in URLs or response bodies. Health and operation
+responses are bounded exact envelopes. Safe results never contain passwords;
+a one-time password is transported separately and is returned by the central
+admin API only after durable atomic finalization. The full operator lifecycle
+is documented in the
+[Central User Manager operator guide](central-user-manager.md).
+
 ## Advertisement Public Reads
 
 External systems read active advertisements through Supabase Data API:

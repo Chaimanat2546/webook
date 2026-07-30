@@ -10,6 +10,8 @@ import {
   CentralUserManagerProjectRepositoryError,
   findActiveCustomerProject,
   listCustomerProjects,
+  listCustomerProjectsForKekRotation,
+  rewrapCustomerProjectBearerKek,
 } from "../server/repositories/customer-projects.ts";
 import {
   beginCentralUserDispatch,
@@ -191,6 +193,46 @@ describe("customer project repository", () => {
       listCustomerProjects(asClient(client)),
       CentralUserManagerProjectRepositoryError,
     );
+  });
+
+  it("lists only one old-KEK batch and persists through the atomic CAS RPC", async () => {
+    const client = new FakeClient();
+    client.queryResponses.push({ data: [activeProjectRow], error: null });
+    client.rpcResponses.push({ data: true, error: null });
+
+    const [expected] = await listCustomerProjectsForKekRotation(
+      asClient(client),
+      { kekVersion: 1, limit: 25 },
+    );
+    assert.ok(expected);
+    assert.deepEqual(client.queries[0]?.filters, [
+      ["bearer_token_kek_version", 1],
+    ]);
+    assert.doesNotMatch(
+      client.queries[0]?.select ?? "",
+      /agent_origin|project_ref|display_name/,
+    );
+
+    assert.equal(
+      await rewrapCustomerProjectBearerKek(asClient(client), {
+        expected,
+        rewrapped: {
+          ...expected,
+          bearerTokenCiphertext: "D".repeat(64),
+          bearerTokenIv: "E".repeat(16),
+          bearerTokenKekVersion: 2,
+        },
+        actorUid: "33333333-3333-4333-8333-333333333333",
+        eventId: "44444444-4444-4444-8444-444444444444",
+      }),
+      true,
+    );
+    assert.equal(
+      client.rpcCalls[0]?.name,
+      "rewrap_customer_project_bearer_kek",
+    );
+    assert.equal(client.rpcCalls[0]?.args.p_expected_kek_version, 1);
+    assert.equal(client.rpcCalls[0]?.args.p_next_kek_version, 2);
   });
 });
 

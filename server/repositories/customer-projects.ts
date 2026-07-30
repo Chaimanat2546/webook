@@ -60,6 +60,7 @@ const BASE64URL_IV = /^[A-Za-z0-9_-]{16}$/;
 const HEX_DIGEST = /^[0-9a-f]{64}$/;
 const SAFE_ERROR_CODE = /^[a-z0-9_]{1,64}$/;
 const MAX_SQL_INTEGER = 2_147_483_647;
+const MAX_KEK_ROTATION_BATCH = 100;
 
 export type CustomerProjectHealthStatus =
   | "unknown"
@@ -148,6 +149,8 @@ export interface CustomerProjectTokenRotationGate {
   quarantinedCount: number;
   remainingDispatchableCount: 0;
 }
+
+export type KekRotationCustomerProject = EncryptedTenantToken;
 
 export class CentralUserManagerProjectRepositoryError extends Error {
   constructor() {
@@ -334,6 +337,26 @@ function readActiveProject(value: unknown): ActiveCustomerProject {
     ),
     authAttestationCheckedAt: readTimestamp(
       value.auth_attestation_checked_at,
+    ),
+  };
+}
+
+function readEncryptedToken(value: unknown): EncryptedTenantToken {
+  if (!isRecord(value)) return repositoryFailure();
+  return {
+    tenantId: readString(value.id, UUID),
+    bearerTokenCiphertext: readString(
+      value.bearer_token_ciphertext,
+      BASE64URL_CIPHERTEXT,
+    ),
+    bearerTokenIv: readString(value.bearer_token_iv, BASE64URL_IV),
+    bearerTokenVersion: readPositiveVersion(value.bearer_token_version),
+    bearerTokenKekVersion: readPositiveVersion(
+      value.bearer_token_kek_version,
+    ),
+    bearerTokenFingerprint: readString(
+      value.bearer_token_fingerprint,
+      HEX_DIGEST,
     ),
   };
 }
@@ -664,6 +687,105 @@ export function activateCustomerProjectForProvisioning(
   return callBooleanRpc(client, "activate_customer_project_for_provisioning", {
     p_tenant_id: readString(input.tenantId, UUID),
     p_expected_token_version: readPositiveVersion(input.expectedTokenVersion),
+    p_actor_uid: readString(input.actorUid, UUID),
+    p_event_id: readString(input.eventId, UUID),
+  });
+}
+
+export async function countCustomerProjectsByKekVersion(
+  client: SupabaseClient,
+  kekVersion: number,
+): Promise<number> {
+  const { count, error } = await runAdapterCall(() =>
+    client
+      .from("customer_projects")
+      .select("id", { count: "exact", head: true })
+      .eq("bearer_token_kek_version", readPositiveVersion(kekVersion)),
+  );
+  throwOnError(error);
+  if (
+    typeof count !== "number" ||
+    !Number.isSafeInteger(count) ||
+    count < 0
+  ) {
+    return repositoryFailure();
+  }
+  return count;
+}
+
+export async function listCustomerProjectsForKekRotation(
+  client: SupabaseClient,
+  input: { kekVersion: number; limit: number },
+): Promise<KekRotationCustomerProject[]> {
+  if (
+    !Number.isSafeInteger(input.limit) ||
+    input.limit < 1 ||
+    input.limit > MAX_KEK_ROTATION_BATCH
+  ) {
+    return repositoryFailure();
+  }
+  const { data, error } = await runAdapterCall(() =>
+    client
+      .from("customer_projects")
+      .select([
+        "id",
+        "bearer_token_ciphertext",
+        "bearer_token_iv",
+        "bearer_token_version",
+        "bearer_token_kek_version",
+        "bearer_token_fingerprint",
+      ].join(","))
+      .eq("bearer_token_kek_version", readPositiveVersion(input.kekVersion))
+      .order("id", { ascending: true })
+      .limit(input.limit),
+  );
+  throwOnError(error);
+  if (!Array.isArray(data)) return repositoryFailure();
+  return data.map((value) => readEncryptedToken(value));
+}
+
+export function rewrapCustomerProjectBearerKek(
+  client: SupabaseClient,
+  input: {
+    expected: EncryptedTenantToken;
+    rewrapped: EncryptedTenantToken;
+    actorUid: string;
+    eventId: string;
+  },
+): Promise<boolean> {
+  const expected = input.expected;
+  const rewrapped = input.rewrapped;
+  if (
+    expected.tenantId !== rewrapped.tenantId ||
+    expected.bearerTokenVersion !== rewrapped.bearerTokenVersion ||
+    expected.bearerTokenFingerprint !== rewrapped.bearerTokenFingerprint ||
+    expected.bearerTokenKekVersion === rewrapped.bearerTokenKekVersion
+  ) {
+    return repositoryFailure();
+  }
+  return callBooleanRpc(client, "rewrap_customer_project_bearer_kek", {
+    p_tenant_id: readString(expected.tenantId, UUID),
+    p_token_version: readPositiveVersion(expected.bearerTokenVersion),
+    p_expected_kek_version: readPositiveVersion(
+      expected.bearerTokenKekVersion,
+    ),
+    p_expected_ciphertext: readString(
+      expected.bearerTokenCiphertext,
+      BASE64URL_CIPHERTEXT,
+    ),
+    p_expected_iv: readString(expected.bearerTokenIv, BASE64URL_IV),
+    p_fingerprint: readString(
+      expected.bearerTokenFingerprint,
+      HEX_DIGEST,
+    ),
+    p_next_kek_version: readPositiveVersion(
+      rewrapped.bearerTokenKekVersion,
+    ),
+    p_next_ciphertext: readString(
+      rewrapped.bearerTokenCiphertext,
+      BASE64URL_CIPHERTEXT,
+    ),
+    p_next_iv: readString(rewrapped.bearerTokenIv, BASE64URL_IV),
     p_actor_uid: readString(input.actorUid, UUID),
     p_event_id: readString(input.eventId, UUID),
   });

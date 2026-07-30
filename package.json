@@ -14,7 +14,8 @@
     "deploy:cf": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload:cf": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "verify": "npm run typecheck && npm run lint && npm test",
-    "central-user-manager:provision": "node --conditions=react-server scripts/central-user-manager/provision-tenant.mjs"
+    "central-user-manager:provision": "node --conditions=react-server scripts/central-user-manager/provision-tenant.mjs",
+    "central-user-manager:rotate-kek": "node --conditions=react-server scripts/central-user-manager/rotate-kek.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

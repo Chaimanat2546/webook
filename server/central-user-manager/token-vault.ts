@@ -290,3 +290,25 @@ export async function decryptTenantToken(
     plaintext?.fill(0);
   }
 }
+
+export async function rewrapTenantToken(
+  record: EncryptedTenantToken,
+  dependencies: TenantTokenVaultDependencies = {},
+): Promise<EncryptedTenantToken> {
+  const token = await decryptTenantToken(record, dependencies);
+  const rewrapped = await encryptTenantToken(
+    {
+      tenantId: record.tenantId,
+      token,
+      tokenVersion: record.bearerTokenVersion,
+    },
+    dependencies,
+  );
+  if (
+    rewrapped.bearerTokenKekVersion === record.bearerTokenKekVersion ||
+    rewrapped.bearerTokenFingerprint !== record.bearerTokenFingerprint
+  ) {
+    return vaultFailure();
+  }
+  return rewrapped;
+}

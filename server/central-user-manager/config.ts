@@ -89,8 +89,43 @@ export function getCentralUserManagerTokenKekConfig(
     throw new CentralUserManagerTokenConfigError();
   }
 
-  return {
-    currentVersion,
-    keys: new Map([[currentVersion, key]]),
-  };
+  const previousRaw = environment.CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS;
+  const previousVersionRaw =
+    environment.CENTRAL_USER_MANAGER_TOKEN_KEK_PREVIOUS_VERSION;
+  const previousPairAbsent =
+    (previousRaw === undefined && previousVersionRaw === undefined) ||
+    (previousRaw === "" && previousVersionRaw === "");
+  const previousPairPresent =
+    typeof previousRaw === "string" &&
+    previousRaw.length > 0 &&
+    typeof previousVersionRaw === "string" &&
+    previousVersionRaw.length > 0;
+  if (!previousPairAbsent && !previousPairPresent) {
+    key.fill(0);
+    throw new CentralUserManagerTokenConfigError();
+  }
+
+  const keys = new Map([[currentVersion, key]]);
+  if (previousPairPresent) {
+    let previousVersion: number;
+    try {
+      previousVersion = readKekVersion(previousVersionRaw);
+    } catch {
+      key.fill(0);
+      throw new CentralUserManagerTokenConfigError();
+    }
+    const previousKey = decodeCanonicalBase64Url(previousRaw, 32);
+    if (
+      !previousKey ||
+      previousVersion >= currentVersion ||
+      previousKey.every((byte, index) => byte === key[index])
+    ) {
+      key.fill(0);
+      previousKey?.fill(0);
+      throw new CentralUserManagerTokenConfigError();
+    }
+    keys.set(previousVersion, previousKey);
+  }
+
+  return { currentVersion, keys };
 }

@@ -12,6 +12,15 @@ Current focus:
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
 House/accommodation menu access currently requires `allow_tools.allow_accommodation = true`.
 
+## Central User Manager
+
+`/admin/user-manager` lets an exact Auth UID with `role_id = 1` manage users
+through a separate Bearer-authenticated Tenant Agent. Every Tenant has an
+independent 256-bit token; adding a Tenant deploys only that target Agent and
+does not redeploy `webook`. See the
+[Central User Manager operator guide](docs/central-user-manager.md) for
+onboarding, token rotation, KEK rotation, recovery, and incident rules.
+
 ## Quotation management MVP 1
 
 Quotation management is an explicitly added admin module. Users need
