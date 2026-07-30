@@ -3,7 +3,9 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  getAgentHealth,
   sendAgentOperation,
+  type AgentHealthCallResult,
   type AgentOperationCallResult,
 } from "../central-user-manager/agent-client.ts";
 import type { AgentOperationRequest } from "../central-user-manager/contracts.ts";
@@ -19,7 +21,9 @@ import {
 } from "../central-user-manager/safe-errors.ts";
 import {
   findActiveCustomerProject,
+  recordCustomerProjectVerification,
   type ActiveCustomerProject,
+  type CustomerProjectHealthProof,
 } from "../repositories/customer-projects.ts";
 import {
   beginCentralUserDispatch,
@@ -48,6 +52,32 @@ export interface CentralUserManagerServiceDependencies {
   finalizeOperation(input: CentralUserFinalizationInput): Promise<boolean>;
   randomUuid(): string;
 }
+
+export interface CentralUserManagerHealthDependencies {
+  findActiveProject(tenantId: string): Promise<ActiveCustomerProject | null>;
+  getHealth(project: ActiveCustomerProject): Promise<AgentHealthCallResult>;
+  recordVerification(input: {
+    tenantId: string;
+    tokenVersion: number;
+    check: "health";
+    succeeded: boolean;
+    safeErrorCode: string | null;
+    health: CustomerProjectHealthProof | null;
+  }): Promise<boolean>;
+}
+
+export interface CentralUserHealthSummary {
+  tenantId: string;
+  status: "healthy" | "unhealthy";
+  agentVersion: string | null;
+  schemaVersion: string | null;
+  authAttestationVersion: string | null;
+  authAttestationCheckedAt: string | null;
+}
+
+export type CentralUserHealthResult =
+  | { ok: true; health: CentralUserHealthSummary }
+  | { ok: false; error: SafeCentralUserError };
 
 export interface CentralUserManagerOperationResult {
   operationId: string;
@@ -451,6 +481,63 @@ export async function reconcileCentralUserOperation(
     : operationFromClaim(request.operationId, prepared.claim);
 }
 
+export async function checkCentralUserManagerHealth(
+  tenantId: string,
+  dependencies: CentralUserManagerHealthDependencies,
+): Promise<CentralUserHealthResult> {
+  let project: ActiveCustomerProject | null;
+  try {
+    project = await dependencies.findActiveProject(tenantId);
+  } catch {
+    return { ok: false, error: createSafeCentralUserError("project_unavailable") };
+  }
+  if (!project) {
+    return { ok: false, error: createSafeCentralUserError("project_unavailable") };
+  }
+
+  let result: AgentHealthCallResult;
+  try {
+    result = await dependencies.getHealth(project);
+  } catch {
+    result = {
+      kind: "failure",
+      error: createSafeCentralUserError("provider_failure"),
+    };
+  }
+
+  const health = result.kind === "success" ? result.data : null;
+  let recorded = false;
+  try {
+    recorded = await dependencies.recordVerification({
+      tenantId,
+      tokenVersion: project.bearerTokenVersion,
+      check: "health",
+      succeeded: result.kind === "success",
+      safeErrorCode: result.kind === "failure" ? result.error.code : null,
+      health,
+    });
+  } catch {
+    recorded = false;
+  }
+  if (!recorded) {
+    return { ok: false, error: createSafeCentralUserError("provider_failure") };
+  }
+  if (result.kind === "failure") {
+    return { ok: false, error: result.error };
+  }
+  return {
+    ok: true,
+    health: {
+      tenantId: result.data.tenantId,
+      status: "healthy",
+      agentVersion: result.data.agentVersion,
+      schemaVersion: result.data.schemaVersion,
+      authAttestationVersion: result.data.authAttestationVersion,
+      authAttestationCheckedAt: result.data.authAttestationCheckedAt,
+    },
+  };
+}
+
 export function createCentralUserManagerServiceDependencies(
   client: SupabaseClient,
 ): CentralUserManagerServiceDependencies {
@@ -466,5 +553,17 @@ export function createCentralUserManagerServiceDependencies(
     finalizeOperation: (input) =>
       finalizeCentralUserOperation(client, input),
     randomUuid: () => crypto.randomUUID(),
+  };
+}
+
+export function createCentralUserManagerHealthDependencies(
+  client: SupabaseClient,
+): CentralUserManagerHealthDependencies {
+  return {
+    findActiveProject: (tenantId) =>
+      findActiveCustomerProject(client, tenantId),
+    getHealth: getAgentHealth,
+    recordVerification: (input) =>
+      recordCustomerProjectVerification(client, input),
   };
 }

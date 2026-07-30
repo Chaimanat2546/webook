@@ -12,6 +12,27 @@
 
 Admin UI -> Server Component / Server Action -> Server Service -> Repository / Storage Adapter -> Supabase / External API
 
+## Central User Manager control-plane flow
+
+```text
+Admin browser
+  -> authenticated /api/admin/user-manager route
+  -> exact Auth UID + role_id = 1 guard
+  -> strict 16 KiB browser request parser
+  -> central operation service + atomic Supabase operation/audit RPC
+  -> active Tenant registry + in-memory Bearer decryption
+  -> fixed HTTPS Tenant Agent route
+```
+
+The health, operation, and explicit reconciliation Route Handlers live under
+`app/api/admin/user-manager`. Every method is guarded independently and every
+response uses private no-store and security headers. Browser responses are
+allowlisted safe projections: Agent origins, project references, Bearer token
+storage, attestation digests, raw provider details, and encryption metadata
+never cross the API boundary. A temporary password can appear only in the
+first completed operation response after operation state and audit persistence
+succeed; retry and reconciliation responses always omit it.
+
 ## Quotation data flow
 
 ```text

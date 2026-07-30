@@ -1,5 +1,37 @@
 # API Notes
 
+## Central User Manager admin API
+
+All routes require the current Supabase Auth UID to match exactly one
+`public.users` row with `role_id = 1`.
+
+```text
+GET  /api/admin/user-manager/health?tenantId={uuid}
+POST /api/admin/user-manager/operations
+POST /api/admin/user-manager/operations/{operationId}/reconcile
+```
+
+Operation and reconciliation requests require the exact
+`Content-Type: application/json`, are limited to 16 KiB, reject extra keys,
+and accept only `tenantId`, `operationId`, `action`, and the action-specific
+payload. The verified actor UID is supplied server-side. Reconciliation also
+requires the path and body operation UUIDs to match.
+
+Every response includes:
+
+```text
+Cache-Control: private, no-store, max-age=0
+Pragma: no-cache
+Expires: 0
+X-Content-Type-Options: nosniff
+Referrer-Policy: no-referrer
+```
+
+Responses expose only safe health, operation, user, and stable error fields.
+They never expose Tenant Agent destinations, project references, Bearer token
+material, ciphertext, IV/KEK metadata, attestation digests, or raw provider
+errors. Explicit reconciliation never returns a temporary password.
+
 ## Advertisement Public Reads
 
 External systems read active advertisements through Supabase Data API:
