@@ -1,6 +1,13 @@
 "use client";
 
-import { FileTextIcon, HouseIcon, LogOutIcon, MegaphoneIcon, UsersIcon } from "lucide-react";
+import {
+  FileTextIcon,
+  HouseIcon,
+  LogOutIcon,
+  MegaphoneIcon,
+  UserCogIcon,
+  UsersIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -23,9 +30,11 @@ import {
 import { TooltipProvider } from "../ui/tooltip";
 
 export function AdminDesktopSidebar({
+  canManageCentralUsers,
   canUseQuotation,
   signOutAction,
 }: {
+  canManageCentralUsers: boolean;
   canUseQuotation: boolean;
   signOutAction: () => Promise<void>;
 }) {
@@ -95,6 +104,20 @@ export function AdminDesktopSidebar({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                {canManageCentralUsers ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith("/admin/user-manager")}
+                      tooltip="จัดการผู้ใช้ลูกค้า"
+                    >
+                      <Link href="/admin/user-manager" onClick={closeMobileSidebar}>
+                        <UserCogIcon data-icon="inline-start" />
+                        <span>จัดการผู้ใช้ลูกค้า</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) : null}
                 {canUseQuotation ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton

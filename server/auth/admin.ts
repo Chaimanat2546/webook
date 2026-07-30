@@ -28,6 +28,12 @@ export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | n
   return user?.role_id === 1;
 }
 
+export function canManageCentralUsers(
+  byUid: Pick<AdminUserForAuth, "role_id"> | null,
+): boolean {
+  return byUid?.role_id === 1;
+}
+
 export function pickAdminUser({
   byEmail,
   byUid,
@@ -65,6 +71,7 @@ export const requireAdmin = cache(async () => {
 
   return {
     adminUser,
+    byUid: matches.byUid,
     isAuthorized: canUseAccommodation(adminUser),
     supabase,
     user,
