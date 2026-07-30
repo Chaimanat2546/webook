@@ -29,6 +29,19 @@ describe("Cloudflare deployment boundary", () => {
         bucket_name: "webook-admin-next-cache",
       },
     ]);
+    assert.deepEqual(config.env?.staging, {
+      name: "webook-admin-staging",
+      account_id: "7c1d945e149fc6fad2124176124d8f33",
+      version_metadata: {
+        binding: "CF_VERSION_METADATA",
+      },
+      r2_buckets: [
+        {
+          binding: "NEXT_INC_CACHE_R2_BUCKET",
+          bucket_name: "webook-admin-staging-next-cache",
+        },
+      ],
+    });
     assert.equal(Object.hasOwn(config, "services"), false);
     assert.equal(Object.hasOwn(config, "durable_objects"), false);
     assert.equal(Object.hasOwn(config, "migrations"), false);

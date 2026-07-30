@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 import { EventEmitter } from "node:events";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { parseProvisionArguments } from "../scripts/central-user-manager/provisioning/config.mjs";
 import {
@@ -12,6 +15,8 @@ import {
   buildTargetBuildEnvironment,
   buildTargetChildEnvironment,
   installTargetTokenAndDeploy,
+  sanitizeTargetCompiledEnvironment,
+  validateTargetRepository,
   verifyCloudflareTarget,
 } from "../scripts/central-user-manager/provisioning/target-deploy.mjs";
 import { fetchAuthAttestation } from "../scripts/central-user-manager/provisioning/attestation.mjs";
@@ -117,6 +122,10 @@ describe("Central User Manager provisioning", () => {
           NODE_ENV: "test",
           CLOUDFLARE_API_TOKEN: "cloudflare-only",
           CLOUDFLARE_ACCOUNT_ID: "b".repeat(32),
+          SUPABASE_PUBLISHABLE_KEY: "target-server-publishable-key",
+          NEXT_PUBLIC_HOME_CONFIG_SUPABASE_PUBLISHABLE_KEY:
+            "target-publishable-key",
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: "target-turnstile-site-key",
           SUPABASE_SERVICE_ROLE_KEY: "central-secret",
         },
         resolveTool: (_repo: string, tool: string) => `${TARGET_REPO}\\${tool}`,
@@ -137,6 +146,7 @@ describe("Central User Manager provisioning", () => {
             env: options.env,
           });
         },
+        sanitizeCompiledEnvironment: async () => {},
       },
     );
     assert.equal(calls.length, 3);
@@ -175,9 +185,105 @@ describe("Central User Manager provisioning", () => {
       NODE_ENV: "test",
       PATH: "safe-path",
       CLOUDFLARE_API_TOKEN: "cloudflare-only",
+      NEXT_PUBLIC_SITE_URL: "https://central.example.com",
+      NEXT_PUBLIC_HOME_CONFIG_SUPABASE_URL:
+        "https://centralprojectref.supabase.co",
+      NEXT_PUBLIC_HOME_CONFIG_SUPABASE_PUBLISHABLE_KEY:
+        "target-publishable-key",
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: "target-turnstile-site-key",
+      SUPABASE_PUBLISHABLE_KEY: "target-server-publishable-key",
+      SUPABASE_SERVICE_ROLE_KEY: "central-service-secret",
+      SUPABASE_ACCESS_TOKEN: "central-management-secret",
+      CENTRAL_USER_MANAGER_TOKEN_KEK: "central-kek-secret",
+    }, {
+      agentOrigin: "https://tenant-agent.example.com",
+      targetSupabaseProjectRef: "abcdefghijklmnopqrst",
     });
     assert.equal(build.PATH, "safe-path");
+    assert.equal(
+      build.NEXT_PUBLIC_SITE_URL,
+      "https://tenant-agent.example.com",
+    );
+    assert.equal(
+      build.NEXT_PUBLIC_HOME_CONFIG_SUPABASE_URL,
+      "https://abcdefghijklmnopqrst.supabase.co",
+    );
+    assert.equal(
+      build.NEXT_PUBLIC_HOME_CONFIG_SUPABASE_PUBLISHABLE_KEY,
+      "target-publishable-key",
+    );
+    assert.equal(
+      build.SUPABASE_PUBLISHABLE_KEY,
+      "target-server-publishable-key",
+    );
     assert.equal("CLOUDFLARE_API_TOKEN" in build, false);
+    assert.equal("SUPABASE_SERVICE_ROLE_KEY" in build, false);
+    assert.equal("SUPABASE_ACCESS_TOKEN" in build, false);
+    assert.equal("CENTRAL_USER_MANAGER_TOKEN_KEK" in build, false);
+  });
+
+  it("fails closed instead of loading missing target public values from a default env file", () => {
+    assert.throws(
+      () =>
+        buildTargetBuildEnvironment(
+          {
+            NODE_ENV: "test",
+            PATH: "safe-path",
+            NEXT_PUBLIC_HOME_CONFIG_SUPABASE_PUBLISHABLE_KEY:
+              "target-publishable-key",
+          },
+          {
+            agentOrigin: "https://tenant-agent.example.com",
+            targetSupabaseProjectRef: "abcdefghijklmnopqrst",
+          },
+        ),
+      /Target deployment failed at target_build_environment/,
+    );
+  });
+
+  it("replaces OpenNext env fallbacks with public staging values only", async () => {
+    const target = await mkdtemp(join(tmpdir(), "cum-env-isolation-"));
+    const compiledDirectory = join(target, ".open-next", "cloudflare");
+    const compiledPath = join(compiledDirectory, "next-env.mjs");
+    const productionSecret = "production-secret-must-not-survive";
+    try {
+      await mkdir(compiledDirectory, { recursive: true });
+      await writeFile(
+        compiledPath,
+        `export const production = ${JSON.stringify({
+          CALENDAR_INTERNAL_API_TOKEN: productionSecret,
+          NEXT_PUBLIC_SITE_URL: "https://production.example.com",
+        })};\n`,
+        "utf8",
+      );
+
+      await sanitizeTargetCompiledEnvironment(
+        { targetRepo: target },
+        {
+          NEXT_PUBLIC_SITE_URL: "https://staging.example.com",
+          NEXT_PUBLIC_HOME_CONFIG_SUPABASE_URL:
+            "https://abcdefghijklmnopqrst.supabase.co",
+          NEXT_PUBLIC_HOME_CONFIG_SUPABASE_PUBLISHABLE_KEY:
+            "staging-public-key",
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: "staging-site-key",
+          SUPABASE_SERVICE_ROLE_KEY: "central-secret",
+        },
+      );
+
+      const compiled = await readFile(compiledPath, "utf8");
+      assert.equal(compiled.includes(productionSecret), false);
+      assert.equal(compiled.includes("CALENDAR_INTERNAL_API_TOKEN"), false);
+      assert.equal(compiled.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
+      assert.equal(compiled.includes("https://staging.example.com"), true);
+      assert.equal(compiled.includes("staging-public-key"), true);
+      assert.equal(
+        (compiled.match(/export const (?:production|development|test) =/g) ?? [])
+          .length,
+        3,
+      );
+    } finally {
+      await rm(target, { recursive: true, force: true });
+    }
   });
 
   it("binds the target account and worker before secret mutation", async () => {
@@ -197,13 +303,76 @@ describe("Central User Manager provisioning", () => {
     ]);
   });
 
+  it("returns the exact embedded target attestation for provisioning reuse", async () => {
+    const target = await mkdtemp(join(tmpdir(), "cum-target-"));
+    const attestation = {
+      version: "v1",
+      digest: "a".repeat(64),
+      checkedAt: "2026-07-30T00:00:00.000Z",
+    };
+    try {
+      await mkdir(
+        join(target, "app", "(admin)", "api", "internal", "central-user-manager", "v1", "health"),
+        { recursive: true },
+      );
+      await mkdir(
+        join(target, "app", "(admin)", "api", "internal", "central-user-manager", "v1", "operations"),
+        { recursive: true },
+      );
+      await writeFile(join(target, "package.json"), JSON.stringify({ name: "tenant-agent" }));
+      await writeFile(
+        join(target, "app", "(admin)", "api", "internal", "central-user-manager", "v1", "health", "route.ts"),
+        "",
+      );
+      await writeFile(
+        join(target, "app", "(admin)", "api", "internal", "central-user-manager", "v1", "operations", "route.ts"),
+        "",
+      );
+      await writeFile(
+        join(target, "wrangler.jsonc"),
+        JSON.stringify({
+          env: {
+            staging: {
+              name: "tenant-worker",
+              vars: {
+                CENTRAL_USER_MANAGER_AGENT_ENABLED: "true",
+                CENTRAL_USER_MANAGER_CREDENTIAL_FENCE_ENABLED: "true",
+                CENTRAL_USER_MANAGER_TENANT_ID: TENANT_ID,
+                CENTRAL_USER_MANAGER_PROJECT_REF: "abcdefghijklmnopqrst",
+                CENTRAL_USER_MANAGER_AGENT_VERSION: "1.0.0",
+                CENTRAL_USER_MANAGER_SCHEMA_VERSION: "1.0.0",
+                CENTRAL_USER_MANAGER_TOKEN_VERSION: "1",
+                CENTRAL_USER_MANAGER_AUTH_ATTESTATION_VERSION: attestation.version,
+                CENTRAL_USER_MANAGER_AUTH_ATTESTATION_DIGEST: attestation.digest,
+                CENTRAL_USER_MANAGER_AUTH_ATTESTATION_CHECKED_AT: attestation.checkedAt,
+              },
+            },
+          },
+        }),
+      );
+      const result = await validateTargetRepository({
+        targetRepo: target,
+        wranglerEnvironment: "staging",
+        workerName: "tenant-worker",
+        tenantId: TENANT_ID,
+        targetSupabaseProjectRef: "abcdefghijklmnopqrst",
+        expectedAgentVersion: "1.0.0",
+        expectedSchemaVersion: "1.0.0",
+        nextTokenVersion: 1,
+      });
+      assert.deepEqual(result, attestation);
+    } finally {
+      await rm(target, { recursive: true, force: true });
+    }
+  });
+
   it("requires the exact approved Supabase Auth policy and binds every field", async () => {
     const response = {
       disable_signup: true,
       external_anonymous_users_enabled: false,
       password_min_length: 8,
       password_required_characters:
-        "abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%^&*()_+-=[]{};'\\:\"|<>?,./`~",
+        "abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%^&*()_+-=[]{};'\\\\:\"|<>?,./`~",
       password_hibp_enabled: true,
       security_update_password_require_reauthentication: false,
     };
@@ -234,15 +403,25 @@ describe("Central User Manager provisioning", () => {
 
   it("runs onboarding in the fail-closed order and activates only after both checks", async () => {
     const steps: string[] = [];
+    const embeddedAttestation = {
+      version: "v1",
+      digest: "a".repeat(64),
+      checkedAt: "2026-07-30T00:00:00.000Z",
+    };
     const config = { ...parseProvisionArguments([...requiredArguments, "--apply"], {
       resolveTargetRepo: (value: string) => value,
     }), apply: true };
     await provisionTenant(config, {
       readToken: async () => TOKEN,
       prepare: async () => ({ phase: "new", attestation: null, token: null }),
-      attest: async () => {
+      readTargetAttestation: async () => {
+        steps.push("target-attestation");
+        return embeddedAttestation;
+      },
+      attest: async (_project: string, expected: unknown) => {
         steps.push("attest");
-        return { version: "v1", digest: "a".repeat(64), checkedAt: "2026-07-30T00:00:00.000Z" };
+        assert.deepEqual(expected, embeddedAttestation);
+        return embeddedAttestation;
       },
       verifyOperator: async () => steps.push("operator"),
       registerInactive: async () => steps.push("register"),
@@ -261,6 +440,7 @@ describe("Central User Manager provisioning", () => {
     });
     assert.deepEqual(steps, [
       "operator",
+      "target-attestation",
       "attest",
       "register",
       "target-secret",
@@ -277,6 +457,14 @@ describe("Central User Manager provisioning", () => {
     const dependencies = {
       readToken: async () => { calls += 1; return TOKEN; },
       prepare: async () => ({ phase: "new", attestation: null, token: null }),
+      readTargetAttestation: async () => {
+        calls += 1;
+        return {
+          version: "v1",
+          digest: "a".repeat(64),
+          checkedAt: "2026-07-30T00:00:00.000Z",
+        };
+      },
       attest: async () => { calls += 1; return {}; },
       verifyOperator: async () => { calls += 1; },
       registerInactive: async () => { calls += 1; },

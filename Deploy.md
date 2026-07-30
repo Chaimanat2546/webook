@@ -50,6 +50,31 @@ Deploy จริง:
 npm.cmd run deploy:cf
 ```
 
+### Central User Manager staging
+
+`wrangler.jsonc` แยก staging เป็น Worker `webook-admin-staging` และ R2 bucket
+`webook-admin-staging-next-cache` โดยไม่ใช้ Worker/cache ของ production.
+
+ตั้ง runtime secrets ต่อไปนี้ด้วย `--env staging` โดยส่งค่าผ่าน stdin และห้าม
+ใส่ค่า secret ใน command, Git หรือ log:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CENTRAL_USER_MANAGER_TOKEN_KEK`
+- `CENTRAL_USER_MANAGER_TOKEN_KEK_VERSION`
+
+Build และ deploy:
+
+```powershell
+npx.cmd opennextjs-cloudflare build --env staging
+npx.cmd opennextjs-cloudflare deploy --env staging
+```
+
+ตรวจ `/login`, ตรวจว่า admin API ปฏิเสธ request ที่ไม่มี session และรัน
+authenticated Central User Manager health กับ `list_users` ก่อนถือว่า staging
+พร้อมใช้งาน.
+
 ถ้าต้อง upload version แต่ยังไม่ route traffic:
 
 ```powershell

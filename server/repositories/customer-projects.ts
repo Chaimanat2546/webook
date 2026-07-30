@@ -183,14 +183,16 @@ function readString(
 }
 
 function readTimestamp(value: unknown): string {
+  const milliseconds =
+    typeof value === "string" && value.length <= 64
+      ? Date.parse(value)
+      : Number.NaN;
   if (
-    typeof value !== "string" ||
-    value.length > 64 ||
-    !Number.isFinite(Date.parse(value))
+    !Number.isFinite(milliseconds)
   ) {
     return repositoryFailure();
   }
-  return value;
+  return new Date(milliseconds).toISOString();
 }
 
 function readNullableTimestamp(value: unknown): string | null {

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 const MAX_RESPONSE_BYTES = 65_536;
 const REQUIRED_PASSWORD_CHARACTERS =
-  "abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%^&*()_+-=[]{};'\\:\"|<>?,./`~";
+  "abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%^&*()_+-=[]{};'\\\\:\"|<>?,./`~";
 
 function failure() {
   throw new Error("Auth attestation failed.");

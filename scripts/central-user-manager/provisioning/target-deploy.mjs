@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 
@@ -6,6 +6,24 @@ const MAX_CHILD_OUTPUT = 32_768;
 
 function safeFailure(step) {
   throw new Error(`Target deployment failed at ${step}.`);
+}
+
+function readEmbeddedAttestation(vars) {
+  const value = {
+    version: vars?.CENTRAL_USER_MANAGER_AUTH_ATTESTATION_VERSION,
+    digest: vars?.CENTRAL_USER_MANAGER_AUTH_ATTESTATION_DIGEST,
+    checkedAt: vars?.CENTRAL_USER_MANAGER_AUTH_ATTESTATION_CHECKED_AT,
+  };
+  const checkedAt = new Date(value.checkedAt);
+  if (
+    value.version !== "v1" ||
+    typeof value.digest !== "string" ||
+    !/^[0-9a-f]{64}$/.test(value.digest) ||
+    typeof value.checkedAt !== "string" ||
+    Number.isNaN(checkedAt.getTime()) ||
+    checkedAt.toISOString() !== value.checkedAt
+  ) safeFailure("target_validation");
+  return value;
 }
 
 export function stripJsonComments(source) {
@@ -74,7 +92,7 @@ function removeTrailingCommas(source) {
   return output;
 }
 
-export async function validateTargetRepository(config, attestation) {
+export async function validateTargetRepository(config, attestation = null) {
   const requiredFiles = [
     "package.json",
     "wrangler.jsonc",
@@ -92,6 +110,8 @@ export async function validateTargetRepository(config, attestation) {
   }
   const vars = parsed?.env?.[config.wranglerEnvironment]?.vars;
   const workerName = parsed?.env?.[config.wranglerEnvironment]?.name;
+  const embeddedAttestation = readEmbeddedAttestation(vars);
+  const expectedAttestation = attestation ?? embeddedAttestation;
   const packageValue = JSON.parse(
     await readFile(join(config.targetRepo, "package.json"), "utf8"),
   );
@@ -103,9 +123,9 @@ export async function validateTargetRepository(config, attestation) {
     CENTRAL_USER_MANAGER_AGENT_VERSION: config.expectedAgentVersion,
     CENTRAL_USER_MANAGER_SCHEMA_VERSION: config.expectedSchemaVersion,
     CENTRAL_USER_MANAGER_TOKEN_VERSION: String(config.nextTokenVersion),
-    CENTRAL_USER_MANAGER_AUTH_ATTESTATION_VERSION: attestation.version,
-    CENTRAL_USER_MANAGER_AUTH_ATTESTATION_DIGEST: attestation.digest,
-    CENTRAL_USER_MANAGER_AUTH_ATTESTATION_CHECKED_AT: attestation.checkedAt,
+    CENTRAL_USER_MANAGER_AUTH_ATTESTATION_VERSION: expectedAttestation.version,
+    CENTRAL_USER_MANAGER_AUTH_ATTESTATION_DIGEST: expectedAttestation.digest,
+    CENTRAL_USER_MANAGER_AUTH_ATTESTATION_CHECKED_AT: expectedAttestation.checkedAt,
   };
   if (
     packageValue?.name === "webook" ||
@@ -114,9 +134,10 @@ export async function validateTargetRepository(config, attestation) {
     vars === null ||
     Object.entries(expected).some(([key, value]) => vars[key] !== value)
   ) safeFailure("target_validation");
+  return embeddedAttestation;
 }
 
-const BUILD_ENV_KEYS = [
+const SYSTEM_ENV_KEYS = [
   "PATH",
   "Path",
   "SystemRoot",
@@ -128,6 +149,16 @@ const BUILD_ENV_KEYS = [
   "APPDATA",
   "LOCALAPPDATA",
   "CI",
+];
+const TARGET_PUBLIC_BUILD_ENV_KEYS = [
+  "SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_HOME_CONFIG_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+];
+const COMPILED_PUBLIC_ENV_KEYS = [
+  "NEXT_PUBLIC_SITE_URL",
+  "NEXT_PUBLIC_HOME_CONFIG_SUPABASE_URL",
+  ...TARGET_PUBLIC_BUILD_ENV_KEYS,
 ];
 const CLOUDFLARE_ENV_KEYS = [
   "CLOUDFLARE_API_TOKEN",
@@ -142,8 +173,27 @@ function pickEnvironment(environment, keys) {
   return child;
 }
 
-export function buildTargetBuildEnvironment(environment = process.env) {
-  return pickEnvironment(environment, BUILD_ENV_KEYS);
+export function buildTargetBuildEnvironment(
+  environment = process.env,
+  config = /** @type {{ agentOrigin: string; targetSupabaseProjectRef: string } | null} */ (null),
+) {
+  const child = pickEnvironment(environment, [
+    ...SYSTEM_ENV_KEYS,
+    ...TARGET_PUBLIC_BUILD_ENV_KEYS,
+  ]);
+  if (config !== null) {
+    if (
+      TARGET_PUBLIC_BUILD_ENV_KEYS.some(
+        (key) => typeof child[key] !== "string" || child[key].length === 0,
+      )
+    ) {
+      safeFailure("target_build_environment");
+    }
+    child.NEXT_PUBLIC_SITE_URL = config.agentOrigin;
+    child.NEXT_PUBLIC_HOME_CONFIG_SUPABASE_URL =
+      `https://${config.targetSupabaseProjectRef}.supabase.co`;
+  }
+  return child;
 }
 
 export function buildTargetCloudflareEnvironment(
@@ -151,7 +201,7 @@ export function buildTargetCloudflareEnvironment(
   cloudflareAccountId = /** @type {string | null} */ (null),
 ) {
   const child = pickEnvironment(environment, [
-    ...BUILD_ENV_KEYS,
+    ...SYSTEM_ENV_KEYS,
     ...CLOUDFLARE_ENV_KEYS,
   ]);
   if (typeof cloudflareAccountId === "string") {
@@ -161,6 +211,51 @@ export function buildTargetCloudflareEnvironment(
 }
 
 export const buildTargetChildEnvironment = buildTargetCloudflareEnvironment;
+
+function serializePublicEnvironment(environment) {
+  const value = Object.create(null);
+  for (const key of COMPILED_PUBLIC_ENV_KEYS) {
+    if (typeof environment[key] === "string") {
+      value[key] = environment[key];
+    }
+  }
+  return JSON.stringify(value)
+    .replaceAll("<", "\\u003c")
+    .replaceAll("\u2028", "\\u2028")
+    .replaceAll("\u2029", "\\u2029");
+}
+
+export async function sanitizeTargetCompiledEnvironment(
+  config,
+  buildEnvironment,
+  dependencies = {},
+) {
+  const artifact = join(
+    config.targetRepo,
+    ".open-next",
+    "cloudflare",
+    "next-env.mjs",
+  );
+  const readStat = dependencies.stat ?? stat;
+  const write = dependencies.writeFile ?? writeFile;
+  try {
+    const metadata = await readStat(artifact);
+    if (
+      !metadata.isFile() ||
+      metadata.size < 1 ||
+      metadata.size > 1_000_000
+    ) {
+      safeFailure("compiled_environment_sanitization");
+    }
+    const serialized = serializePublicEnvironment(buildEnvironment);
+    const source = ["production", "development", "test"]
+      .map((mode) => `export const ${mode} = ${serialized};`)
+      .join("\n");
+    await write(artifact, `${source}\n`, "utf8");
+  } catch {
+    safeFailure("compiled_environment_sanitization");
+  }
+}
 
 export async function verifyCloudflareTarget(
   config,
@@ -243,8 +338,12 @@ export async function installTargetToken(config, token, dependencies = {}) {
 export async function deployTargetOnly(config, dependencies = {}) {
   const run = dependencies.run ?? defaultRun;
   const resolveTool = dependencies.resolveTool ?? defaultResolveTool;
+  const sanitizeCompiledEnvironment =
+    dependencies.sanitizeCompiledEnvironment ??
+    sanitizeTargetCompiledEnvironment;
   const buildEnvironment = buildTargetBuildEnvironment(
     dependencies.environment ?? process.env,
+    config,
   );
   const deployEnvironment = buildTargetCloudflareEnvironment(
     dependencies.environment ?? process.env,
@@ -259,6 +358,7 @@ export async function deployTargetOnly(config, dependencies = {}) {
       cwd: config.targetRepo,
       env: buildEnvironment,
     });
+    await sanitizeCompiledEnvironment(config, buildEnvironment);
     await run(process.execPath, [
       openNext,
       "deploy",

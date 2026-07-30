@@ -23,9 +23,11 @@ export async function provisionTenant(config, dependencies) {
   if (!config.apply) return { applied: false, mode: config.mode };
   await dependencies.verifyOperator(config.operatorUid);
   const context = await dependencies.prepare();
+  const expectedAttestation =
+    context.attestation ?? await dependencies.readTargetAttestation();
   const attestation = await dependencies.attest(
     config.targetSupabaseProjectRef,
-    context.attestation,
+    expectedAttestation,
   );
   if (context.phase === "completed") {
     return { applied: true, mode: config.mode };
@@ -71,6 +73,7 @@ export async function runProvisionCli(
     await provisionTenant(config, {
       verifyOperator: (operatorUid) => verifyCentralOperator(client, operatorUid),
       prepare: registry.prepare,
+      readTargetAttestation: () => validateTargetRepository(config),
       attest: (projectRef, expected) =>
         fetchAuthAttestation(projectRef, environment, {}, expected),
       registerInactive: registry.registerInactive,

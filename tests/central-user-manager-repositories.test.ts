@@ -9,6 +9,7 @@ import {
 import {
   CentralUserManagerProjectRepositoryError,
   findActiveCustomerProject,
+  findCustomerProjectForProvisioning,
   listCustomerProjects,
   listCustomerProjectsForKekRotation,
   rewrapCustomerProjectBearerKek,
@@ -183,6 +184,37 @@ describe("customer project repository", () => {
         null,
       );
     }
+  });
+
+  it("canonicalizes Postgres offset timestamps when resuming provisioning", async () => {
+    const client = new FakeClient();
+    client.queryResponses.push({
+      data: [
+        {
+          ...activeProjectRow,
+          display_name: "Tenant One",
+          is_active: false,
+          provisioning_state: "registered",
+          bearer_token_ciphertext: null,
+          bearer_token_iv: null,
+          bearer_token_version: null,
+          bearer_token_kek_version: null,
+          bearer_token_fingerprint: null,
+          auth_attestation_checked_at: "2026-07-29 00:00:00+00",
+        },
+      ],
+      error: null,
+    });
+
+    const project = await findCustomerProjectForProvisioning(
+      asClient(client),
+      safeProjectRow.id,
+    );
+
+    assert.equal(
+      project?.authAttestationCheckedAt,
+      "2026-07-29T00:00:00.000Z",
+    );
   });
 
   it("maps thrown query failures to a stable project repository error", async () => {
