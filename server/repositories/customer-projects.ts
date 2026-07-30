@@ -42,6 +42,13 @@ const ACTIVE_PROJECT_COLUMNS = [
   "auth_attestation_digest",
   "auth_attestation_checked_at",
 ].join(",");
+const PROVISIONING_PROJECT_COLUMNS = [
+  "id",
+  "display_name",
+  "is_active",
+  "provisioning_state",
+  ACTIVE_PROJECT_COLUMNS.split(",").slice(1).join(","),
+].join(",");
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -91,6 +98,27 @@ export interface ActiveCustomerProject extends EncryptedTenantToken {
   authAttestationCheckedAt: string;
 }
 
+export interface ProvisioningCustomerProject {
+  tenantId: string;
+  displayName: string;
+  isActive: boolean;
+  provisioningState:
+    | "registered"
+    | "rotation_gated"
+    | "token_stored"
+    | "completed"
+    | null;
+  targetSupabaseProjectRef: string;
+  agentOrigin: string;
+  wranglerEnvironment: string;
+  expectedAgentVersion: string;
+  expectedSchemaVersion: string;
+  authAttestationVersion: string;
+  authAttestationDigest: string;
+  authAttestationCheckedAt: string;
+  encryptedToken: EncryptedTenantToken | null;
+}
+
 export interface CustomerProjectRegistration {
   tenantId: string;
   displayName: string;
@@ -113,6 +141,12 @@ export interface CustomerProjectHealthProof {
   authAttestationVersion: string;
   authAttestationDigest: string;
   authAttestationCheckedAt: string;
+}
+
+export interface CustomerProjectTokenRotationGate {
+  failedSafeCount: number;
+  quarantinedCount: number;
+  remainingDispatchableCount: 0;
 }
 
 export class CentralUserManagerProjectRepositoryError extends Error {
@@ -304,6 +338,54 @@ function readActiveProject(value: unknown): ActiveCustomerProject {
   };
 }
 
+function readProvisioningProject(value: unknown): ProvisioningCustomerProject {
+  if (!isRecord(value)) return repositoryFailure();
+  const tenantId = readString(value.id, UUID);
+  const hasToken = value.bearer_token_version !== null;
+  const provisioningState = value.provisioning_state;
+  if (
+    provisioningState !== null &&
+    provisioningState !== "registered" &&
+    provisioningState !== "rotation_gated" &&
+    provisioningState !== "token_stored" &&
+    provisioningState !== "completed"
+  ) {
+    return repositoryFailure();
+  }
+  return {
+    tenantId,
+    displayName: readDisplayName(value.display_name),
+    isActive:
+      typeof value.is_active === "boolean"
+        ? value.is_active
+        : repositoryFailure(),
+    provisioningState,
+    targetSupabaseProjectRef: readString(value.target_supabase_project_ref, PROJECT_REF),
+    agentOrigin: readStoredAgentOrigin(value.agent_origin),
+    wranglerEnvironment: readString(value.wrangler_environment, WRANGLER_ENVIRONMENT),
+    expectedAgentVersion: readString(value.expected_agent_version, VERSION),
+    expectedSchemaVersion: readString(value.expected_schema_version, VERSION),
+    authAttestationVersion: readString(value.auth_attestation_version, VERSION),
+    authAttestationDigest: readString(value.auth_attestation_digest, HEX_DIGEST),
+    authAttestationCheckedAt: readTimestamp(value.auth_attestation_checked_at),
+    encryptedToken: hasToken
+      ? {
+          tenantId,
+          bearerTokenCiphertext: readString(value.bearer_token_ciphertext, BASE64URL_CIPHERTEXT),
+          bearerTokenIv: readString(value.bearer_token_iv, BASE64URL_IV),
+          bearerTokenVersion: readPositiveVersion(value.bearer_token_version),
+          bearerTokenKekVersion: readPositiveVersion(value.bearer_token_kek_version),
+          bearerTokenFingerprint: readString(value.bearer_token_fingerprint, HEX_DIGEST),
+        }
+      : value.bearer_token_ciphertext === null &&
+          value.bearer_token_iv === null &&
+          value.bearer_token_kek_version === null &&
+          value.bearer_token_fingerprint === null
+        ? null
+        : repositoryFailure(),
+  };
+}
+
 function throwOnError(error: unknown): void {
   if (error) {
     repositoryFailure();
@@ -375,9 +457,30 @@ export async function findActiveCustomerProject(
   return readActiveProject(data[0]);
 }
 
+export async function findCustomerProjectForProvisioning(
+  client: SupabaseClient,
+  tenantId: string,
+): Promise<ProvisioningCustomerProject | null> {
+  const trustedTenantId = readString(tenantId, UUID);
+  const { data, error } = await runAdapterCall(() =>
+    client
+      .from("customer_projects")
+      .select(PROVISIONING_PROJECT_COLUMNS)
+      .eq("id", trustedTenantId)
+      .limit(2),
+  );
+  throwOnError(error);
+  if (data === null || (Array.isArray(data) && data.length === 0)) return null;
+  if (!Array.isArray(data) || data.length !== 1) return repositoryFailure();
+  return readProvisioningProject(data[0]);
+}
+
 export async function registerCustomerProject(
   client: SupabaseClient,
-  input: CustomerProjectRegistration,
+  input: CustomerProjectRegistration & {
+    actorUid: string;
+    eventId: string;
+  },
 ): Promise<{ outcome: "registered" | "retry"; isActive: false }> {
   const args = {
     p_tenant_id: readString(input.tenantId, UUID),
@@ -404,9 +507,11 @@ export async function registerCustomerProject(
     p_auth_attestation_checked_at: readTimestamp(
       input.authAttestationCheckedAt,
     ),
+    p_actor_uid: readString(input.actorUid, UUID),
+    p_event_id: readString(input.eventId, UUID),
   };
   const { data, error } = await runAdapterCall(() =>
-    client.rpc("register_customer_project", args),
+    client.rpc("register_customer_project_for_provisioning", args),
   );
 
   throwOnError(error);
@@ -429,11 +534,54 @@ export function deactivateCustomerProject(
   });
 }
 
-export function rotateCustomerProjectBearer(
+export async function beginCustomerProjectTokenRotation(
   client: SupabaseClient,
-  input: EncryptedTenantToken & { expectedTokenVersion: number },
+  input: {
+    tenantId: string;
+    actorUid: string;
+    eventId: string;
+    expectedTokenVersion: number;
+  },
+): Promise<CustomerProjectTokenRotationGate> {
+  const { data, error } = await runAdapterCall(() =>
+    client.rpc("begin_customer_project_token_rotation", {
+      p_tenant_id: readString(input.tenantId, UUID),
+      p_actor_uid: readString(input.actorUid, UUID),
+      p_event_id: readString(input.eventId, UUID),
+      p_expected_token_version: readPositiveVersion(input.expectedTokenVersion),
+    }),
+  );
+  throwOnError(error);
+  const failedSafeCount = isRecord(data) ? data.failedSafeCount : null;
+  const quarantinedCount = isRecord(data) ? data.quarantinedCount : null;
+  if (
+    !isRecord(data) ||
+    typeof failedSafeCount !== "number" ||
+    typeof quarantinedCount !== "number" ||
+    !Number.isSafeInteger(failedSafeCount) ||
+    !Number.isSafeInteger(quarantinedCount) ||
+    failedSafeCount < 0 ||
+    quarantinedCount < 0 ||
+    data.remainingDispatchableCount !== 0
+  ) {
+    return repositoryFailure();
+  }
+  return {
+    failedSafeCount,
+    quarantinedCount,
+    remainingDispatchableCount: 0,
+  };
+}
+
+export function storeCustomerProjectBearerForProvisioning(
+  client: SupabaseClient,
+  input: EncryptedTenantToken & {
+    expectedTokenVersion: number;
+    actorUid: string;
+    eventId: string;
+  },
 ): Promise<boolean> {
-  return callBooleanRpc(client, "rotate_customer_project_bearer", {
+  return callBooleanRpc(client, "store_customer_project_bearer_for_provisioning", {
     p_tenant_id: readString(input.tenantId, UUID),
     p_expected_token_version:
       input.expectedTokenVersion === 0
@@ -450,6 +598,8 @@ export function rotateCustomerProjectBearer(
       input.bearerTokenFingerprint,
       HEX_DIGEST,
     ),
+    p_actor_uid: readString(input.actorUid, UUID),
+    p_event_id: readString(input.eventId, UUID),
   });
 }
 
@@ -502,13 +652,19 @@ export function recordCustomerProjectVerification(
   });
 }
 
-export function activateCustomerProject(
+export function activateCustomerProjectForProvisioning(
   client: SupabaseClient,
-  tenantId: string,
-  expectedTokenVersion: number,
+  input: {
+    tenantId: string;
+    expectedTokenVersion: number;
+    actorUid: string;
+    eventId: string;
+  },
 ): Promise<boolean> {
-  return callBooleanRpc(client, "activate_customer_project", {
-    p_tenant_id: readString(tenantId, UUID),
-    p_expected_token_version: readPositiveVersion(expectedTokenVersion),
+  return callBooleanRpc(client, "activate_customer_project_for_provisioning", {
+    p_tenant_id: readString(input.tenantId, UUID),
+    p_expected_token_version: readPositiveVersion(input.expectedTokenVersion),
+    p_actor_uid: readString(input.actorUid, UUID),
+    p_event_id: readString(input.eventId, UUID),
   });
 }
