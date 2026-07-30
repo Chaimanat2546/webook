@@ -14,11 +14,9 @@ import {
 import {
   beginCentralUserDispatch,
   claimCentralUserOperation,
-  completeCentralUserOperation,
   CentralUserOperationConflictError,
   CentralUserOperationRepositoryError,
-  markCentralUserOperationAmbiguous,
-  reconcileCentralUserOperation,
+  finalizeCentralUserOperation,
 } from "../server/repositories/user-management-operations.ts";
 
 interface QueryResponse {
@@ -217,6 +215,7 @@ describe("operation repository", () => {
         data: {
           outcome: "retry",
           status: "completed",
+          agentStage: "completed",
           safeResult: { user: {
             userId: "44444444-4444-4444-8444-444444444444",
             email: "admin@example.com",
@@ -260,11 +259,9 @@ describe("operation repository", () => {
     );
   });
 
-  it("uses exact CAS RPCs for dispatch, completion, ambiguity, and reconciliation", async () => {
+  it("uses exact CAS RPCs for dispatch and atomic finalization", async () => {
     const client = new FakeClient();
     client.rpcResponses.push(
-      { data: true, error: null },
-      { data: true, error: null },
       { data: true, error: null },
       { data: true, error: null },
     );
@@ -289,32 +286,16 @@ describe("operation repository", () => {
       true,
     );
     assert.equal(
-      await completeCentralUserOperation(
-        asClient(client),
-        binding.operationId,
-        binding.requestHash,
-        safeResult,
-      ),
-      true,
-    );
-    assert.equal(
-      await markCentralUserOperationAmbiguous(
-        asClient(client),
-        binding.operationId,
-        binding.requestHash,
-        "needs_review",
-        "operation_ambiguous",
-      ),
-      true,
-    );
-    assert.equal(
-      await reconcileCentralUserOperation(asClient(client), {
+      await finalizeCentralUserOperation(asClient(client), {
         operationId: binding.operationId,
         requestHash: binding.requestHash,
-        expectedStatus: "needs_review",
+        eventId: "55555555-5555-4555-8555-555555555555",
+        expectedStatus: "dispatching",
         nextStatus: "completed",
+        agentStage: "completed",
         safeResult,
         safeErrorCode: null,
+        metadata: { disposition: "first" },
       }),
       true,
     );
@@ -323,9 +304,7 @@ describe("operation repository", () => {
       client.rpcCalls.map(({ name }) => name),
       [
         "begin_central_user_dispatch",
-        "complete_central_user_operation",
-        "mark_central_user_operation_ambiguous",
-        "reconcile_central_user_operation",
+        "finalize_central_user_operation",
       ],
     );
   });
@@ -334,12 +313,17 @@ describe("operation repository", () => {
     const client = new FakeClient();
 
     assert.throws(() =>
-      completeCentralUserOperation(
-        asClient(client),
-        binding.operationId,
-        binding.requestHash,
-        { temporaryPassword: "MustNotPersist1!" } as never,
-      ),
+      finalizeCentralUserOperation(asClient(client), {
+        operationId: binding.operationId,
+        requestHash: binding.requestHash,
+        eventId: "55555555-5555-4555-8555-555555555555",
+        expectedStatus: "dispatching",
+        nextStatus: "completed",
+        agentStage: "completed",
+        safeResult: { temporaryPassword: "MustNotPersist1!" } as never,
+        safeErrorCode: null,
+        metadata: { disposition: "first" },
+      }),
     );
     assert.equal(client.rpcCalls.length, 0);
   });
@@ -347,21 +331,29 @@ describe("operation repository", () => {
   it("rejects null completion and contradictory reconciliation before persistence", () => {
     const client = new FakeClient();
     assert.throws(() =>
-      completeCentralUserOperation(
-        asClient(client),
-        binding.operationId,
-        binding.requestHash,
-        null as never,
-      ),
-    );
-    assert.throws(() =>
-      reconcileCentralUserOperation(asClient(client), {
+      finalizeCentralUserOperation(asClient(client), {
         operationId: binding.operationId,
         requestHash: binding.requestHash,
+        eventId: "55555555-5555-4555-8555-555555555555",
+        expectedStatus: "dispatching",
+        nextStatus: "completed",
+        agentStage: "completed",
+        safeResult: null,
+        safeErrorCode: null,
+        metadata: { disposition: "first" },
+      } as never),
+    );
+    assert.throws(() =>
+      finalizeCentralUserOperation(asClient(client), {
+        operationId: binding.operationId,
+        requestHash: binding.requestHash,
+        eventId: "55555555-5555-4555-8555-555555555555",
         expectedStatus: "needs_review",
         nextStatus: "completed",
+        agentStage: "completed",
         safeResult: null,
         safeErrorCode: "provider_failure",
+        metadata: { disposition: "reconciled" },
       } as never),
     );
     assert.equal(client.rpcCalls.length, 0);

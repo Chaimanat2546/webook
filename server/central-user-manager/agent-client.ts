@@ -17,6 +17,7 @@ import type {
   CustomerProjectHealthProof,
 } from "../repositories/customer-projects.ts";
 import type {
+  CentralUserAgentStage,
   CentralManagedUser,
   CentralManagedUserStatus,
   CentralUserSafeResult,
@@ -49,7 +50,7 @@ const PASSWORD_ACTIONS = new Set<CentralUserAction>([
   "reissue_temporary_password",
   "reactivate_user",
 ]);
-const AGENT_STAGES = new Set([
+const AGENT_STAGES = new Set<CentralUserAgentStage>([
   "list",
   "listed",
   "claimed",
@@ -117,7 +118,7 @@ export type AgentOperationStatus =
 export interface AgentOperationResponseData {
   operationId: string;
   status: AgentOperationStatus;
-  stage: string;
+  stage: CentralUserAgentStage;
   safeResult: CentralUserSafeResult | null;
   temporaryPassword?: string;
   agentErrorCode?: AgentSafeErrorCode;
@@ -607,7 +608,7 @@ function readOperationEnvelope(
     typeof value.status !== "string" ||
     !AGENT_STATUSES.has(value.status as AgentOperationStatus) ||
     typeof value.stage !== "string" ||
-    !AGENT_STAGES.has(value.stage)
+    !AGENT_STAGES.has(value.stage as CentralUserAgentStage)
   ) {
     return null;
   }
@@ -625,7 +626,7 @@ function readOperationEnvelope(
     return {
       operationId: request.operationId,
       status,
-      stage: value.stage,
+      stage: value.stage as CentralUserAgentStage,
       safeResult: null,
       agentErrorCode,
     };
@@ -644,7 +645,7 @@ function readOperationEnvelope(
       ? {
           operationId: request.operationId,
           status,
-          stage: value.stage,
+          stage: value.stage as CentralUserAgentStage,
           safeResult,
         }
       : null;
@@ -659,7 +660,7 @@ function readOperationEnvelope(
     return {
       operationId: request.operationId,
       status,
-      stage: value.stage,
+      stage: value.stage as CentralUserAgentStage,
       safeResult: null,
       agentErrorCode,
     };
@@ -677,7 +678,7 @@ function readOperationEnvelope(
     ? {
         operationId: request.operationId,
         status,
-        stage: value.stage,
+        stage: value.stage as CentralUserAgentStage,
         safeResult: result.safeResult,
         ...(result.temporaryPassword
           ? { temporaryPassword: result.temporaryPassword }

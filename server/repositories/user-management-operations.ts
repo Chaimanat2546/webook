@@ -43,6 +43,36 @@ const SAFE_ERROR_CODES = new Set<SafeCentralUserErrorCode>(
     SAFE_CENTRAL_USER_ERROR_CATALOG,
   ) as SafeCentralUserErrorCode[],
 );
+const AGENT_STAGES = new Set<CentralUserAgentStage>([
+  "list",
+  "listed",
+  "claimed",
+  "completed",
+  "needs_review",
+  "quarantined",
+  "late_fence",
+  "provider_intent",
+  "provider_outcome",
+  "profile_created",
+  "compensation_ready",
+  "profile_advanced",
+  "profile_activated",
+  "auth_create_intent",
+  "auth_create_succeeded",
+  "auth_create_rejected",
+  "auth_delete_intent",
+  "auth_delete_succeeded",
+  "auth_delete_rejected",
+  "auth_update_intent",
+  "auth_update_succeeded",
+  "auth_update_rejected",
+  "password_verify_intent",
+  "password_verify_succeeded",
+  "password_verify_rejected",
+  "global_signout_intent",
+  "global_signout_succeeded",
+  "global_signout_rejected",
+]);
 
 export type CentralUserOperationStatus =
   | "received"
@@ -58,6 +88,36 @@ export type CentralManagedUserStatus =
   | "password_change_required"
   | "suspended"
   | "abnormal";
+
+export type CentralUserAgentStage =
+  | "list"
+  | "listed"
+  | "claimed"
+  | "completed"
+  | "needs_review"
+  | "quarantined"
+  | "late_fence"
+  | "provider_intent"
+  | "provider_outcome"
+  | "profile_created"
+  | "compensation_ready"
+  | "profile_advanced"
+  | "profile_activated"
+  | "auth_create_intent"
+  | "auth_create_succeeded"
+  | "auth_create_rejected"
+  | "auth_delete_intent"
+  | "auth_delete_succeeded"
+  | "auth_delete_rejected"
+  | "auth_update_intent"
+  | "auth_update_succeeded"
+  | "auth_update_rejected"
+  | "password_verify_intent"
+  | "password_verify_succeeded"
+  | "password_verify_rejected"
+  | "global_signout_intent"
+  | "global_signout_succeeded"
+  | "global_signout_rejected";
 
 export interface CentralManagedUser {
   userId: string;
@@ -85,18 +145,31 @@ export interface CentralUserOperationBinding {
   requestHash: string;
 }
 
-type CentralUserReconciliationInput = {
+export type CentralUserFinalizationInput = {
   operationId: string;
   requestHash: string;
-  expectedStatus: "in_progress" | "needs_review" | "quarantined";
+  eventId: string;
+  expectedStatus:
+    | "dispatching"
+    | "in_progress"
+    | "needs_review"
+    | "quarantined";
+  agentStage: CentralUserAgentStage | null;
+  metadata: {
+    disposition: "first" | "retry" | "reconciled";
+  } | null;
 } & (
   | {
       nextStatus: "completed";
       safeResult: CentralUserSafeResult;
-      safeErrorCode: null;
+      safeErrorCode: "operation_conflict" | null;
     }
   | {
-      nextStatus: "failed_safe" | "quarantined";
+      nextStatus:
+        | "failed_safe"
+        | "in_progress"
+        | "needs_review"
+        | "quarantined";
       safeResult: null;
       safeErrorCode: SafeCentralUserErrorCode;
     }
@@ -107,8 +180,9 @@ export type CentralUserOperationClaim =
   | {
       outcome: "retry";
       status: CentralUserOperationStatus;
+      agentStage: CentralUserAgentStage | null;
       safeResult: CentralUserSafeResult | null;
-      safeErrorCode: string | null;
+      safeErrorCode: SafeCentralUserErrorCode | null;
     };
 
 export class CentralUserOperationRepositoryError extends Error {
@@ -165,7 +239,7 @@ function readHash(value: unknown): string {
   return readString(value, HASH, 64);
 }
 
-function readSafeCode(value: unknown): string | null {
+function readSafeCode(value: unknown): SafeCentralUserErrorCode | null {
   if (value === null) {
     return null;
   }
@@ -303,6 +377,19 @@ function readOperationStatus(value: unknown): CentralUserOperationStatus {
   return value as CentralUserOperationStatus;
 }
 
+function readAgentStage(value: unknown): CentralUserAgentStage | null {
+  if (value === null) {
+    return null;
+  }
+  if (
+    typeof value !== "string" ||
+    !AGENT_STAGES.has(value as CentralUserAgentStage)
+  ) {
+    return repositoryFailure();
+  }
+  return value as CentralUserAgentStage;
+}
+
 function throwRpcError(error: unknown): void {
   if (!error) {
     return;
@@ -386,6 +473,7 @@ export async function claimCentralUserOperation(
     hasExactKeys(data, [
       "outcome",
       "status",
+      "agentStage",
       "safeResult",
       "safeErrorCode",
     ])
@@ -393,6 +481,7 @@ export async function claimCentralUserOperation(
     return {
       outcome: "retry",
       status: readOperationStatus(data.status),
+      agentStage: readAgentStage(data.agentStage),
       safeResult: readSafeResult(data.safeResult),
       safeErrorCode: readSafeCode(data.safeErrorCode),
     };
@@ -411,66 +500,60 @@ export function beginCentralUserDispatch(
   });
 }
 
-export function completeCentralUserOperation(
+export function finalizeCentralUserOperation(
   client: SupabaseClient,
-  operationId: string,
-  requestHash: string,
-  safeResult: CentralUserSafeResult,
-): Promise<boolean> {
-  const trustedSafeResult = readSafeResult(safeResult);
-  if (trustedSafeResult === null) {
-    return repositoryFailure();
-  }
-  return callBooleanRpc(client, "complete_central_user_operation", {
-    p_operation_id: readUuid(operationId),
-    p_request_hash: readHash(requestHash),
-    p_safe_result: trustedSafeResult,
-  });
-}
-
-export function markCentralUserOperationAmbiguous(
-  client: SupabaseClient,
-  operationId: string,
-  requestHash: string,
-  status: "in_progress" | "needs_review" | "quarantined",
-  safeErrorCode: SafeCentralUserErrorCode,
-): Promise<boolean> {
-  return callBooleanRpc(client, "mark_central_user_operation_ambiguous", {
-    p_operation_id: readUuid(operationId),
-    p_request_hash: readHash(requestHash),
-    p_status: status,
-    p_safe_error_code: readSafeCode(safeErrorCode),
-  });
-}
-
-export function reconcileCentralUserOperation(
-  client: SupabaseClient,
-  input: CentralUserReconciliationInput,
+  input: CentralUserFinalizationInput,
 ): Promise<boolean> {
   const safeResult = readSafeResult(input.safeResult);
   const safeErrorCode = readSafeCode(input.safeErrorCode);
+  const agentStage = readAgentStage(input.agentStage);
+  const validExpectedTransition =
+    (input.expectedStatus === "dispatching" &&
+      [
+        "completed",
+        "failed_safe",
+        "in_progress",
+        "needs_review",
+        "quarantined",
+      ].includes(input.nextStatus)) ||
+    (["in_progress", "needs_review", "quarantined"].includes(
+      input.expectedStatus,
+    ) &&
+      ["completed", "failed_safe", "quarantined"].includes(
+        input.nextStatus,
+      ));
   const validTerminalState =
     (input.nextStatus === "completed" &&
       safeResult !== null &&
-      safeErrorCode === null) ||
-    ((input.nextStatus === "failed_safe" ||
-      input.nextStatus === "quarantined") &&
+      agentStage !== null &&
+      (safeErrorCode === null || safeErrorCode === "operation_conflict")) ||
+    (input.nextStatus !== "completed" &&
       safeResult === null &&
       safeErrorCode !== null);
+  const metadata = input.metadata;
+  const validMetadata =
+    metadata === null ||
+    (isRecord(metadata) &&
+      hasExactKeys(metadata, ["disposition"]) &&
+      (metadata.disposition === "first" ||
+        metadata.disposition === "retry" ||
+        metadata.disposition === "reconciled"));
   if (
     !validTerminalState ||
-    !["in_progress", "needs_review", "quarantined"].includes(
-      input.expectedStatus,
-    )
+    !validExpectedTransition ||
+    !validMetadata
   ) {
     return repositoryFailure();
   }
-  return callBooleanRpc(client, "reconcile_central_user_operation", {
+  return callBooleanRpc(client, "finalize_central_user_operation", {
     p_operation_id: readUuid(input.operationId),
     p_request_hash: readHash(input.requestHash),
     p_expected_status: input.expectedStatus,
     p_next_status: input.nextStatus,
+    p_agent_stage: agentStage,
     p_safe_result: safeResult,
     p_safe_error_code: safeErrorCode,
+    p_event_id: readUuid(input.eventId),
+    p_metadata: metadata,
   });
 }
