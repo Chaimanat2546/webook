@@ -1,0 +1,132 @@
+import { ActivityIcon, KeyRoundIcon, PauseCircleIcon, PlayCircleIcon } from "lucide-react";
+
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Separator } from "../../ui/separator";
+import type {
+  ClientOperation,
+  ManagedUser,
+  UserLifecycleAction,
+  UserManagerHealth,
+  UserManagerProject,
+} from "./types";
+import { OperationStatusCard } from "./operation-status-card";
+import { UserStatusBadge } from "./user-status-badge";
+
+export function StatusPanel({
+  project,
+  health,
+  selectedUser,
+  operation,
+  isBusy,
+  canMutate,
+  onRefreshHealth,
+  onAction,
+  onReconcile,
+}: {
+  project: UserManagerProject | null;
+  health: UserManagerHealth | null;
+  selectedUser: ManagedUser | null;
+  operation: ClientOperation | null;
+  isBusy: boolean;
+  canMutate: boolean;
+  onRefreshHealth(): void;
+  onAction(action: UserLifecycleAction, user: ManagedUser): void;
+  onReconcile(): void;
+}) {
+  return (
+    <div className="min-w-0 space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">สถานะและการดำเนินการ</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm">Agent</span>
+            <Badge variant={health?.status === "healthy" ? "default" : "secondary"}>
+              {health?.status === "healthy" ? "พร้อมใช้งาน" : "ยังไม่ยืนยัน"}
+            </Badge>
+          </div>
+          <Button
+            className="w-full"
+            disabled={!project?.isActive || isBusy}
+            onClick={onRefreshHealth}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <ActivityIcon aria-hidden />
+            ตรวจสุขภาพ Agent
+          </Button>
+          <Separator />
+          {selectedUser ? (
+            <div className="space-y-3">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">ผู้ใช้ที่เลือก</p>
+                <p
+                  className="mt-1 [overflow-wrap:anywhere] text-sm font-medium"
+                  title={selectedUser.email}
+                >
+                  {selectedUser.email}
+                </p>
+                <div className="mt-2"><UserStatusBadge status={selectedUser.status} /></div>
+              </div>
+              {selectedUser.status !== "abnormal" ? (
+                <div className="grid gap-2">
+                  {selectedUser.status === "suspended" ? (
+                    <Button
+                      disabled={!canMutate || isBusy}
+                      onClick={() => onAction("reactivate_user", selectedUser)}
+                      size="sm"
+                      type="button"
+                    >
+                      <PlayCircleIcon aria-hidden />
+                      เปิดใช้งานและออกรหัสใหม่
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        disabled={!canMutate || isBusy}
+                        onClick={() => onAction("reissue_temporary_password", selectedUser)}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        <KeyRoundIcon aria-hidden />
+                        ออกรหัสชั่วคราวใหม่
+                      </Button>
+                      <Button
+                        disabled={!canMutate || isBusy}
+                        onClick={() => onAction("suspend_user", selectedUser)}
+                        size="sm"
+                        type="button"
+                        variant="destructive"
+                      >
+                        <PauseCircleIcon aria-hidden />
+                        ระงับผู้ใช้
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-destructive">
+                  ข้อมูลผู้ใช้ผิดปกติ กรุณาตรวจสอบก่อนดำเนินการ
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              เลือกผู้ใช้เพื่อดูรายละเอียดและคำสั่งที่อนุญาต
+            </p>
+          )}
+        </CardContent>
+      </Card>
+      <OperationStatusCard
+        isBusy={isBusy}
+        onReconcile={onReconcile}
+        operation={operation}
+      />
+    </div>
+  );
+}
