@@ -88,7 +88,7 @@ export function StatusPanel({
             variant="outline"
           >
             <ActivityIcon aria-hidden />
-            ตรวจสุขภาพ Agent
+            ตรวจสถานะล่าสุด
           </Button>
           <Separator />
           {selectedUser ? (
