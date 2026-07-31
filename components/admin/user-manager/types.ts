@@ -18,6 +18,13 @@ export interface UserManagerProject {
   id: string;
   displayName: string;
   isActive: boolean;
+  provisioningState:
+    | null
+    | "registered"
+    | "rotation_gated"
+    | "token_stored"
+    | "completed"
+    | "reactivation_verifying";
   lastVerifiedTokenVersion: number | null;
   lastHealthCheckedAt: string | null;
   lastListUsersCheckedAt: string | null;

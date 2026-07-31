@@ -30,20 +30,40 @@ describe("Central User Manager view model", () => {
     );
   });
 
-  it("distinguishes provisioning, deactivated, healthy and unhealthy projects", () => {
+  it("distinguishes provisioning, reactivation, deactivated, healthy and unhealthy projects", () => {
     assert.equal(
       getProjectLifecycle({
         isActive: false,
         lastVerifiedTokenVersion: null,
         lastHealthStatus: "unknown",
+        provisioningState: "registered",
       }),
       "provisioning",
     );
     assert.equal(
       getProjectLifecycle({
         isActive: false,
+        lastVerifiedTokenVersion: null,
+        lastHealthStatus: "unhealthy",
+        provisioningState: "completed",
+      }),
+      "reactivation_required",
+    );
+    assert.equal(
+      getProjectLifecycle({
+        isActive: false,
+        lastVerifiedTokenVersion: null,
+        lastHealthStatus: "unhealthy",
+        provisioningState: "reactivation_verifying",
+      }),
+      "reactivation_required",
+    );
+    assert.equal(
+      getProjectLifecycle({
+        isActive: false,
         lastVerifiedTokenVersion: 1,
         lastHealthStatus: "healthy",
+        provisioningState: "token_stored",
       }),
       "deactivated",
     );
@@ -52,6 +72,7 @@ describe("Central User Manager view model", () => {
         isActive: true,
         lastVerifiedTokenVersion: 1,
         lastHealthStatus: "healthy",
+        provisioningState: "completed",
       }),
       "healthy",
     );
@@ -60,6 +81,7 @@ describe("Central User Manager view model", () => {
         isActive: true,
         lastVerifiedTokenVersion: 1,
         lastHealthStatus: "unhealthy",
+        provisioningState: "completed",
       }),
       "unhealthy",
     );

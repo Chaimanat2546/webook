@@ -10,6 +10,7 @@ export type ProjectLifecycle =
   | "healthy"
   | "unhealthy"
   | "provisioning"
+  | "reactivation_required"
   | "deactivated";
 
 export interface TenantSelection {
@@ -80,10 +81,19 @@ export function getUserStatusPresentation(status: ManagedUserStatus): {
 export function getProjectLifecycle(
   project: Pick<
     UserManagerProject,
-    "isActive" | "lastVerifiedTokenVersion" | "lastHealthStatus"
+    | "isActive"
+    | "lastVerifiedTokenVersion"
+    | "lastHealthStatus"
+    | "provisioningState"
   >,
 ): ProjectLifecycle {
   if (!project.isActive) {
+    if (
+      project.provisioningState === "completed" ||
+      project.provisioningState === "reactivation_verifying"
+    ) {
+      return "reactivation_required";
+    }
     return project.lastVerifiedTokenVersion === null
       ? "provisioning"
       : "deactivated";

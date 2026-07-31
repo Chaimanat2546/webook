@@ -107,6 +107,16 @@ an explicit approved reactivation/repair decision. For ambiguous mutations,
 inspect the original operation and use explicit reconciliation; never replay
 it under a new operation UUID.
 
+If an already configured Tenant is automatically deactivated after a failed
+Agent verification, `/admin/user-manager` labels it
+`ต้องเปิดใช้งานใหม่`. Select the Tenant and choose
+`ตรวจสอบและเปิดใช้งานอีกครั้ง`. The central Worker reuses the stored encrypted
+Bearer without rotating it or deploying the target, records fresh exact health
+and bounded `list_users` proofs under one attempt UUID, and activates only if
+both succeed. A failed check keeps the Tenant inactive; fix the Agent,
+destination, or secret mismatch and retry the same action. Do not use normal
+health or user-operation routes to bypass this gate.
+
 A one-time password exists only in the first successful create/reissue HTTP
 response. If that response is lost, reconciliation intentionally does not
 return the password. Perform a new approved password reissue with a new

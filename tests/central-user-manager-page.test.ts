@@ -30,6 +30,9 @@ describe("Central User Manager page", () => {
     assert.match(source, /ยังไม่มีโครงการ|ไม่พบโครงการ/);
     assert.match(source, /needs_review|quarantined/);
     assert.match(source, /safeErrorCode/);
+    assert.match(source, /ต้องเปิดใช้งานใหม่/);
+    assert.match(source, /ตรวจสอบและเปิดใช้งานอีกครั้ง/);
+    assert.match(source, /onReactivateProject/);
     assert.match(
       read("components/admin/user-manager/project-list.tsx"),
       /disabled=\{isBusy\}/,
@@ -45,6 +48,7 @@ describe("Central User Manager page", () => {
       "components/admin/user-manager/temporary-password-dialog.tsx",
       "components/admin/user-manager/operation-status-card.tsx",
       "components/admin/user-manager/user-status-badge.tsx",
+      "app/api/admin/user-manager/projects/reactivate/route.ts",
     ]) {
       assert.equal(existsSync(new URL(path, root)), true, `missing ${path}`);
     }

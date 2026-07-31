@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   createUserManagerRequestCoordinator,
+  reactivateUserManagerProject,
   type BrowserOperationInput,
 } from "../components/admin/user-manager/use-user-manager.ts";
 
@@ -130,5 +131,88 @@ describe("Central User Manager client actions", () => {
       paths.at(-1),
       `/api/admin/user-manager/operations/${OPERATION_ID}/reconcile`,
     );
+  });
+
+  it("requests Tenant reactivation once and accepts only matching healthy proof", async () => {
+    const requests: Array<{ path: string; init: RequestInit }> = [];
+    const result = await reactivateUserManagerProject(
+      TENANT_ID,
+      async (path, init) => {
+        requests.push({ path, init });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            health: {
+              tenantId: TENANT_ID,
+              status: "healthy",
+              agentVersion: "1.0.0",
+              schemaVersion: "20260729",
+              authAttestationVersion: "v1",
+              authAttestationCheckedAt: "2026-07-29T00:00:00.000Z",
+            },
+          }),
+          { status: 200 },
+        );
+      },
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(requests.length, 1);
+    assert.equal(
+      requests[0]?.path,
+      "/api/admin/user-manager/projects/reactivate",
+    );
+    assert.equal(requests[0]?.init.method, "POST");
+    assert.deepEqual(JSON.parse(String(requests[0]?.init.body)), {
+      tenantId: TENANT_ID,
+    });
+
+    const mismatched = await reactivateUserManagerProject(
+      TENANT_ID,
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: true,
+            health: {
+              tenantId: OTHER_TENANT_ID,
+              status: "healthy",
+              agentVersion: "1.0.0",
+              schemaVersion: "20260729",
+              authAttestationVersion: "v1",
+              authAttestationCheckedAt: "2026-07-29T00:00:00.000Z",
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+    assert.equal(mismatched.ok, false);
+  });
+
+  it("deduplicates concurrent Tenant reactivation requests", async () => {
+    const deferred = Promise.withResolvers<Response>();
+    let sends = 0;
+    const send = async () => {
+      sends += 1;
+      return deferred.promise;
+    };
+
+    const first = reactivateUserManagerProject(TENANT_ID, send);
+    const second = reactivateUserManagerProject(TENANT_ID, send);
+    assert.equal(sends, 1);
+
+    deferred.resolve(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "operation_conflict",
+            message: "Operation conflicts with an existing request.",
+          },
+        }),
+        { status: 409 },
+      ),
+    );
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+    assert.deepEqual(firstResult, secondResult);
   });
 });

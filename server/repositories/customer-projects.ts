@@ -24,6 +24,7 @@ const SAFE_PROJECT_COLUMNS = [
   "last_health_schema_version",
   "last_health_auth_attestation_version",
   "last_health_auth_attestation_checked_at",
+  "provisioning_state",
 ].join(",");
 
 const ACTIVE_PROJECT_COLUMNS = [
@@ -49,6 +50,10 @@ const PROVISIONING_PROJECT_COLUMNS = [
   "provisioning_state",
   ACTIVE_PROJECT_COLUMNS.split(",").slice(1).join(","),
 ].join(",");
+const REACTIVATION_PROJECT_COLUMNS = [
+  ACTIVE_PROJECT_COLUMNS,
+  "provisioning_state",
+].join(",");
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -66,6 +71,14 @@ export type CustomerProjectHealthStatus =
   | "unknown"
   | "healthy"
   | "unhealthy";
+
+export type CustomerProjectProvisioningState =
+  | "registered"
+  | "rotation_gated"
+  | "token_stored"
+  | "completed"
+  | "reactivation_verifying"
+  | null;
 
 export interface SafeCustomerProject {
   id: string;
@@ -86,6 +99,7 @@ export interface SafeCustomerProject {
   lastHealthSchemaVersion: string | null;
   lastHealthAuthAttestationVersion: string | null;
   lastHealthAuthAttestationCheckedAt: string | null;
+  provisioningState: CustomerProjectProvisioningState;
 }
 
 export interface ActiveCustomerProject extends EncryptedTenantToken {
@@ -103,12 +117,7 @@ export interface ProvisioningCustomerProject {
   tenantId: string;
   displayName: string;
   isActive: boolean;
-  provisioningState:
-    | "registered"
-    | "rotation_gated"
-    | "token_stored"
-    | "completed"
-    | null;
+  provisioningState: CustomerProjectProvisioningState;
   targetSupabaseProjectRef: string;
   agentOrigin: string;
   wranglerEnvironment: string;
@@ -235,6 +244,22 @@ function readDisplayName(value: unknown): string {
   return value;
 }
 
+function readProvisioningState(
+  value: unknown,
+): CustomerProjectProvisioningState {
+  if (
+    value !== null &&
+    value !== "registered" &&
+    value !== "rotation_gated" &&
+    value !== "token_stored" &&
+    value !== "completed" &&
+    value !== "reactivation_verifying"
+  ) {
+    return repositoryFailure();
+  }
+  return value;
+}
+
 function readSafeProject(value: unknown): SafeCustomerProject {
   if (!isRecord(value)) {
     return repositoryFailure();
@@ -294,6 +319,7 @@ function readSafeProject(value: unknown): SafeCustomerProject {
     lastHealthAuthAttestationCheckedAt: readNullableTimestamp(
       value.last_health_auth_attestation_checked_at,
     ),
+    provisioningState: readProvisioningState(value.provisioning_state),
   };
 }
 
@@ -367,16 +393,7 @@ function readProvisioningProject(value: unknown): ProvisioningCustomerProject {
   if (!isRecord(value)) return repositoryFailure();
   const tenantId = readString(value.id, UUID);
   const hasToken = value.bearer_token_version !== null;
-  const provisioningState = value.provisioning_state;
-  if (
-    provisioningState !== null &&
-    provisioningState !== "registered" &&
-    provisioningState !== "rotation_gated" &&
-    provisioningState !== "token_stored" &&
-    provisioningState !== "completed"
-  ) {
-    return repositoryFailure();
-  }
+  const provisioningState = readProvisioningState(value.provisioning_state);
   return {
     tenantId,
     displayName: readDisplayName(value.display_name),
@@ -478,6 +495,38 @@ export async function findActiveCustomerProject(
   }
   if (!Array.isArray(data) || data.length !== 1) {
     return repositoryFailure();
+  }
+  return readActiveProject(data[0]);
+}
+
+export async function findCustomerProjectForReactivation(
+  client: SupabaseClient,
+  tenantId: string,
+): Promise<ActiveCustomerProject | null> {
+  const trustedTenantId = readString(tenantId, UUID);
+  const { data, error } = await runAdapterCall(() =>
+    client
+      .from("customer_projects")
+      .select(REACTIVATION_PROJECT_COLUMNS)
+      .eq("id", trustedTenantId)
+      .eq("is_active", false)
+      .limit(2),
+  );
+
+  throwOnError(error);
+  if (data === null || (Array.isArray(data) && data.length === 0)) {
+    return null;
+  }
+  if (!Array.isArray(data) || data.length !== 1) {
+    return repositoryFailure();
+  }
+  if (
+    !isRecord(data[0]) ||
+    !["completed", "reactivation_verifying"].includes(
+      readProvisioningState(data[0].provisioning_state) ?? "",
+    )
+  ) {
+    return null;
   }
   return readActiveProject(data[0]);
 }
@@ -692,6 +741,136 @@ export function activateCustomerProjectForProvisioning(
     p_actor_uid: readString(input.actorUid, UUID),
     p_event_id: readString(input.eventId, UUID),
   });
+}
+
+export type CustomerProjectReactivationAttempt =
+  | {
+      outcome: "received" | "retry";
+      attemptId: string;
+      tokenVersion: number;
+    }
+  | { outcome: "conflict" };
+
+export async function beginCustomerProjectReactivation(
+  client: SupabaseClient,
+  input: {
+    tenantId: string;
+    attemptId: string;
+    expectedTokenVersion: number;
+    actorUid: string;
+    eventId: string;
+  },
+): Promise<CustomerProjectReactivationAttempt> {
+  const { data, error } = await runAdapterCall(() =>
+    client.rpc("begin_customer_project_reactivation", {
+      p_tenant_id: readString(input.tenantId, UUID),
+      p_attempt_id: readString(input.attemptId, UUID),
+      p_expected_token_version: readPositiveVersion(
+        input.expectedTokenVersion,
+      ),
+      p_actor_uid: readString(input.actorUid, UUID),
+      p_event_id: readString(input.eventId, UUID),
+    }),
+  );
+  throwOnError(error);
+  if (
+    !isRecord(data) ||
+    (
+      data.outcome !== "received" &&
+      data.outcome !== "retry" &&
+      data.outcome !== "conflict"
+    )
+  ) {
+    return repositoryFailure();
+  }
+  if (data.outcome === "conflict") {
+    return { outcome: "conflict" };
+  }
+  return {
+    outcome: data.outcome,
+    attemptId: readString(data.attemptId, UUID),
+    tokenVersion: readPositiveVersion(data.tokenVersion),
+  };
+}
+
+export function recordCustomerProjectReactivationVerification(
+  client: SupabaseClient,
+  input: {
+    tenantId: string;
+    attemptId: string;
+    tokenVersion: number;
+    check: "health" | "list_users";
+    succeeded: boolean;
+    safeErrorCode: string | null;
+    health: CustomerProjectHealthProof | null;
+  },
+): Promise<boolean> {
+  const health = input.health;
+  if (
+    typeof input.succeeded !== "boolean" ||
+    (input.check !== "health" && input.check !== "list_users") ||
+    (input.check === "list_users" && health !== null) ||
+    (input.check === "health" && input.succeeded && health === null)
+  ) {
+    return repositoryFailure();
+  }
+  return callBooleanRpc(
+    client,
+    "record_customer_project_reactivation_verification",
+    {
+      p_tenant_id: readString(input.tenantId, UUID),
+      p_attempt_id: readString(input.attemptId, UUID),
+      p_token_version: readPositiveVersion(input.tokenVersion),
+      p_check: input.check,
+      p_succeeded: input.succeeded,
+      p_safe_error_code: readSafeErrorCode(input.safeErrorCode),
+      p_health_protocol_version: health?.protocolVersion ?? null,
+      p_health_tenant_id: health ? readString(health.tenantId, UUID) : null,
+      p_health_project_ref: health
+        ? readString(health.projectRef, PROJECT_REF)
+        : null,
+      p_health_agent_version: health
+        ? readString(health.agentVersion, VERSION)
+        : null,
+      p_health_schema_version: health
+        ? readString(health.schemaVersion, VERSION)
+        : null,
+      p_health_auth_attestation_version: health
+        ? readString(health.authAttestationVersion, VERSION)
+        : null,
+      p_health_auth_attestation_digest: health
+        ? readString(health.authAttestationDigest, HEX_DIGEST)
+        : null,
+      p_health_auth_attestation_checked_at: health
+        ? readTimestamp(health.authAttestationCheckedAt)
+        : null,
+    },
+  );
+}
+
+export function activateCustomerProjectAfterReverification(
+  client: SupabaseClient,
+  input: {
+    tenantId: string;
+    attemptId: string;
+    expectedTokenVersion: number;
+    actorUid: string;
+    eventId: string;
+  },
+): Promise<boolean> {
+  return callBooleanRpc(
+    client,
+    "activate_customer_project_after_reverification",
+    {
+      p_tenant_id: readString(input.tenantId, UUID),
+      p_attempt_id: readString(input.attemptId, UUID),
+      p_expected_token_version: readPositiveVersion(
+        input.expectedTokenVersion,
+      ),
+      p_actor_uid: readString(input.actorUid, UUID),
+      p_event_id: readString(input.eventId, UUID),
+    },
+  );
 }
 
 export async function countCustomerProjectsByKekVersion(

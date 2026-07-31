@@ -126,6 +126,84 @@ async function sendJson(path: string, body: ExactBrowserOperation) {
   return { response, value };
 }
 
+type ReactivationFetch = (
+  path: string,
+  init: RequestInit,
+) => Promise<Response>;
+
+export type UserManagerReactivationResponse =
+  | { ok: true; health: UserManagerHealth }
+  | { ok: false; errorMessage: string };
+
+function readHealthyTenant(
+  value: unknown,
+  tenantId: string,
+): UserManagerHealth | null {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("ok" in value) ||
+    value.ok !== true ||
+    !("health" in value) ||
+    typeof value.health !== "object" ||
+    value.health === null
+  ) {
+    return null;
+  }
+  const health = value.health as Record<string, unknown>;
+  return health.tenantId === tenantId &&
+    health.status === "healthy" &&
+    typeof health.agentVersion === "string" &&
+    typeof health.schemaVersion === "string" &&
+    typeof health.authAttestationVersion === "string" &&
+    typeof health.authAttestationCheckedAt === "string"
+    ? (health as unknown as UserManagerHealth)
+    : null;
+}
+
+const reactivationRequests = new Map<
+  string,
+  Promise<UserManagerReactivationResponse>
+>();
+
+async function sendProjectReactivation(
+  tenantId: string,
+  send: ReactivationFetch,
+): Promise<UserManagerReactivationResponse> {
+  const response = await send(
+    "/api/admin/user-manager/projects/reactivate",
+    {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tenantId }),
+    },
+  );
+  const value = await response.json().catch(() => null);
+  const health = response.ok ? readHealthyTenant(value, tenantId) : null;
+  return health
+    ? { ok: true, health }
+    : { ok: false, errorMessage: safeErrorMessage(value) };
+}
+
+export function reactivateUserManagerProject(
+  tenantId: string,
+  send: ReactivationFetch = fetch,
+): Promise<UserManagerReactivationResponse> {
+  const existing = reactivationRequests.get(tenantId);
+  if (existing) return existing;
+  const request = sendProjectReactivation(tenantId, send);
+  reactivationRequests.set(tenantId, request);
+  void request.finally(() => {
+    if (reactivationRequests.get(tenantId) === request) {
+      reactivationRequests.delete(tenantId);
+    }
+  }).catch(() => {
+    // The caller owns the original rejection; cleanup must not create another.
+  });
+  return request;
+}
+
 function readOperation(value: unknown): ClientOperationWithPassword | null {
   if (
     typeof value !== "object" ||
@@ -172,6 +250,8 @@ function requiresReview(operation: ClientOperation): boolean {
 }
 
 export function useUserManager(initialProjects: UserManagerProject[]) {
+  const [projects, setProjects] =
+    useState<UserManagerProject[]>(initialProjects);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
@@ -190,9 +270,9 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
   const [error, setError] = useState<string | null>(null);
   const selectedProject = useMemo(
     () =>
-      initialProjects.find((project) => project.id === selectedProjectId) ??
+      projects.find((project) => project.id === selectedProjectId) ??
       null,
-    [initialProjects, selectedProjectId],
+    [projects, selectedProjectId],
   );
   const coordinatorRef = useRef(
     createUserManagerRequestCoordinator({
@@ -367,7 +447,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
 
   const selectProject = useCallback((projectId: string) => {
     const project =
-      initialProjects.find((candidate) => candidate.id === projectId) ?? null;
+      projects.find((candidate) => candidate.id === projectId) ?? null;
     setUsers([]);
     setPage(1);
     setHasMore(false);
@@ -387,7 +467,66 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
         payload: { page: 1, pageSize: 25 },
       }, selection);
     }
-  }, [checkHealthFor, initialProjects, reviewState, run]);
+  }, [checkHealthFor, projects, reviewState, run]);
+
+  const reactivateProject = useCallback(async () => {
+    const selection = selectionGuardRef.current.current();
+    if (
+      !selectedProject ||
+      !selection ||
+      selectedProject.isActive ||
+      (
+        selectedProject.provisioningState !== "completed" &&
+        selectedProject.provisioningState !== "reactivation_verifying"
+      )
+    ) {
+      return;
+    }
+    setBusyCount((current) => current + 1);
+    setError(null);
+    try {
+      const result = await reactivateUserManagerProject(selectedProject.id);
+      if (!selectionGuardRef.current.isCurrent(selection)) return;
+      if (!result.ok) {
+        setHealth(null);
+        setError(result.errorMessage);
+        return;
+      }
+      setProjects((current) =>
+        current.map((project) =>
+          project.id === selectedProject.id
+            ? {
+                ...project,
+                isActive: true,
+                provisioningState: "completed",
+                lastHealthStatus: "healthy",
+                lastHealthSafeError: null,
+                lastHealthCheckedAt: result.health.authAttestationCheckedAt,
+                lastHealthAgentVersion: result.health.agentVersion,
+                lastHealthSchemaVersion: result.health.schemaVersion,
+                lastHealthAuthAttestationVersion:
+                  result.health.authAttestationVersion,
+                lastHealthAuthAttestationCheckedAt:
+                  result.health.authAttestationCheckedAt,
+              }
+            : project,
+        ),
+      );
+      setHealth(result.health);
+      await run(`list:${selectedProject.id}:1`, {
+        tenantId: selectedProject.id,
+        action: "list_users",
+        payload: { page: 1, pageSize: 25 },
+      }, selection);
+    } catch {
+      if (selectionGuardRef.current.isCurrent(selection)) {
+        setHealth(null);
+        setError("การเชื่อมต่อขัดข้อง กรุณาลองเปิดใช้งานอีกครั้ง");
+      }
+    } finally {
+      setBusyCount((current) => Math.max(0, current - 1));
+    }
+  }, [run, selectedProject]);
 
   const runUserAction = useCallback((
     action: UserLifecycleAction,
@@ -441,7 +580,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
   }, []);
 
   return {
-    projects: initialProjects,
+    projects,
     selectedProject,
     selectedProjectId,
     selectProject,
@@ -457,6 +596,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
     error,
     loadUsers,
     checkHealth,
+    reactivateProject,
     runUserAction,
     reconcile,
   };

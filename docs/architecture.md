@@ -24,7 +24,7 @@ Admin browser
   -> fixed HTTPS Tenant Agent route
 ```
 
-The health, operation, and explicit reconciliation Route Handlers live under
+The health, Tenant reactivation, operation, and explicit reconciliation Route Handlers live under
 `app/api/admin/user-manager`. Every method is guarded independently and every
 response uses private no-store and security headers. Browser responses are
 allowlisted safe projections: Agent origins, project references, Bearer token
@@ -32,6 +32,14 @@ storage, attestation digests, raw provider details, and encryption metadata
 never cross the API boundary. A temporary password can appear only in the
 first completed operation response after operation state and audit persistence
 succeed; retry and reconciliation responses always omit it.
+
+An inactive completed Tenant that failed verification enters an explicit
+reactivation gate rather than returning to provisioning. The central server
+reuses the encrypted current Bearer only in memory, binds a fresh attempt UUID
+and token version in Supabase, requires both exact Agent health identity and a
+bounded `list_users` proof for that attempt, then atomically activates the
+Tenant. Failure leaves it inactive and does not deploy or rotate the target
+Worker.
 
 Tenant onboarding and immediate token rotation run from an offline operator
 CLI. Persistent `provisioning_state` values and service-role-only atomic RPCs

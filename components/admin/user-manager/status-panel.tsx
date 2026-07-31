@@ -1,4 +1,10 @@
-import { ActivityIcon, KeyRoundIcon, PauseCircleIcon, PlayCircleIcon } from "lucide-react";
+import {
+  ActivityIcon,
+  KeyRoundIcon,
+  PauseCircleIcon,
+  PlayCircleIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -13,6 +19,7 @@ import type {
 } from "./types";
 import { OperationStatusCard } from "./operation-status-card";
 import { UserStatusBadge } from "./user-status-badge";
+import { getProjectLifecycle } from "./view-model";
 
 export function StatusPanel({
   project,
@@ -22,6 +29,7 @@ export function StatusPanel({
   isBusy,
   canMutate,
   onRefreshHealth,
+  onReactivateProject,
   onAction,
   onReconcile,
 }: {
@@ -32,9 +40,14 @@ export function StatusPanel({
   isBusy: boolean;
   canMutate: boolean;
   onRefreshHealth(): void;
+  onReactivateProject(): void;
   onAction(action: UserLifecycleAction, user: ManagedUser): void;
   onReconcile(): void;
 }) {
+  const requiresReactivation =
+    project !== null &&
+    getProjectLifecycle(project) === "reactivation_required";
+
   return (
     <div className="min-w-0 space-y-4">
       <Card>
@@ -48,6 +61,24 @@ export function StatusPanel({
               {health?.status === "healthy" ? "พร้อมใช้งาน" : "ยังไม่ยืนยัน"}
             </Badge>
           </div>
+          {requiresReactivation ? (
+            <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950">
+              <p className="text-sm font-medium">Tenant นี้ถูกปิดหลังตรวจสอบ Agent ไม่ผ่าน</p>
+              <p className="text-xs">
+                ระบบจะตรวจสุขภาพและอ่านรายชื่อแบบจำกัดด้วย Bearer เดิมก่อนเปิดใช้งาน
+              </p>
+              <Button
+                className="w-full"
+                disabled={isBusy}
+                onClick={onReactivateProject}
+                size="sm"
+                type="button"
+              >
+                <ShieldCheckIcon aria-hidden />
+                ตรวจสอบและเปิดใช้งานอีกครั้ง
+              </Button>
+            </div>
+          ) : null}
           <Button
             className="w-full"
             disabled={!project?.isActive || isBusy}

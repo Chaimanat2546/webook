@@ -21,6 +21,10 @@ import type {
   CentralUserManagerServiceResult,
 } from "../services/central-user-manager.ts";
 import type {
+  CentralUserManagerReactivationHealth,
+  CentralUserManagerReactivationResult,
+} from "../services/central-user-manager-reactivation.ts";
+import type {
   CentralManagedUser,
   CentralUserSafeResult,
 } from "../repositories/user-management-operations.ts";
@@ -67,6 +71,14 @@ interface ReconcileHandlerDependencies extends AuthorizationDependency {
 
 interface HealthHandlerDependencies extends AuthorizationDependency {
   checkHealth(tenantId: string): Promise<CentralUserHealthResult>;
+}
+
+interface ProjectReactivationHandlerDependencies
+  extends AuthorizationDependency {
+  reactivate(input: {
+    tenantId: string;
+    actorUid: string;
+  }): Promise<CentralUserManagerReactivationResult>;
 }
 
 type JsonReadResult =
@@ -489,6 +501,83 @@ export function createCentralUserHealthHandler(
     const health: CentralUserHealthSummary = {
       tenantId: result.health.tenantId,
       status: result.health.status,
+      agentVersion: result.health.agentVersion,
+      schemaVersion: result.health.schemaVersion,
+      authAttestationVersion: result.health.authAttestationVersion,
+      authAttestationCheckedAt: result.health.authAttestationCheckedAt,
+    };
+    return jsonResponse({ ok: true, health }, 200);
+  };
+}
+
+function readReactivationRequest(
+  value: unknown,
+): { tenantId: string } | null {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record);
+  return keys.length === 1 &&
+    keys[0] === "tenantId" &&
+    typeof record.tenantId === "string" &&
+    UUID.test(record.tenantId)
+    ? { tenantId: record.tenantId }
+    : null;
+}
+
+function hasSameMutationOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).origin === new URL(request.url).origin;
+  } catch {
+    return false;
+  }
+}
+
+export function createCentralUserProjectReactivationHandler(
+  dependencies: ProjectReactivationHandlerDependencies,
+): (request: Request) => Promise<Response> {
+  return async (request) => {
+    const authorized = await authorize(dependencies);
+    if (!authorized.ok) {
+      return authorized.response;
+    }
+    if (!hasSameMutationOrigin(request)) {
+      await cancelRequestBody(request);
+      return errorResponse(
+        { code: "forbidden", message: "Permission is required." },
+        403,
+      );
+    }
+    const parsed = await readBoundedJson(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    const input = readReactivationRequest(parsed.value);
+    if (!input) {
+      return inputError();
+    }
+    let result: CentralUserManagerReactivationResult;
+    try {
+      result = await dependencies.reactivate({
+        tenantId: input.tenantId,
+        actorUid: authorized.actorUid,
+      });
+    } catch {
+      return serviceUnavailable();
+    }
+    if (!result.ok) {
+      return safeServiceErrorResponse(result.error);
+    }
+    const health: CentralUserManagerReactivationHealth = {
+      tenantId: result.health.tenantId,
+      status: "healthy",
       agentVersion: result.health.agentVersion,
       schemaVersion: result.health.schemaVersion,
       authAttestationVersion: result.health.authAttestationVersion,

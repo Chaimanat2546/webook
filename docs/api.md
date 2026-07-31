@@ -7,15 +7,18 @@ All routes require the current Supabase Auth UID to match exactly one
 
 ```text
 GET  /api/admin/user-manager/health?tenantId={uuid}
+POST /api/admin/user-manager/projects/reactivate
 POST /api/admin/user-manager/operations
 POST /api/admin/user-manager/operations/{operationId}/reconcile
 ```
 
-Operation and reconciliation requests require the exact
+POST requests require the exact
 `Content-Type: application/json`, are limited to 16 KiB, reject extra keys,
-and accept only `tenantId`, `operationId`, `action`, and the action-specific
-payload. The verified actor UID is supplied server-side. Reconciliation also
-requires the path and body operation UUIDs to match.
+and accept only their documented fields. Reactivation accepts only
+`{ "tenantId": "<uuid>" }`; operation and reconciliation accept `tenantId`,
+`operationId`, `action`, and the action-specific payload. The verified actor
+UID is supplied server-side. Reconciliation also requires the path and body
+operation UUIDs to match.
 
 Every response includes:
 
@@ -31,6 +34,7 @@ Responses expose only safe health, operation, user, and stable error fields.
 They never expose Tenant Agent destinations, project references, Bearer token
 material, ciphertext, IV/KEK metadata, attestation digests, or raw provider
 errors. Explicit reconciliation never returns a temporary password.
+Reactivation returns only the newly verified safe health summary.
 
 ## Tenant Agent Bearer API
 

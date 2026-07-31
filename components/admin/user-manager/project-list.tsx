@@ -14,6 +14,7 @@ const LIFECYCLE_LABEL = {
   healthy: "พร้อมใช้งาน",
   unhealthy: "ต้องตรวจสอบ",
   provisioning: "กำลังตั้งค่า",
+  reactivation_required: "ต้องเปิดใช้งานใหม่",
   deactivated: "ปิดใช้งาน",
 } as const;
 

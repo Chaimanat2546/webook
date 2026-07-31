@@ -5,6 +5,7 @@ import {
   createCentralUserHealthHandler,
   createCentralUserManagerMethodNotAllowedHandler,
   createCentralUserOperationsHandler,
+  createCentralUserProjectReactivationHandler,
   createCentralUserReconcileHandler,
   centralUserManagerMethodNotAllowed,
 } from "../server/central-user-manager/api-response.ts";
@@ -14,6 +15,9 @@ import {
   checkCentralUserManagerHealth,
   type CentralUserManagerServiceResult,
 } from "../server/services/central-user-manager.ts";
+import type {
+  CentralUserManagerReactivationResult,
+} from "../server/services/central-user-manager-reactivation.ts";
 import type { ActiveCustomerProject } from "../server/repositories/customer-projects.ts";
 
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
@@ -499,6 +503,154 @@ describe("Central User Manager API response boundary", () => {
     assert.equal(checks, 1);
     assert.equal(text.includes("abc123def456ghi789jk"), false);
     assert.equal(text.includes("authAttestationDigest"), false);
+    assertSafeHeaders(response);
+  });
+
+  it("authenticates and strictly validates Tenant reactivation requests", async () => {
+    let executions = 0;
+    const denied = createCentralUserProjectReactivationHandler({
+      async authorize() {
+        throw new CentralUserManagerAuthorizationError("unauthorized");
+      },
+      async reactivate() {
+        executions += 1;
+        throw new Error("must not execute");
+      },
+    });
+    const deniedResponse = await denied(
+      new Request(
+        "https://webook.test/api/admin/user-manager/projects/reactivate",
+        {
+          method: "POST",
+          headers: { "content-type": "text/plain" },
+          body: "not-json",
+        },
+      ),
+    );
+    assert.equal(deniedResponse.status, 401);
+    assert.equal(executions, 0);
+    assertSafeHeaders(deniedResponse);
+
+    const handler = createCentralUserProjectReactivationHandler({
+      async authorize() {
+        return { actorUid: ACTOR_UID };
+      },
+      async reactivate() {
+        executions += 1;
+        throw new Error("must not execute invalid requests");
+      },
+    });
+    for (const origin of [null, "https://evil.example"]) {
+      const headers: HeadersInit = { "content-type": "application/json" };
+      if (origin) headers.origin = origin;
+      const response = await handler(
+        jsonRequest(
+          "https://webook.test/api/admin/user-manager/projects/reactivate",
+          { tenantId: TENANT_ID },
+          headers,
+        ),
+      );
+      assert.equal(response.status, 403);
+      assertSafeHeaders(response);
+    }
+    for (const body of [
+      {},
+      { tenantId: "not-a-uuid" },
+      { tenantId: TENANT_ID, actorUid: ACTOR_UID },
+      { tenantId: TENANT_ID, unexpected: true },
+    ]) {
+      const response = await handler(
+        jsonRequest(
+          "https://webook.test/api/admin/user-manager/projects/reactivate",
+          body,
+          {
+            "content-type": "application/json",
+            origin: "https://webook.test",
+          },
+        ),
+      );
+      assert.equal(response.status, 422);
+      assertSafeHeaders(response);
+    }
+    assert.equal(executions, 0);
+  });
+
+  it("reactivates with the verified actor and returns only safe health fields", async () => {
+    let received: { tenantId: string; actorUid: string } | null = null;
+    const handler = createCentralUserProjectReactivationHandler({
+      async authorize() {
+        return { actorUid: ACTOR_UID };
+      },
+      async reactivate(input) {
+        received = input;
+        return {
+          ok: true,
+          health: {
+            tenantId: TENANT_ID,
+            status: "healthy",
+            agentVersion: "1.0.0",
+            schemaVersion: "20260729",
+            authAttestationVersion: "v1",
+            authAttestationCheckedAt: "2026-07-29T00:00:00.000Z",
+          },
+          bearerTokenCiphertext: "secret",
+          projectRef: "abc123def456ghi789jk",
+          users: [{ email: "hidden@example.com" }],
+        } as unknown as CentralUserManagerReactivationResult;
+      },
+    });
+    const response = await handler(
+      jsonRequest(
+        "https://webook.test/api/admin/user-manager/projects/reactivate",
+        { tenantId: TENANT_ID },
+        {
+          "content-type": "application/json",
+          origin: "https://webook.test",
+        },
+      ),
+    );
+    const text = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, {
+      tenantId: TENANT_ID,
+      actorUid: ACTOR_UID,
+    });
+    assert.equal(text.includes("bearerTokenCiphertext"), false);
+    assert.equal(text.includes("abc123def456ghi789jk"), false);
+    assert.equal(text.includes("hidden@example.com"), false);
+    assert.equal(text.includes('"status":"healthy"'), true);
+    assertSafeHeaders(response);
+  });
+
+  it("maps Tenant reactivation failures through the safe error catalog", async () => {
+    const rawMessage = "Bearer secret and raw provider response";
+    const handler = createCentralUserProjectReactivationHandler({
+      async authorize() {
+        return { actorUid: ACTOR_UID };
+      },
+      async reactivate() {
+        return {
+          ok: false,
+          error: { code: "provider_failure", message: rawMessage },
+        };
+      },
+    });
+    const response = await handler(
+      jsonRequest(
+        "https://webook.test/api/admin/user-manager/projects/reactivate",
+        { tenantId: TENANT_ID },
+        {
+          "content-type": "application/json",
+          origin: "https://webook.test",
+        },
+      ),
+    );
+    const text = await response.text();
+
+    assert.equal(response.status, 503);
+    assert.equal(text.includes(rawMessage), false);
+    assert.equal(text.includes("Unable to complete request."), true);
     assertSafeHeaders(response);
   });
 

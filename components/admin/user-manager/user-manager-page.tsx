@@ -115,6 +115,7 @@ export function UserManagerPage({
             if (action !== "create_user") setPendingAction({ action, user });
           }}
           onReconcile={() => void manager.reconcile()}
+          onReactivateProject={() => void manager.reactivateProject()}
           onRefreshHealth={() => void manager.checkHealth()}
           operation={manager.operation}
           project={manager.selectedProject}

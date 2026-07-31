@@ -7,11 +7,15 @@ import {
   CentralUserAuditRepositoryError,
 } from "../server/repositories/central-user-audit-events.ts";
 import {
+  activateCustomerProjectAfterReverification,
+  beginCustomerProjectReactivation,
   CentralUserManagerProjectRepositoryError,
   findActiveCustomerProject,
+  findCustomerProjectForReactivation,
   findCustomerProjectForProvisioning,
   listCustomerProjects,
   listCustomerProjectsForKekRotation,
+  recordCustomerProjectReactivationVerification,
   rewrapCustomerProjectBearerKek,
 } from "../server/repositories/customer-projects.ts";
 import {
@@ -124,6 +128,7 @@ const safeProjectRow = {
   last_health_schema_version: "20260729",
   last_health_auth_attestation_version: "v1",
   last_health_auth_attestation_checked_at: "2026-07-29T00:00:00.000Z",
+  provisioning_state: "completed",
 };
 
 const activeProjectRow = {
@@ -151,6 +156,7 @@ describe("customer project repository", () => {
     const projects = await listCustomerProjects(asClient(client));
 
     assert.equal(projects[0]?.displayName, "Tenant One");
+    assert.equal(projects[0]?.provisioningState, "completed");
     assert.equal(client.queries[0]?.table, "central_user_manager_projects");
     assert.doesNotMatch(
       client.queries[0]?.select ?? "",
@@ -265,6 +271,91 @@ describe("customer project repository", () => {
     );
     assert.equal(client.rpcCalls[0]?.args.p_expected_kek_version, 1);
     assert.equal(client.rpcCalls[0]?.args.p_next_kek_version, 2);
+  });
+
+  it("resumes completed or already-verifying reactivation with one exact attempt", async () => {
+    const client = new FakeClient();
+    client.queryResponses.push({
+      data: [{
+        ...activeProjectRow,
+        is_active: false,
+        provisioning_state: "reactivation_verifying",
+      }],
+      error: null,
+    });
+    client.rpcResponses.push(
+      {
+        data: {
+          outcome: "received",
+          attemptId: "55555555-5555-4555-8555-555555555555",
+          tokenVersion: 2,
+        },
+        error: null,
+      },
+      { data: true, error: null },
+      { data: true, error: null },
+    );
+
+    const project = await findCustomerProjectForReactivation(
+      asClient(client),
+      safeProjectRow.id,
+    );
+    assert.ok(project);
+    assert.equal(project.bearerTokenVersion, 2);
+    assert.deepEqual(client.queries[0]?.filters, [
+      ["id", safeProjectRow.id],
+      ["is_active", false],
+    ]);
+
+    const attempt = await beginCustomerProjectReactivation(asClient(client), {
+      tenantId: safeProjectRow.id,
+      attemptId: "55555555-5555-4555-8555-555555555555",
+      expectedTokenVersion: 2,
+      actorUid: "33333333-3333-4333-8333-333333333333",
+      eventId: "44444444-4444-4444-8444-444444444444",
+    });
+    assert.deepEqual(attempt, {
+      outcome: "received",
+      attemptId: "55555555-5555-4555-8555-555555555555",
+      tokenVersion: 2,
+    });
+    assert.equal(
+      client.rpcCalls[0]?.args.p_attempt_id,
+      "55555555-5555-4555-8555-555555555555",
+    );
+
+    assert.equal(
+      await recordCustomerProjectReactivationVerification(asClient(client), {
+        tenantId: safeProjectRow.id,
+        attemptId: attempt.attemptId,
+        tokenVersion: 2,
+        check: "list_users",
+        succeeded: true,
+        safeErrorCode: null,
+        health: null,
+      }),
+      true,
+    );
+    assert.equal(
+      await activateCustomerProjectAfterReverification(asClient(client), {
+        tenantId: safeProjectRow.id,
+        attemptId: attempt.attemptId,
+        expectedTokenVersion: 2,
+        actorUid: "33333333-3333-4333-8333-333333333333",
+        eventId: "66666666-6666-4666-8666-666666666666",
+      }),
+      true,
+    );
+    assert.deepEqual(
+      client.rpcCalls.map(({ name }) => name),
+      [
+        "begin_customer_project_reactivation",
+        "record_customer_project_reactivation_verification",
+        "activate_customer_project_after_reverification",
+      ],
+    );
+    assert.equal(client.rpcCalls[1]?.args.p_attempt_id, attempt.attemptId);
+    assert.equal(client.rpcCalls[2]?.args.p_attempt_id, attempt.attemptId);
   });
 });
 
