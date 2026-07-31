@@ -101,6 +101,7 @@ export function UserManagerPage({
         <UserTable
           hasMore={manager.hasMore}
           isBusy={manager.isBusy}
+          isLoadingUsers={manager.isLoadingUsers}
           onPageChange={(page) => void manager.loadUsers(page)}
           onSelectUser={(user) => setSelectedUserId(user.userId)}
           page={manager.page}

@@ -59,4 +59,34 @@ describe("Central User Manager page", () => {
     assert.equal(source.match(/pageSize: 10/g)?.length, 3);
     assert.doesNotMatch(source, /pageSize: 25/);
   });
+
+  it("keeps route and Tenant list loading inside the same stable table viewport", () => {
+    const skeletonPath =
+      "components/admin/user-manager/user-table-skeleton.tsx";
+    assert.equal(
+      existsSync(new URL(skeletonPath, root)),
+      true,
+      `missing ${skeletonPath}`,
+    );
+
+    const loading = read("app/admin/user-manager/loading.tsx");
+    const page = read("components/admin/user-manager/user-manager-page.tsx");
+    const table = read("components/admin/user-manager/user-table.tsx");
+    const hook = read("components/admin/user-manager/use-user-manager.ts");
+    const skeleton = read(skeletonPath);
+
+    assert.match(loading, /UserTableSkeleton/);
+    assert.match(loading, /xl:grid-cols-\[16rem_minmax\(0,1fr\)_18rem\]/);
+    assert.match(skeleton, /กำลังโหลดรายชื่อผู้ดูแลระบบ/);
+    assert.match(skeleton, /Array\.from\(\{ length: 10 \}\)/);
+    assert.match(skeleton, /md:hidden/);
+    assert.match(skeleton, /hidden md:block/);
+    assert.match(table, /USER_TABLE_VIEWPORT_CLASS/);
+    assert.match(table, /aria-busy=\{isLoadingUsers\}/);
+    assert.match(table, /<Table className="table-fixed">/);
+    assert.match(table, /<colgroup>/);
+    assert.match(table, /overflow-y-auto/);
+    assert.match(page, /isLoadingUsers=\{manager\.isLoadingUsers\}/);
+    assert.match(hook, /isLoadingUsers/);
+  });
 });

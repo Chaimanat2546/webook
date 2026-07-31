@@ -267,6 +267,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
     operation: ClientOperation;
   } | null>(null);
   const [busyCount, setBusyCount] = useState(0);
+  const [loadingUsersCount, setLoadingUsersCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const selectedProject = useMemo(
     () =>
@@ -282,6 +283,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
   );
   const selectionGuardRef = useRef(createTenantSelectionGuard());
   const isBusy = busyCount > 0;
+  const isLoadingUsers = loadingUsersCount > 0;
 
   const applyOperationResponse = useCallback((
     value: unknown,
@@ -345,7 +347,11 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
     input: BrowserOperationInput,
     selection: TenantSelection,
   ) => {
+    const isUserListRequest = input.action === "list_users";
     setBusyCount((current) => current + 1);
+    if (isUserListRequest) {
+      setLoadingUsersCount((current) => current + 1);
+    }
     setTemporaryCredential(null);
     setError(null);
     const requestPromise = coordinatorRef.current.execute(key, input);
@@ -393,6 +399,9 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
       }
     } finally {
       setBusyCount((current) => Math.max(0, current - 1));
+      if (isUserListRequest) {
+        setLoadingUsersCount((current) => Math.max(0, current - 1));
+      }
     }
   }, [applyOperationResponse]);
 
@@ -593,6 +602,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
     clearTemporaryPassword: () => setTemporaryCredential(null),
     hasPendingReview: reviewState !== null,
     isBusy,
+    isLoadingUsers,
     error,
     loadUsers,
     checkHealth,
