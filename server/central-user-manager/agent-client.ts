@@ -133,10 +133,66 @@ export type AgentOperationCallResult =
   | { kind: "failure"; error: SafeCentralUserError }
   | { kind: "ambiguous"; error: SafeCentralUserError };
 
+export type AgentOutboundDiagnostic = {
+  kind: "health" | "operation";
+  stage:
+    | "origin_rejected"
+    | "timeout_rejected"
+    | "decrypt_rejected"
+    | "fetch_invoked"
+    | "fetch_rejected_abort"
+    | "fetch_rejected_network"
+    | "fetch_rejected_daemon"
+    | "fetch_rejected_cloudflare_1021"
+    | "fetch_rejected_cloudflare_1024"
+    | "fetch_rejected_cloudflare_1042"
+    | "fetch_rejected_cache"
+    | "fetch_rejected_redirect"
+    | "fetch_rejected_api"
+    | "fetch_rejected_type"
+    | "fetch_rejected_other"
+    | "response_redirect_same_origin_same_path"
+    | "response_redirect_same_origin_other_path"
+    | "response_redirect_cross_origin"
+    | "response_redirect_invalid"
+    | "response_redirect_missing"
+    | "response_received";
+};
+
+const AGENT_OUTBOUND_DIAGNOSTIC_KINDS = new Set<
+  AgentOutboundDiagnostic["kind"]
+>(["health", "operation"]);
+const AGENT_OUTBOUND_DIAGNOSTIC_STAGES = new Set<
+  AgentOutboundDiagnostic["stage"]
+>([
+  "origin_rejected",
+  "timeout_rejected",
+  "decrypt_rejected",
+  "fetch_invoked",
+  "fetch_rejected_abort",
+  "fetch_rejected_network",
+  "fetch_rejected_daemon",
+  "fetch_rejected_cloudflare_1021",
+  "fetch_rejected_cloudflare_1024",
+  "fetch_rejected_cloudflare_1042",
+  "fetch_rejected_cache",
+  "fetch_rejected_redirect",
+  "fetch_rejected_api",
+  "fetch_rejected_type",
+  "fetch_rejected_other",
+  "response_redirect_same_origin_same_path",
+  "response_redirect_same_origin_other_path",
+  "response_redirect_cross_origin",
+  "response_redirect_invalid",
+  "response_redirect_missing",
+  "response_received",
+]);
+
 interface AgentClientDependencies {
   fetch?: typeof fetch;
   decryptToken?: (project: ActiveCustomerProject) => Promise<string>;
   timeoutMs?: number;
+  diagnostic?: (event: AgentOutboundDiagnostic) => void;
 }
 
 type RawFetchResult =
@@ -206,8 +262,111 @@ function buildAgentUrl(origin: string, path: string): string {
   return url.toString();
 }
 
+function emitDiagnostic(
+  dependencies: AgentClientDependencies,
+  event: AgentOutboundDiagnostic,
+): void {
+  try {
+    dependencies.diagnostic?.(event);
+  } catch {
+    // Diagnostics must never affect the Agent request path.
+  }
+}
+
+export function logAgentOutboundDiagnostic(
+  event: AgentOutboundDiagnostic,
+): void {
+  if (
+    !AGENT_OUTBOUND_DIAGNOSTIC_KINDS.has(event.kind) ||
+    !AGENT_OUTBOUND_DIAGNOSTIC_STAGES.has(event.stage)
+  ) {
+    return;
+  }
+  console.warn("cum_agent_outbound", {
+    kind: event.kind,
+    stage: event.stage,
+  });
+}
+
+function classifyFetchRejection(
+  error: unknown,
+): AgentOutboundDiagnostic["stage"] {
+  try {
+    return classifyFetchRejectionUnsafe(error);
+  } catch {
+    return "fetch_rejected_other";
+  }
+}
+
+function classifyFetchRejectionUnsafe(
+  error: unknown,
+): AgentOutboundDiagnostic["stage"] {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return "fetch_rejected_abort";
+  }
+  const message =
+    error instanceof Error ? error.message.slice(0, 2_048) : "";
+  const cause =
+    error instanceof Error &&
+    typeof error.cause === "object" &&
+    error.cause !== null
+      ? error.cause
+      : null;
+  const causeCode =
+    cause && "code" in cause ? String(cause.code) : "";
+  const matchesCode = (code: string) =>
+    causeCode === code || new RegExp(`(?:^|\\D)${code}(?:\\D|$)`).test(message);
+  if (matchesCode("1021")) return "fetch_rejected_cloudflare_1021";
+  if (matchesCode("1024")) return "fetch_rejected_cloudflare_1024";
+  if (matchesCode("1042")) return "fetch_rejected_cloudflare_1042";
+  if (message.includes("Network connection lost")) {
+    return "fetch_rejected_network";
+  }
+  if (message.includes("daemonDown")) return "fetch_rejected_daemon";
+  if (message.includes("Unsupported cache mode")) {
+    return "fetch_rejected_cache";
+  }
+  if (message.toLowerCase().includes("redirect")) {
+    return "fetch_rejected_redirect";
+  }
+  if (message.includes("Fetch API cannot load")) {
+    return "fetch_rejected_api";
+  }
+  return error instanceof TypeError
+    ? "fetch_rejected_type"
+    : "fetch_rejected_other";
+}
+
+function classifyRedirectResponse(
+  response: Response,
+  requestUrl: string,
+): AgentOutboundDiagnostic["stage"] | null {
+  try {
+    if (response.status < 300 || response.status > 399) return null;
+    const location = response.headers.get("Location");
+    if (!location) return "response_redirect_missing";
+    let redirected: URL;
+    try {
+      redirected = new URL(location, requestUrl);
+    } catch {
+      return "response_redirect_invalid";
+    }
+    const requested = new URL(requestUrl);
+    if (redirected.origin !== requested.origin) {
+      return "response_redirect_cross_origin";
+    }
+    return redirected.pathname === requested.pathname &&
+      redirected.search === requested.search
+      ? "response_redirect_same_origin_same_path"
+      : "response_redirect_same_origin_other_path";
+  } catch {
+    return "response_redirect_invalid";
+  }
+}
+
 async function performFetch(
   project: ActiveCustomerProject,
+  kind: AgentOutboundDiagnostic["kind"],
   path: string,
   method: "GET" | "POST",
   body: string | undefined,
@@ -218,10 +377,21 @@ async function performFetch(
   let token = "";
   try {
     url = buildAgentUrl(project.agentOrigin, path);
+  } catch {
+    emitDiagnostic(dependencies, { kind, stage: "origin_rejected" });
+    return { ok: false, afterFetch: false };
+  }
+  try {
     timeoutMs = resolveTimeout(dependencies.timeoutMs);
+  } catch {
+    emitDiagnostic(dependencies, { kind, stage: "timeout_rejected" });
+    return { ok: false, afterFetch: false };
+  }
+  try {
     token = await (dependencies.decryptToken ?? decryptTenantToken)(project);
   } catch {
     token = "";
+    emitDiagnostic(dependencies, { kind, stage: "decrypt_rejected" });
     return { ok: false, afterFetch: false };
   }
 
@@ -240,13 +410,19 @@ async function performFetch(
       headers.set("Content-Type", "application/json");
     }
     afterFetch = true;
+    emitDiagnostic(dependencies, { kind, stage: "fetch_invoked" });
     const response = await (dependencies.fetch ?? globalThis.fetch)(url, {
       method,
       headers,
       ...(body === undefined ? {} : { body }),
-      redirect: "error",
+      redirect: "manual",
       cache: "no-store",
       signal: controller.signal,
+    });
+    emitDiagnostic(dependencies, {
+      kind,
+      stage:
+        classifyRedirectResponse(response, url) ?? "response_received",
     });
     keepTimer = true;
     return {
@@ -260,7 +436,11 @@ async function performFetch(
         clearTimeout(timer);
       },
     };
-  } catch {
+  } catch (error) {
+    emitDiagnostic(dependencies, {
+      kind,
+      stage: classifyFetchRejection(error),
+    });
     return { ok: false, afterFetch };
   } finally {
     if (!keepTimer) {
@@ -281,6 +461,17 @@ function cancelUnlockedBody(response: Response): void {
   if (response.body && !response.body.locked) {
     void response.body.cancel().catch(() => undefined);
   }
+}
+
+function rejectManualRedirect(
+  fetched: Extract<RawFetchResult, { ok: true }>,
+): boolean {
+  if (fetched.response.status < 300 || fetched.response.status > 399) {
+    return false;
+  }
+  cancelUnlockedBody(fetched.response);
+  fetched.finish();
+  return true;
 }
 
 async function readChunkBeforeDeadline(
@@ -749,6 +940,7 @@ export async function getAgentHealth(
 ): Promise<AgentHealthCallResult> {
   const fetched = await performFetch(
     project,
+    "health",
     HEALTH_PATH,
     "GET",
     undefined,
@@ -758,6 +950,9 @@ export async function getAgentHealth(
     return failure(
       fetched.afterFetch ? "provider_failure" : "project_unavailable",
     );
+  }
+  if (rejectManualRedirect(fetched)) {
+    return failure("provider_failure");
   }
   let parsed: JsonReadResult;
   try {
@@ -790,6 +985,7 @@ export async function sendAgentOperation(
   const isMutation = trusted.request.action !== "list_users";
   const fetched = await performFetch(
     project,
+    "operation",
     OPERATIONS_PATH,
     "POST",
     trusted.body,
@@ -801,6 +997,9 @@ export async function sendAgentOperation(
       : failure(
           fetched.afterFetch ? "provider_failure" : "project_unavailable",
         );
+  }
+  if (rejectManualRedirect(fetched)) {
+    return isMutation ? ambiguous() : failure("provider_failure");
   }
 
   let parsed: JsonReadResult;

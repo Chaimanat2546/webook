@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   getAgentHealth,
+  logAgentOutboundDiagnostic,
   sendAgentOperation,
   type AgentHealthCallResult,
   type AgentOperationCallResult,
@@ -549,7 +550,10 @@ export function createCentralUserManagerServiceDependencies(
       claimCentralUserOperation(client, binding),
     beginDispatch: (operationId, requestHash) =>
       beginCentralUserDispatch(client, operationId, requestHash),
-    sendOperation: sendAgentOperation,
+    sendOperation: (project, request) =>
+      sendAgentOperation(project, request, {
+        diagnostic: logAgentOutboundDiagnostic,
+      }),
     finalizeOperation: (input) =>
       finalizeCentralUserOperation(client, input),
     randomUuid: () => crypto.randomUUID(),
@@ -562,7 +566,10 @@ export function createCentralUserManagerHealthDependencies(
   return {
     findActiveProject: (tenantId) =>
       findActiveCustomerProject(client, tenantId),
-    getHealth: getAgentHealth,
+    getHealth: (project) =>
+      getAgentHealth(project, {
+        diagnostic: logAgentOutboundDiagnostic,
+      }),
     recordVerification: (input) =>
       recordCustomerProjectVerification(client, input),
   };

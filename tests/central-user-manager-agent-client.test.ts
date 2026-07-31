@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   getAgentHealth,
+  logAgentOutboundDiagnostic,
   sendAgentOperation,
 } from "../server/central-user-manager/agent-client.ts";
 import type { AgentOperationRequest } from "../server/central-user-manager/contracts.ts";
@@ -128,7 +129,7 @@ describe("Central User Manager Agent client", () => {
     assert.equal(result.kind, "success");
     assert.equal(requestUrl, "https://tenant.example.com/api/internal/central-user-manager/v1/health");
     assert.equal(requestInit?.method, "GET");
-    assert.equal(requestInit?.redirect, "error");
+    assert.equal(requestInit?.redirect, "manual");
     assert.equal(requestInit?.cache, "no-store");
     const headers = new Headers(requestInit?.headers);
     assert.equal(headers.get("Authorization"), `Bearer ${TOKEN}`);
@@ -251,6 +252,137 @@ describe("Central User Manager Agent client", () => {
     assert.doesNotMatch(JSON.stringify([mutation, list, health]), /secret/);
   });
 
+  it("diagnoses token decryption rejection without exposing project or error details", async () => {
+    const diagnostics: unknown[] = [];
+    const sentinel = "sensitive-vault-detail";
+    const result = await getAgentHealth(project, {
+      fetch: async () => {
+        throw new Error("fetch must not run");
+      },
+      decryptToken: async () => {
+        throw new Error(sentinel);
+      },
+      diagnostic: (event: unknown) => diagnostics.push(event),
+    });
+
+    assert.equal(result.kind, "failure");
+    assert.deepEqual(diagnostics, [
+      { kind: "health", stage: "decrypt_rejected" },
+    ]);
+    assert.doesNotMatch(
+      JSON.stringify(diagnostics),
+      new RegExp(`${sentinel}|${TENANT_ID}|tenant\\.example\\.com|${TOKEN}`),
+    );
+  });
+
+  it("diagnoses a fetch rejection using only fixed outbound stages", async () => {
+    const diagnostics: unknown[] = [];
+    const sentinel = "sensitive-network-detail";
+    const result = await getAgentHealth(project, {
+      ...dependencies(async () => {
+        throw new TypeError(sentinel);
+      }),
+      diagnostic: (event: unknown) => diagnostics.push(event),
+    });
+
+    assert.equal(result.kind, "failure");
+    assert.deepEqual(diagnostics, [
+      { kind: "health", stage: "fetch_invoked" },
+      { kind: "health", stage: "fetch_rejected_type" },
+    ]);
+    assert.doesNotMatch(
+      JSON.stringify(diagnostics),
+      new RegExp(`${sentinel}|${TENANT_ID}|tenant\\.example\\.com|${TOKEN}`),
+    );
+  });
+
+  it("classifies Cloudflare fetch policy failures without logging their message", async () => {
+    const diagnostics: unknown[] = [];
+    const sentinel = "sensitive-policy-detail";
+    const result = await getAgentHealth(project, {
+      ...dependencies(async () => {
+        throw new TypeError(`1042 ${sentinel}`);
+      }),
+      diagnostic: (event: unknown) => diagnostics.push(event),
+    });
+
+    assert.equal(result.kind, "failure");
+    assert.deepEqual(diagnostics, [
+      { kind: "health", stage: "fetch_invoked" },
+      { kind: "health", stage: "fetch_rejected_cloudflare_1042" },
+    ]);
+    assert.doesNotMatch(JSON.stringify(diagnostics), new RegExp(sentinel));
+  });
+
+  it("keeps mutation ambiguity when fetch rejection details throw on access", async () => {
+    const diagnostics: unknown[] = [];
+    const hostileError = new TypeError("hidden");
+    Object.defineProperty(hostileError, "message", {
+      get() {
+        throw new Error("message getter failed");
+      },
+    });
+    Object.defineProperty(hostileError, "cause", {
+      get() {
+        throw new Error("cause getter failed");
+      },
+    });
+
+    const result = await sendAgentOperation(project, createRequest, {
+      ...dependencies(async () => {
+        throw hostileError;
+      }),
+      diagnostic: (event: unknown) => diagnostics.push(event),
+    });
+
+    assert.equal(result.kind, "ambiguous");
+    assert.deepEqual(diagnostics, [
+      { kind: "operation", stage: "fetch_invoked" },
+      { kind: "operation", stage: "fetch_rejected_other" },
+    ]);
+  });
+
+  it("keeps successful health behavior when diagnostics throw", async () => {
+    const result = await getAgentHealth(project, {
+      ...dependencies(async () => jsonResponse(healthBody())),
+      diagnostic: () => {
+        throw new Error("diagnostic sink failed");
+      },
+    });
+
+    assert.equal(result.kind, "success");
+  });
+
+  it("strips poisoned extra fields at the production diagnostic sink", () => {
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...values: unknown[]) => {
+      warnings.push(values);
+    };
+    try {
+      logAgentOutboundDiagnostic({
+        kind: "health",
+        stage: "fetch_rejected_type",
+        token: TOKEN,
+        error: new Error("sensitive-network-detail"),
+        project: project.targetSupabaseProjectRef,
+      } as Parameters<typeof logAgentOutboundDiagnostic>[0] & {
+        token: string;
+        error: Error;
+        project: string;
+      });
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    assert.deepEqual(warnings, [
+      [
+        "cum_agent_outbound",
+        { kind: "health", stage: "fetch_rejected_type" },
+      ],
+    ]);
+  });
+
   it("uses the abort signal for the bounded timeout", async () => {
     const fetchImpl: typeof fetch = async (_input, init) =>
       new Promise<Response>((_resolve, reject) => {
@@ -321,23 +453,77 @@ describe("Central User Manager Agent client", () => {
     assert.equal(fetchCalled, false);
   });
 
-  it("sets redirect error and treats a redirect response as untrusted", async () => {
+  it("keeps redirects manual, classifies them safely, and treats them as untrusted", async () => {
     let redirect: RequestRedirect | undefined;
+    const diagnostics: unknown[] = [];
     const fetchImpl: typeof fetch = async (_input, init) => {
       redirect = init?.redirect;
-      return new Response(null, {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            new TextEncoder().encode(
+              JSON.stringify(
+                operationBody({
+                  result: {
+                    user: safeUser,
+                    temporaryPassword: "Abcdefghijklmnop1234",
+                  },
+                }),
+              ),
+            ),
+          );
+          controller.close();
+        },
+      });
+      return new Response(body, {
         status: 302,
-        headers: { Location: "https://attacker.example" },
+        headers: {
+          "Content-Type": "application/json",
+          Location: "https://attacker.example",
+        },
       });
     };
 
     const result = await sendAgentOperation(
       project,
       createRequest,
-      dependencies(fetchImpl),
+      {
+        ...dependencies(fetchImpl),
+        diagnostic: (event: unknown) => diagnostics.push(event),
+      },
     );
-    assert.equal(redirect, "error");
+    assert.equal(redirect, "manual");
     assert.equal(result.kind, "ambiguous");
+    assert.deepEqual(diagnostics, [
+      { kind: "operation", stage: "fetch_invoked" },
+      { kind: "operation", stage: "response_redirect_cross_origin" },
+    ]);
+  });
+
+  it("cancels a manual redirect body before reading it", async () => {
+    let bodyCanceled = false;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("{}"));
+      },
+      cancel() {
+        bodyCanceled = true;
+      },
+    });
+    const result = await sendAgentOperation(project, createRequest, {
+      ...dependencies(async () =>
+        new Response(body, {
+          status: 307,
+          headers: {
+            "Content-Type": "application/json",
+            Location: "/other",
+          },
+        })),
+      timeoutMs: 1_000,
+    });
+
+    assert.equal(result.kind, "ambiguous");
+    assert.equal(bodyCanceled, true);
   });
 
   it("rejects non-JSON and oversized responses without exposing raw content", async () => {
