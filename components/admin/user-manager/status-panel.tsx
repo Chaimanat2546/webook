@@ -56,16 +56,16 @@ export function StatusPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm">Agent</span>
+            <span className="text-sm">สถานะ</span>
             <Badge variant={health?.status === "healthy" ? "default" : "secondary"}>
               {health?.status === "healthy" ? "พร้อมใช้งาน" : "ยังไม่ยืนยัน"}
             </Badge>
           </div>
           {requiresReactivation ? (
             <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950">
-              <p className="text-sm font-medium">Tenant นี้ถูกปิดหลังตรวจสอบ Agent ไม่ผ่าน</p>
+              <p className="text-sm font-medium">ระบบนี้นี้ถูกปิดหลังตรวจสอบสถานะไม่ผ่าน</p>
               <p className="text-xs">
-                ระบบจะตรวจสุขภาพและอ่านรายชื่อแบบจำกัดด้วย Bearer เดิมก่อนเปิดใช้งาน
+                ระบบจะตรวจสถานะและอ่านรายชื่อแบบจำกัดเดิมก่อนเปิดใช้งาน
               </p>
               <Button
                 className="w-full"

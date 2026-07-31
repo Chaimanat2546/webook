@@ -72,7 +72,7 @@ export function UserManagerPage({
         <div>
           <h1 className="text-xl font-semibold">จัดการผู้ใช้ลูกค้า</h1>
           <p className="text-sm font-medium text-muted-foreground">
-            จัดการผู้ดูแลระบบแยกตาม Tenant ผ่าน Agent ที่ยืนยันแล้ว
+            จัดการผู้ดูแลระบบแยกตามระบบบ้านพัก
           </p>
         </div>
         <Button

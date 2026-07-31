@@ -44,17 +44,17 @@ export function ProjectList({
   return (
     <Card className="min-w-0">
       <CardHeader className="gap-3">
-        <CardTitle className="text-sm">โครงการลูกค้า</CardTitle>
+        <CardTitle className="text-sm">ระบบบ้านพัก</CardTitle>
         <div className="relative">
           <SearchIcon
             aria-hidden
             className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
           />
           <Input
-            aria-label="ค้นหาโครงการลูกค้า"
+            aria-label="ค้นหาระบบบ้านพัก"
             className="pl-8"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="ค้นหาชื่อหรือ Tenant ID"
+            placeholder="ค้นหาชื่อระบบบ้านพัก"
             value={query}
           />
         </div>

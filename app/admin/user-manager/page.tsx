@@ -35,7 +35,7 @@ export default async function CentralUserManagerPage() {
       <EmptyHeader>
         <EmptyTitle>
           {forbidden
-            ? "ไม่มีสิทธิ์จัดการผู้ใช้ลูกค้า"
+            ? "ไม่มีสิทธิ์จัดการผู้ใช้ระบบบ้านพัก"
             : "โหลดข้อมูลจัดการผู้ใช้ไม่ได้"}
         </EmptyTitle>
         <EmptyDescription>
