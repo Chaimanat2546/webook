@@ -97,9 +97,8 @@ export function createRegistryProvisioner(client, config) {
       }
       if (!current.encryptedToken) failure();
       if (
-        current.isActive &&
         (
-          current.provisioningState === null ||
+          (current.isActive && current.provisioningState === null) ||
           current.provisioningState === "completed"
         ) &&
         tokenVersion === config.expectedTokenVersion
