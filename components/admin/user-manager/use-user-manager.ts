@@ -403,7 +403,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
     return run(`list:${selectedProject.id}:${boundedPage}`, {
       tenantId: selectedProject.id,
       action: "list_users",
-      payload: { page: boundedPage, pageSize: 25 },
+      payload: { page: boundedPage, pageSize: 10 },
     }, selection);
   }, [run, selectedProject]);
 
@@ -464,7 +464,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
       void run(`list:${project.id}:1`, {
         tenantId: project.id,
         action: "list_users",
-        payload: { page: 1, pageSize: 25 },
+        payload: { page: 1, pageSize: 10 },
       }, selection);
     }
   }, [checkHealthFor, projects, reviewState, run]);
@@ -516,7 +516,7 @@ export function useUserManager(initialProjects: UserManagerProject[]) {
       await run(`list:${selectedProject.id}:1`, {
         tenantId: selectedProject.id,
         action: "list_users",
-        payload: { page: 1, pageSize: 25 },
+        payload: { page: 1, pageSize: 10 },
       }, selection);
     } catch {
       if (selectionGuardRef.current.isCurrent(selection)) {

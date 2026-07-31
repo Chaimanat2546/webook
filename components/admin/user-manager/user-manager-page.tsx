@@ -70,7 +70,7 @@ export function UserManagerPage({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">จัดการผู้ใช้ลูกค้า</h1>
+          <h1 className="text-xl font-semibold">จัดการผู้ใช้ระบบบ้านพัก</h1>
           <p className="text-sm font-medium text-muted-foreground">
             จัดการผู้ดูแลระบบแยกตามระบบบ้านพัก
           </p>

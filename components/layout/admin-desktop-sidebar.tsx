@@ -109,11 +109,11 @@ export function AdminDesktopSidebar({
                     <SidebarMenuButton
                       asChild
                       isActive={pathname.startsWith("/admin/user-manager")}
-                      tooltip="จัดการผู้ใช้ลูกค้า"
+                      tooltip="จัดการผู้ใช้ระบบบ้านพัก"
                     >
                       <Link href="/admin/user-manager" onClick={closeMobileSidebar}>
                         <UserCogIcon data-icon="inline-start" />
-                        <span>จัดการผู้ใช้ลูกค้า</span>
+                        <span>จัดการผู้ใช้ระบบบ้านพัก</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

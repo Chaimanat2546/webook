@@ -24,7 +24,7 @@ describe("Central User Manager page", () => {
       "components/admin/user-manager/operation-status-card.tsx",
     ].map(read).join("\n");
     assert.match(source, /xl:grid-cols-\[16rem_minmax\(0,1fr\)_18rem\]/);
-    assert.match(source, /โครงการลูกค้า/);
+    assert.match(source, /ระบบบ้านพัก/);
     assert.match(source, /ผู้ดูแลระบบ/);
     assert.match(source, /สถานะและการดำเนินการ/);
     assert.match(source, /ยังไม่มีโครงการ|ไม่พบโครงการ/);
@@ -52,5 +52,11 @@ describe("Central User Manager page", () => {
     ]) {
       assert.equal(existsSync(new URL(path, root)), true, `missing ${path}`);
     }
+  });
+
+  it("requests ten users per page without changing the Agent contract", () => {
+    const source = read("components/admin/user-manager/use-user-manager.ts");
+    assert.equal(source.match(/pageSize: 10/g)?.length, 3);
+    assert.doesNotMatch(source, /pageSize: 25/);
   });
 });
