@@ -26,4 +26,11 @@ describe("central user manager page", () => {
     assert.match(source, /disabled=\{listPending \|\| !listed\.pagination\.hasMore\}/);
     assert.doesNotMatch(source, /name="pageSize"/);
   });
+
+  it("passes selected user actions into the confirmation dialog without editable email", () => {
+    assert.match(source, /<UserTable/);
+    assert.match(source, /setDialogAction\(\{ action, label, email \}\)/);
+    assert.match(source, /readOnly/);
+    assert.doesNotMatch(source, /<ul aria-busy/);
+  });
 });
