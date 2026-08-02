@@ -43,7 +43,7 @@ function StatusBadge({ status }: { status: UserStatus }) {
   return <Badge variant={status === "active" ? "default" : "secondary"}>{labels[status]}</Badge>;
 }
 
-function UserActionsMenu({ email, onAction }: { email: string; onAction: UserTableProps["onAction"] }) {
+function UserActionsMenu({ email, status, onAction }: { email: string; status: UserStatus; onAction: UserTableProps["onAction"] }) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -56,12 +56,16 @@ function UserActionsMenu({ email, onAction }: { email: string; onAction: UserTab
           <DropdownMenuItem onSelect={() => onAction("reissue_temporary_password", email)}>
             ออกรหัสผ่านใหม่
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onAction("suspend_user", email)}>
-            ระงับผู้ใช้
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onAction("reactivate_user", email)}>
-            เปิดใช้ผู้ใช้
-          </DropdownMenuItem>
+          {status === "active" || status === "password_change_required" ? (
+            <DropdownMenuItem onSelect={() => onAction("suspend_user", email)}>
+              ระงับผู้ใช้
+            </DropdownMenuItem>
+          ) : null}
+          {status === "suspended" ? (
+            <DropdownMenuItem onSelect={() => onAction("reactivate_user", email)}>
+              เปิดใช้ผู้ใช้
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -81,7 +85,7 @@ export function UserTable({ users, onAction }: UserTableProps) {
               <StatusBadge status={user.status} />
             </CardHeader>
             <CardContent className="flex justify-end">
-              <UserActionsMenu email={user.email} onAction={onAction} />
+              <UserActionsMenu email={user.email} onAction={onAction} status={user.status} />
             </CardContent>
           </Card>
         ))}
@@ -101,7 +105,7 @@ export function UserTable({ users, onAction }: UserTableProps) {
               <TableRow className={user.status === "suspended" ? "opacity-70" : ""} key={user.email}>
                 <TableCell className="font-medium"><span className="block truncate">{user.email}</span></TableCell>
                 <TableCell><StatusBadge status={user.status} /></TableCell>
-                <TableCell className="text-right"><UserActionsMenu email={user.email} onAction={onAction} /></TableCell>
+                <TableCell className="text-right"><UserActionsMenu email={user.email} onAction={onAction} status={user.status} /></TableCell>
               </TableRow>
             ))}
           </TableBody>
