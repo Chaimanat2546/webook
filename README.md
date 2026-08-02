@@ -12,6 +12,21 @@ Current focus:
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
 House/accommodation menu access currently requires `allow_tools.allow_accommodation = true`.
 
+## Central User Manager (Staging)
+
+`/admin/user-manager` is available only to an exact `role_id = 1` administrator.
+It uses a three-column Tenant list, user table, and action panel. The browser submits
+only a server-approved Tenant key; it never receives a Tenant UUID, Worker URL, binding
+name, or Bearer credential. Each configured Tenant has its own named internal Cloudflare
+Service Binding (currently `CUM_BAAN_POOL_VILLA_STAGING`). Add a Tenant only by updating
+the server-only registry, Cloudflare binding types, and `wrangler.staging.jsonc`, then
+redeploying `webook-staging`. Audit rows record only operation metadata and safe status,
+never an email, request payload, or password.
+
+Staging deploys only through `npm run deploy:cf:staging`. Its preflight pins Cloudflare
+account `0df55f166fa309dcc904e992c43f86db`, Worker `webook-staging`, and the
+`baan-pool-villa-staging` named entrypoint. Do not deploy it through `poolvilla`.
+
 ## Quotation management MVP 1
 
 Quotation management is an explicitly added admin module. Users need

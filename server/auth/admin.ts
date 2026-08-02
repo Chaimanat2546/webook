@@ -28,6 +28,12 @@ export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | n
   return user?.role_id === 1;
 }
 
+export function canManageCentralUsers(
+  user: Pick<AdminUserForAuth, "role_id"> | null,
+): boolean {
+  return user?.role_id === 1;
+}
+
 export function pickAdminUser({
   byEmail,
   byUid,
@@ -70,3 +76,12 @@ export const requireAdmin = cache(async () => {
     user,
   };
 });
+
+export async function requireCentralUserManagerAdmin() {
+  const session = await requireAdmin();
+  if (!canManageCentralUsers(session.adminUser)) {
+    throw new Error("Forbidden");
+  }
+
+  return session;
+}
