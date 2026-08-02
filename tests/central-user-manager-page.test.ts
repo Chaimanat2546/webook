@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 const source = readFileSync(new URL("../components/admin/user-manager/user-manager-page.tsx", import.meta.url), "utf8");
 
 describe("central user manager page", () => {
-  it("uses a tenant list, user table, and action panel without browser destinations", () => {
+  it("uses a tenant list and user table without browser destinations", () => {
     assert.match(source, /grid-cols-\[16rem_minmax\(0,1fr\)_18rem\]/);
     assert.match(source, /tenantKey/);
     assert.match(source, /เลือก Tenant/);
@@ -27,10 +27,26 @@ describe("central user manager page", () => {
     assert.doesNotMatch(source, /name="pageSize"/);
   });
 
+  it("places create user in the page header and removes tenant-panel operation buttons", () => {
+    assert.match(source, /flex flex-wrap items-start justify-between/);
+    assert.match(source, /disabled=\{!selected\?\.enabled\}/);
+    assert.match(source, /action: createCentralUserAction, label: "สร้างผู้ใช้"/);
+    assert.doesNotMatch(source, /\[\[createCentralUserAction,"สร้างผู้ใช้"\],\[reissueCentralUserPasswordAction/);
+    assert.doesNotMatch(source, /<aside className="space-y-3">/);
+  });
+
   it("passes selected user actions into the confirmation dialog without editable email", () => {
     assert.match(source, /<UserTable/);
-    assert.match(source, /setDialogAction\(\{ action, label, email \}\)/);
-    assert.match(source, /readOnly/);
+    assert.match(source, /setDialogAction\(\{ action, label, email: rowEmail \}\)/);
+    assert.match(source, /disabled=\{Boolean\(dialogAction\?\.email\)\}/);
     assert.doesNotMatch(source, /<ul aria-busy/);
+  });
+
+  it("uses disabled fields without dialog autofocus and copies passwords only on request", () => {
+    assert.match(source, /disabled=\{Boolean\(dialogAction\?\.email\)\}/);
+    assert.match(source, /onOpenAutoFocus=\{\(event\) => event\.preventDefault\(\)\}/);
+    assert.match(source, /aria-label="รหัสผ่านชั่วคราว" disabled/);
+    assert.match(source, /navigator\.clipboard\.writeText\(password\.value\)/);
+    assert.match(source, /คัดลอกแล้ว/);
   });
 });
