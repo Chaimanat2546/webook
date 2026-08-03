@@ -2,13 +2,11 @@ import "server-only";
 
 import { isCanonicalUuid } from "./contracts.ts";
 
-export const STAGING_TENANT_ID = "2b4e0c23-b66c-43c8-892c-ac1a9b5f2ccb";
-
 const CENTRAL_USER_TENANTS = [{
-  key: "baan-pool-villa-staging",
-  id: STAGING_TENANT_ID,
-  displayName: "Baan Pool Villa",
-  environment: "Staging",
+  key: "baanparty",
+  id: "a7f10ab9-db3a-400f-8185-03aabe8041db",
+  displayName: "Baan Party Pattaya",
+  environment: "Production",
   enabled: true,
 }] as const;
 

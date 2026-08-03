@@ -9,8 +9,8 @@ if (
   config.name !== "webook-staging" ||
   config.workers_dev !== true ||
   config.services?.length !== 1 ||
-  binding?.binding !== "CUM_BAAN_POOL_VILLA_STAGING" ||
-  binding?.service !== "baan-pool-villa-staging" ||
+  binding?.binding !== "CUM_BAANPARTY" ||
+  binding?.service !== "baan-pool-villa" ||
   binding?.entrypoint !== "CentralUserManagerEntrypoint"
 ) {
   throw new Error("Invalid webook Staging Cloudflare target configuration.");

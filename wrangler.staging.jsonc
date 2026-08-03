@@ -12,8 +12,8 @@
   ],
   "services": [
     {
-      "binding": "CUM_BAAN_POOL_VILLA_STAGING",
-      "service": "baan-pool-villa-staging",
+      "binding": "CUM_BAANPARTY",
+      "service": "baan-pool-villa",
       "entrypoint": "CentralUserManagerEntrypoint"
     }
   ]

@@ -23,5 +23,12 @@
       "binding": "NEXT_INC_CACHE_R2_BUCKET",
       "bucket_name": "webook-admin-next-cache"
     }
+  ],
+  "services": [
+    {
+      "binding": "CUM_BAANPARTY",
+      "service": "baan-pool-villa",
+      "entrypoint": "CentralUserManagerEntrypoint"
+    }
   ]
 }

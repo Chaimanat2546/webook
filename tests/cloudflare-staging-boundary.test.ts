@@ -10,7 +10,7 @@ describe("webook Staging Cloudflare boundary", () => {
     assert.equal(config.workers_dev, true);
     assert.deepEqual(config.r2_buckets, [{ binding: "NEXT_INC_CACHE_R2_BUCKET", bucket_name: "webook-staging-next-cache" }]);
     assert.equal(config.services.length, 1);
-    assert.deepEqual(config.services, [{ binding: "CUM_BAAN_POOL_VILLA_STAGING", service: "baan-pool-villa-staging", entrypoint: "CentralUserManagerEntrypoint" }]);
+    assert.deepEqual(config.services, [{ binding: "CUM_BAANPARTY", service: "baan-pool-villa", entrypoint: "CentralUserManagerEntrypoint" }]);
     assert.equal(Object.hasOwn(config, "routes"), false);
   });
 
@@ -21,5 +21,7 @@ describe("webook Staging Cloudflare boundary", () => {
     assert.match(packageJson.scripts["deploy:cf:staging"], /-c wrangler\.staging\.jsonc/);
     const guard = readFileSync(new URL("../scripts/assert-staging-cloudflare-target.mjs", import.meta.url), "utf8");
     assert.match(guard, /config\.services\?\.length !== 1/);
+    assert.match(guard, /binding\?\.binding !== "CUM_BAANPARTY"/);
+    assert.match(guard, /binding\?\.service !== "baan-pool-villa"/);
   });
 });

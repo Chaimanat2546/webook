@@ -2,7 +2,7 @@ import type { CentralUserRpcRequest } from "./server/central-user-manager/contra
 
 declare global {
   interface CloudflareEnv {
-    CUM_BAAN_POOL_VILLA_STAGING: {
+    CUM_BAANPARTY: {
       executeOperation(input: CentralUserRpcRequest): Promise<unknown>;
     };
   }

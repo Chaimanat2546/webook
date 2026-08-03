@@ -10,10 +10,10 @@ export async function getCentralUserBinding(tenantId: string) {
   }
 
   const { env } = await getCloudflareContext({ async: true });
-  if (tenant.key === "baan-pool-villa-staging" && env.CUM_BAAN_POOL_VILLA_STAGING) {
-    return env.CUM_BAAN_POOL_VILLA_STAGING;
+  if (tenant.key === "baanparty" && env.CUM_BAANPARTY) {
+    return env.CUM_BAANPARTY;
   }
-  if (!env.CUM_BAAN_POOL_VILLA_STAGING) {
+  if (!env.CUM_BAANPARTY) {
     throw new CentralUserManagerError("tenant_unavailable");
   }
   throw new CentralUserManagerError("tenant_unavailable");
