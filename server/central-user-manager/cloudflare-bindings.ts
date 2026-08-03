@@ -13,8 +13,11 @@ export async function getCentralUserBinding(tenantId: string) {
   if (tenant.key === "baanparty" && env.CUM_BAANPARTY) {
     return env.CUM_BAANPARTY;
   }
-  if (!env.CUM_BAANPARTY) {
-    throw new CentralUserManagerError("tenant_unavailable");
+  if (tenant.key === "poolvillapattaya" && env.CUM_POOLVILLAPATTAYA) {
+    return env.CUM_POOLVILLAPATTAYA;
+  }
+  if (tenant.key === "baanpmhee" && env.CUM_BAANPMHEE) {
+    return env.CUM_BAANPMHEE;
   }
   throw new CentralUserManagerError("tenant_unavailable");
 }

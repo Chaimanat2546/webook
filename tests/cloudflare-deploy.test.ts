@@ -35,6 +35,11 @@ describe("Cloudflare deployment boundary", () => {
         service: "baan-pool-villa",
         entrypoint: "CentralUserManagerEntrypoint",
       },
+      {
+        binding: "CUM_POOLVILLAPATTAYA",
+        service: "baan-pool-villa02",
+        entrypoint: "CentralUserManagerEntrypoint",
+      },
     ]);
     assert.equal(Object.hasOwn(config, "durable_objects"), false);
     assert.equal(Object.hasOwn(config, "migrations"), false);

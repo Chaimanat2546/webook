@@ -8,6 +8,18 @@ const CENTRAL_USER_TENANTS = [{
   displayName: "Baan Party Pattaya",
   environment: "Production",
   enabled: true,
+}, {
+  key: "poolvillapattaya",
+  id: "9fd7c645-563a-4cce-85ac-20ffb8f3bfc0",
+  displayName: "Poolvillapattaya",
+  environment: "Production",
+  enabled: true,
+}, {
+  key: "baanpmhee",
+  id: "93b00ab0-df98-4a1d-9411-0b96750e7191",
+  displayName: "baanPMhee",
+  environment: "Production",
+  enabled: true,
 }] as const;
 
 export type CentralUserTenant = (typeof CENTRAL_USER_TENANTS)[number];
