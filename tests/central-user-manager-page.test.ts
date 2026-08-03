@@ -13,6 +13,12 @@ describe("central user manager page", () => {
     assert.doesNotMatch(source, /workers\.dev|CUM_BAAN_POOL_VILLA_STAGING|tenantId/);
   });
 
+  it("shows table-shaped skeleton rows while the first user list is loading", () => {
+    assert.match(source, /import \{ Skeleton \} from "\.\.\/\.\.\/ui\/skeleton"/);
+    assert.match(source, /listPending && !listed/);
+    assert.match(source, /aria-label="กำลังโหลดรายชื่อผู้ใช้"/);
+    assert.match(source, /Array\.from\(\{ length: 5 \}\)/);
+  });
   it("loads page one automatically with ten users when the selected Tenant changes", () => {
     assert.match(source, /useEffect\(\(\) => \{/);
     assert.match(source, /createCentralUserListFormData/);
