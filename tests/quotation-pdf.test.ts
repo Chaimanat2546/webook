@@ -18,9 +18,34 @@ const sharedPdf = source(
 const hospitalityPdf = source(
   "components/admin/quotations/templates/quotation-pdf-hospitality.tsx",
 );
+const corporatePdf = source(
+  "components/admin/quotations/templates/quotation-pdf-corporate.tsx",
+);
 const editorSource = source("components/admin/quotations/quotation-editor.tsx");
 
 describe("quotation PDF", () => {
+  it("renders Corporate with its own navy PDF layout", () => {
+    for (const marker of [
+      "CorporateQuotationPdf",
+      "#142d4c",
+      "#f2f5f8",
+      "data-pdf-header",
+      "data-pdf-customer",
+      "data-pdf-items",
+      "data-pdf-totals",
+      "data-pdf-payment-methods",
+      "data-pdf-notes",
+      "data-pdf-certification",
+      "data-corporate-settlement",
+      "มูลค่ารวม",
+      "ส่วนลด",
+    ]) {
+      assert.match(corporatePdf, new RegExp(marker));
+    }
+    assert.doesNotMatch(corporatePdf, /CurrentQuotationPdf/);
+    assert.match(pdfSource, /quotation-pdf-corporate/);
+  });
+
   it("renders Hospitality with its own green PDF layout", () => {
     for (const marker of [
       "HospitalityQuotationPdf",

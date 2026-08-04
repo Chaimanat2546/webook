@@ -8,6 +8,42 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("renders Corporate as a distinct procurement-focused document", () => {
+    const corporate = source("../components/admin/quotations/templates/quotation-document-corporate.tsx");
+    const dispatcher = source("../components/admin/quotations/quotation-document.tsx");
+
+    for (const marker of [
+      'data-quotation-template="corporate"',
+      "#142d4c",
+      "#f2f5f8",
+      "data-corporate-company-metadata",
+      "data-corporate-recipient",
+      "data-corporate-settlement",
+      "data-document-items",
+      "data-document-payment-methods",
+      "data-document-notes",
+      "data-document-certification",
+      "payload.seller.contactName",
+      "payload.seller.contactPhone",
+      "payload.seller.contactEmail",
+    ]) {
+      assert.match(corporate, new RegExp(marker));
+    }
+    assert.doesNotMatch(corporate, /CurrentQuotationDocument/);
+    assert.match(dispatcher, /quotation-document-corporate/);
+  });
+
+  it("lets long Corporate payment content flow before its settlement panel", () => {
+    const corporate = source("../components/admin/quotations/templates/quotation-document-corporate.tsx");
+    const css = source("../app/globals.css");
+
+    assert.match(corporate, /data-corporate-summary-sequential/);
+    assert.match(
+      css,
+      /\[data-corporate-summary-sequential\][\s\S]*break-inside: auto !important/,
+    );
+  });
+
   it("renders Hospitality as a distinct accommodation-focused document", () => {
     const hospitality = source("../components/admin/quotations/templates/quotation-document-hospitality.tsx");
     const dispatcher = source("../components/admin/quotations/quotation-document.tsx");

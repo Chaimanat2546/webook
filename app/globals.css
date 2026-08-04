@@ -169,7 +169,8 @@
   [data-document-payment-methods] {
     break-inside: auto !important;
   }
-  [data-hospitality-summary-sequential] {
+  [data-hospitality-summary-sequential],
+  [data-corporate-summary-sequential] {
     break-inside: auto !important;
   }
 }
