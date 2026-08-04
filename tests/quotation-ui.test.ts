@@ -749,15 +749,18 @@ describe("quotation UI", () => {
     const editPage = source("../app/admin/quotations/[id]/page.tsx");
 
     assert.match(newPage, /companyProfileToCertification\(profile\)/);
-    assert.doesNotMatch(editPage, /companyProfileToCertification|getQuotationCompanyProfile/);
+    assert.doesNotMatch(editPage, /companyProfileToCertification/);
+    assert.match(editPage, /getQuotationCompanyProfile\(supabase, user\.id\)/);
   });
 
   it("edits saved payment snapshots without merging current masters", () => {
     const page = source("../app/admin/quotations/[id]/page.tsx");
 
-    assert.match(page, /Promise\.all\(\[getQuotationById\(supabase, id\), listQuotationBanks\(supabase\), listQuotationItemNames\(supabase\)\]\)/);
+    assert.match(page, /getQuotationById\(supabase, id\)/);
+    assert.match(page, /getQuotationCompanyProfile\(supabase, user\.id\)/);
     assert.match(page, /hydratePaymentMethodBanks\(quotation\.payload\.paymentMethods, banks\)/);
     assert.match(page, /initialPayload=\{initialPayload\}/);
+    assert.match(page, /initialTemplateDefault=\{companyProfileToTemplate\(profile\)\}/);
     assert.match(page, /<QuotationEditor banks=\{banks\}/);
     assert.doesNotMatch(page, /listCompanyPaymentMethods/);
   });

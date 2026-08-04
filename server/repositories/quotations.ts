@@ -20,7 +20,10 @@ import type {
   QuotationPayload,
   SellerSnapshot,
 } from "../../lib/quotation-types.ts";
-import { DEFAULT_QUOTATION_TEMPLATE } from "../../lib/quotation-template.ts";
+import {
+  normalizeQuotationTemplate,
+  type QuotationTemplate,
+} from "../../lib/quotation-template.ts";
 import type { PreparedQuotation } from "../services/quotations";
 import {
   normalizeQuotationDocumentDisplay,
@@ -37,6 +40,7 @@ export interface QuotationCompanyProfileRow {
   contact_email: string;
   contact_name: string;
   contact_phone: string;
+  document_template_default: unknown;
   document_display_defaults: unknown;
   company_stamp_url: string | null;
   email: string;
@@ -81,7 +85,7 @@ export interface SavedQuotation {
 const quotationSelect = `
   id,document_number,issue_date,valid_until,validity_days,reference,subject,
   seller_snapshot,customer_snapshot,public_token,withholding_tax_rate,
-  certification_snapshot,document_display_snapshot,
+  certification_snapshot,document_display_snapshot,document_template_snapshot,
   public_notes,internal_notes,
   quotation_items(
     id,position,name,description,quantity,unit,unit_price,
@@ -129,6 +133,7 @@ type DatabaseQuotationPaymentMethod = {
 type DatabaseQuotationRow = {
   certification_snapshot: unknown;
   document_display_snapshot: unknown;
+  document_template_snapshot: unknown;
   customer_snapshot: unknown;
   id: unknown;
   internal_notes: unknown;
@@ -211,6 +216,12 @@ export function companyProfileToCertification(
       signatureUrl: stringValue(row.issuer_signature_url),
     },
   };
+}
+
+export function companyProfileToTemplate(
+  row: QuotationCompanyProfileRow,
+): QuotationTemplate {
+  return normalizeQuotationTemplate(row.document_template_default);
 }
 
 function sellerSnapshot(value: unknown): SellerSnapshot {
@@ -306,7 +317,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
     reference: stringValue(row.reference),
     seller: sellerSnapshot(row.seller_snapshot),
     subject: stringValue(row.subject),
-    template: DEFAULT_QUOTATION_TEMPLATE,
+    template: normalizeQuotationTemplate(row.document_template_snapshot),
     validUntil: stringValue(row.valid_until),
     validityDays: row.validity_days == null ? "" : stringValue(row.validity_days),
     withholdingTaxRate: row.withholding_tax_rate == null ? null : stringValue(row.withholding_tax_rate),
@@ -316,7 +327,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
 export async function getQuotationCompanyProfile(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("quotation_company_profiles")
-    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,document_display_defaults,updated_at")
+    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,document_display_defaults,document_template_default,updated_at")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -337,6 +348,20 @@ export async function saveQuotationDocumentDisplayDefaults(
   const { error } = await supabase
     .from("quotation_company_profiles")
     .update({ document_display_defaults: value, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+}
+
+export async function saveQuotationTemplateDefault(
+  supabase: SupabaseClient,
+  value: QuotationTemplate,
+  userId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("quotation_company_profiles")
+    .update({ document_template_default: value, updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .select("id")
     .single();

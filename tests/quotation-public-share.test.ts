@@ -78,6 +78,11 @@ describe("quotation public share", () => {
     assert.match(page, /quotation\.payload/);
     assert.match(repository, /quotation_payment_methods/);
     assert.match(repository, /quotation_payment_methods\([\s\S]*account_type/);
+    assert.match(repository, /document_template_snapshot/);
+    assert.match(
+      repository,
+      /template: normalizeQuotationTemplate\(row\.document_template_snapshot\)/,
+    );
     assert.match(viewModel, /payload\.paymentMethods/);
     assert.match(document, /model\.paymentMethods/);
     assert.doesNotMatch(document, /internalNotes/);

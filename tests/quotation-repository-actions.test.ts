@@ -14,6 +14,14 @@ const actions = readFileSync(
   new URL("../app/admin/quotations/actions.ts", import.meta.url),
   "utf8",
 );
+const newPage = readFileSync(
+  new URL("../app/admin/quotations/new/page.tsx", import.meta.url),
+  "utf8",
+);
+const editPage = readFileSync(
+  new URL("../app/admin/quotations/[id]/page.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("quotation repository and actions", () => {
   it("uses the transactional RPC for writes", () => {
@@ -69,6 +77,37 @@ describe("quotation repository and actions", () => {
     assert.match(
       actions,
       /saveQuotationDocumentDisplayDefaults\(supabase, value, user\.id\)/,
+    );
+  });
+
+  it("loads, validates, and owner-scopes quotation template defaults", () => {
+    assert.match(repository, /document_template_default/);
+    assert.match(repository, /document_template_snapshot/);
+    assert.match(repository, /companyProfileToTemplate/);
+    assert.match(
+      repository,
+      /normalizeQuotationTemplate\(row\.document_template_snapshot\)/,
+    );
+    assert.match(
+      repository,
+      /saveQuotationTemplateDefault[\s\S]*\.eq\("user_id", userId\)/,
+    );
+    assert.match(actions, /isQuotationTemplate\(value\)/);
+    assert.match(
+      actions,
+      /saveQuotationTemplateDefault\(supabase, value, user\.id\)/,
+    );
+  });
+
+  it("initializes a new quotation from the account template default", () => {
+    assert.match(newPage, /companyProfileToTemplate\(profile\)/);
+  });
+
+  it("keeps the account default separate from an edit snapshot", () => {
+    assert.match(editPage, /getQuotationCompanyProfile/);
+    assert.match(
+      editPage,
+      /initialTemplateDefault=\{companyProfileToTemplate\(profile\)\}/,
     );
   });
 

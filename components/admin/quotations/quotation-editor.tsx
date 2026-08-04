@@ -60,6 +60,7 @@ import type {
   QuotationPayload,
   SellerSnapshot,
 } from "../../../lib/quotation-types";
+import type { QuotationTemplate } from "../../../lib/quotation-template";
 import { normalizeQuotationVatChoices } from "../../../lib/quotation-vat";
 import { cn } from "../../../lib/utils";
 import { Alert, AlertDescription } from "../../ui/alert";
@@ -85,6 +86,7 @@ export interface QuotationEditorProps {
   banks: BankOption[];
   documentNumber: string | null;
   initialPayload: QuotationPayload;
+  initialTemplateDefault: QuotationTemplate;
   itemNames: string[];
   printOnLoad?: boolean;
   publicOrigin: string | null;

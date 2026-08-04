@@ -36,6 +36,7 @@ const validPayload = () => ({
   reference: "",
   seller: { address: "Seller address", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "Seller", officeType: "head_office", phone: "", taxId: "0100000000000", website: "" },
   subject: "",
+  template: "current",
   validUntil: "2026-08-04",
   validityDays: "15",
   withholdingTaxRate: null,

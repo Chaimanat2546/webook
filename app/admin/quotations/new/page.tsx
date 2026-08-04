@@ -5,7 +5,7 @@ import { Button } from "../../../../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../../../../components/ui/empty";
 import { getQuotationPublicOrigin } from "../../../../lib/env";
 import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin";
-import { companyProfileToCertification, companyProfileToDocumentDisplay, companyProfileToSeller, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationItemNames } from "../../../../server/repositories/quotations";
+import { companyProfileToCertification, companyProfileToDocumentDisplay, companyProfileToSeller, companyProfileToTemplate, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationItemNames } from "../../../../server/repositories/quotations";
 import { emptyQuotationPayload } from "../../../../server/services/quotations";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,7 @@ export default async function NewQuotationPage() {
     new Date(),
     companyProfileToCertification(profile),
     companyProfileToDocumentDisplay(profile),
+    companyProfileToTemplate(profile),
   );
   initialPayload.paymentMethods = paymentMethods.filter((method) => method.isDefault).map((method, index) => {
     const snapshot = { ...method };
@@ -34,5 +35,5 @@ export default async function NewQuotationPage() {
     return { ...snapshot, id: crypto.randomUUID(), position: index + 1 };
   });
   const publicOrigin = getQuotationPublicOrigin();
-  return <QuotationEditor banks={banks} documentNumber={null} initialPayload={initialPayload} itemNames={itemNames} publicOrigin={publicOrigin} publicToken={null} />;
+  return <QuotationEditor banks={banks} documentNumber={null} initialPayload={initialPayload} initialTemplateDefault={companyProfileToTemplate(profile)} itemNames={itemNames} publicOrigin={publicOrigin} publicToken={null} />;
 }
