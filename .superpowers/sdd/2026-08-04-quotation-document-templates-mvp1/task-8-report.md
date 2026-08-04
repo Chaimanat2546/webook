@@ -28,6 +28,7 @@
 - Rendered one-page and 24-item/20-payment five-page Corporate PDFs with React PDF, including uploaded PNG QR sources resolved through the production source collection/resolution pipeline.
 - Rendered the PDFs to PNG and visually inspected the compact page plus first and final multi-page pages. The compact fixture is one page; the long fixture is five pages with a repeated ledger heading, visible QR assets, complete settlement/certification content, and no clipping, overlap, or blank trailing page.
 - The bundled Poppler wrapper was missing its native executable, so visual PNG rendering used a temporary PyMuPDF environment utility only; no repository dependency was added.
+- Local artifact timestamps (Asia/Bangkok, `+07:00`): `one-page.html` at `2026-08-04 13:48:30 +07:00`; `one-page.pdf` at `2026-08-04 13:48:31 +07:00`; `multi-page.html` at `2026-08-04 13:48:31 +07:00`; `multi-page.pdf` at `2026-08-04 13:48:32 +07:00`; `one-page-1.png` and `multi-page-1.png` through `multi-page-5.png` at `2026-08-04 13:48:32 +07:00`.
 
 ## Files and scope
 
@@ -41,3 +42,7 @@
 - `tests/tsx-loader.mjs`
 
 No dependency, migration, data-model, or dispatcher change was required. `tmp/` is intentionally untracked and must not be staged.
+
+## Commit
+
+- Immutable implementation commit: `e9a473db53b02c776eb2815467bf1ba18a01e900` (`feat: add corporate quotation template`).
