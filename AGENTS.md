@@ -1,264 +1,123 @@
-## Project overview
+## Project Overview
 
-Admin-only application covering:
+This system manages accommodation data, seller websites, and operational
+workflows for a multi-seller accommodation business. Each seller has its own
+website and data scope.
 
-- House and image management
-- Advertisement management
-- Quotation management
+## Goals
 
-The active task scope comes from the current user request or approved spec.
-Do not expand into adjacent modules without an explicit requirement.
-if Shadcn have new dependency aways allow to install.
+- Clean Architecture
+- Reusable Components
+- Strong Type Safety
+- Easy Maintenance
+- Mobile First
 
-Critical flows:
-- Admin authentication
-- Protected admin access
-- House image listing
-- House image upload/import
-- House image deletion
-- External image URL validation
-- Storage/API error handling
+## Tech Stack
 
-Out of scope for the current feature:
+- **Framework:** Next.js App Router, React, TypeScript
+- **Styling & UI:** Tailwind CSS, shadcn/ui, Radix UI, Lucide Icons
+- **Backend & Database:** Supabase (PostgreSQL, Auth, Storage, and Edge Functions where applicable)
+- **Deployment:** Cloudflare Workers through OpenNext
+- **PDF & Payments:** React PDF Renderer, QR Code, Thai QR Payment
+- **Testing:** Node.js Test Runner
+- **Code Quality:** ESLint and TypeScript
+- **Package Manager:** npm
 
-- Public-facing villa listing pages
-- Booking or calendar management
-- Payment flows
-- SEO and marketing pages
-- Full house data CRUD, unless required to support image management
+## Architecture
 
-## Tech stack
-- Frontend: Next.js App Router, React, TypeScript
-- Styling: Tailwind with ShadcnUI
-- Backend: Supabase Backend-as-a-Service
-- Database: Supabase PostgreSQL
-- Authentication: Supabase Auth
-- Authorization: Supabase Row Level Security (RLS)
-- Image storage: External image APIs / cloud storage, depending on the feature
-- Admin logic: Next.js Route Handlers and server-side modules
-- Package manager: npm
-- Testing: Node.js test runner (`node:test`)
-- Deployment: Cloudflare Workers through OpenNext
+Use Clean Architecture and keep UI, business logic, data access, and external
+integrations separate.
 
-## Subagent workflow
+```text
+app/ (routes, Server Components, Server Actions)
+  -> server/services/ (business use cases)
+  -> server/repositories/ or server/storage/ (data and media access)
+  -> Supabase / Cloudflare R2 / approved external APIs
+```
 
-For non-trivial development tasks, Codex should automatically use the
-project subagents without requiring the user to request delegation.
+- `app/` contains routes, Server Components, and Server Actions.
+- `components/ui/` contains reusable UI primitives; `components/layout/` contains shared application layout; `components/admin/` contains reusable feature components.
+- `server/auth/` contains server-side authentication and authorization.
+- `server/services/` contains business rules and orchestration.
+- `server/repositories/` contains Supabase queries and RPC calls only.
+- `server/storage/` contains media storage adapters.
+- `server/central-user-manager/` contains allowlisted multi-tenant Cloudflare Worker service integrations.
+- `lib/` contains shared, framework-light utilities, types, validation, and calculations. Server-only code belongs in `server/`.
+- `supabase/migrations/` is the source of truth for schema and RLS changes. Never edit an existing migration.
+- Client components must never access privileged Supabase clients, secrets, or storage credentials.
+- Server Actions validate input and authorize the request before calling services.
+- Multi-tenant targets and Cloudflare Worker bindings must be explicitly allowlisted; never accept arbitrary tenant endpoints or bindings from the client.
+- The Media Worker is separate from the admin web Worker. Media access must use approved key prefixes and the server-side storage adapters.
 
-A task is non-trivial when it involves one or more of:
+## Deployment Rules
 
-- Multiple files or architectural layers
-- Authentication or authorization
-- Supabase migrations, RLS, RPCs, or repositories
-- Uploads, storage, or external services
-- Money, dates, quotations, or public sharing
-- Bug fixes whose root cause is not already known
-- Changes with meaningful regression risk
+| Environment | Supabase Project URL | Cloudflare Account ID |
+| --- | --- | --- |
+| Production | `https://rqizfiayvcbozlzuvbok.supabase.co` | `7c1d945e149fc6fad2124176124d8f33` |
+| Staging | `https://sxvkhzhqtrpxgzumsswl.supabase.co` | `0df55f166fa309dcc904e992c43f86db` |
 
-Workflow:
+- Agents may deploy only to **Staging** when deployment is required by the task.
+- Deploying to **Production** is prohibited unless the user gives a direct, explicit instruction in the current chat, such as “deploy to production”.
+- Before any Production deployment, state the exact Supabase project URL and Cloudflare account ID that will be targeted, then wait for confirmation.
+- Never infer Production deployment permission from requests to finish, publish, release, test, or deploy in general.
+- Before deploying, verify the selected environment and its target configuration. Do not deploy when the target is ambiguous or does not match the table above.
 
-1. Before editing, spawn `webook_explorer` in read-only mode.
-2. Wait for its findings and use them to determine the smallest correct change.
-3. Only the main agent may edit files.
-4. Run the relevant verification commands.
-5. After implementation, spawn `webook_reviewer` in read-only mode.
-6. Fix only reviewer findings that are supported by evidence.
-7. Run verification again before completion.
+## Code Style
 
-Do not use subagents for:
-
-- Typo or copy changes
-- Obvious one-line changes
-- Pure formatting
-- Tasks that require only one direct tool call
-
-Subagents must not edit files, install dependencies, deploy, or modify
-remote databases.
-
-## Commands
-
-The user manages dependency installation manually.
-
-Agents must NOT run commands that install, remove, upgrade, or modify dependencies, including:
-
-- `npm install`
-- `yarn install`
-- `bun install`
-- `npm install <package>`
-- `npm add <package>`
-- `npm remove <package>`
-- `npm uninstall <package>`
-- `npx shadcn@latest add ...` when it would install or modify npm dependencies
-- any command that modifies `package.json` or lockfiles without explicit user approval
-
-If a new dependency is required, or if adding one would clearly improve maintainability, reuse, security, performance, correctness, or developer experience:
-
-1. First check whether existing project dependencies already cover the need.
-2. If a new dependency is the better path, explain why and what tradeoff it avoids.
-3. Provide the exact install command for the user to run, or request explicit approval before running it.
-4. Do not run the install command yourself without explicit approval.
-
-ShadcnUI components are treated as approved reusable source components, not new product scope.
-
-- Prefer importing existing `components/ui/*` shadcn components before writing custom UI primitives.
-- If a needed shadcn component is missing, agents may add it with `npx shadcn@latest add <component>` after checking existing components first.
-- Do not run broad shadcn commands such as `add --all`, `init`, preset changes, reinstall, or overwrite without explicit user approval.
-- If shadcn would add or change npm dependencies, `package.json`, or lockfiles, ask first and explain why.
-- After adding a shadcn component, read the generated files and fix imports/composition to match this project.
-
-Allowed verification commands:
-
-- Typecheck: `npm run typecheck`
-- Lint: `npm run lint`
-- Test: `npm run test`
-- Build: `npm run build`
-
-## Project structure
-
-- `app/login/` contains the admin login page.
-- `app/admin/` contains protected admin pages.
-- `app/api/` contains API route handlers used by the admin UI.
-- `components/ui/` contains reusable low-level UI components.
-- `components/layout/` contains admin layout components such as sidebar, navbar, and page headers.
-- `server/` contains server-only logic such as auth checks, repositories, storage adapters, and admin services.
-- `lib/` contains shared utilities, environment helpers, and validators.
-- `tests/` contains automated tests.
-
-## Architecture rules
-
-- Admin pages must not access Supabase directly from client components unless there is a clear reason.
-- Server-side data access should go through `server/` modules.
-- Route handlers in `app/api/` should validate input and call server services.
-- Keep storage/image provider logic behind adapter modules.
-- Prefer existing patterns before creating new abstractions.
-- Make implementation decisions with maintainability, reuse, security, and performance in mind.
-- Before implementing or changing UI flow/structure, ask whether the user already has a design or flow. Confirm the flow step by step before building it.
-- Do not build an entire UI flow in one pass unless the user has already approved the structure.
-- UI must be designed mobile-first and verified across mobile, tablet, laptop, and desktop layouts.
-
-## House workspace shell style gate
-
-Before creating or changing any admin house-related page, first decide whether the House Workspace Shell applies.
-
-Use the shell when:
-
-- The page is under house management, especially `app/admin/houses/[propertyId]/...`.
-- The page is a task workspace for one house.
-- The page has, or should have, a page header, sidebar navigation, and content area.
-- Examples include house details, prices, facilities, image management, and cover image ordering.
-
-Do not use the shell when:
-
-- The page is the house list page.
-- The flow is only a dialog, dropdown, card, or small embedded widget.
-- The page is login, public listing or search, advertisement management, booking, payment, or an unrelated admin module.
-- The requested UI intentionally needs a different layout.
-
-When the shell applies:
-
-- Keep Shell Header fixed: back link, house title, DV badge, current task subtitle.
-- Keep Workspace Shell fixed: rounded border frame, `16rem` desktop sidebar, mobile horizontal sidebar, content-owned scroll.
-- Keep Sidebar Nav Item style fixed: icon, label, optional badge, active state.
-- Keep Content Header structure fixed: icon, title, badge or subtext, and actions.
-- Let Content Body be task-specific.
-
-When the shell does not apply:
-
-- Briefly state why before choosing another layout.
-
-For details, read `docs/superpowers/specs/2026-07-09-house-workspace-shell-design.md`.
-
-## Coding conventions
+Always:
 
 - Use TypeScript strict mode.
-- Avoid `any`; use proper types or `unknown` with narrowing.
-- Use functional React components.
+- Never use `any`; use explicit types or `unknown` with narrowing.
+- Prefer `interface` for object-shaped contracts.
+- Prefer `async`/`await` over promise chaining.
 - Keep components small and focused.
-- Prefer named exports for shared modules.
-- Do not introduce new dependencies without explaining why.
-- Prefer shadcn/ui primitives over hand-written common UI controls when an existing or addable shadcn component fits.
-- Follow existing naming and folder conventions.
+- Prefer composition over large monolithic components.
 
-## Testing expectations
+## Component Reuse
 
-- If changing business logic, add or update unit tests.
-- If changing API behavior, update API tests.
-- If changing UI flow, update component or e2e tests where relevant.
-- If fixing a bug, add a regression test when practical.
-- Before finishing, run:
-  - `npm typecheck`
-  - `npm lint`
-  - `npm test`
+- Before creating a UI component, search existing project components and installed libraries first.
+- Prefer reusing `components/ui/`, shared project components, and installed library components over creating a custom equivalent.
+- When suitable component options are found, present the options and recommended choice to the user before implementation.
+- Do not introduce a dependency or install a component library without explicit user approval.
+- Create a custom component only when no existing option satisfies the required behavior, design, accessibility, or maintainability needs.
 
-## Database rules
+## Workflow
 
-- Do not edit existing migrations.
-- Create a new migration for schema changes.
-- Do not drop columns or tables without explicit instruction.
-- Do not reset production-like databases.
-- Use seed data only in development or test environments.
-- Keep Supabase migrations, generated database types, RLS policies, and tests in sync.
+Follow this sequence for feature work and meaningful changes:
 
-## Security rules
+1. **Requirements** — Understand what the user needs.
+2. **Design** — Propose the screen or interaction when UI/UX changes.
+3. **Architecture** — Identify the files, data, and integrations that need to change.
+4. **Implementation** — Write or change the code.
+5. **Review** — Check that the code meets the requirements and standards.
+6. **Testing** — Run relevant checks and tests.
+7. **Documentation** — Update documentation when behavior, architecture, API, configuration, or workflow changes.
 
-- Never commit secrets, API keys, tokens, passwords, or private credentials.
-- Never log access tokens, refresh tokens, passwords, or full authorization headers.
-- Read environment variables from server-side code only.
-- Validate external input before using it.
-- Do not expose private user data to client components.
-- Do not create arbitrary image proxy endpoints.
-- Validate image URLs and allowed domains before fetching or storing external images.
-- Do not expose private storage credentials to client-side code.
+Very small changes, such as typo, copy-only, or obvious one-line changes, may skip Design and Architecture.
 
-## Documentation maintenance
+## Security
 
-Agents should keep project documentation up to date when a task changes project behavior, feature scope, architecture, API contracts, environment variables, or important setup steps.
+Never expose:
 
-Important documentation files:
+- API keys
+- Supabase service-role keys
+- Sensitive environment-variable values
+- Secrets, tokens, passwords, or private credentials
 
-- README.md - human-facing project overview, setup instructions, scripts, and current development focus
-- docs/image-management.md - requirement, scope, behavior, validation, edge cases, and testing checklist for the house image management feature
-- docs/architecture.md - system structure, data flow, boundaries, and major technical decisions
-- .env.example - required environment variables without real secrets
-- docs/api.md or feature-specific API docs - API routes, request/response shape, validation, and error behavior, if such files exist
-
-When to update documentation:
-
-- A feature requirement changes
-- A new admin flow is added
-- API behavior changes
-- Data model, database fields, storage behavior, or RLS behavior changes
-- Environment variables are added, renamed, or removed
-- Setup, build, test, or deployment steps change
-- Error handling or security behavior changes
-- The implementation differs from the existing documentation
-
-Documentation rules:
-
-- Do not update documentation for unrelated changes.
-- Do not invent requirements that were not requested.
-- If a detail is uncertain, add it under an Open questions section instead of guessing.
-- Keep documentation short, practical, and useful for future coding agents.
-- Prefer updating existing documentation over creating new files.
-- If a new documentation file is needed, explain why before creating it.
-- Documentation changes should match the actual code changes.
-
-Before finishing a task, the agent should mention whether documentation was updated.
-
-If documentation was not updated, the agent should briefly explain why, for example:
-
-- "No documentation update was needed because this was an internal refactor with no behavior change."
-- "No documentation update was needed because this only fixed styling."
-- "Documentation update was skipped because the relevant requirement is still unclear."
+- Read sensitive environment variables only in server-side code.
+- Never send secrets to client components, browser code, logs, error messages, commits, or documentation.
+- Validate all external input before use.
+- Use least-privilege access and enforce authorization on the server.
 
 ## Definition of Done
 
-Before finishing a task, the agent should:
+A feature is complete only when:
 
-- Summary of changes
-- Files changed
-- Commands run
-- Tests passed or failed
-- Documentation updated or why it was not needed
-- Any skipped checks and the reason
-- Any risks, assumptions, or follow-up work
+- [ ] Build passes
+- [ ] Type check passes
+- [ ] Relevant tests pass
+- [ ] Documentation is updated when behavior, architecture, API, configuration, or workflow changes
+- [ ] Code has been reviewed
+
+For changes that do not affect code or system behavior, build and test checks may
+be skipped only when the reason is stated clearly.
