@@ -1,10 +1,11 @@
-# Quotation Document Templates Design
+# Quotation Document Templates MVP 1 Design
 
 Date: 2026-08-04
 
 ## Goal
 
-Add three selectable quotation document templates while preserving all existing
+Deliver MVP 1 of the document customization roadmap: add three selectable,
+fixed quotation document templates while preserving all existing
 quotation data, calculations, visibility settings, document surfaces, and
 authorization boundaries.
 
@@ -20,6 +21,11 @@ Each quotation stores an independent template snapshot. Each account also has
 a default used to initialize future quotations. Changing the account default
 must never alter a saved quotation.
 
+MVP 1 does not expose block positioning or editable layout configuration. The
+three layouts are deterministic application code. Versioned layout management
+is a separate MVP 2 and cannot begin until MVP 1 has passed verification,
+deployed successfully to Staging, and completed Staging acceptance.
+
 ## Success Criteria
 
 - A user can select any of the three templates for an individual quotation.
@@ -33,6 +39,27 @@ must never alter a saved quotation.
   appearance does not change after migration.
 - Template selection does not mutate quotation content, calculations, payment
   methods, certification data, or display settings.
+
+## MVP Boundary And Deployment Gate
+
+MVP 1 contains only the fixed template catalogue, per-quotation selection,
+account default, and template-aware document rendering. It deliberately avoids
+layout JSON, template revision tables, drag-and-drop editing, block movement,
+and layout history.
+
+The MVP 1 completion gate is sequential:
+
+1. Code review, automated verification, documentation, and visual QA pass.
+2. The selected deployment target is verified as Staging:
+   `https://sxvkhzhqtrpxgzumsswl.supabase.co` and Cloudflare account
+   `0df55f166fa309dcc904e992c43f86db`.
+3. Database changes and the application are deployed successfully to Staging.
+4. Staging acceptance confirms Create, Edit, Preview, Print, PDF, and Public
+   Read-only across all three fixed templates.
+5. Only after this gate passes may MVP 2 implementation begin.
+
+Production deployment is not part of this gate and requires a new, direct user
+instruction plus confirmation of the Production targets in the current chat.
 
 ## Template Selection Experience
 
@@ -279,6 +306,9 @@ example images when implementation changes the user workflow.
 ## Out Of Scope
 
 - User-created templates
+- Editable block position, order, span, zones, or styling tokens (MVP 2)
+- Template layout revision history and rollback (MVP 2)
+- Automatically or manually applying a newer layout revision (MVP 2)
 - User-configurable template colors or fonts
 - Font uploads
 - Bulk template changes for saved quotations
