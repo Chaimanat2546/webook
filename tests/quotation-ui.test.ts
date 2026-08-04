@@ -14,7 +14,12 @@ describe("quotation UI", () => {
       "--loader", "./tests/tsx-loader.mjs",
       "./tests/fixtures/quotation-template-parity.mjs",
     ], { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    const renders = JSON.parse(output) as Record<string, { html: string }>;
+    const renders = JSON.parse(output) as Record<string, {
+      hiddenHtml: string;
+      html: string;
+      pdfByteLength: number;
+      pdfTreeText: string;
+    }>;
 
     for (const template of ["current", "hospitality", "corporate"]) {
       const html = renders[template]!.html;
@@ -31,6 +36,11 @@ describe("quotation UI", () => {
       ]) assert.ok(html.includes(value), `${template} must render ${value}`);
       assert.ok(html.includes(`data-quotation-template=\"${template}\"`));
       assert.ok(html.indexOf("data-document-header") < html.indexOf("data-document-certification"));
+      assert.ok(renders[template]!.pdfByteLength > 1_000, `${template} PDF renderer must produce a real document`);
+      for (const value of ["Seller Fixture", "QO-PARITY-001", "Customer Fixture", "Suite Fixture", "Fixture issuer"]) {
+        assert.ok(renders[template]!.pdfTreeText.includes(value), `${template} PDF tree must include ${value}`);
+      }
+      assert.doesNotMatch(renders[template]!.hiddenHtml, /Fixture reference|Fixture public note|>night</);
     }
   });
   it("keeps every HTML template on the shared public-document contract", () => {
