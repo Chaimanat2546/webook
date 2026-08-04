@@ -8,6 +8,30 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("renders Hospitality as a distinct accommodation-focused document", () => {
+    const hospitality = source("../components/admin/quotations/templates/quotation-document-hospitality.tsx");
+    const dispatcher = source("../components/admin/quotations/quotation-document.tsx");
+
+    for (const marker of [
+      'data-quotation-template="hospitality"',
+      "QUOTATION",
+      "#286a5b",
+      "#c79b58",
+      "data-hospitality-recipient",
+      "data-hospitality-settlement",
+      "data-document-items",
+      "data-document-payment-methods",
+      "data-document-notes",
+      "data-document-certification",
+      "มูลค่ารวม",
+      "ส่วนลด",
+    ]) {
+      assert.match(hospitality, new RegExp(marker));
+    }
+    assert.doesNotMatch(hospitality, /CurrentQuotationDocument/);
+    assert.match(dispatcher, /quotation-document-hospitality/);
+  });
+
   it("groups quotation and certification display switches in one modal", () => {
     const dialog = source("../components/admin/quotations/quotation-document-display-dialog.tsx");
     const editor = source("../components/admin/quotations/quotation-editor.tsx");

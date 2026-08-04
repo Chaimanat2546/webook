@@ -15,9 +15,32 @@ const currentPdf = source(
 const sharedPdf = source(
   "components/admin/quotations/templates/quotation-pdf-shared.tsx",
 );
+const hospitalityPdf = source(
+  "components/admin/quotations/templates/quotation-pdf-hospitality.tsx",
+);
 const editorSource = source("components/admin/quotations/quotation-editor.tsx");
 
 describe("quotation PDF", () => {
+  it("renders Hospitality with its own green PDF layout", () => {
+    for (const marker of [
+      "HospitalityQuotationPdf",
+      "#286a5b",
+      "#c79b58",
+      "data-pdf-header",
+      "data-pdf-items",
+      "data-pdf-totals",
+      "data-pdf-payment-methods",
+      "data-pdf-notes",
+      "data-pdf-certification",
+      "มูลค่ารวม",
+      "ส่วนลด",
+    ]) {
+      assert.match(hospitalityPdf, new RegExp(marker));
+    }
+    assert.doesNotMatch(hospitalityPdf, /CurrentQuotationPdf/);
+    assert.match(pdfSource, /quotation-pdf-hospitality/);
+  });
+
   it("uses the approved PDF renderer, shared model, Thai fonts, and A4", () => {
     assert.match(pdfSource, /@react-pdf\/renderer/);
     assert.match(pdfSource, /buildQuotationDocumentViewModel/);
