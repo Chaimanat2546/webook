@@ -34,5 +34,5 @@
   The full repository verification retains unrelated pre-existing failures;
   a normal build without Supabase variables fails at the environment boundary,
   while the local-only environment build previously succeeded.
-- Initial Task 9 handoff commit: `4031e91`. Parity commits: `2de3046` and
-  `81b624e`.
+- Initial Task 9 handoff commit: `4031e91`. Parity commits: `2de3046`,
+  `81b624e`, and `8223e95`.
