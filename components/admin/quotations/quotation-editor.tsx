@@ -27,6 +27,7 @@ import {
   deleteQuotationAction,
   saveQuotationAction,
   saveQuotationDocumentDisplayDefaultsAction,
+  saveQuotationTemplateDefaultAction,
 } from "../../../app/admin/quotations/actions";
 import {
   applyQuotationDocumentDisplay,
@@ -80,6 +81,7 @@ import { CertificationFields } from "./certification-fields";
 import { QuotationCustomerPicker } from "./customers/customer-picker-dialog";
 import { QuotationDocument } from "./quotation-document";
 import { QuotationDocumentDisplayDialog } from "./quotation-document-display-dialog";
+import { QuotationTemplateDialog } from "./quotation-template-dialog";
 import { PaymentMethodList } from "./payment-method-list";
 
 export interface QuotationEditorProps {
@@ -665,6 +667,7 @@ export function QuotationEditor({
   banks,
   documentNumber: initialDocumentNumber,
   initialPayload,
+  initialTemplateDefault,
   itemNames,
   printOnLoad = false,
   publicOrigin,
@@ -674,6 +677,7 @@ export function QuotationEditor({
   const [payload, setPayload] = useState<QuotationPayload>(() =>
     normalizeQuotationVatChoices(initialPayload),
   );
+  const [accountTemplateDefault, setAccountTemplateDefault] = useState(initialTemplateDefault);
   const [documentNumber, setDocumentNumber] = useState(initialDocumentNumber);
   const [publicToken, setPublicToken] = useState(initialPublicToken);
   const [publicQrDataUrl, setPublicQrDataUrl] = useState("");
@@ -772,6 +776,25 @@ export function QuotationEditor({
     changed("documentDisplay");
     setPayload((current) => applyQuotationDocumentDisplay(current, value));
     if (saveAsDefault) toast.success("บันทึกค่าเริ่มต้นรูปแบบเอกสารแล้ว");
+    return true;
+  }
+  async function applyTemplate(
+    value: QuotationTemplate,
+    saveAsDefault: boolean,
+  ): Promise<boolean> {
+    if (saveAsDefault) {
+      const result = await saveQuotationTemplateDefaultAction(value);
+      if (!result.ok) {
+        toast.error(result.formError);
+        return false;
+      }
+    }
+    changed("template");
+    setPayload((current) => ({ ...current, template: value }));
+    if (saveAsDefault) {
+      setAccountTemplateDefault(value);
+      toast.success("บันทึกเทมเพลตเริ่มต้นแล้ว");
+    }
     return true;
   }
   function updateRoot<K extends keyof QuotationPayload>(
@@ -1236,6 +1259,12 @@ export function QuotationEditor({
           className="flex flex-wrap items-center gap-2"
           data-document-actions
         >
+          <QuotationTemplateDialog
+            accountDefault={accountTemplateDefault}
+            disabled={isPending || uploadingFields.size > 0}
+            onApply={applyTemplate}
+            value={payload.template}
+          />
           <QuotationDocumentDisplayDialog
             disabled={isPending || uploadingFields.size > 0}
             onApply={applyDocumentDisplay}

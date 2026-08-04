@@ -1299,4 +1299,27 @@ describe("quotation UI", () => {
     assert.doesNotMatch(customerSection, /<TextInput|<Textarea|<OfficeTypeControls/);
     assert.doesNotMatch(editor, /function updateCustomerOfficeType/);
   });
+
+  it("offers an accessible quotation template selector with account default scope", () => {
+    const templateDialog = source("../components/admin/quotations/quotation-template-dialog.tsx");
+    const templateThumbnail = source("../components/admin/quotations/quotation-template-thumbnail.tsx");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(templateDialog, /Dialog/);
+    assert.match(templateDialog, /RadioGroup/);
+    assert.match(templateDialog, /Card/);
+    assert.match(templateDialog, /กำลังใช้/);
+    assert.match(templateDialog, /ค่าเริ่มต้นของบัญชี/);
+    assert.match(templateDialog, /ใช้เฉพาะใบเสนอราคานี้/);
+    assert.match(templateDialog, /ใช้และบันทึกเป็นค่าเริ่มต้น/);
+    assert.match(templateDialog, /มีผลกับใบใหม่ในอนาคต ไม่เปลี่ยนใบที่บันทึกแล้ว/);
+    for (const key of ["current", "hospitality", "corporate"]) {
+      assert.match(templateThumbnail, new RegExp(`data-template-thumbnail=["']${key}["']`));
+    }
+    assert.match(editor, /saveQuotationTemplateDefaultAction/);
+    assert.match(editor, /initialTemplateDefault: QuotationTemplate/);
+    assert.match(editor, /useState\(initialTemplateDefault\)/);
+    assert.match(editor, /changed\("template"\)/);
+    assert.match(editor, /template: value/);
+  });
 });
