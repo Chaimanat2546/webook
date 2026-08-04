@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { emptyPaymentMethod, paymentMethodEditorState, updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
@@ -8,6 +9,30 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("renders every template from one complete shared fixture", () => {
+    const output = execFileSync(process.execPath, [
+      "--loader", "./tests/tsx-loader.mjs",
+      "./tests/fixtures/quotation-template-parity.mjs",
+    ], { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const renders = JSON.parse(output) as Record<string, { html: string }>;
+
+    for (const template of ["current", "hospitality", "corporate"]) {
+      const html = renders[template]!.html;
+      for (const value of [
+        "Seller Fixture",
+        "QO-PARITY-001",
+        "Customer Fixture",
+        "Suite Fixture",
+        "Fixture service detail",
+        "9,876.50",
+        "Fixture payment instruction",
+        "Fixture public note",
+        "Fixture issuer",
+      ]) assert.ok(html.includes(value), `${template} must render ${value}`);
+      assert.ok(html.includes(`data-quotation-template=\"${template}\"`));
+      assert.ok(html.indexOf("data-document-header") < html.indexOf("data-document-certification"));
+    }
+  });
   it("keeps every HTML template on the shared public-document contract", () => {
     const templates = [
       source("../components/admin/quotations/templates/quotation-document-current.tsx"),

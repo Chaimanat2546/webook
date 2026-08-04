@@ -192,8 +192,9 @@ Preview, Print, or Public Read-only.
 - Invalid saves show one Toast while keeping field-specific errors inline.
 - Leaving with unsaved changes uses an in-app confirmation dialog. Browser
   refresh and tab close continue to use the browser-native unsaved-changes warning.
-- Preview uses the current draft. Print, PDF Download, and Public Share remain
-  limited to the latest clean saved document.
+- Preview uses the current draft. Print continues to render `lastSavedPayload`,
+  including while a newer draft is dirty. PDF Download and Public Share require
+  a clean saved quotation.
 - Reference and `เรื่อง / ชื่องาน (ถ้ามี)` are optional. Empty optional values
   are omitted from Preview, Public, Print, and PDF instead of showing a placeholder.
 - Currency copy is always `บาท`.
