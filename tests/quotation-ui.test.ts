@@ -1260,7 +1260,7 @@ describe("quotation UI", () => {
   it("keeps quotation field errors inline and emits one validation toast", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
 
-    assert.match(editor, /const errorFields = Object\.keys\(result\.fieldErrors\)[\s\S]*else if \(errorFields\.length\)[\s\S]*toast\.error\("กรุณาตรวจสอบข้อมูลที่กรอก"\)/);
+    assert.match(editor, /const errorFields = Object\.keys\(result\.fieldErrors\)[\s\S]*const firstErrorMessage = firstField[\s\S]*result\.fieldErrors\[firstField\][\s\S]*else if \(firstErrorMessage\)[\s\S]*toast\.error\(firstErrorMessage\)/);
     assert.match(editor, /const firstField = errorFields\[0\][\s\S]*pendingFocusField\.current = firstField/);
     assert.doesNotMatch(editor, /focusableFieldErrors/);
     assert.doesNotMatch(editor, /<AlertDescription>\{formError\}<\/AlertDescription>/);

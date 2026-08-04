@@ -949,6 +949,9 @@ export function QuotationEditor({
       if (!result.ok) {
         const errorFields = Object.keys(result.fieldErrors);
         const firstField = errorFields[0];
+        const firstErrorMessage = firstField
+          ? result.fieldErrors[firstField]
+          : undefined;
         if (firstField) {
           pendingFocusField.current = firstField.startsWith("customer.")
             ? "customer.name"
@@ -956,8 +959,7 @@ export function QuotationEditor({
         }
         setFieldErrors(result.fieldErrors);
         if (result.formError) toast.error(result.formError);
-        else if (errorFields.length)
-          toast.error("กรุณาตรวจสอบข้อมูลที่กรอก");
+        else if (firstErrorMessage) toast.error(firstErrorMessage);
         const completionField = errorFields.find(
           (field) =>
             field === "certification" ||
