@@ -27,6 +27,7 @@ function payload(): QuotationPayload {
     reference: "",
     seller: { address: "Seller", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "Seller", officeType: "head_office", phone: "", taxId: "0100000000000", website: "" },
     subject: "",
+    template: "current",
     validUntil: "2026-08-06",
     validityDays: "15",
     withholdingTaxRate: null,

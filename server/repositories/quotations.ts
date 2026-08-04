@@ -20,6 +20,7 @@ import type {
   QuotationPayload,
   SellerSnapshot,
 } from "../../lib/quotation-types.ts";
+import { DEFAULT_QUOTATION_TEMPLATE } from "../../lib/quotation-template.ts";
 import type { PreparedQuotation } from "../services/quotations";
 import {
   normalizeQuotationDocumentDisplay,
@@ -305,6 +306,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
     reference: stringValue(row.reference),
     seller: sellerSnapshot(row.seller_snapshot),
     subject: stringValue(row.subject),
+    template: DEFAULT_QUOTATION_TEMPLATE,
     validUntil: stringValue(row.valid_until),
     validityDays: row.validity_days == null ? "" : stringValue(row.validity_days),
     withholdingTaxRate: row.withholding_tax_rate == null ? null : stringValue(row.withholding_tax_rate),

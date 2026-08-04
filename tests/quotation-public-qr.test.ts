@@ -64,6 +64,7 @@ describe("quotation Public QR", () => {
       reference: "",
       seller: { address: "", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "ผู้ขาย", officeType: "head_office", phone: "", taxId: "", website: "" },
       subject: "",
+      template: "current",
       validUntil: "2026-07-30",
       validityDays: "10",
       withholdingTaxRate: null,
