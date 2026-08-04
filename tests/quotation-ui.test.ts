@@ -16,6 +16,8 @@ describe("quotation UI", () => {
     ], { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     const renders = JSON.parse(output) as Record<string, {
       hiddenHtml: string;
+      hiddenPdfByteLength: number;
+      hiddenPdfTreeText: string;
       html: string;
       pdfByteLength: number;
       pdfTreeText: string;
@@ -37,10 +39,12 @@ describe("quotation UI", () => {
       assert.ok(html.includes(`data-quotation-template=\"${template}\"`));
       assert.ok(html.indexOf("data-document-header") < html.indexOf("data-document-certification"));
       assert.ok(renders[template]!.pdfByteLength > 1_000, `${template} PDF renderer must produce a real document`);
+      assert.ok(renders[template]!.hiddenPdfByteLength > 1_000, `${template} hidden PDF renderer must produce a real document`);
       for (const value of ["Seller Fixture", "QO-PARITY-001", "Customer Fixture", "Suite Fixture", "Fixture issuer"]) {
         assert.ok(renders[template]!.pdfTreeText.includes(value), `${template} PDF tree must include ${value}`);
       }
       assert.doesNotMatch(renders[template]!.hiddenHtml, /Fixture reference|Fixture public note|>night</);
+      assert.doesNotMatch(renders[template]!.hiddenPdfTreeText, /Fixture reference|Fixture public note|night/);
     }
   });
   it("keeps every HTML template on the shared public-document contract", () => {

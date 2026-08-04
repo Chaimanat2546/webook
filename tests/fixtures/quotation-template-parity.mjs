@@ -48,24 +48,31 @@ function collectPdfTreeText(node) {
   return collectPdfTreeText(node.props.children);
 }
 
+async function renderPdfBuffer(Renderer, model) {
+  const stream = await pdf(React.createElement(Renderer, { images: {}, model })).toBuffer();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return Buffer.concat(chunks).byteLength;
+}
+
 const renders = Object.fromEntries(await Promise.all(["current", "hospitality", "corporate"].map(async (template) => {
   const templatePayload = { ...payload, template };
   const model = buildQuotationDocumentViewModel({ calculation, documentNumber: "QO-PARITY-001", payload: templatePayload });
   const Renderer = rendererByTemplate[template];
-  const pdfStream = await pdf(React.createElement(Renderer, { images: {}, model })).toBuffer();
-  const pdfChunks = [];
-  for await (const chunk of pdfStream) pdfChunks.push(chunk);
   const hiddenPayload = {
     ...templatePayload,
     documentDisplay: { ...templatePayload.documentDisplay, notes: false, reference: false, unit: false },
   };
+  const hiddenModel = buildQuotationDocumentViewModel({ calculation, documentNumber: "QO-PARITY-001", payload: hiddenPayload });
   return [
     template,
     {
       html: renderToStaticMarkup(React.createElement(QuotationDocument, { calculation, documentNumber: "QO-PARITY-001", payload: templatePayload })),
       hiddenHtml: renderToStaticMarkup(React.createElement(QuotationDocument, { calculation, documentNumber: "QO-PARITY-001", payload: hiddenPayload })),
+      hiddenPdfByteLength: await renderPdfBuffer(Renderer, hiddenModel),
+      hiddenPdfTreeText: collectPdfTreeText(React.createElement(Renderer, { images: {}, model: hiddenModel })),
       pdfTreeText: collectPdfTreeText(React.createElement(Renderer, { images: {}, model })),
-      pdfByteLength: Buffer.concat(pdfChunks).byteLength,
+      pdfByteLength: await renderPdfBuffer(Renderer, model),
     },
   ];
 })));
