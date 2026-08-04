@@ -72,7 +72,7 @@ describe("quotation public share", () => {
   it("uses the same saved payment document for public read-only", () => {
     const page = source("../app/q/[token]/page.tsx");
     const repository = source("../server/repositories/quotations.ts");
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     const viewModel = source("../lib/quotation-document-view.ts");
 
     assert.match(page, /quotation\.payload/);
@@ -91,7 +91,7 @@ describe("quotation public share", () => {
   it("keeps the public A4 document inside an intentional horizontal viewport", () => {
     const page = source("../app/q/[token]/page.tsx");
     const document = source(
-      "../components/admin/quotations/quotation-document.tsx",
+      "../components/admin/quotations/templates/quotation-document-current.tsx",
     );
 
     assert.match(page, /data-public-quotation-viewport/);

@@ -179,7 +179,7 @@ describe("quotation PDF", () => {
 
   it("keeps HTML and PDF sections in the same approved order", () => {
     const html = readFileSync(
-      "components/admin/quotations/quotation-document.tsx",
+      "components/admin/quotations/templates/quotation-document-current.tsx",
       "utf8",
     );
     const htmlMarkers = [
@@ -216,7 +216,7 @@ describe("quotation PDF", () => {
 
   it("omits an empty optional reference in HTML and PDF", () => {
     const html = readFileSync(
-      "components/admin/quotations/quotation-document.tsx",
+      "components/admin/quotations/templates/quotation-document-current.tsx",
       "utf8",
     );
 
@@ -227,7 +227,10 @@ describe("quotation PDF", () => {
 
   it("keeps unspecified offices blank and uses generic VAT summary labels", () => {
     const html = readFileSync(
-      "components/admin/quotations/quotation-document.tsx",
+      "components/admin/quotations/templates/quotation-document-current.tsx",
+      "utf8",
+    ) + readFileSync(
+      "components/admin/quotations/templates/quotation-document-shared.tsx",
       "utf8",
     );
 

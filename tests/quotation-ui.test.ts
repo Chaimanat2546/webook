@@ -25,7 +25,7 @@ describe("quotation UI", () => {
     assert.match(editor, /showTax: payload\.documentDisplay\.tax/);
   });
   it("adapts the shared A4 document to the approved quotation reference", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
 
     assert.match(document, /import \{ formatBaht, formatMoney \}/);
     assert.match(document, /data-document-header/);
@@ -43,8 +43,28 @@ describe("quotation UI", () => {
     assert.doesNotMatch(document, /internalNotes/);
   });
 
+  it("preserves Current document sections while the root dispatches by template", () => {
+    const currentDocument = source("../components/admin/quotations/templates/quotation-document-current.tsx");
+    const dispatcher = source("../components/admin/quotations/quotation-document.tsx");
+
+    for (const marker of [
+      "data-document-header",
+      "data-document-customer",
+      "data-document-items",
+      "data-document-summary",
+      "data-document-payment-methods",
+      "data-document-notes",
+      "data-document-certification",
+    ]) {
+      assert.match(currentDocument, new RegExp(marker));
+    }
+    assert.match(dispatcher, /buildQuotationDocumentViewModel/);
+    assert.match(dispatcher, /payload\.template/);
+    assert.match(dispatcher, /CurrentQuotationDocument/);
+  });
+
   it("styles document item descriptions as secondary text", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     assert.match(
       document,
       /<p className="ml-5 whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]">[\s\S]*?\{item\.description\}[\s\S]*?<\/p>/,
@@ -56,7 +76,7 @@ describe("quotation UI", () => {
   });
 
   it("contains long valid item quantities and money inside fixed table cells", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     const containedNumericCell = String.raw`className="max-w-0 p-2 text-right tabular-nums \[overflow-wrap:anywhere\]"`;
 
     assert.match(
@@ -246,29 +266,31 @@ describe("quotation UI", () => {
   });
 
   it("renders saved payment methods once in the shared document", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
+    const shared = source("../components/admin/quotations/templates/quotation-document-shared.tsx");
     const viewModel = source("../lib/quotation-document-view.ts");
     const globalCss = source("../app/globals.css");
 
     assert.match(document, /model\.paymentMethods\.length/);
     assert.match(viewModel, /\.sort\(\(left, right\) => left\.position - right\.position\)/);
     assert.match(viewModel, /renderThaiQRPaymentMatrix/);
-    assert.match(document, /method\.qrMode === "auto_promptpay"/);
-    assert.match(document, /method\.qrSource/);
-    assert.match(document, /method\.customBankLogoUrl \|\| method\.bankLogoUrl/);
-    assert.match(document, /method\.accountNumber/);
-    assert.match(document, /method\.promptPayId/);
-    assert.match(document, /method\.instructions/);
-    assert.match(document, /break-inside-avoid/);
-    assert.match(document, /\[overflow-wrap:anywhere\]/);
-    assert.match(document, /ไม่สามารถสร้าง QR ได้/);
+    assert.match(shared, /method\.qrMode === "auto_promptpay"/);
+    assert.match(shared, /method\.qrSource/);
+    assert.match(shared, /method\.customBankLogoUrl \|\| method\.bankLogoUrl/);
+    assert.match(shared, /method\.accountNumber/);
+    assert.match(shared, /method\.promptPayId/);
+    assert.match(shared, /method\.instructions/);
+    assert.match(shared, /break-inside-avoid/);
+    assert.match(shared, /\[overflow-wrap:anywhere\]/);
+    assert.match(shared, /ไม่สามารถสร้าง QR ได้/);
     assert.match(viewModel, /amount <= 0/);
     assert.match(globalCss, /\[data-document-payment-methods\]\s*\{\s*break-inside:\s*auto\s*!important/);
-    assert.doesNotMatch(document, /internalNotes/);
+    assert.doesNotMatch(document + shared, /internalNotes/);
   });
 
   it("renders one compact five-slot certification row", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
+    const shared = source("../components/admin/quotations/templates/quotation-document-shared.tsx");
     const imagePath = new URL("../components/admin/quotations/document-image.tsx", import.meta.url);
 
     assert.ok(existsSync(imagePath), "document image fallback should exist");
@@ -276,11 +298,11 @@ describe("quotation UI", () => {
     const certificationMarker = document.indexOf("data-document-certification");
     const certification = document.slice(
       document.lastIndexOf("<section", certificationMarker),
-      document.indexOf("function PaymentMethod"),
+      document.length,
     );
-    const signer = document.slice(
-      document.indexOf("function SignerSlot"),
-      document.indexOf("function Total"),
+    const signer = shared.slice(
+      shared.indexOf("function SignerSlot"),
+      shared.indexOf("function Total"),
     );
 
     assert.match(certification, /grid-cols-5/);
@@ -339,7 +361,8 @@ describe("quotation UI", () => {
   });
 
   it("uses the compact reference hierarchy for preview and print", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
+    const shared = source("../components/admin/quotations/templates/quotation-document-shared.tsx");
 
     assert.match(document, /data-document-seller-details/);
     assert.match(document, /data-document-seller-contact/);
@@ -360,14 +383,14 @@ describe("quotation UI", () => {
     assert.match(document, /data-document-payment-list/);
     assert.match(document, /data-document-payment-heading/);
     assert.match(
-      document,
+      shared,
       /data-document-payment-entry[\s\S]*?data-document-payment-logo[\s\S]*?data-document-payment-details/,
     );
     assert.match(
-      document,
+      shared,
       /data-document-payment-details[\s\S]*?\{title\}[\s\S]*?accountNumberLine[\s\S]*?method\.accountName/,
     );
-    assert.match(document, /data-document-payment-logo[\s\S]*?className="h-9 w-9/);
+    assert.match(shared, /data-document-payment-logo[\s\S]*?className="h-9 w-9/);
     assert.doesNotMatch(document, /grid-cols-2 gap-x-6 gap-y-4/);
     assert.doesNotMatch(document, /border-y/);
     assert.doesNotMatch(document, /formatBaht\(calculation\.grossTotal\)/);
@@ -382,7 +405,7 @@ describe("quotation UI", () => {
   });
 
   it("uses accessible icons for seller contact labels", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
 
     assert.match(document, /<Phone aria-hidden="true"/);
     assert.match(document, /<Mail aria-hidden="true"/);
@@ -506,7 +529,7 @@ describe("quotation UI", () => {
       paymentEditor.indexOf('{method.type === "promptpay"'),
       paymentEditor.indexOf('{method.type === "qr_payment"'),
     );
-    const documentSource = source("../components/admin/quotations/quotation-document.tsx");
+    const documentSource = source("../components/admin/quotations/templates/quotation-document-shared.tsx");
 
     assert.match(bankEditorScope, /lg:grid-cols-5/);
     assert.match(bankEditorScope, /label="ธนาคาร"[\s\S]*label="ประเภทบัญชี"[\s\S]*label="ชื่อบัญชี"[\s\S]*label="เลขที่บัญชี"[\s\S]*label="QR โอนเงิน"/);
@@ -874,7 +897,7 @@ describe("quotation UI", () => {
 
   it("keeps quotation-specific customer and item fields focused on villa services", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     assert.doesNotMatch(editor, /customer\.(contactName|email|phone|serviceLocation|shippingAddress)/);
     assert.doesNotMatch(editor, /items\.\$\{index\}\.sku|aria-label="SKU"|placeholder="SKU"/);
     assert.doesNotMatch(document, /customer\.(contactName|email|phone|serviceLocation|shippingAddress)/);
@@ -1024,7 +1047,7 @@ describe("quotation UI", () => {
 
   it("uses fixed item discounts and pre-tax item values", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     assert.match(editor, /field=\{`items\.\$\{index\}\.discountAmount`\}/);
     assert.match(editor, /calculation\?\.lines\[index\]\?\.preTaxAmount/);
     const item = editor.slice(editor.indexOf("function SortableQuotationItem"), editor.indexOf("function ItemDetailsControls"));
@@ -1196,7 +1219,7 @@ describe("quotation UI", () => {
   it("prints the saved document through an isolated body-level portal", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const css = source("../app/globals.css");
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
 
     assert.match(editor, /import \{ createPortal \} from "react-dom"/);
     assert.match(editor, /const \[isPrinting, setIsPrinting\] = useState\(false\)/);
