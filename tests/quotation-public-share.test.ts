@@ -88,6 +88,24 @@ describe("quotation public share", () => {
     assert.doesNotMatch(document, /internalNotes/);
   });
 
+  it("passes the public saved template snapshot to the shared document dispatcher", () => {
+    const page = source("../app/q/[token]/page.tsx");
+    const dispatcher = source("../components/admin/quotations/quotation-document.tsx");
+
+    assert.match(
+      page,
+      /<QuotationDocument[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{quotation\.payload\}[\s\S]*publicQrDataUrl=\{publicQrDataUrl\}/,
+    );
+    assert.match(dispatcher, /payload\.template/);
+    for (const renderer of [
+      "CurrentQuotationDocument",
+      "HospitalityQuotationDocument",
+      "CorporateQuotationDocument",
+    ]) {
+      assert.match(dispatcher, new RegExp(renderer));
+    }
+  });
+
   it("keeps the public A4 document inside an intentional horizontal viewport", () => {
     const page = source("../app/q/[token]/page.tsx");
     const document = source(

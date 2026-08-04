@@ -8,6 +8,58 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("keeps every HTML template on the shared public-document contract", () => {
+    const templates = [
+      source("../components/admin/quotations/templates/quotation-document-current.tsx"),
+      source("../components/admin/quotations/templates/quotation-document-hospitality.tsx"),
+      source("../components/admin/quotations/templates/quotation-document-corporate.tsx"),
+    ];
+
+    for (const template of templates) {
+      for (const marker of [
+        "data-document-header",
+        "data-document-metadata",
+        "data-document-customer",
+        "data-document-items",
+        "data-document-summary",
+        "data-document-payment-methods",
+        "data-document-notes",
+        "data-document-certification",
+        "payload.seller",
+        "model.documentNumber",
+        "payload.seller.name",
+        "payload.seller.address",
+        "payload.seller.taxId",
+        "model.issueDate",
+        "model.validUntil",
+        "payload.customer.name",
+        "payload.customer.address",
+        "calculation.lines.map",
+        "calculation.grandTotal",
+        "model.paymentMethods.map",
+        "payload.publicNotes",
+        "model.certification",
+      ]) {
+        assert.match(template, new RegExp(marker));
+      }
+      assert.doesNotMatch(template, /internalNotes/);
+      assert.doesNotMatch(template, /calculateQuotation|document_template_default|accountTemplateDefault/);
+    }
+  });
+
+  it("uses the draft only for Preview and the saved snapshot for Print", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(
+      editor,
+      /<QuotationDocument[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{payload\}[\s\S]*publicQrDataUrl=\{draftPublicQrDataUrl\}/,
+    );
+    assert.match(
+      editor,
+      /createPortal\([\s\S]*<QuotationDocument[\s\S]*calculation=\{savedCalculation\}[\s\S]*payload=\{lastSavedPayload\}[\s\S]*publicQrDataUrl=\{savedPublicQrDataUrl\}/,
+    );
+  });
+
   it("renders Corporate as a distinct procurement-focused document", () => {
     const corporate = source("../components/admin/quotations/templates/quotation-document-corporate.tsx");
     const dispatcher = source("../components/admin/quotations/quotation-document.tsx");

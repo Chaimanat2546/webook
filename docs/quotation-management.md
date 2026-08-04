@@ -47,6 +47,27 @@ history.
 
 ## Master And Snapshot Rules
 
+- Each account has a default quotation template. The fixed, type-safe
+  catalogue is `current` (the compatible Indigo document), `hospitality`
+  (green and warm-gold accommodation document), and `corporate` (navy and gray
+  procurement document).
+- Create and Edit expose a template selector beside the document-display
+  settings. `ใช้เฉพาะใบเสนอราคานี้` changes only the current draft; the choice
+  becomes the quotation's template snapshot when the document is saved.
+  `ใช้และบันทึกเป็นค่าเริ่มต้น` first saves the same choice as the account
+  default, then applies it to the draft. A failed default save leaves the
+  dialog and draft choice unchanged.
+- A new quotation starts with the account default. A saved quotation always
+  reads its own immutable template snapshot, so changing the account default
+  never changes an existing quotation.
+- Preview uses the current draft template immediately. Print, PDF Download,
+  and Public Read-only use the latest successfully saved template snapshot.
+  Saving a template selection does not change quotation content, calculations,
+  payment methods, certification data, or document-display settings.
+- The migration backfills existing accounts and quotations to `current`, which
+  preserves the established document appearance. MVP 1 has no editable layout,
+  block positioning, template revisions, or layout history; those MVP 2
+  capabilities remain unavailable until the Staging gate is complete.
 - Each account has one seller profile, an ordered reusable payment list, and
   optional issuer, approver, signature, and company-stamp certification data.
 - New quotations copy default payment masters into editable quotation rows.

@@ -24,6 +24,38 @@ const corporatePdf = source(
 const editorSource = source("components/admin/quotations/quotation-editor.tsx");
 
 describe("quotation PDF", () => {
+  it("keeps every PDF template on the shared public-document contract", () => {
+    for (const template of [currentPdf, hospitalityPdf, corporatePdf]) {
+      for (const marker of [
+        "data-pdf-header",
+        "data-pdf-customer",
+        "data-pdf-items",
+        "data-pdf-totals",
+        "data-pdf-payment-methods",
+        "data-pdf-notes",
+        "data-pdf-certification",
+        "payload.seller",
+        "model.documentNumber",
+        "payload.seller.name",
+        "payload.seller.address",
+        "payload.seller.taxId",
+        "model.issueDate",
+        "model.validUntil",
+        "payload.customer.name",
+        "payload.customer.address",
+        "calculation.lines.map",
+        "calculation.grandTotal",
+        "model.paymentMethods.map",
+        "payload.publicNotes",
+        "model.certification",
+      ]) {
+        assert.match(template, new RegExp(marker));
+      }
+      assert.doesNotMatch(template, /internalNotes/);
+      assert.doesNotMatch(template, /calculateQuotation|document_template_default|accountTemplateDefault/);
+    }
+  });
+
   it("renders Corporate with its own navy PDF layout", () => {
     for (const marker of [
       "CorporateQuotationPdf",
