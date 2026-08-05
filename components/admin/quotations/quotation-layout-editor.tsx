@@ -1,6 +1,9 @@
 "use client";
 
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, History, RotateCcw } from "lucide-react";
+import { move } from "@dnd-kit/helpers";
+import { DragDropProvider } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, GripVertical, History, RotateCcw } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -14,6 +17,7 @@ import {
   type QuotationLayoutConfig,
 } from "../../../lib/quotation-layout";
 import { QUOTATION_TEMPLATE_LABELS, type QuotationTemplate } from "../../../lib/quotation-template";
+import { cn } from "../../../lib/utils";
 import type {
   QuotationDocumentTemplateRevision,
   QuotationDocumentTemplateSnapshot,
@@ -60,6 +64,45 @@ function revisionTimestamp(value: string): string {
   }).format(date);
 }
 
+function SortableLayoutBlock({
+  block,
+  index,
+}: {
+  block: QuotationLayoutBlock;
+  index: number;
+}) {
+  const { handleRef, isDragging, ref } = useSortable({
+    group: `quotation-layout-${block.zone}`,
+    id: block.id,
+    index,
+  });
+
+  return <div
+    className={cn(
+      "min-h-16 rounded border border-primary/30 bg-primary/5 p-3 text-sm shadow-sm",
+      isDragging && "opacity-55",
+    )}
+    data-layout-block={block.id}
+    ref={ref}
+    style={{ gridColumn: `${block.column} / span ${block.span}` }}
+  >
+    <div className="flex items-start justify-between gap-2">
+      <p className="font-medium">{BLOCK_LABELS[block.id]}</p>
+      <Button
+        aria-label={`ลาก ${BLOCK_LABELS[block.id]} เพื่อเรียงลำดับ`}
+        className="-mr-1 -mt-1 shrink-0"
+        ref={handleRef}
+        size="icon-xs"
+        type="button"
+        variant="ghost"
+      >
+        <GripVertical aria-hidden="true" />
+      </Button>
+    </div>
+    <p className="mt-1 text-xs text-muted-foreground">คอลัมน์ {block.column} · กว้าง {block.span}/12</p>
+  </div>;
+}
+
 export function QuotationLayoutEditor({
   initial,
   revisions,
@@ -99,6 +142,19 @@ export function QuotationLayoutEditor({
     const order = block.order;
     block.order = neighbour.order;
     neighbour.order = order;
+    update(next);
+  }
+
+  function reorderZone(zone: QuotationLayoutBlock["zone"], event: Parameters<typeof move>[1]) {
+    const ordered = blocksInZone(draft, zone);
+    const reordered = move(ordered, event) as QuotationLayoutBlock[];
+    if (reordered.every((block, index) => block.id === ordered[index]?.id)) return;
+    const next = clone(draft);
+    const orderById = new Map(reordered.map((block, index) => [block.id, (index + 1) * 10]));
+    for (const block of next.blocks) {
+      const order = orderById.get(block.id);
+      if (order !== undefined) block.order = order;
+    }
     update(next);
   }
 
@@ -145,17 +201,11 @@ export function QuotationLayoutEditor({
               if (!blocks.length) return null;
               return <section className="grid gap-2" data-layout-zone={zone} key={zone}>
                 <p className="text-xs font-semibold text-muted-foreground">{ZONE_LABELS[zone]}</p>
-                <div className="grid grid-cols-12 gap-2">
-                  {blocks.map((block) => <div
-                    className="min-h-16 rounded border border-primary/30 bg-primary/5 p-3 text-sm shadow-sm"
-                    data-layout-block={block.id}
-                    key={block.id}
-                    style={{ gridColumn: `${block.column} / span ${block.span}` }}
-                  >
-                    <p className="font-medium">{BLOCK_LABELS[block.id]}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">คอลัมน์ {block.column} · กว้าง {block.span}/12</p>
-                  </div>)}
-                </div>
+                <DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}>
+                  <div className="grid grid-cols-12 gap-2">
+                    {blocks.map((block, index) => <SortableLayoutBlock block={block} index={index} key={block.id} />)}
+                  </div>
+                </DragDropProvider>
               </section>;
             })}
           </div>
