@@ -108,7 +108,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
           {model.paymentMethods.length ? <div data-document-payment-methods><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#286a5b]"><CreditCard aria-hidden="true" className="size-3" />การชำระเงิน</h2><div className="divide-y divide-[#286a5b]/15">{model.paymentMethods.map((method) => <PaymentMethod key={method.id} method={method} />)}</div></div> : null}
         </div>
         {model.showNotes ? <section data-document-notes data-layout-block="publicNotes" style={quotationLayoutBlockStyle(model, "publicNotes")}><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#286a5b]"><MessageCircle aria-hidden="true" className="size-3" />หมายเหตุ</h2><p className="whitespace-pre-line [overflow-wrap:anywhere]">{payload.publicNotes}</p></section> : null}
-        <aside className="break-inside-avoid self-start rounded-md bg-[#286a5b] p-3 text-white" data-hospitality-settlement data-document-summary-settlement data-layout-block="summary" style={quotationLayoutBlockStyle(model, "summary")}>
+        <aside className="break-inside-avoid h-full rounded-md bg-[#286a5b] p-3 text-white" data-hospitality-settlement data-document-summary-settlement data-layout-block="summary" style={quotationLayoutBlockStyle(model, "summary")}>
           <h2 className="mb-2 flex items-center gap-1 font-semibold"><ReceiptText aria-hidden="true" className="size-3" />สรุปการชำระ</h2>
           <HospitalityTotal label="มูลค่ารวม" value={formatBaht(calculation.grossTotal)} />
           <HospitalityTotal label="ส่วนลด" value={formatBaht(calculation.discountTotal)} />

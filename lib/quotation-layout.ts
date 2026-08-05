@@ -194,6 +194,11 @@ export function quotationLayoutBlockRow(config: QuotationLayoutConfig, id: Quota
   return 1;
 }
 
+/** Fixed visual height rules owned by the document template, not editable layout data. */
+export function quotationLayoutBlockRowSpan(template: QuotationTemplate, id: QuotationLayoutBlockId): number {
+  return id === "summary" && template !== "current" ? 2 : 1;
+}
+
 export function canonicalQuotationLayoutSnapshot(template: QuotationTemplate): QuotationLayoutSnapshot {
   return {
     config: canonicalQuotationLayout(template),

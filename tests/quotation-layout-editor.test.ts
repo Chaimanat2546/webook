@@ -18,6 +18,7 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /role="button"/);
     assert.match(source, /BlockPreview/);
     assert.match(source, /quotationLayoutBlockRow\(config, block\.id\)/);
+    assert.match(source, /quotationLayoutBlockRowSpan\(template, block\.id\)/);
     assert.match(source, /data-layout-position-controls/);
     assert.match(source, /data-layout-template=\{template\}/);
     assert.match(source, /TEMPLATE_CANVAS/);

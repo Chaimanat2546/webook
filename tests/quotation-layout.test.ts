@@ -5,6 +5,7 @@ import {
   canonicalQuotationLayout,
   isQuotationLayoutConfig,
   normalizeQuotationLayout,
+  quotationLayoutBlockRowSpan,
   quotationLayoutBlockRow,
   QUOTATION_LAYOUT_SCHEMA_VERSION,
 } from "../lib/quotation-layout.ts";
@@ -42,5 +43,11 @@ describe("quotation layout", () => {
     assert.equal(quotationLayoutBlockRow(reordered, "seller"), 1);
     assert.equal(quotationLayoutBlockRow(reordered, "paymentMethods"), 1);
     assert.equal(quotationLayoutBlockRow(reordered, "publicNotes"), 2);
+  });
+
+  it("keeps Corporate and Hospitality summaries two rows tall", () => {
+    assert.equal(quotationLayoutBlockRowSpan("current", "summary"), 1);
+    assert.equal(quotationLayoutBlockRowSpan("corporate", "summary"), 2);
+    assert.equal(quotationLayoutBlockRowSpan("hospitality", "summary"), 2);
   });
 });
