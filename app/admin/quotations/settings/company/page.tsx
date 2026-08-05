@@ -46,7 +46,7 @@ export default async function CompanyProfilePage({ searchParams }: { searchParam
   const revisions = templateSnapshots
     ? await listQuotationDocumentTemplateRevisions(supabase, templateSnapshots[selectedTemplate].sourceId, selectedTemplate)
     : [];
-  return <QuotationSettingsDirtyProvider><div className="mx-auto grid w-full max-w-6xl gap-5">
+  return <QuotationSettingsDirtyProvider><div className="mx-auto grid w-full max-w-[1440px] gap-5">
     <header className="flex items-start gap-3 border-b pb-4">
       <Button asChild size="icon-sm" variant="ghost"><QuotationSettingsNavLink aria-label="กลับไปหน้ารายการใบเสนอราคา" href="/admin/quotations"><ArrowLeft aria-hidden="true" /></QuotationSettingsNavLink></Button>
       <div><h1 className="text-xl font-semibold">ตั้งค่าข้อมูลใบเสนอราคา</h1><p className="text-sm text-muted-foreground">จัดการข้อมูลผู้ขาย ช่องทางรับชำระเงิน และข้อมูลรับรองของบัญชีนี้</p></div>
