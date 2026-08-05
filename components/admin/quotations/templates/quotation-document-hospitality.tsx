@@ -1,6 +1,6 @@
 import { CreditCard, MapPin, MessageCircle, ReceiptText, Signature } from "lucide-react";
 
-import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
+import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle, quotationLayoutDocumentStyle } from "../../../../lib/quotation-layout-renderer";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 
 import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
@@ -43,12 +43,13 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
 
   return (
     <article
-      className="mx-auto min-h-[297mm] w-[210mm] bg-[#fffdf8] p-[10mm] text-[10px] leading-[1.45] text-slate-800"
+      className="quotation-zone-order mx-auto flex min-h-[297mm] w-[210mm] flex-col bg-[#fffdf8] p-[10mm] text-[10px] leading-[1.45] text-slate-800"
       data-quotation-document
       data-layout-revision={payload.layout.revisionNumber}
       data-quotation-template="hospitality"
+      style={quotationLayoutDocumentStyle(model)}
     >
-      <div className="-mx-[10mm] -mt-[10mm] mb-5 h-2 bg-[#286a5b]" aria-hidden="true" />
+      <div className="-mx-[10mm] -mt-[10mm] mb-5 h-2 bg-[#286a5b]" aria-hidden="true" data-document-top-rule />
 
       <header className="grid grid-cols-12 gap-6" data-document-header>
         <div className="col-span-7 min-w-0">

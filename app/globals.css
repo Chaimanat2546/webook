@@ -174,3 +174,27 @@
     break-inside: auto !important;
   }
 }
+
+[data-quotation-document].quotation-zone-order > [data-document-header],
+[data-quotation-document].quotation-zone-order > [data-document-top-rule],
+[data-quotation-document].quotation-zone-order > [data-corporate-company-metadata],
+[data-quotation-document].quotation-zone-order > [data-layout-zone="header"] {
+  order: var(--quotation-zone-header);
+}
+
+[data-quotation-document].quotation-zone-order > [data-layout-zone="body"],
+[data-quotation-document].quotation-zone-order > [data-document-items] {
+  order: var(--quotation-zone-body);
+}
+
+[data-quotation-document].quotation-zone-order > [data-layout-zone="settlement"] {
+  order: var(--quotation-zone-settlement);
+}
+
+[data-quotation-document].quotation-zone-order > [data-document-certification] {
+  order: var(--quotation-zone-certification);
+}
+
+[data-quotation-document].quotation-zone-order > [data-hospitality-seller-footer] {
+  order: 99;
+}

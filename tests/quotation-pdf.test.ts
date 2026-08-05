@@ -126,6 +126,13 @@ describe("quotation PDF", () => {
     }
   });
 
+  it("reorders whole PDF sections from the saved layout and keeps Hospitality footer last", () => {
+    assert.match(pdfSource, /quotationLayoutZonesInDocumentOrder/);
+    assert.match(pdfSource, /function reorderQuotationPdfDocument/);
+    assert.match(pdfSource, /template === "hospitality" \? children\.slice\(7\) : \[\]/);
+    assert.match(pdfSource, /\.\.\.sections\.fixed[\s\S]*\.\.\.ordered[\s\S]*\.\.\.sections\.footer/);
+  });
+
   it("keeps the Current document's required semantic sections", () => {
     assert.match(currentPdf, /data-pdf-header/);
     assert.match(currentPdf, /data-pdf-items/);

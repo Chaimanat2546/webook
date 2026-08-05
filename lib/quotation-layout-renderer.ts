@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { quotationLayoutBlockRow, quotationLayoutBlockRowSpan, type QuotationLayoutBlockId } from "./quotation-layout";
+import { quotationLayoutBlockRow, quotationLayoutBlockRowSpan, quotationLayoutZonePosition, type QuotationLayoutBlockId } from "./quotation-layout";
 import type { QuotationDocumentViewModel } from "./quotation-document-view";
 
 export function quotationLayoutBlockStyle(
@@ -40,4 +40,13 @@ export function isQuotationLayoutBlockBefore(
   const leftRow = quotationLayoutBlockRow(model.payload.layout.config, leftId);
   const rightRow = quotationLayoutBlockRow(model.payload.layout.config, rightId);
   return leftRow === rightRow ? left.column < right.column : leftRow < rightRow;
+}
+
+export function quotationLayoutDocumentStyle(model: QuotationDocumentViewModel): CSSProperties {
+  return {
+    "--quotation-zone-body": quotationLayoutZonePosition(model.payload.layout.config, "body"),
+    "--quotation-zone-certification": quotationLayoutZonePosition(model.payload.layout.config, "certification"),
+    "--quotation-zone-header": quotationLayoutZonePosition(model.payload.layout.config, "header"),
+    "--quotation-zone-settlement": quotationLayoutZonePosition(model.payload.layout.config, "settlement"),
+  } as CSSProperties;
 }

@@ -194,6 +194,27 @@ export function quotationLayoutBlockRow(config: QuotationLayoutConfig, id: Quota
   return 1;
 }
 
+const MOVABLE_ZONE_DEFAULT_ORDER: readonly QuotationLayoutZone[] = [
+  "header",
+  "body",
+  "settlement",
+  "certification",
+];
+
+/** Resolves document-section order from the saved block orders. The Hospitality footer stays fixed. */
+export function quotationLayoutZonesInDocumentOrder(config: QuotationLayoutConfig): QuotationLayoutZone[] {
+  return [...MOVABLE_ZONE_DEFAULT_ORDER].sort((left, right) => {
+    const leftOrder = Math.min(...config.blocks.filter((block) => block.zone === left).map((block) => block.order));
+    const rightOrder = Math.min(...config.blocks.filter((block) => block.zone === right).map((block) => block.order));
+    return leftOrder - rightOrder || MOVABLE_ZONE_DEFAULT_ORDER.indexOf(left) - MOVABLE_ZONE_DEFAULT_ORDER.indexOf(right);
+  });
+}
+
+export function quotationLayoutZonePosition(config: QuotationLayoutConfig, zone: QuotationLayoutZone): number {
+  if (zone === "footer") return MOVABLE_ZONE_DEFAULT_ORDER.length;
+  return quotationLayoutZonesInDocumentOrder(config).indexOf(zone);
+}
+
 /** Fixed visual height rules owned by the document template, not editable layout data. */
 export function quotationLayoutBlockRowSpan(template: QuotationTemplate, id: QuotationLayoutBlockId): number {
   return id === "summary" ? 2 : 1;

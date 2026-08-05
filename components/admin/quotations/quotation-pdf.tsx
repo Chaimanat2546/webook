@@ -1,5 +1,11 @@
-import { Font, pdf } from "@react-pdf/renderer";
-import type { ComponentType } from "react";
+import { Font, pdf, type DocumentProps } from "@react-pdf/renderer";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 import type { QuotationCalculation } from "../../../lib/quotation-calculator";
 import {
@@ -7,6 +13,10 @@ import {
   type QuotationDocumentViewModel,
 } from "../../../lib/quotation-document-view";
 import { splitQuotationPdfWord } from "../../../lib/quotation-pdf";
+import {
+  quotationLayoutZonesInDocumentOrder,
+  type QuotationLayoutZone,
+} from "../../../lib/quotation-layout";
 import type { QuotationTemplate } from "../../../lib/quotation-template";
 import type { QuotationPayload } from "../../../lib/quotation-types";
 
@@ -85,14 +95,85 @@ export async function resolveQuotationPdfImages(
   return Object.fromEntries(entries.filter((entry) => entry !== null));
 }
 
-const renderers: Record<
-  QuotationTemplate,
-  ComponentType<QuotationPdfRendererProps>
-> = {
+type QuotationPdfRenderer = (
+  props: QuotationPdfRendererProps,
+) => ReactElement<DocumentProps & PdfContainerProps>;
+
+const renderers: Record<QuotationTemplate, QuotationPdfRenderer> = {
   corporate: CorporateQuotationPdf,
   current: CurrentQuotationPdf,
   hospitality: HospitalityQuotationPdf,
 };
+
+interface PdfContainerProps {
+  children?: ReactNode;
+}
+
+interface PdfSections {
+  body: ReactNode[];
+  certification: ReactNode[];
+  fixed: ReactNode[];
+  footer: ReactNode[];
+  header: ReactNode[];
+  settlement: ReactNode[];
+}
+
+function pdfSections(
+  template: QuotationTemplate,
+  children: ReactNode[],
+): PdfSections {
+  if (template === "current") {
+    return {
+      body: children.slice(2, 4),
+      certification: children.slice(-1),
+      fixed: [],
+      footer: [],
+      header: children.slice(0, 2),
+      settlement: children.slice(4, -1),
+    };
+  }
+
+  return {
+    body: children.slice(3, 5),
+    certification: children.slice(6, 7),
+    fixed: children.slice(0, 1),
+    footer: template === "hospitality" ? children.slice(7) : [],
+    header: children.slice(1, 3),
+    settlement: children.slice(5, 6),
+  };
+}
+
+function reorderQuotationPdfDocument(
+  document: ReactElement<DocumentProps & PdfContainerProps>,
+  payload: QuotationPayload,
+): ReactElement<DocumentProps & PdfContainerProps> {
+  const pageNode = Children.only(document.props.children);
+  if (!isValidElement<PdfContainerProps>(pageNode)) return document;
+
+  const sections = pdfSections(
+    payload.template,
+    Children.toArray(pageNode.props.children),
+  );
+  const movable: Record<
+    Exclude<QuotationLayoutZone, "footer">,
+    ReactNode[]
+  > = {
+    body: sections.body,
+    certification: sections.certification,
+    header: sections.header,
+    settlement: sections.settlement,
+  };
+  const ordered = quotationLayoutZonesInDocumentOrder(payload.layout.config)
+    .flatMap((zone) => zone === "footer" ? [] : movable[zone]);
+  const page = cloneElement(
+    pageNode,
+    undefined,
+    ...sections.fixed,
+    ...ordered,
+    ...sections.footer,
+  );
+  return cloneElement(document, undefined, page);
+}
 
 export async function downloadQuotationPdf({
   calculation,
@@ -109,7 +190,11 @@ export async function downloadQuotationPdf({
   const images = await resolveQuotationPdfImages(collectQuotationPdfImageSources(model));
   if (model.showCertificationQr && !images[model.publicQrDataUrl]) throw new Error("Public QR image is unavailable");
   const Renderer = renderers[model.payload.template];
-  const blob = await pdf(<Renderer images={images} model={model} />).toBlob();
+  const pdfDocument = reorderQuotationPdfDocument(
+    Renderer({ images, model }),
+    model.payload,
+  );
+  const blob = await pdf(pdfDocument).toBlob();
   const url = URL.createObjectURL(blob);
   try {
     const link = document.createElement("a");

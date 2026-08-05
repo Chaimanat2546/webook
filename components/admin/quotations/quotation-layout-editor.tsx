@@ -12,7 +12,7 @@ import {
   isQuotationLayoutConfig,
   quotationLayoutBlockRow,
   quotationLayoutBlockRowSpan,
-  QUOTATION_LAYOUT_ZONES,
+  quotationLayoutZonesInDocumentOrder,
   type QuotationLayoutBlock,
   type QuotationLayoutBlockId,
   type QuotationLayoutConfig,
@@ -105,6 +105,7 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
   const changed = JSON.stringify(draft) !== JSON.stringify(initial.config);
   const selected = draft.blocks.find((block) => block.id === selectedId) ?? draft.blocks[0];
   const visibleRevisions = revisions.slice(0, 2);
+  const movableZones = quotationLayoutZonesInDocumentOrder(draft);
 
   function update(next: QuotationLayoutConfig) {
     if (!isQuotationLayoutConfig(next, template)) return;
@@ -224,6 +225,23 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     swapPositions(id, target.id);
   }
 
+  function moveDocumentSection(zone: QuotationLayoutBlock["zone"], direction: "up" | "down") {
+    if (zone === "footer") return;
+    const currentIndex = movableZones.indexOf(zone);
+    const targetIndex = currentIndex + (direction === "up" ? -1 : 1);
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= movableZones.length) return;
+    const nextZones = [...movableZones];
+    [nextZones[currentIndex], nextZones[targetIndex]] = [nextZones[targetIndex], nextZones[currentIndex]];
+    const next = clone(draft);
+    nextZones.forEach((section, sectionIndex) => {
+      blocksInZone(next, section).forEach((block, blockIndex) => {
+        const target = next.blocks.find((item) => item.id === block.id);
+        if (target) target.order = (sectionIndex + 1) * 100 + blockIndex * 10;
+      });
+    });
+    update(next);
+  }
+
   function publish(config: QuotationLayoutConfig) {
     startTransition(async () => {
       const result = await publishQuotationDocumentTemplateLayoutAction(template, initial.revisionNumber, config);
@@ -244,10 +262,11 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
       <CardContent className="bg-muted/20 p-4 sm:p-6"><div className={cn("mx-auto grid w-full max-w-[210mm] gap-5 rounded-sm p-5 shadow-md ring-1 ring-border sm:p-7", TEMPLATE_CANVAS[template].frame)} data-layout-a4-canvas data-layout-template={template}>
         <div className={cn("-mx-5 -mt-5 h-2 sm:-mx-7 sm:-mt-7", TEMPLATE_CANVAS[template].accent)} aria-hidden="true" />
         <div className="-mt-3 flex items-center justify-between border-b pb-3"><p className="text-sm font-semibold">ผังเอกสาร {TEMPLATE_CANVAS[template].name}</p><p className="text-xs text-muted-foreground">ขนาดและรูปทรงเฉพาะเทมเพลต</p></div>
-        {QUOTATION_LAYOUT_ZONES.map((zone) => { const blocks = blocksInZone(draft, zone); if (!blocks.length) return null; return <section className="grid gap-2" data-layout-zone={zone} key={zone}><div className="flex items-center gap-2"><span className={cn("h-px flex-1", TEMPLATE_CANVAS[template].zoneLine)} /><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{ZONE_LABELS[zone]}</p><span className={cn("h-px flex-1", TEMPLATE_CANVAS[template].zoneLine)} /></div><DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}><div className="grid grid-cols-12 gap-2.5">{blocks.map((block, index) => <SortableLayoutBlock block={block} canMove={canMoveFromLayout} config={draft} index={index} isPending={isPending} key={block.id} onMove={moveFromLayout} onSelect={setSelectedId} selected={selected?.id === block.id} template={template} />)}</div></DragDropProvider></section>; })}
+        {[...movableZones, "footer" as const].map((zone) => { const blocks = blocksInZone(draft, zone); if (!blocks.length) return null; return <section className="grid gap-2" data-layout-zone={zone} key={zone}><div className="flex items-center gap-2"><span className={cn("h-px flex-1", TEMPLATE_CANVAS[template].zoneLine)} /><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{ZONE_LABELS[zone]}</p><span className={cn("h-px flex-1", TEMPLATE_CANVAS[template].zoneLine)} /></div><DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}><div className="grid grid-cols-12 gap-2.5">{blocks.map((block, index) => <SortableLayoutBlock block={block} canMove={canMoveFromLayout} config={draft} index={index} isPending={isPending} key={block.id} onMove={moveFromLayout} onSelect={setSelectedId} selected={selected?.id === block.id} template={template} />)}</div></DragDropProvider></section>; })}
       </div></CardContent>
     </Card>
     <aside className="grid content-start gap-4 xl:sticky xl:top-4 xl:self-start">
+      <Card><CardHeader className="pb-3"><CardTitle className="text-base">ลำดับส่วนเอกสาร</CardTitle><p className="text-sm font-normal text-muted-foreground">ย้ายทั้งส่วน โดยข้อมูลท้ายเอกสารจะอยู่ท้ายสุดเสมอ</p></CardHeader><CardContent className="grid gap-2">{movableZones.map((zone, index) => <div className="flex items-center justify-between gap-2 rounded-md border p-2" key={zone}><span className="text-sm">{ZONE_LABELS[zone]}</span><div className="flex gap-1"><Button aria-label={`ย้าย ${ZONE_LABELS[zone]} ขึ้น`} disabled={isPending || index === 0} onClick={() => moveDocumentSection(zone, "up")} size="icon-xs" type="button" variant="outline"><ArrowUp aria-hidden="true" /></Button><Button aria-label={`ย้าย ${ZONE_LABELS[zone]} ลง`} disabled={isPending || index === movableZones.length - 1} onClick={() => moveDocumentSection(zone, "down")} size="icon-xs" type="button" variant="outline"><ArrowDown aria-hidden="true" /></Button></div></div>)}</CardContent></Card>
       {selected ? <Card><CardHeader className="pb-3"><p className="text-xs font-medium text-muted-foreground">กำลังเลือก</p><CardTitle className="text-base">{BLOCK_LABELS[selected.id]}</CardTitle><p className="text-sm font-normal text-muted-foreground">{ZONE_LABELS[selected.zone]} · ขนาดล็อกตามเทมเพลต</p></CardHeader><CardContent><p className="text-sm text-muted-foreground">{selected.zone === "settlement" && ["paymentMethods", "publicNotes", "summary"].includes(selected.id) ? "ย้ายซ้ายหรือขวาเพื่อสลับคอลัมน์สรุปยอดกับช่องทางชำระเงินและหมายเหตุพร้อมกัน" : "ใช้ปุ่มย้ายตำแหน่งบนบล็อกที่เลือกในหน้ากระดาษได้โดยตรง"}</p></CardContent></Card> : null}
       <Card><CardHeader className="pb-3"><CardTitle className="text-base">เวอร์ชัน</CardTitle></CardHeader><CardContent className="grid gap-2">{visibleRevisions.map((revision, index) => <div className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm" key={revision.revisionNumber}><span><History aria-hidden="true" className="mr-1 inline size-3" />{index === 0 ? "ปัจจุบัน" : "ก่อนหน้า"}<span className="mt-0.5 block text-xs text-muted-foreground">ผู้ดูแล · {revisionTimestamp(revision.createdAt)}</span></span>{revision.revisionNumber === initial.revisionNumber ? <span className="text-xs text-muted-foreground">กำลังใช้</span> : <Button disabled={isPending} onClick={() => publish(revision.config)} size="sm" type="button" variant="ghost"><RotateCcw aria-hidden="true" />คืนค่า</Button>}</div>)}</CardContent></Card>
       <div className="flex flex-wrap gap-2"><Button disabled={isPending || !changed} onClick={() => { setDraft(clone(initial.config)); setUndoStack([]); setRedoStack([]); }} type="button" variant="outline">ยกเลิกการแก้ไข</Button><Button disabled={isPending || !changed} onClick={() => publish(draft)} type="button">{isPending ? "กำลังเผยแพร่…" : "เผยแพร่เลเอาท์"}</Button></div>

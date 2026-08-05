@@ -59,7 +59,9 @@ The renderer exposes a fixed block catalogue such as:
 
 Each template family defines which blocks are required, which zones each block
 may enter, supported spans, and whether it may share a row. The initial zones
-are `header`, `body`, `settlement`, `footer`, and `certification`.
+are `header`, `body`, `settlement`, `footer`, and `certification`. Users may
+reorder the complete `header`, `body`, `settlement`, and `certification`
+sections. The Hospitality `footer` is not movable and always renders last.
 
 Vertical movement changes `zone` and `order`. Horizontal movement changes
 `column` and `span` within a twelve-column logical grid. The stored layout never

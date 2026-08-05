@@ -7,6 +7,7 @@ import {
   normalizeQuotationLayout,
   quotationLayoutBlockRowSpan,
   quotationLayoutBlockRow,
+  quotationLayoutZonesInDocumentOrder,
   QUOTATION_LAYOUT_SCHEMA_VERSION,
 } from "../lib/quotation-layout.ts";
 
@@ -49,6 +50,25 @@ describe("quotation layout", () => {
     assert.equal(quotationLayoutBlockRowSpan("current", "summary"), 2);
     assert.equal(quotationLayoutBlockRowSpan("corporate", "summary"), 2);
     assert.equal(quotationLayoutBlockRowSpan("hospitality", "summary"), 2);
+  });
+
+  it("stores document-section order in the existing validated block orders", () => {
+    const layout = canonicalQuotationLayout("current");
+    const sectionOrder = ["settlement", "header", "certification", "body"] as const;
+    const reordered = {
+      ...layout,
+      blocks: layout.blocks.map((block) => ({
+        ...block,
+        order: (sectionOrder.indexOf(block.zone as typeof sectionOrder[number]) + 1) * 100
+          + (block.order - 10),
+      })),
+    };
+
+    assert.equal(isQuotationLayoutConfig(reordered, "current"), true);
+    assert.deepEqual(
+      quotationLayoutZonesInDocumentOrder(reordered),
+      sectionOrder,
+    );
   });
 
   it("gives the two newer templates a wider settlement summary", () => {

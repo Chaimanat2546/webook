@@ -1,6 +1,6 @@
 import { CreditCard, Globe2, Mail, MessageCircle, Phone, ReceiptText, Signature } from "lucide-react";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
-import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
+import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle, quotationLayoutDocumentStyle } from "../../../../lib/quotation-layout-renderer";
 import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
 import { DocumentImage, office, PaymentMethod, SignerSlot, Total, vatLabel } from "./quotation-document-shared";
 
@@ -17,10 +17,11 @@ export function CurrentQuotationDocument({
   const compactSummary = (summaryBlock?.span ?? 12) <= 6;
   return (
     <article
-      className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-900"
+      className="quotation-zone-order mx-auto flex min-h-[297mm] w-[210mm] flex-col bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-900"
       data-quotation-document
       data-layout-revision={payload.layout.revisionNumber}
       data-quotation-template="current"
+      style={quotationLayoutDocumentStyle(model)}
     >
       <header
         className="grid grid-cols-12 gap-7"

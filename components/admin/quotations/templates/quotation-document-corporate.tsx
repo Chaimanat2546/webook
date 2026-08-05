@@ -1,6 +1,6 @@
 import { Building2, CreditCard, MessageCircle, ReceiptText, Signature } from "lucide-react";
 
-import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
+import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle, quotationLayoutDocumentStyle } from "../../../../lib/quotation-layout-renderer";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 
 import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
@@ -20,8 +20,8 @@ export function CorporateQuotationDocument({ model }: QuotationDocumentRendererP
   const customerOffice = office(payload.customer);
   const sellerContact = [payload.seller.contactName, payload.seller.contactPhone, payload.seller.contactEmail].filter(Boolean).join(" | ");
 
-  return <article className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-800" data-layout-revision={payload.layout.revisionNumber} data-quotation-document data-quotation-template="corporate">
-    <div className="-mx-[10mm] -mt-[10mm] mb-5 h-1.5 bg-[#142d4c]" aria-hidden="true" />
+  return <article className="quotation-zone-order mx-auto flex min-h-[297mm] w-[210mm] flex-col bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-800" data-layout-revision={payload.layout.revisionNumber} data-quotation-document data-quotation-template="corporate" style={quotationLayoutDocumentStyle(model)}>
+    <div className="-mx-[10mm] -mt-[10mm] mb-5 h-1.5 bg-[#142d4c]" aria-hidden="true" data-document-top-rule />
     <header className="grid grid-cols-12 gap-6 border-b border-slate-300 pb-4" data-document-header>
       <div className="col-span-7 min-w-0">
         {payload.seller.logoUrl ? <picture><img alt="โลโก้ผู้ขาย" className="mb-3 max-h-12 max-w-32 object-contain" src={payload.seller.logoUrl} /></picture> : null}
