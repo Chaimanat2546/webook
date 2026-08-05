@@ -18,6 +18,7 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /role="button"/);
     assert.match(source, /BlockPreview/);
     assert.match(source, /quotationLayoutBlockRow\(config, block\.id\)/);
+    assert.match(source, /data-layout-position-controls/);
   });
 
   it("swaps the source and target positions through the same validated quotation layout draft", () => {
@@ -32,6 +33,7 @@ describe("quotation layout editor drag and drop", () => {
     assert.doesNotMatch(source, /ความกว้างและตำแหน่ง/);
     assert.match(source, /ขนาดล็อกตามเทมเพลต/);
     assert.match(source, /ตำแหน่ง/);
+    assert.match(source, /ใช้ปุ่มย้ายตำแหน่งบนบล็อกที่เลือกในหน้ากระดาษได้โดยตรง/);
     assert.match(source, /undoStack/);
     assert.match(source, /redoStack/);
     assert.match(source, /กำลังเลือก/);

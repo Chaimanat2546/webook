@@ -75,10 +75,10 @@ function BlockPreview({ id }: { id: QuotationLayoutBlockId }) {
   }
 }
 
-function SortableLayoutBlock({ block, config, index, onSelect, selected }: { block: QuotationLayoutBlock; config: QuotationLayoutConfig; index: number; onSelect: (id: QuotationLayoutBlockId) => void; selected: boolean }) {
+function SortableLayoutBlock({ block, config, index, onMove, onSelect, selected }: { block: QuotationLayoutBlock; config: QuotationLayoutConfig; index: number; onMove: (id: QuotationLayoutBlockId, direction: "down" | "left" | "right" | "up") => void; onSelect: (id: QuotationLayoutBlockId) => void; selected: boolean }) {
   const { handleRef, isDragging, ref } = useSortable({ group: `quotation-layout-${block.zone}`, id: block.id, index });
   return <div className={cn("relative min-h-20 min-w-0 cursor-pointer rounded-md border bg-white p-3 shadow-sm transition", selected ? "border-primary ring-2 ring-primary/20" : "border-slate-200 hover:border-primary/60", isDragging && "opacity-50")} data-layout-block={block.id} onClick={() => onSelect(block.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(block.id); } }} ref={ref} role="button" style={{ gridColumn: `${block.column} / span ${block.span}`, gridRow: quotationLayoutBlockRow(config, block.id) }} tabIndex={0}>
-    <div className="mb-2 flex items-center justify-between gap-2"><p className="min-w-0 truncate text-xs font-semibold text-slate-700">{BLOCK_LABELS[block.id]}</p><Button aria-label={`ลาก ${BLOCK_LABELS[block.id]} เพื่อเรียงลำดับ`} className="-mr-2 -mt-2 shrink-0 cursor-grab touch-none active:cursor-grabbing" onClick={(event) => event.stopPropagation()} ref={handleRef} size="icon-xs" type="button" variant="ghost"><GripVertical aria-hidden="true" /></Button></div><BlockPreview id={block.id} /></div>;
+    <div className="mb-2 flex items-center justify-between gap-2"><p className="min-w-0 truncate text-xs font-semibold text-slate-700">{BLOCK_LABELS[block.id]}</p><Button aria-label={`ลาก ${BLOCK_LABELS[block.id]} เพื่อสลับตำแหน่ง`} className="-mr-2 -mt-2 shrink-0 cursor-grab touch-none active:cursor-grabbing" onClick={(event) => event.stopPropagation()} ref={handleRef} size="icon-xs" type="button" variant="ghost"><GripVertical aria-hidden="true" /></Button></div><BlockPreview id={block.id} />{selected ? <div className="mt-3 border-t pt-2" data-layout-position-controls><p className="mb-1 text-[10px] font-medium text-muted-foreground">ย้ายตำแหน่ง</p><div className="grid grid-cols-2 gap-1"><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ขึ้น`} onClick={(event) => { event.stopPropagation(); onMove(block.id, "up"); }} size="xs" type="button" variant="secondary"><ArrowUp aria-hidden="true" />ขึ้น</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ลง`} onClick={(event) => { event.stopPropagation(); onMove(block.id, "down"); }} size="xs" type="button" variant="secondary"><ArrowDown aria-hidden="true" />ลง</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ซ้าย`} onClick={(event) => { event.stopPropagation(); onMove(block.id, "left"); }} size="xs" type="button" variant="secondary"><ArrowLeft aria-hidden="true" />ซ้าย</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ขวา`} onClick={(event) => { event.stopPropagation(); onMove(block.id, "right"); }} size="xs" type="button" variant="secondary"><ArrowRight aria-hidden="true" />ขวา</Button></div></div> : null}</div>;
 }
 
 export function QuotationLayoutEditor({ initial, revisions, template }: { initial: QuotationDocumentTemplateSnapshot; revisions: QuotationDocumentTemplateRevision[]; template: QuotationTemplate }) {
@@ -119,6 +119,10 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     const block = next.blocks.find((item) => item.id === id);
     if (!block) return;
     block.column += direction;
+    if (!isQuotationLayoutConfig(next, template)) {
+      toast.error("ตำแหน่งปลายทางมีบล็อกอื่นอยู่ จึงย้ายไม่ได้");
+      return;
+    }
     update(next);
   }
 
@@ -163,19 +167,10 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     swapPositions(source.id, target.id);
   }
 
-  function canMoveColumn(direction: -1 | 1) {
-    if (!selected) return false;
-    const next = clone(draft);
-    const block = next.blocks.find((item) => item.id === selected.id);
-    if (!block) return false;
-    block.column += direction;
-    return isQuotationLayoutConfig(next, template);
-  }
-
-  function canMoveOrder(direction: -1 | 1) {
-    if (!selected) return false;
-    const siblings = blocksInZone(draft, selected.zone);
-    return Boolean(siblings[siblings.findIndex((item) => item.id === selected.id) + direction]);
+  function moveFromLayout(id: QuotationLayoutBlockId, direction: "down" | "left" | "right" | "up") {
+    if (direction === "up") { moveOrder(id, -1); return; }
+    if (direction === "down") { moveOrder(id, 1); return; }
+    moveColumn(id, direction === "left" ? -1 : 1);
   }
 
   function publish(config: QuotationLayoutConfig) {
@@ -196,11 +191,11 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
         <div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="text-base">จัดหน้า {QUOTATION_TEMPLATE_LABELS[template]} · เวอร์ชัน {initial.revisionNumber}</CardTitle><p className="mt-1 text-sm font-normal text-muted-foreground">ลากบล็อกไปวางบนอีกบล็อกเพื่อสลับตำแหน่งกัน หรือใช้ปุ่มขึ้น/ลง · ระบบจะจัดบล็อกที่ไม่ทับกันให้อยู่แถวเดียวกันอัตโนมัติ</p></div><div className="flex gap-1"><Button aria-label="ย้อนกลับการแก้ไขล่าสุด" disabled={!undoStack.length || isPending} onClick={undo} size="icon-sm" type="button" variant="outline"><Undo2 aria-hidden="true" /></Button><Button aria-label="ทำซ้ำการแก้ไขล่าสุด" disabled={!redoStack.length || isPending} onClick={redo} size="icon-sm" type="button" variant="outline"><Redo2 aria-hidden="true" /></Button></div></div>
       </CardHeader>
       <CardContent className="bg-muted/20 p-4 sm:p-6"><div className="mx-auto grid w-full max-w-[210mm] gap-5 rounded-sm bg-white p-5 shadow-md ring-1 ring-border sm:p-7" data-layout-a4-canvas>
-        {QUOTATION_LAYOUT_ZONES.map((zone) => { const blocks = blocksInZone(draft, zone); if (!blocks.length) return null; return <section className="grid gap-2" data-layout-zone={zone} key={zone}><div className="flex items-center gap-2"><span className="h-px flex-1 bg-slate-200" /><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{ZONE_LABELS[zone]}</p><span className="h-px flex-1 bg-slate-200" /></div><DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}><div className="grid grid-cols-12 gap-2.5">{blocks.map((block, index) => <SortableLayoutBlock block={block} config={draft} index={index} key={block.id} onSelect={setSelectedId} selected={selected?.id === block.id} />)}</div></DragDropProvider></section>; })}
+        {QUOTATION_LAYOUT_ZONES.map((zone) => { const blocks = blocksInZone(draft, zone); if (!blocks.length) return null; return <section className="grid gap-2" data-layout-zone={zone} key={zone}><div className="flex items-center gap-2"><span className="h-px flex-1 bg-slate-200" /><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{ZONE_LABELS[zone]}</p><span className="h-px flex-1 bg-slate-200" /></div><DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}><div className="grid grid-cols-12 gap-2.5">{blocks.map((block, index) => <SortableLayoutBlock block={block} config={draft} index={index} key={block.id} onMove={moveFromLayout} onSelect={setSelectedId} selected={selected?.id === block.id} />)}</div></DragDropProvider></section>; })}
       </div></CardContent>
     </Card>
     <aside className="grid content-start gap-4 xl:sticky xl:top-4 xl:self-start">
-      {selected ? <Card><CardHeader className="pb-3"><p className="text-xs font-medium text-muted-foreground">กำลังเลือก</p><CardTitle className="text-base">{BLOCK_LABELS[selected.id]}</CardTitle><p className="text-sm font-normal text-muted-foreground">{ZONE_LABELS[selected.zone]} · ขนาดล็อกตามเทมเพลต</p></CardHeader><CardContent><section><p className="mb-2 text-sm font-medium">ตำแหน่ง</p><p className="mb-3 text-xs text-muted-foreground">ย้ายซ้ายหรือขวาเพื่อจัดแนว และลากหรือย้ายขึ้นลงเพื่อเรียงบล็อก</p><div className="grid grid-cols-2 gap-2"><Button disabled={isPending || !canMoveOrder(-1)} onClick={() => moveOrder(selected.id, -1)} size="sm" type="button" variant="outline"><ArrowUp aria-hidden="true" />ขึ้น</Button><Button disabled={isPending || !canMoveOrder(1)} onClick={() => moveOrder(selected.id, 1)} size="sm" type="button" variant="outline"><ArrowDown aria-hidden="true" />ลง</Button><Button disabled={isPending || !canMoveColumn(-1)} onClick={() => moveColumn(selected.id, -1)} size="sm" type="button" variant="outline"><ArrowLeft aria-hidden="true" />ซ้าย</Button><Button disabled={isPending || !canMoveColumn(1)} onClick={() => moveColumn(selected.id, 1)} size="sm" type="button" variant="outline"><ArrowRight aria-hidden="true" />ขวา</Button></div></section></CardContent></Card> : null}
+      {selected ? <Card><CardHeader className="pb-3"><p className="text-xs font-medium text-muted-foreground">กำลังเลือก</p><CardTitle className="text-base">{BLOCK_LABELS[selected.id]}</CardTitle><p className="text-sm font-normal text-muted-foreground">{ZONE_LABELS[selected.zone]} · ขนาดล็อกตามเทมเพลต</p></CardHeader><CardContent><p className="text-sm text-muted-foreground">ใช้ปุ่มย้ายตำแหน่งบนบล็อกที่เลือกในหน้ากระดาษได้โดยตรง</p></CardContent></Card> : null}
       <Card><CardHeader className="pb-3"><CardTitle className="text-base">เวอร์ชัน</CardTitle></CardHeader><CardContent className="grid gap-2">{revisions.map((revision) => <div className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm" key={revision.revisionNumber}><span><History aria-hidden="true" className="mr-1 inline size-3" />v{revision.revisionNumber}<span className="mt-0.5 block text-xs text-muted-foreground">ผู้ดูแล · {revisionTimestamp(revision.createdAt)}</span></span>{revision.revisionNumber === initial.revisionNumber ? <span className="text-xs text-muted-foreground">กำลังใช้</span> : <Button disabled={isPending} onClick={() => publish(revision.config)} size="sm" type="button" variant="ghost"><RotateCcw aria-hidden="true" />คืนค่า</Button>}</div>)}</CardContent></Card>
       <div className="flex flex-wrap gap-2"><Button disabled={isPending || !changed} onClick={() => { setDraft(clone(initial.config)); setUndoStack([]); setRedoStack([]); }} type="button" variant="outline">ยกเลิกการแก้ไข</Button><Button disabled={isPending || !changed} onClick={() => publish(draft)} type="button">{isPending ? "กำลังเผยแพร่…" : "เผยแพร่เลเอาท์"}</Button></div>
     </aside>
