@@ -397,10 +397,3 @@ for the selected template's revisioned layout. Image fields preview a selected
 file locally before save.
 Master bank notes remain editable; the per-quotation bank-transfer editor hides
 that field without deleting a previously saved value.
-
-The layout editor has two views: an interactive block map for moving permitted
-positions, and a scaled live document preview. The live preview renders the
-same `CurrentQuotationDocument`, `HospitalityQuotationDocument`, or
-`CorporateQuotationDocument` component used by a quotation, with the unsaved
-layout draft. It must be used to verify template-specific structure before
-publishing a layout revision.

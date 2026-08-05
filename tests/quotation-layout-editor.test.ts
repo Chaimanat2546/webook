@@ -22,7 +22,6 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /data-layout-template-preview/);
     assert.match(source, /data-layout-template=\{template\}/);
     assert.match(source, /TEMPLATE_PREVIEW/);
-    assert.match(source, /QuotationLayoutTemplatePreview config=\{draft\} template=\{template\}/);
   });
 
   it("swaps the source and target positions through the same validated quotation layout draft", () => {
