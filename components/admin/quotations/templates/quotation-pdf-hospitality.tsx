@@ -1,6 +1,7 @@
 import { Document, Image as PdfImage, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { canUseHospitalitySideBySideSettlement } from "../../../../lib/quotation-hospitality-layout";
+import { isQuotationLayoutBlockBefore } from "../../../../lib/quotation-layout-renderer";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 import { canKeepQuotationPdfItemTogether } from "../../../../lib/quotation-pdf";
 
@@ -77,6 +78,8 @@ export function HospitalityQuotationPdf({ images, model }: QuotationPdfRendererP
   const sellerOffice = office(payload.seller);
   const customerOffice = office(payload.customer);
   const sellerContact = [payload.seller.contactName, payload.seller.contactPhone, payload.seller.contactEmail].filter(Boolean).join(" | ");
+  const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
+  const summaryIsLeft = isQuotationLayoutBlockBefore(model, "summary", "paymentMethods");
   const canUseSideBySideSettlement = canUseHospitalitySideBySideSettlement({
     paymentMethodCount: model.paymentMethods.length,
     paymentContentLength: model.paymentMethods.reduce((total, method) => total + [method.accountName, method.accountNumber, method.bankName, method.customBankName, method.instructions, method.promptPayId, method.providerName].join("").length + (method.qrSource || method.customBankLogoUrl || method.bankLogoUrl ? 240 : 0), 0),
@@ -88,7 +91,7 @@ export function HospitalityQuotationPdf({ images, model }: QuotationPdfRendererP
     <Page size="A4" style={styles.page} wrap>
       <View fixed style={styles.topRule} />
       {/* data-pdf-header */}
-      <View style={styles.header}>
+      <View style={metadataIsLeft ? [styles.header, { flexDirection: "row-reverse" }] : styles.header}>
         <View style={styles.seller}>
           {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
           <Text style={[styles.bold, { color: colors.primary, fontSize: 13 }]}>{payload.seller.name}</Text>
@@ -106,7 +109,7 @@ export function HospitalityQuotationPdf({ images, model }: QuotationPdfRendererP
         {calculation.lines.map((item) => <View key={item.id} style={styles.tableRow} wrap={!canKeepQuotationPdfItemTogether(item.name, item.description)}><View style={styles.descriptionCell}><Text style={styles.bold}>{item.position}. {item.name}</Text>{item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}</View><Text style={styles.qtyCell}>{item.quantity}</Text>{model.showUnit ? <Text style={styles.unitCell}>{item.unit}</Text> : null}<Text style={styles.moneyCell}>{formatMoney(item.unitPrice)}</Text>{model.showItemDiscount ? <Text style={styles.discountCell}>{formatMoney(item.discountAmount)}</Text> : null}{model.showItemVat ? <Text style={styles.vatCell}>{vatLabel(item)}</Text> : null}<Text style={styles.moneyCell}>{formatMoney(item.preTaxAmount)}</Text></View>)}
       </View>
       {/* data-pdf-totals */}
-      <View style={[styles.summary, canUseSideBySideSettlement ? styles.summarySideBySide : styles.summarySequential]}>
+      <View style={canUseSideBySideSettlement && summaryIsLeft ? [styles.summary, styles.summarySideBySide, { flexDirection: "row-reverse" }] : [styles.summary, canUseSideBySideSettlement ? styles.summarySideBySide : styles.summarySequential]}>
         <View style={canUseSideBySideSettlement ? styles.paymentColumn : undefined}>{model.paymentMethods.length ? <View data-pdf-payment-methods><Text style={[styles.bold, { color: colors.primary }]}>การชำระเงิน</Text>{model.paymentMethods.map((method) => <PaymentMethod images={images} key={method.id} method={method} styles={styles} />)}</View> : null}{model.showNotes ? <View style={styles.notes} data-pdf-notes><Text style={[styles.bold, { color: colors.primary }]}>หมายเหตุ</Text><Text>{payload.publicNotes}</Text></View> : null}</View>
         <View wrap={false} style={canUseSideBySideSettlement ? styles.settlement : [styles.settlement, styles.settlementSequential]} data-hospitality-settlement><Text style={styles.bold}>สรุปการชำระ</Text><Total label="มูลค่ารวม" styles={styles} value={formatBaht(calculation.grossTotal)} /><Total label="ส่วนลด" styles={styles} value={formatBaht(calculation.discountTotal)} />{model.showPreTax ? <Total label="มูลค่าก่อนภาษี" styles={styles} value={formatBaht(calculation.preTaxTotal)} /> : null}{model.showTax ? <Total label="ภาษีมูลค่าเพิ่ม" styles={styles} value={formatBaht(calculation.vatTotal)} /> : null}<Total emphasized label="จำนวนเงินทั้งสิ้น" styles={styles} value={formatBaht(calculation.grandTotal)} />{model.showWithholdingTax ? <Total label="หักภาษี ณ ที่จ่าย" styles={styles} value={formatBaht(calculation.withholdingTaxTotal)} /> : null}<Total label="จำนวนเงินที่ชำระ" styles={styles} value={formatBaht(calculation.amountDue)} /><Text style={[styles.right, { borderTopColor: "#ffffff", borderTopWidth: 0.4, marginTop: 4, paddingTop: 4 }]}>{model.amountInWords}</Text></View>
       </View>

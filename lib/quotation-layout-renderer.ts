@@ -26,3 +26,18 @@ export function quotationLayoutBlockStyle(
     gridRow: `${quotationLayoutBlockRow(model.payload.layout.config, id)} / span ${quotationLayoutBlockRowSpan(model.payload.template, id)}`,
   };
 }
+
+/** Returns whether one configured block is visually placed before another. */
+export function isQuotationLayoutBlockBefore(
+  model: QuotationDocumentViewModel,
+  leftId: QuotationLayoutBlockId,
+  rightId: QuotationLayoutBlockId,
+): boolean {
+  const left = model.payload.layout.config.blocks.find((item) => item.id === leftId);
+  const right = model.payload.layout.config.blocks.find((item) => item.id === rightId);
+  if (!left || !right) return false;
+
+  const leftRow = quotationLayoutBlockRow(model.payload.layout.config, leftId);
+  const rightRow = quotationLayoutBlockRow(model.payload.layout.config, rightId);
+  return leftRow === rightRow ? left.column < right.column : leftRow < rightRow;
+}

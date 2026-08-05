@@ -9,6 +9,7 @@ import {
 
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 import { canKeepQuotationPdfItemTogether } from "../../../../lib/quotation-pdf";
+import { isQuotationLayoutBlockBefore } from "../../../../lib/quotation-layout-renderer";
 
 import type { QuotationPdfRendererProps } from "./quotation-pdf-contract";
 import {
@@ -106,11 +107,12 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
   const sellerOffice = office(payload.seller);
+  const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
   return (
     <Document author={payload.seller.name} title={model.documentNumber}>
       <Page size="A4" style={styles.page} wrap>
         {/* data-pdf-header */}
-        <View style={styles.header}>
+        <View style={metadataIsLeft ? [styles.header, { flexDirection: "row-reverse" }] : styles.header}>
           <View style={[styles.seller, layoutFlex(model, "seller")] }>
             {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
             <Detail label="ผู้ขาย" styles={styles} value={payload.seller.name} />

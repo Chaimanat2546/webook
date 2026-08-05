@@ -115,6 +115,17 @@ describe("quotation PDF", () => {
     assert.match(pdfSource, /CorporateQuotationPdf/);
   });
 
+  it("uses the saved layout when placing movable PDF header and settlement blocks", () => {
+    for (const template of [currentPdf, hospitalityPdf, corporatePdf]) {
+      assert.match(template, /isQuotationLayoutBlockBefore/);
+      assert.match(template, /metadataIsLeft/);
+      assert.match(template, /flexDirection: "row-reverse"/);
+    }
+    for (const template of [hospitalityPdf, corporatePdf]) {
+      assert.match(template, /summaryIsLeft/);
+    }
+  });
+
   it("keeps the Current document's required semantic sections", () => {
     assert.match(currentPdf, /data-pdf-header/);
     assert.match(currentPdf, /data-pdf-items/);
