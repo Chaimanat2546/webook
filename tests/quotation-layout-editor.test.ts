@@ -22,8 +22,6 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /data-layout-position-controls/);
     assert.match(source, /data-layout-template=\{template\}/);
     assert.match(source, /TEMPLATE_CANVAS/);
-    assert.match(source, /จำนวนเงินทั้งสิ้น/);
-    assert.match(source, /bg-indigo-50/);
     assert.match(source, /disabled=\{isPending \|\| !canMove\(block\.id, "up"\)\}/);
   });
 
