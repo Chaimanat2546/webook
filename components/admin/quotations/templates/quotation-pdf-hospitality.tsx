@@ -26,6 +26,7 @@ const styles = StyleSheet.create({
   muted: { color: "#5d7069" },
   header: { flexDirection: "row", paddingBottom: 10 },
   seller: { flexBasis: 0, flexGrow: 1, paddingRight: 16 },
+  recipientFull: { marginRight: 0, marginTop: 10 },
   logo: { height: 36, marginBottom: 6, objectFit: "contain", width: 100 },
   titleBox: { width: 190 },
   title: { color: colors.primary, fontSize: 20, fontWeight: 600, letterSpacing: 1.5, textAlign: "right" },
@@ -78,6 +79,7 @@ export function HospitalityQuotationPdf({ images, model }: QuotationPdfRendererP
   const sellerOffice = office(payload.seller);
   const customerOffice = office(payload.customer);
   const sellerContact = [payload.seller.contactName, payload.seller.contactPhone, payload.seller.contactEmail].filter(Boolean).join(" | ");
+  const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
   const summaryIsLeft = isQuotationLayoutBlockBefore(model, "summary", "paymentMethods");
   const canUseSideBySideSettlement = canUseHospitalitySideBySideSettlement({
     paymentMethodCount: model.paymentMethods.length,
@@ -90,7 +92,7 @@ export function HospitalityQuotationPdf({ images, model }: QuotationPdfRendererP
     <Page size="A4" style={styles.page} wrap>
       <View fixed style={styles.topRule} />
       {/* data-pdf-header */}
-      <View style={styles.header}>
+      <View style={metadataIsLeft ? [styles.header, { flexDirection: "row-reverse" }] : styles.header}>
         <View style={styles.seller}>
           {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
           <Text style={[styles.bold, { color: colors.primary, fontSize: 13 }]}>{payload.seller.name}</Text>
@@ -99,10 +101,7 @@ export function HospitalityQuotationPdf({ images, model }: QuotationPdfRendererP
         <View style={styles.titleBox}><Text style={styles.right}>(ต้นฉบับ)</Text><Text style={styles.title}>QUOTATION</Text><Text style={styles.thaiTitle}>ใบเสนอราคา</Text></View>
       </View>
       {/* data-pdf-customer */}
-      <View style={styles.row}>
-        <View style={styles.recipient} data-hospitality-recipient><Text style={[styles.bold, { color: colors.primary }]}>สำหรับ</Text><Text style={styles.bold}>{payload.customer.name}</Text><Text>{payload.customer.address}</Text>{payload.customer.taxId ? <Text>เลขที่ภาษี {payload.customer.taxId}</Text> : null}{customerOffice ? <Text>สำนักงาน {customerOffice}</Text> : null}</View>
-        <View style={styles.metadata}><Detail label="เลขที่เอกสาร" styles={styles} value={model.documentNumber} /><Detail label="วันที่ออก" styles={styles} value={model.issueDate} /><Detail label="ใช้ได้ถึง" styles={styles} value={model.validUntil} />{model.showReference ? <Detail label="อ้างอิง" styles={styles} value={payload.reference} /> : null}{payload.subject ? <Detail label="เรื่อง / ชื่องาน" styles={styles} value={payload.subject} /> : null}</View>
-      </View>
+      {metadataIsLeft ? <><View style={styles.metadata}><Detail label="เลขที่เอกสาร" styles={styles} value={model.documentNumber} /><Detail label="วันที่ออก" styles={styles} value={model.issueDate} /><Detail label="ใช้ได้ถึง" styles={styles} value={model.validUntil} />{model.showReference ? <Detail label="อ้างอิง" styles={styles} value={payload.reference} /> : null}{payload.subject ? <Detail label="เรื่อง / ชื่องาน" styles={styles} value={payload.subject} /> : null}</View><View style={[styles.recipient, styles.recipientFull]} data-hospitality-recipient><Text style={[styles.bold, { color: colors.primary }]}>สำหรับ</Text><Text style={styles.bold}>{payload.customer.name}</Text><Text>{payload.customer.address}</Text>{payload.customer.taxId ? <Text>เลขที่ภาษี {payload.customer.taxId}</Text> : null}{customerOffice ? <Text>สำนักงาน {customerOffice}</Text> : null}</View></> : <View style={styles.row}><View style={styles.recipient} data-hospitality-recipient><Text style={[styles.bold, { color: colors.primary }]}>สำหรับ</Text><Text style={styles.bold}>{payload.customer.name}</Text><Text>{payload.customer.address}</Text>{payload.customer.taxId ? <Text>เลขที่ภาษี {payload.customer.taxId}</Text> : null}{customerOffice ? <Text>สำนักงาน {customerOffice}</Text> : null}</View><View style={styles.metadata}><Detail label="เลขที่เอกสาร" styles={styles} value={model.documentNumber} /><Detail label="วันที่ออก" styles={styles} value={model.issueDate} /><Detail label="ใช้ได้ถึง" styles={styles} value={model.validUntil} />{model.showReference ? <Detail label="อ้างอิง" styles={styles} value={payload.reference} /> : null}{payload.subject ? <Detail label="เรื่อง / ชื่องาน" styles={styles} value={payload.subject} /> : null}</View></View>}
       {/* data-pdf-items */}
       <View style={styles.table}><Text style={styles.tableLabel}>รายละเอียดที่พักและบริการ</Text><View fixed style={styles.tableHeader} wrap={false}><Text style={styles.descriptionCell}>รายละเอียด</Text><Text style={styles.qtyCell}>จำนวน</Text>{model.showUnit ? <Text style={styles.unitCell}>หน่วย</Text> : null}<Text style={styles.moneyCell}>ราคา</Text>{model.showItemDiscount ? <Text style={styles.discountCell}>ส่วนลด</Text> : null}{model.showItemVat ? <Text style={styles.vatCell}>VAT</Text> : null}<Text style={styles.moneyCell}>มูลค่าก่อนภาษี</Text></View>
         {calculation.lines.map((item) => <View key={item.id} style={styles.tableRow} wrap={!canKeepQuotationPdfItemTogether(item.name, item.description)}><View style={styles.descriptionCell}><Text style={styles.bold}>{item.position}. {item.name}</Text>{item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}</View><Text style={styles.qtyCell}>{item.quantity}</Text>{model.showUnit ? <Text style={styles.unitCell}>{item.unit}</Text> : null}<Text style={styles.moneyCell}>{formatMoney(item.unitPrice)}</Text>{model.showItemDiscount ? <Text style={styles.discountCell}>{formatMoney(item.discountAmount)}</Text> : null}{model.showItemVat ? <Text style={styles.vatCell}>{vatLabel(item)}</Text> : null}<Text style={styles.moneyCell}>{formatMoney(item.preTaxAmount)}</Text></View>)}
