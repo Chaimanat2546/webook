@@ -12,7 +12,7 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /import \{ DragDropProvider \} from "@dnd-kit\/react"/);
     assert.match(source, /useSortable\(/);
     assert.match(source, /group: `quotation-layout-\$\{block\.zone\}`/);
-    assert.match(source, /ลาก .* เพื่อเรียงลำดับ/);
+    assert.match(source, /เพื่อสลับตำแหน่งกัน/);
     assert.match(source, /<DragDropProvider onDragEnd=/);
     assert.match(source, /data-layout-a4-canvas/);
     assert.match(source, /role="button"/);
@@ -20,10 +20,11 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /quotationLayoutBlockRow\(config, block\.id\)/);
   });
 
-  it("normalizes drag order through the same validated quotation layout draft", () => {
-    assert.match(source, /const reordered = move\(ordered, event\)/);
-    assert.match(source, /\(index \+ 1\) \* 10/);
-    assert.match(source, /update\(next\)/);
+  it("swaps the source and target positions through the same validated quotation layout draft", () => {
+    assert.match(source, /function swapPositions/);
+    assert.match(source, /event\.operation\.source\?\.id/);
+    assert.match(source, /event\.operation\.target\?\.id/);
+    assert.match(source, /swapPositions\(source\.id, target\.id\)/);
   });
 
   it("locks block size and provides position-only controls", () => {

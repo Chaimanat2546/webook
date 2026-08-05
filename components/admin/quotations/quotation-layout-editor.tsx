@@ -1,6 +1,5 @@
 "use client";
 
-import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, GripVertical, History, Redo2, RotateCcw, Undo2 } from "lucide-react";
@@ -123,25 +122,45 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     update(next);
   }
 
-  function moveOrder(id: QuotationLayoutBlockId, direction: -1 | 1) {
+  function swapPositions(sourceId: QuotationLayoutBlockId, targetId: QuotationLayoutBlockId) {
     const next = clone(draft);
-    const block = next.blocks.find((item) => item.id === id);
-    if (!block) return;
-    const siblings = blocksInZone(next, block.zone);
-    const neighbour = siblings[siblings.findIndex((item) => item.id === id) + direction];
-    if (!neighbour) return;
-    [block.order, neighbour.order] = [neighbour.order, block.order];
+    const source = next.blocks.find((block) => block.id === sourceId);
+    const target = next.blocks.find((block) => block.id === targetId);
+    if (!source || !target || source.zone !== target.zone) return;
+
+    if (quotationLayoutBlockRow(next, source.id) === quotationLayoutBlockRow(next, target.id)) {
+      const sourceIsLeft = source.column < target.column;
+      source.column = sourceIsLeft ? 13 - source.span : 1;
+      target.column = sourceIsLeft ? 1 : 13 - target.span;
+      const rowOrder = Math.min(source.order, target.order);
+      source.order = rowOrder;
+      target.order = rowOrder;
+    } else {
+      [source.order, target.order] = [target.order, source.order];
+    }
+
+    if (!isQuotationLayoutConfig(next, template)) {
+      toast.error("ตำแหน่งปลายทางมีบล็อกอื่นอยู่ จึงสลับไม่ได้");
+      return;
+    }
     update(next);
   }
 
-  function reorderZone(zone: QuotationLayoutBlock["zone"], event: Parameters<typeof move>[1]) {
+  function moveOrder(id: QuotationLayoutBlockId, direction: -1 | 1) {
+    const block = draft.blocks.find((item) => item.id === id);
+    if (!block) return;
+    const siblings = blocksInZone(draft, block.zone);
+    const neighbour = siblings[siblings.findIndex((item) => item.id === id) + direction];
+    if (!neighbour) return;
+    swapPositions(id, neighbour.id);
+  }
+
+  function reorderZone(zone: QuotationLayoutBlock["zone"], event: Parameters<NonNullable<React.ComponentProps<typeof DragDropProvider>["onDragEnd"]>>[0]) {
     const ordered = blocksInZone(draft, zone);
-    const reordered = move(ordered, event) as QuotationLayoutBlock[];
-    if (reordered.every((block, index) => block.id === ordered[index]?.id)) return;
-    const next = clone(draft);
-    const orderById = new Map(reordered.map((block, index) => [block.id, (index + 1) * 10]));
-    for (const block of next.blocks) { const order = orderById.get(block.id); if (order !== undefined) block.order = order; }
-    update(next);
+    const source = ordered.find((block) => block.id === event.operation.source?.id);
+    const target = ordered.find((block) => block.id === event.operation.target?.id);
+    if (!source || !target || source.id === target.id) return;
+    swapPositions(source.id, target.id);
   }
 
   function canMoveColumn(direction: -1 | 1) {
@@ -174,7 +193,7 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
   return <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]" data-quotation-layout-editor>
     <Card className="overflow-hidden">
       <CardHeader className="gap-3 border-b bg-muted/20">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="text-base">จัดหน้า {QUOTATION_TEMPLATE_LABELS[template]} · เวอร์ชัน {initial.revisionNumber}</CardTitle><p className="mt-1 text-sm font-normal text-muted-foreground">เลือกบล็อก หรือจับไอคอน <GripVertical aria-hidden="true" className="inline size-3" /> เพื่อลากเรียงลำดับในส่วนเดียวกัน · ระบบจะจัดบล็อกที่ไม่ทับกันให้อยู่แถวเดียวกันอัตโนมัติ</p></div><div className="flex gap-1"><Button aria-label="ย้อนกลับการแก้ไขล่าสุด" disabled={!undoStack.length || isPending} onClick={undo} size="icon-sm" type="button" variant="outline"><Undo2 aria-hidden="true" /></Button><Button aria-label="ทำซ้ำการแก้ไขล่าสุด" disabled={!redoStack.length || isPending} onClick={redo} size="icon-sm" type="button" variant="outline"><Redo2 aria-hidden="true" /></Button></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="text-base">จัดหน้า {QUOTATION_TEMPLATE_LABELS[template]} · เวอร์ชัน {initial.revisionNumber}</CardTitle><p className="mt-1 text-sm font-normal text-muted-foreground">ลากบล็อกไปวางบนอีกบล็อกเพื่อสลับตำแหน่งกัน หรือใช้ปุ่มขึ้น/ลง · ระบบจะจัดบล็อกที่ไม่ทับกันให้อยู่แถวเดียวกันอัตโนมัติ</p></div><div className="flex gap-1"><Button aria-label="ย้อนกลับการแก้ไขล่าสุด" disabled={!undoStack.length || isPending} onClick={undo} size="icon-sm" type="button" variant="outline"><Undo2 aria-hidden="true" /></Button><Button aria-label="ทำซ้ำการแก้ไขล่าสุด" disabled={!redoStack.length || isPending} onClick={redo} size="icon-sm" type="button" variant="outline"><Redo2 aria-hidden="true" /></Button></div></div>
       </CardHeader>
       <CardContent className="bg-muted/20 p-4 sm:p-6"><div className="mx-auto grid w-full max-w-[210mm] gap-5 rounded-sm bg-white p-5 shadow-md ring-1 ring-border sm:p-7" data-layout-a4-canvas>
         {QUOTATION_LAYOUT_ZONES.map((zone) => { const blocks = blocksInZone(draft, zone); if (!blocks.length) return null; return <section className="grid gap-2" data-layout-zone={zone} key={zone}><div className="flex items-center gap-2"><span className="h-px flex-1 bg-slate-200" /><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{ZONE_LABELS[zone]}</p><span className="h-px flex-1 bg-slate-200" /></div><DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}><div className="grid grid-cols-12 gap-2.5">{blocks.map((block, index) => <SortableLayoutBlock block={block} config={draft} index={index} key={block.id} onSelect={setSelectedId} selected={selected?.id === block.id} />)}</div></DragDropProvider></section>; })}
