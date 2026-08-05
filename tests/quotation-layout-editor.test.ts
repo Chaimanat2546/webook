@@ -19,6 +19,7 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /BlockPreview/);
     assert.match(source, /quotationLayoutBlockRow\(config, block\.id\)/);
     assert.match(source, /data-layout-position-controls/);
+    assert.match(source, /disabled=\{isPending \|\| !canMove\(block\.id, "up"\)\}/);
   });
 
   it("swaps the source and target positions through the same validated quotation layout draft", () => {
@@ -27,6 +28,8 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /event\.operation\.target\?\.id/);
     assert.match(source, /swapPositions\(source\.id, target\.id\)/);
     assert.match(source, /function directionalTarget/);
+    assert.match(source, /function canMoveFromLayout/);
+    assert.match(source, /function swappedLayout/);
     assert.match(source, /quotationLayoutBlockRow\(draft, block\.id\) === sourceRow/);
   });
 
