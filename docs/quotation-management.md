@@ -397,3 +397,9 @@ for the selected template's revisioned layout. Image fields preview a selected
 file locally before save.
 Master bank notes remain editable; the per-quotation bank-transfer editor hides
 that field without deleting a previously saved value.
+
+The Current, Corporate, and Hospitality document renderers use the selected
+template's layout snapshot for every managed header, body, and settlement
+block. In particular, customer, items, payment methods, public notes, and
+summary are direct grid items, so a published position is reflected in the
+rendered document as well as the layout editor.
