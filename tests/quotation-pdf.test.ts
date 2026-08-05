@@ -101,8 +101,8 @@ describe("quotation PDF", () => {
   it("uses the approved PDF renderer, shared model, Thai fonts, and A4", () => {
     assert.match(pdfSource, /@react-pdf\/renderer/);
     assert.match(pdfSource, /buildQuotationDocumentViewModel/);
-    assert.match(pdfSource, /NotoSansThai-Regular\.ttf/);
-    assert.match(pdfSource, /NotoSansThai-SemiBold\.ttf/);
+    assert.match(pdfSource, /NotoSansThai-Regular-v2\.ttf/);
+    assert.match(pdfSource, /NotoSansThai-SemiBold-v2\.ttf/);
     assert.match(pdfSource, /registerHyphenationCallback/);
     assert.match(currentPdf, /size="A4"/);
     assert.match(currentPdf, /wrap/);
@@ -129,11 +129,11 @@ describe("quotation PDF", () => {
       };
     };
     const requiredCharacters =
-      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-/%(): คืน";
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-/%(): คืนรายละเอียด";
 
     for (const path of [
-      "public/fonts/NotoSansThai-Regular.ttf",
-      "public/fonts/NotoSansThai-SemiBold.ttf",
+      "public/fonts/NotoSansThai-Regular-v2.ttf",
+      "public/fonts/NotoSansThai-SemiBold-v2.ttf",
     ]) {
       const font = fontkit.openSync(path);
       for (const character of requiredCharacters) {

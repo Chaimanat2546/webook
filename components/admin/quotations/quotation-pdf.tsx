@@ -21,8 +21,8 @@ import { HospitalityQuotationPdf } from "./templates/quotation-pdf-hospitality";
 Font.register({
   family: "Noto Sans Thai",
   fonts: [
-    { fontWeight: 400, src: "/fonts/NotoSansThai-Regular.ttf" },
-    { fontWeight: 600, src: "/fonts/NotoSansThai-SemiBold.ttf" },
+    { fontWeight: 400, src: "/fonts/NotoSansThai-Regular-v2.ttf" },
+    { fontWeight: 600, src: "/fonts/NotoSansThai-SemiBold-v2.ttf" },
   ],
 });
 
