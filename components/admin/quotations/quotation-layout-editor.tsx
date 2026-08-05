@@ -79,7 +79,7 @@ function SortableLayoutBlock({
 
   return <div
     className={cn(
-      "min-h-16 rounded border border-primary/30 bg-primary/5 p-3 text-sm shadow-sm",
+      "min-h-16 min-w-0 rounded border border-primary/30 bg-primary/5 p-2.5 text-sm shadow-sm",
       isDragging && "opacity-55",
     )}
     data-layout-block={block.id}
@@ -87,7 +87,7 @@ function SortableLayoutBlock({
     style={{ gridColumn: `${block.column} / span ${block.span}` }}
   >
     <div className="flex items-start justify-between gap-2">
-      <p className="font-medium">{BLOCK_LABELS[block.id]}</p>
+      <p className="min-w-0 truncate font-medium" title={BLOCK_LABELS[block.id]}>{BLOCK_LABELS[block.id]}</p>
       <Button
         aria-label={`ลาก ${BLOCK_LABELS[block.id]} เพื่อเรียงลำดับ`}
         className="-mr-1 -mt-1 shrink-0"
@@ -99,7 +99,7 @@ function SortableLayoutBlock({
         <GripVertical aria-hidden="true" />
       </Button>
     </div>
-    <p className="mt-1 text-xs text-muted-foreground">คอลัมน์ {block.column} · กว้าง {block.span}/12</p>
+    <p className="mt-1 truncate text-xs text-muted-foreground">คอลัมน์ {block.column} · กว้าง {block.span}/12</p>
   </div>;
 }
 
@@ -194,8 +194,8 @@ export function QuotationLayoutEditor({
           <CardTitle className="text-base">ผัง {QUOTATION_TEMPLATE_LABELS[template]} · เวอร์ชัน {initial.revisionNumber}</CardTitle>
           <p className="text-sm font-normal text-muted-foreground">แก้ตำแหน่งเชิงโครงสร้างในกริด 12 คอลัมน์ โดยไม่รับ CSS หรือ HTML</p>
         </CardHeader>
-        <CardContent className="overflow-x-auto p-4 sm:p-6">
-          <div className="mx-auto grid min-w-[42rem] max-w-[210mm] gap-4 rounded-md bg-white p-5 shadow-sm ring-1 ring-border" data-layout-a4-canvas>
+        <CardContent className="p-4 sm:p-6">
+          <div className="mx-auto grid w-full min-w-0 max-w-[210mm] gap-4 rounded-md bg-white p-4 shadow-sm ring-1 ring-border sm:p-5" data-layout-a4-canvas>
             {QUOTATION_LAYOUT_ZONES.map((zone) => {
               const blocks = blocksInZone(draft, zone);
               if (!blocks.length) return null;
