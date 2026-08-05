@@ -22,13 +22,13 @@ export function CorporateQuotationDocument({ model }: QuotationDocumentRendererP
   return <article className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-800" data-layout-revision={payload.layout.revisionNumber} data-quotation-document data-quotation-template="corporate">
     <div className="-mx-[10mm] -mt-[10mm] mb-5 h-1.5 bg-[#142d4c]" aria-hidden="true" />
     <header className="grid grid-cols-12 gap-6 border-b border-slate-300 pb-4" data-document-header>
-      <div className="min-w-0">
+      <div className="col-span-7 min-w-0">
         {payload.seller.logoUrl ? <picture><img alt="โลโก้ผู้ขาย" className="mb-3 max-h-12 max-w-32 object-contain" src={payload.seller.logoUrl} /></picture> : null}
         <p className="text-lg font-semibold text-[#142d4c] [overflow-wrap:anywhere]">{payload.seller.name}</p>
         <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.seller.address}</p>
         <p className="mt-1">เลขที่ภาษี {payload.seller.taxId}{sellerOffice ? ` (${sellerOffice})` : ""}</p>
       </div>
-      <div className="min-w-0 text-right"><p className="text-[9px]">(ต้นฉบับ)</p><h1 className="text-3xl font-semibold tracking-[0.08em] text-[#142d4c]">QUOTATION</h1><p className="text-base text-slate-600">ใบเสนอราคา</p><p className="mt-2 inline-block rounded bg-[#142d4c] px-2 py-1 text-[9px] font-semibold text-white" data-document-number>{model.documentNumber}</p></div>
+      <div className="col-span-5 col-start-8 min-w-0 text-right"><p className="text-[9px]">(ต้นฉบับ)</p><h1 className="text-3xl font-semibold tracking-[0.08em] text-[#142d4c]">QUOTATION</h1><p className="text-base text-slate-600">ใบเสนอราคา</p><p className="mt-2 inline-block rounded bg-[#142d4c] px-2 py-1 text-[9px] font-semibold text-white" data-document-number>{model.documentNumber}</p></div>
     </header>
 
     <section className="mt-4 grid grid-cols-12 gap-4" data-corporate-company-metadata>
