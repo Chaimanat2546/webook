@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { publishQuotationDocumentTemplateLayoutAction } from "../../../app/admin/quotations/actions";
 import {
   isQuotationLayoutConfig,
+  quotationLayoutBlockRow,
   QUOTATION_LAYOUT_ZONES,
   type QuotationLayoutBlock,
   type QuotationLayoutBlockId,
@@ -83,9 +84,9 @@ function BlockPreview({ id }: { id: QuotationLayoutBlockId }) {
   }
 }
 
-function SortableLayoutBlock({ block, index, onSelect, selected }: { block: QuotationLayoutBlock; index: number; onSelect: (id: QuotationLayoutBlockId) => void; selected: boolean }) {
+function SortableLayoutBlock({ block, config, index, onSelect, selected }: { block: QuotationLayoutBlock; config: QuotationLayoutConfig; index: number; onSelect: (id: QuotationLayoutBlockId) => void; selected: boolean }) {
   const { handleRef, isDragging, ref } = useSortable({ group: `quotation-layout-${block.zone}`, id: block.id, index });
-  return <div className={cn("relative min-h-20 min-w-0 cursor-pointer rounded-md border bg-white p-3 shadow-sm transition", selected ? "border-primary ring-2 ring-primary/20" : "border-slate-200 hover:border-primary/60", isDragging && "opacity-50")} data-layout-block={block.id} onClick={() => onSelect(block.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(block.id); } }} ref={ref} role="button" style={{ gridColumn: `${block.column} / span ${block.span}`, gridRow: block.order / 10 }} tabIndex={0}>
+  return <div className={cn("relative min-h-20 min-w-0 cursor-pointer rounded-md border bg-white p-3 shadow-sm transition", selected ? "border-primary ring-2 ring-primary/20" : "border-slate-200 hover:border-primary/60", isDragging && "opacity-50")} data-layout-block={block.id} onClick={() => onSelect(block.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(block.id); } }} ref={ref} role="button" style={{ gridColumn: `${block.column} / span ${block.span}`, gridRow: quotationLayoutBlockRow(config, block.id) }} tabIndex={0}>
     <div className="mb-2 flex items-center justify-between gap-2"><p className="min-w-0 truncate text-xs font-semibold text-slate-700">{BLOCK_LABELS[block.id]}</p><Button aria-label={`ลาก ${BLOCK_LABELS[block.id]} เพื่อเรียงลำดับ`} className="-mr-2 -mt-2 shrink-0 cursor-grab touch-none active:cursor-grabbing" onClick={(event) => event.stopPropagation()} ref={handleRef} size="icon-xs" type="button" variant="ghost"><GripVertical aria-hidden="true" /></Button></div><BlockPreview id={block.id} /></div>;
 }
 
@@ -191,10 +192,10 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
   return <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]" data-quotation-layout-editor>
     <Card className="overflow-hidden">
       <CardHeader className="gap-3 border-b bg-muted/20">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="text-base">จัดหน้า {QUOTATION_TEMPLATE_LABELS[template]} · เวอร์ชัน {initial.revisionNumber}</CardTitle><p className="mt-1 text-sm font-normal text-muted-foreground">เลือกบล็อก หรือจับไอคอน <GripVertical aria-hidden="true" className="inline size-3" /> เพื่อลากเรียงลำดับในส่วนเดียวกัน</p></div><div className="flex gap-1"><Button aria-label="ย้อนกลับการแก้ไขล่าสุด" disabled={!undoStack.length || isPending} onClick={undo} size="icon-sm" type="button" variant="outline"><Undo2 aria-hidden="true" /></Button><Button aria-label="ทำซ้ำการแก้ไขล่าสุด" disabled={!redoStack.length || isPending} onClick={redo} size="icon-sm" type="button" variant="outline"><Redo2 aria-hidden="true" /></Button></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="text-base">จัดหน้า {QUOTATION_TEMPLATE_LABELS[template]} · เวอร์ชัน {initial.revisionNumber}</CardTitle><p className="mt-1 text-sm font-normal text-muted-foreground">เลือกบล็อก หรือจับไอคอน <GripVertical aria-hidden="true" className="inline size-3" /> เพื่อลากเรียงลำดับในส่วนเดียวกัน · ระบบจะจัดบล็อกที่ไม่ทับกันให้อยู่แถวเดียวกันอัตโนมัติ</p></div><div className="flex gap-1"><Button aria-label="ย้อนกลับการแก้ไขล่าสุด" disabled={!undoStack.length || isPending} onClick={undo} size="icon-sm" type="button" variant="outline"><Undo2 aria-hidden="true" /></Button><Button aria-label="ทำซ้ำการแก้ไขล่าสุด" disabled={!redoStack.length || isPending} onClick={redo} size="icon-sm" type="button" variant="outline"><Redo2 aria-hidden="true" /></Button></div></div>
       </CardHeader>
       <CardContent className="bg-muted/20 p-4 sm:p-6"><div className="mx-auto grid w-full max-w-[210mm] gap-5 rounded-sm bg-white p-5 shadow-md ring-1 ring-border sm:p-7" data-layout-a4-canvas>
-        {QUOTATION_LAYOUT_ZONES.map((zone) => { const blocks = blocksInZone(draft, zone); if (!blocks.length) return null; return <section className="grid gap-2" data-layout-zone={zone} key={zone}><div className="flex items-center gap-2"><span className="h-px flex-1 bg-slate-200" /><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{ZONE_LABELS[zone]}</p><span className="h-px flex-1 bg-slate-200" /></div><DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}><div className="grid grid-cols-12 gap-2.5">{blocks.map((block, index) => <SortableLayoutBlock block={block} index={index} key={block.id} onSelect={setSelectedId} selected={selected?.id === block.id} />)}</div></DragDropProvider></section>; })}
+        {QUOTATION_LAYOUT_ZONES.map((zone) => { const blocks = blocksInZone(draft, zone); if (!blocks.length) return null; return <section className="grid gap-2" data-layout-zone={zone} key={zone}><div className="flex items-center gap-2"><span className="h-px flex-1 bg-slate-200" /><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{ZONE_LABELS[zone]}</p><span className="h-px flex-1 bg-slate-200" /></div><DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}><div className="grid grid-cols-12 gap-2.5">{blocks.map((block, index) => <SortableLayoutBlock block={block} config={draft} index={index} key={block.id} onSelect={setSelectedId} selected={selected?.id === block.id} />)}</div></DragDropProvider></section>; })}
       </div></CardContent>
     </Card>
     <aside className="grid content-start gap-4 xl:sticky xl:top-4 xl:self-start">

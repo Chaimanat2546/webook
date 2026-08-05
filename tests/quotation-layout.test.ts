@@ -5,6 +5,7 @@ import {
   canonicalQuotationLayout,
   isQuotationLayoutConfig,
   normalizeQuotationLayout,
+  quotationLayoutBlockRow,
   QUOTATION_LAYOUT_SCHEMA_VERSION,
 } from "../lib/quotation-layout.ts";
 
@@ -29,5 +30,17 @@ describe("quotation layout", () => {
   it("returns a defensive canonical layout when a stored layout is invalid", () => {
     const normalized = normalizeQuotationLayout({ schemaVersion: 1, blocks: [] }, "hospitality");
     assert.deepEqual(normalized, canonicalQuotationLayout("hospitality"));
+  });
+
+  it("compacts non-overlapping blocks into the same visual row after reordering", () => {
+    const layout = canonicalQuotationLayout("hospitality");
+    const reordered = {
+      ...layout,
+      blocks: layout.blocks.map((block) => block.id === "seller" ? { ...block, order: 20 } : block),
+    };
+    assert.equal(quotationLayoutBlockRow(reordered, "documentMetadata"), 1);
+    assert.equal(quotationLayoutBlockRow(reordered, "seller"), 1);
+    assert.equal(quotationLayoutBlockRow(reordered, "paymentMethods"), 1);
+    assert.equal(quotationLayoutBlockRow(reordered, "publicNotes"), 2);
   });
 });

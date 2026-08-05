@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import type { QuotationLayoutBlockId } from "./quotation-layout";
+import { quotationLayoutBlockRow, type QuotationLayoutBlockId } from "./quotation-layout";
 import type { QuotationDocumentViewModel } from "./quotation-document-view";
 
 export function quotationLayoutBlockStyle(
@@ -11,6 +11,6 @@ export function quotationLayoutBlockStyle(
   if (!block) return {};
   return {
     gridColumn: `${block.column} / span ${block.span}`,
-    gridRow: block.order / 10,
+    gridRow: quotationLayoutBlockRow(model.payload.layout.config, id),
   };
 }

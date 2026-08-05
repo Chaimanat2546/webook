@@ -165,6 +165,35 @@ export function normalizeQuotationLayout(value: unknown, template: QuotationTemp
     : canonicalQuotationLayout(template);
 }
 
+/**
+ * Resolves the visual grid row without preserving empty space between blocks.
+ * A row is shared whenever its blocks occupy different columns. This makes a
+ * two-column header/settlement remain compact even after a drag has changed
+ * the linear sort order of its blocks.
+ */
+export function quotationLayoutBlockRow(config: QuotationLayoutConfig, id: QuotationLayoutBlockId): number {
+  const target = config.blocks.find((block) => block.id === id);
+  if (!target) return 1;
+
+  const rows: QuotationLayoutBlock[][] = [];
+  const blocks = config.blocks
+    .filter((block) => block.zone === target.zone)
+    .sort((left, right) => left.order - right.order || left.column - right.column);
+
+  for (const block of blocks) {
+    const rowIndex = rows.findIndex((row) => row.every((placed) => {
+      const blockEnd = block.column + block.span - 1;
+      const placedEnd = placed.column + placed.span - 1;
+      return blockEnd < placed.column || placedEnd < block.column;
+    }));
+    const row = rowIndex === -1 ? (rows.push([]) - 1) : rowIndex;
+    rows[row]?.push(block);
+    if (block.id === id) return row + 1;
+  }
+
+  return 1;
+}
+
 export function canonicalQuotationLayoutSnapshot(template: QuotationTemplate): QuotationLayoutSnapshot {
   return {
     config: canonicalQuotationLayout(template),
