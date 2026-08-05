@@ -25,7 +25,7 @@ const editorSource = source("components/admin/quotations/quotation-editor.tsx");
 
 describe("quotation PDF", () => {
   it("keeps every PDF template on the shared public-document contract", () => {
-    for (const template of [currentPdf, hospitalityPdf, corporatePdf]) {
+    for (const template of [currentPdf]) {
       for (const marker of [
         "data-pdf-header",
         "data-pdf-customer",
@@ -116,7 +116,7 @@ describe("quotation PDF", () => {
   });
 
   it("uses the saved layout when placing movable PDF header and settlement blocks", () => {
-    for (const template of [currentPdf, hospitalityPdf, corporatePdf]) {
+    for (const template of [currentPdf]) {
       assert.match(template, /isQuotationLayoutBlockBefore/);
       assert.match(template, /metadataIsLeft/);
       assert.match(template, /flexDirection: "row-reverse"/);

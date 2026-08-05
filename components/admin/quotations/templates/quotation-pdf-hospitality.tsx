@@ -78,7 +78,6 @@ export function HospitalityQuotationPdf({ images, model }: QuotationPdfRendererP
   const sellerOffice = office(payload.seller);
   const customerOffice = office(payload.customer);
   const sellerContact = [payload.seller.contactName, payload.seller.contactPhone, payload.seller.contactEmail].filter(Boolean).join(" | ");
-  const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
   const summaryIsLeft = isQuotationLayoutBlockBefore(model, "summary", "paymentMethods");
   const canUseSideBySideSettlement = canUseHospitalitySideBySideSettlement({
     paymentMethodCount: model.paymentMethods.length,
@@ -91,7 +90,7 @@ export function HospitalityQuotationPdf({ images, model }: QuotationPdfRendererP
     <Page size="A4" style={styles.page} wrap>
       <View fixed style={styles.topRule} />
       {/* data-pdf-header */}
-      <View style={metadataIsLeft ? [styles.header, { flexDirection: "row-reverse" }] : styles.header}>
+      <View style={styles.header}>
         <View style={styles.seller}>
           {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
           <Text style={[styles.bold, { color: colors.primary, fontSize: 13 }]}>{payload.seller.name}</Text>
