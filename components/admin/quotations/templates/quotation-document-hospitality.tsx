@@ -48,7 +48,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
       <div className="-mx-[10mm] -mt-[10mm] mb-5 h-2 bg-[#286a5b]" aria-hidden="true" />
 
       <header className="grid grid-cols-12 gap-6" data-document-header>
-        <div className="min-w-0" data-layout-block="seller" style={quotationLayoutBlockStyle(model, "seller")}>
+        <div className="col-span-7 min-w-0">
           {payload.seller.logoUrl ? (
             <picture>
               <img alt="โลโก้ผู้ขาย" className="mb-3 max-h-12 max-w-32 object-contain" src={payload.seller.logoUrl} />
@@ -58,7 +58,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
           <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.seller.address}</p>
           <p className="mt-1">เลขที่ภาษี {payload.seller.taxId}{sellerOffice ? ` (${sellerOffice})` : ""}</p>
         </div>
-        <div className="min-w-0 text-right" data-layout-block="documentMetadata" style={quotationLayoutBlockStyle(model, "documentMetadata")}>
+        <div className="col-span-5 col-start-8 min-w-0 text-right">
           <p className="text-[9px]">(ต้นฉบับ)</p>
           <h1 className="text-3xl font-semibold tracking-[0.08em] text-[#286a5b]">QUOTATION</h1>
           <p className="text-base text-[#c79b58]">ใบเสนอราคา</p>
