@@ -2,7 +2,6 @@
 
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { move } from "@dnd-kit/helpers";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, GripVertical, History, Redo2, RotateCcw, Undo2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -185,16 +184,8 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
   function reorderZone(zone: QuotationLayoutBlock["zone"], event: Parameters<NonNullable<React.ComponentProps<typeof DragDropProvider>["onDragEnd"]>>[0]) {
     const ordered = blocksInZone(draft, zone);
     const source = ordered.find((block) => block.id === event.operation.source?.id);
-    if (!source) return;
-
-    // Sortable updates its active index while hovering. Reading operation.target
-    // at drag end can therefore point back to the source instead of the block
-    // under the pointer. Resolve the final index through its move helper, then
-    // swap with the block which originally occupied that position.
-    const moved = move(ordered, event) as QuotationLayoutBlock[];
-    const targetIndex = moved.findIndex((block) => block.id === source.id);
-    const target = ordered[targetIndex];
-    if (!target || source.id === target.id) return;
+    const target = ordered.find((block) => block.id === event.operation.target?.id);
+    if (!source || !target || source.id === target.id) return;
     swapPositions(source.id, target.id);
   }
 
