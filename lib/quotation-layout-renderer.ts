@@ -9,8 +9,20 @@ export function quotationLayoutBlockStyle(
 ): CSSProperties {
   const block = model.payload.layout.config.blocks.find((item) => item.id === id);
   if (!block) return {};
+  const summary = model.payload.layout.config.blocks.find((item) => item.id === "summary");
+  const paymentMethods = model.payload.layout.config.blocks.find((item) => item.id === "paymentMethods");
+  const isExpandedSettlement = model.payload.template !== "current"
+    && (id === "summary" || id === "paymentMethods" || id === "publicNotes")
+    && summary
+    && paymentMethods;
+  const summaryIsLeft = isExpandedSettlement && summary.column < paymentMethods.column;
+  const gridColumn = isExpandedSettlement
+    ? id === "summary"
+      ? `${summaryIsLeft ? 1 : 8} / span 5`
+      : `${summaryIsLeft ? 6 : 1} / span 7`
+    : `${block.column} / span ${block.span}`;
   return {
-    gridColumn: `${block.column} / span ${block.span}`,
+    gridColumn,
     gridRow: `${quotationLayoutBlockRow(model.payload.layout.config, id)} / span ${quotationLayoutBlockRowSpan(model.payload.template, id)}`,
   };
 }

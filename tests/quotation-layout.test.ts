@@ -50,4 +50,12 @@ describe("quotation layout", () => {
     assert.equal(quotationLayoutBlockRowSpan("corporate", "summary"), 2);
     assert.equal(quotationLayoutBlockRowSpan("hospitality", "summary"), 2);
   });
+
+  it("gives the two newer templates a wider settlement summary", () => {
+    for (const template of ["corporate", "hospitality"] as const) {
+      const layout = canonicalQuotationLayout(template);
+      assert.equal(layout.blocks.find((block) => block.id === "summary")?.span, 5);
+      assert.equal(layout.blocks.find((block) => block.id === "paymentMethods")?.span, 7);
+    }
+  });
 });

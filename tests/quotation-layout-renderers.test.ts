@@ -19,6 +19,12 @@ describe("quotation template layout renderers", () => {
     assert.match(corporate, /data-layout-block="publicNotes"/);
   });
 
+  it("keeps new-template settlement summaries wide for every document snapshot", () => {
+    const renderer = readFileSync("lib/quotation-layout-renderer.ts", "utf8");
+    assert.match(renderer, /\$\{summaryIsLeft \? 1 : 8\} \/ span 5/);
+    assert.match(renderer, /\$\{summaryIsLeft \? 6 : 1\} \/ span 7/);
+  });
+
   it("uses the configured grid zones for Hospitality blocks", () => {
     assert.match(hospitality, /data-layout-zone="body"/);
     assert.match(hospitality, /data-layout-zone="settlement"/);
