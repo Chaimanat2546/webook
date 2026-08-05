@@ -33,6 +33,17 @@ export function CurrentQuotationDocument({
               />
             </picture>
           ) : null}
+        </div>
+        <div className="col-span-5 col-start-8 min-w-0">
+          <p className="text-right text-[9px]">(ต้นฉบับ)</p>
+          <h1 className="mb-2 text-right text-3xl font-semibold tracking-tight text-indigo-500">
+            ใบเสนอราคา
+          </h1>
+        </div>
+      </header>
+
+      <div className="mt-3 grid grid-cols-12 gap-7 border-t pt-3" data-layout-zone="header-details">
+        <div className="min-w-0" data-layout-block="seller" style={quotationLayoutBlockStyle(model, "seller")}>
           <div className="grid grid-cols-[minmax(0,1fr)_38mm] gap-5">
             <dl
               className="grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-1"
@@ -89,11 +100,7 @@ export function CurrentQuotationDocument({
             </dl>
           </div>
         </div>
-        <div className="col-span-5 col-start-8 min-w-0">
-          <p className="text-right text-[9px]">(ต้นฉบับ)</p>
-          <h1 className="mb-2 text-right text-3xl font-semibold tracking-tight text-indigo-500">
-            ใบเสนอราคา
-          </h1>
+        <div className="min-w-0" data-layout-block="documentMetadata" style={quotationLayoutBlockStyle(model, "documentMetadata")}>
           <dl
             className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-1 rounded-md bg-indigo-50 p-3"
             data-document-metadata
@@ -122,7 +129,7 @@ export function CurrentQuotationDocument({
             ) : null}
           </dl>
         </div>
-      </header>
+      </div>
 
       <div className="mt-3 grid grid-cols-12 gap-y-3 border-t pt-3" data-layout-zone="body">
       <section className="border-t pt-3" data-document-customer data-layout-block="customer" style={quotationLayoutBlockStyle(model, "customer")}>
