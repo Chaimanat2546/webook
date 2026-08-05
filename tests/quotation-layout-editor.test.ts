@@ -54,4 +54,10 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /publicNotes\.column = paymentMethods\.column/);
     assert.match(source, /publicNotes\.order = settlementOrder \+ 10/);
   });
+
+  it("shows only the current and immediately previous layout versions", () => {
+    assert.match(source, /const visibleRevisions = revisions\.slice\(0, 2\)/);
+    assert.match(source, /visibleRevisions\.map/);
+    assert.match(source, /"ปัจจุบัน" : "ก่อนหน้า"/);
+  });
 });

@@ -297,7 +297,8 @@ export async function listQuotationDocumentTemplateRevisions(
     .from("quotation_document_template_revisions")
     .select("revision_number,layout_schema_version,layout_config,created_at")
     .eq("template_id", sourceId)
-    .order("revision_number", { ascending: false });
+    .order("revision_number", { ascending: false })
+    .limit(2);
   if (error) throw new Error(error.message);
   return (data ?? []).map((revision) => ({
     config: normalizeQuotationLayout(revision.layout_config, template),
