@@ -64,10 +64,21 @@ history.
   and Public Read-only use the latest successfully saved template snapshot.
   Saving a template selection does not change quotation content, calculations,
   payment methods, certification data, or document-display settings.
+- Each account has a separate layout source for every fixed template. Layouts
+  use an allowlisted versioned grid schema: seller, document metadata,
+  customer, items, totals, payment methods, notes, certification, and the
+  hospitality footer. Freeform HTML and CSS are not stored or accepted.
+- `จัดการเลเอาท์` in quotation settings selects one template at a time. It
+  provides an A4 grid preview plus keyboard-accessible up, down, left, and
+  right controls. Publishing creates an immutable revision; restoring an old
+  revision publishes it again as a new revision rather than rewriting history.
+- A quotation saves its layout source ID, revision number, schema version, and
+  complete layout snapshot. Existing quotations therefore preserve their
+  document layout. Switching template on an unsaved draft applies that
+  template's latest account revision; saved preview, print, PDF, and Public
+  Read-only always use the quotation's saved snapshot.
 - The migration backfills existing accounts and quotations to `current`, which
-  preserves the established document appearance. MVP 1 has no editable layout,
-  block positioning, template revisions, or layout history; those MVP 2
-  capabilities remain unavailable until the Staging gate is complete.
+  preserves the established document appearance.
 - Each account has one seller profile, an ordered reusable payment list, and
   optional issuer, approver, signature, and company-stamp certification data.
 - New quotations copy default payment masters into editable quotation rows.
@@ -325,6 +336,11 @@ links every quotation to the profile owned by its `created_by` user. The
 migration stops with an explicit error if a quotation owner is missing from
 Supabase Auth or a seller profile cannot be assigned unambiguously.
 
+Migration `20260805000000_quotation_layout_management_mvp2.sql` creates
+owner-scoped logical template sources, immutable layout revisions, validated
+publish/save RPC boundaries, RLS, and every per-quotation layout snapshot.
+Apply it before opening layout management or saving a quotation with MVP 2.
+
 A database that already records migration `20260718090000` will not execute
 the amended file again. Inspect its actual schema and migration history first,
 then deliberately reconcile the history/schema or ship an equivalent follow-up
@@ -373,9 +389,11 @@ checks do not replace this acceptance step.
 
 ### Seller Settings Navigation
 
-`/admin/quotations/settings/company` has three URL-driven sections:
+`/admin/quotations/settings/company` has four URL-driven sections:
 `?section=company` for the seller profile, `?section=payments` for master
 payment methods, and `?section=certification` for issuer, approver, signatures,
-and company stamp. Image fields preview a selected file locally before save.
+and company stamp, plus `?section=layout&template=current|hospitality|corporate`
+for the selected template's revisioned layout. Image fields preview a selected
+file locally before save.
 Master bank notes remain editable; the per-quotation bank-transfer editor hides
 that field without deleting a previously saved value.

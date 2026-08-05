@@ -62,6 +62,7 @@ import type {
   SellerSnapshot,
 } from "../../../lib/quotation-types";
 import type { QuotationTemplate } from "../../../lib/quotation-template";
+import type { QuotationDocumentTemplateSnapshot } from "../../../server/repositories/quotations";
 import { normalizeQuotationVatChoices } from "../../../lib/quotation-vat";
 import { cn } from "../../../lib/utils";
 import { Alert, AlertDescription } from "../../ui/alert";
@@ -93,6 +94,7 @@ export interface QuotationEditorProps {
   printOnLoad?: boolean;
   publicOrigin: string | null;
   publicToken: string | null;
+  templateSnapshots: Record<QuotationTemplate, QuotationDocumentTemplateSnapshot>;
 }
 type PendingConfirmation = "close" | null;
 type FieldProps = {
@@ -672,6 +674,7 @@ export function QuotationEditor({
   printOnLoad = false,
   publicOrigin,
   publicToken: initialPublicToken,
+  templateSnapshots,
 }: QuotationEditorProps) {
   const router = useRouter();
   const [payload, setPayload] = useState<QuotationPayload>(() =>
@@ -753,6 +756,9 @@ export function QuotationEditor({
     [lastSavedPayload],
   );
   const paymentListState = paymentMethodListState(payload.paymentMethods, fieldErrors);
+  const latestLayout = templateSnapshots[payload.template];
+  const hasNewerLayout = latestLayout.sourceId === payload.layout.sourceId
+    && latestLayout.revisionNumber > payload.layout.revisionNumber;
   const money = (value?: string) => (value ? formatBaht(value) : "—");
   function changed(field: string) {
     setIsDirty(true);
@@ -790,12 +796,35 @@ export function QuotationEditor({
       }
     }
     changed("template");
-    setPayload((current) => ({ ...current, template: value }));
+    const snapshot = templateSnapshots[value];
+    setPayload((current) => ({
+      ...current,
+      layout: {
+        config: structuredClone(snapshot.config),
+        revisionNumber: snapshot.revisionNumber,
+        schemaVersion: snapshot.schemaVersion,
+        sourceId: snapshot.sourceId,
+      },
+      template: value,
+    }));
     if (saveAsDefault) {
       setAccountTemplateDefault(value);
       toast.success("บันทึกเทมเพลตเริ่มต้นแล้ว");
     }
     return true;
+  }
+  function applyLatestLayout() {
+    changed("layout");
+    setPayload((current) => ({
+      ...current,
+      layout: {
+        config: structuredClone(latestLayout.config),
+        revisionNumber: latestLayout.revisionNumber,
+        schemaVersion: latestLayout.schemaVersion,
+        sourceId: latestLayout.sourceId,
+      },
+    }));
+    toast.success(`ใช้เลเอาท์เวอร์ชัน ${latestLayout.revisionNumber} ในฉบับร่างแล้ว`);
   }
   function updateRoot<K extends keyof QuotationPayload>(
     key: K,
@@ -1686,8 +1715,14 @@ export function QuotationEditor({
               variant="outline"
             >
               {completionExpanded ? "ซ่อน" : "แสดง"}
-            </Button>
-          </div>
+          </Button>
+        </div>
+        {hasNewerLayout ? <Alert className="mt-3" data-newer-layout-notice>
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>มีเลเอาท์เวอร์ชันใหม่ (v{latestLayout.revisionNumber}) สำหรับเทมเพลตนี้</span>
+            <Button disabled={isPending} onClick={applyLatestLayout} size="sm" type="button" variant="outline">อัปเดตเป็นเวอร์ชันล่าสุด</Button>
+          </AlertDescription>
+        </Alert> : null}
           <div
             hidden={!completionExpanded}
             id="quotation-completion-content"

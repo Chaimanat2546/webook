@@ -15,6 +15,7 @@ import {
   isQuotationTemplate,
   normalizeQuotationTemplate,
 } from "../lib/quotation-template.ts";
+import { canonicalQuotationLayoutSnapshot } from "../lib/quotation-layout.ts";
 import {
   prepareQuotationPayload as prepareQuotationPayloadWithCatalog,
   prepareSellerSnapshot,
@@ -44,6 +45,7 @@ function validPayload(): QuotationPayload {
     internalNotes: "",
     issueDate: "2026-07-14",
     items: [{ description: "", discountAmount: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "ค่าบริการ", position: 1, quantity: "1", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
+    layout: { ...canonicalQuotationLayoutSnapshot("current"), sourceId: "123e4567-e89b-42d3-a456-426614174099" },
     paymentMethods: [],
     publicNotes: "",
     reference: "",
@@ -97,6 +99,10 @@ describe("quotation service", () => {
   it("persists a validated quotation template snapshot", () => {
     const payload = validPayload();
     payload.template = "hospitality";
+    payload.layout = {
+      ...canonicalQuotationLayoutSnapshot("hospitality"),
+      sourceId: "123e4567-e89b-42d3-a456-426614174099",
+    };
     const prepared = prepareQuotationPayload(payload);
     assert.equal(prepared.payload.template, "hospitality");
     assert.equal(prepared.rpcPayload.document_template_snapshot, "hospitality");

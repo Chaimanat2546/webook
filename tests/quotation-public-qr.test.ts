@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import type { QuotationCalculation } from "../lib/quotation-calculator.ts";
 import { buildQuotationDocumentViewModel } from "../lib/quotation-document-view.ts";
 import { QUOTATION_DOCUMENT_DISPLAY_DEFAULTS } from "../lib/quotation-document-display.ts";
+import { canonicalQuotationLayoutSnapshot } from "../lib/quotation-layout.ts";
 import { getQuotationPublicOrigin } from "../lib/env.ts";
 import {
   buildQuotationPublicUrl,
@@ -56,6 +57,7 @@ describe("quotation Public QR", () => {
       internalNotes: "private",
       issueDate: "2026-07-20",
       items: [],
+      layout: { ...canonicalQuotationLayoutSnapshot("current"), sourceId: "123e4567-e89b-42d3-a456-426614174099" },
       paymentMethods: [
         { accountName: "", accountNumber: "", accountType: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", id: "second", instructions: "", position: 2, promptPayId: "bad", providerName: "", qrImageUrl: "", qrMode: "auto_promptpay", type: "promptpay" },
         { accountName: "", accountNumber: "", accountType: "", bankCode: "", bankId: null, bankLogoUrl: "", bankName: "", customBankLogoUrl: "", customBankName: "", id: "first", instructions: "", position: 1, promptPayId: "", providerName: "", qrImageUrl: "https://media.example/qr.png", qrMode: "upload", type: "qr_payment" },

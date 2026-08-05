@@ -1,5 +1,6 @@
 import { CreditCard, Globe2, Mail, MessageCircle, Phone, ReceiptText, Signature } from "lucide-react";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
+import { quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
 import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
 import { DocumentImage, office, PaymentMethod, SignerSlot, Total, vatLabel } from "./quotation-document-shared";
 
@@ -13,13 +14,14 @@ export function CurrentQuotationDocument({
     <article
       className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-900"
       data-quotation-document
+      data-layout-revision={payload.layout.revisionNumber}
       data-quotation-template="current"
     >
       <header
-        className="grid grid-cols-[minmax(0,1.55fr)_minmax(16.5rem,0.85fr)] gap-7"
+        className="grid grid-cols-12 gap-7"
         data-document-header
       >
-        <div className="min-w-0">
+        <div className="min-w-0" data-layout-block="seller" style={quotationLayoutBlockStyle(model, "seller")}>
           {payload.seller.logoUrl ? (
             <picture>
               <img
@@ -85,7 +87,7 @@ export function CurrentQuotationDocument({
             </dl>
           </div>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0" data-layout-block="documentMetadata" style={quotationLayoutBlockStyle(model, "documentMetadata")}>
           <p className="text-right text-[9px]">(ต้นฉบับ)</p>
           <h1 className="mb-2 text-right text-3xl font-semibold tracking-tight text-indigo-500">
             ใบเสนอราคา
@@ -120,7 +122,8 @@ export function CurrentQuotationDocument({
         </div>
       </header>
 
-      <section className="mt-3 border-t pt-3" data-document-customer>
+      <div className="mt-3 grid grid-cols-12 gap-y-3 border-t pt-3" data-layout-zone="body">
+      <section className="border-t pt-3" data-document-customer data-layout-block="customer" style={quotationLayoutBlockStyle(model, "customer")}>
         <dl className="grid max-w-[135mm] grid-cols-[3.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-1">
           <dt className="font-semibold">ลูกค้า</dt>
           <dd className="font-semibold [overflow-wrap:anywhere]">
@@ -146,8 +149,10 @@ export function CurrentQuotationDocument({
       </section>
 
       <table
-        className="mt-3 w-full table-fixed border-collapse"
+        className="w-full table-fixed border-collapse"
         data-document-items
+        data-layout-block="items"
+        style={quotationLayoutBlockStyle(model, "items")}
       >
         <thead>
           <tr className="bg-indigo-50 text-left">
@@ -202,8 +207,10 @@ export function CurrentQuotationDocument({
           ))}
         </tbody>
       </table>
+      </div>
 
-      <section className="mt-4 border-b py-3" data-document-summary>
+      <div className="mt-4 grid grid-cols-12 gap-3" data-layout-zone="settlement">
+      <section className="border-b py-3" data-document-summary data-layout-block="summary" style={quotationLayoutBlockStyle(model, "summary")}>
         <div className="grid grid-cols-[16mm_minmax(0,1fr)_78mm] gap-5">
           <h2
             className="flex items-start gap-1 font-semibold"
@@ -249,6 +256,8 @@ export function CurrentQuotationDocument({
         <section
           className="border-b"
           data-document-payment-methods
+          data-layout-block="paymentMethods"
+          style={quotationLayoutBlockStyle(model, "paymentMethods")}
         >
           <div className="grid grid-cols-[16mm_minmax(0,1fr)] gap-5">
             <h2
@@ -270,6 +279,8 @@ export function CurrentQuotationDocument({
       {model.showNotes ? <section
         className="grid grid-cols-[16mm_minmax(0,1fr)] gap-5 border-b py-3"
         data-document-notes
+        data-layout-block="publicNotes"
+        style={quotationLayoutBlockStyle(model, "publicNotes")}
       >
         <h2 className="flex items-start gap-1 font-semibold">
           <MessageCircle aria-hidden="true" className="mt-0.5 size-3" />
@@ -281,10 +292,13 @@ export function CurrentQuotationDocument({
           </p>
         ) : null}
       </section> : null}
+      </div>
 
       <section
         className="break-inside-avoid grid grid-cols-[16mm_minmax(0,1fr)] gap-5 py-3"
         data-document-certification
+        data-layout-block="certification"
+        style={quotationLayoutBlockStyle(model, "certification")}
       >
         <h2 className="flex items-start gap-1 font-semibold">
           <Signature aria-hidden="true" className="mt-0.5 size-3" />

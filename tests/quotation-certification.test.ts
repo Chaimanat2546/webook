@@ -8,6 +8,7 @@ import {
   type CertificationSnapshot,
 } from "../lib/quotation-certification.ts";
 import { QUOTATION_DOCUMENT_DISPLAY_DEFAULTS } from "../lib/quotation-document-display.ts";
+import { canonicalQuotationLayoutSnapshot } from "../lib/quotation-layout.ts";
 import {
   prepareQuotationPayload as prepareQuotationPayloadWithCatalog,
   QuotationValidationError,
@@ -31,6 +32,7 @@ const validPayload = () => ({
   internalNotes: "",
   issueDate: "2026-07-20",
   items: [{ description: "", discountAmount: "0", id: crypto.randomUUID(), name: "ค่าบริการ", position: 1, quantity: "1", unit: "คืน", unitPrice: "1000", vatRate: "0", vatTreatment: "none" }],
+  layout: { ...canonicalQuotationLayoutSnapshot("current"), sourceId: "00000000-0000-4000-8000-000000000001" },
   paymentMethods: [],
   publicNotes: "",
   reference: "",

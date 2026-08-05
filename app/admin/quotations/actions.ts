@@ -19,6 +19,7 @@ import {
 import type { QuotationPayload } from "../../../lib/quotation-types";
 import { isQuotationDocumentDisplay } from "../../../lib/quotation-document-display";
 import { isQuotationTemplate } from "../../../lib/quotation-template";
+import { isQuotationLayoutConfig } from "../../../lib/quotation-layout";
 import { getQuotationAssetEnv } from "../../../lib/env";
 import { canUseQuotation, requireAdmin } from "../../../server/auth/admin";
 import {
@@ -30,6 +31,7 @@ import {
   saveQuotationCompanyProfile,
   saveQuotationDocumentDisplayDefaults,
   saveQuotationTemplateDefault,
+  publishQuotationDocumentTemplateLayout,
   softDeleteQuotation,
 } from "../../../server/repositories/quotations";
 import { QuotationPaymentAssetOriginNotConfiguredError } from "../../../server/repositories/quotation-errors";
@@ -94,6 +96,42 @@ export async function saveQuotationTemplateDefaultAction(
     return { ok: true };
   } catch {
     return { formError: "ไม่สามารถบันทึกเทมเพลตเริ่มต้นได้", ok: false };
+  }
+}
+
+export async function publishQuotationDocumentTemplateLayoutAction(
+  template: unknown,
+  expectedRevisionNumber: unknown,
+  config: unknown,
+): Promise<{ ok: true; revisionNumber: number } | { formError: string; ok: false }> {
+  const { adminUser, supabase } = await requireAdmin();
+  if (!canUseQuotation(adminUser)) {
+    return { formError: "ไม่มีสิทธิ์จัดการใบเสนอราคา", ok: false };
+  }
+  const expectedRevision = typeof expectedRevisionNumber === "number"
+    ? expectedRevisionNumber
+    : 0;
+  if (!isQuotationTemplate(template)
+    || !Number.isSafeInteger(expectedRevision) || expectedRevision < 1
+    || !isQuotationLayoutConfig(config, template)) {
+    return { formError: "เลเอาท์เอกสารไม่ถูกต้อง", ok: false };
+  }
+  try {
+    const published = await publishQuotationDocumentTemplateLayout(
+      supabase,
+      template,
+      expectedRevision,
+      config,
+    );
+    revalidatePath("/admin/quotations");
+    revalidatePath("/admin/quotations/new");
+    revalidatePath("/admin/quotations/settings/company");
+    return { ok: true, revisionNumber: published.revisionNumber };
+  } catch (error) {
+    const message = error instanceof Error && /conflict/i.test(error.message)
+      ? "มีเลเอาท์เวอร์ชันใหม่แล้ว กรุณาโหลดข้อมูลล่าสุด"
+      : "ไม่สามารถเผยแพร่เลเอาท์ได้";
+    return { formError: message, ok: false };
   }
 }
 

@@ -3,6 +3,7 @@ import type { CertificationSnapshot } from "./quotation-certification.ts";
 import type { QuotationPaymentMethod } from "./quotation-payment-methods.ts";
 import type { QuotationDocumentDisplay } from "./quotation-document-display.ts";
 import type { QuotationTemplate } from "./quotation-template.ts";
+import type { QuotationLayoutSnapshot } from "./quotation-layout.ts";
 
 export type OfficeType = "branch" | "head_office" | "unspecified";
 
@@ -40,6 +41,7 @@ export interface QuotationPayload {
   paymentMethods: QuotationPaymentMethod[];
   publicNotes: string;
   reference: string;
+  layout: QuotationLayoutSnapshot;
   seller: SellerSnapshot;
   subject: string;
   template: QuotationTemplate;

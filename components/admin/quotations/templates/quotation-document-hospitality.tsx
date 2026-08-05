@@ -1,6 +1,7 @@
 import { CreditCard, MapPin, MessageCircle, ReceiptText, Signature } from "lucide-react";
 
 import { canUseHospitalitySideBySideSettlement } from "../../../../lib/quotation-hospitality-layout";
+import { quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 
 import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
@@ -48,12 +49,13 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
     <article
       className="mx-auto min-h-[297mm] w-[210mm] bg-[#fffdf8] p-[10mm] text-[10px] leading-[1.45] text-slate-800"
       data-quotation-document
+      data-layout-revision={payload.layout.revisionNumber}
       data-quotation-template="hospitality"
     >
       <div className="-mx-[10mm] -mt-[10mm] mb-5 h-2 bg-[#286a5b]" aria-hidden="true" />
 
-      <header className="grid grid-cols-[minmax(0,1.2fr)_72mm] gap-6" data-document-header>
-        <div className="min-w-0">
+      <header className="grid grid-cols-12 gap-6" data-document-header>
+        <div className="min-w-0" data-layout-block="seller" style={quotationLayoutBlockStyle(model, "seller")}>
           {payload.seller.logoUrl ? (
             <picture>
               <img alt="โลโก้ผู้ขาย" className="mb-3 max-h-12 max-w-32 object-contain" src={payload.seller.logoUrl} />
@@ -63,15 +65,15 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
           <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.seller.address}</p>
           <p className="mt-1">เลขที่ภาษี {payload.seller.taxId}{sellerOffice ? ` (${sellerOffice})` : ""}</p>
         </div>
-        <div className="min-w-0 text-right">
+        <div className="min-w-0 text-right" data-layout-block="documentMetadata" style={quotationLayoutBlockStyle(model, "documentMetadata")}>
           <p className="text-[9px]">(ต้นฉบับ)</p>
           <h1 className="text-3xl font-semibold tracking-[0.08em] text-[#286a5b]">QUOTATION</h1>
           <p className="text-base text-[#c79b58]">ใบเสนอราคา</p>
         </div>
       </header>
 
-      <section className="mt-4 grid grid-cols-[minmax(0,1.25fr)_70mm] gap-4" data-document-customer>
-        <div className="rounded-md border border-[#c79b58]/50 bg-[#fff8e9] p-3" data-hospitality-recipient>
+      <section className="mt-4 grid grid-cols-12 gap-4" data-document-customer>
+        <div className="rounded-md border border-[#c79b58]/50 bg-[#fff8e9] p-3" data-hospitality-recipient data-layout-block="customer" style={quotationLayoutBlockStyle(model, "customer")}>
           <p className="mb-2 font-semibold text-[#286a5b]">สำหรับ</p>
           <p className="font-semibold [overflow-wrap:anywhere]">{payload.customer.name}</p>
           <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.customer.address}</p>
@@ -89,7 +91,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
         </dl>
       </section>
 
-      <section className="mt-5" data-document-items>
+      <section className="mt-5" data-document-items data-layout-block="items" style={quotationLayoutBlockStyle(model, "items")}>
         <div className="mb-2 flex items-center gap-2 text-[#286a5b]"><MapPin aria-hidden="true" className="size-3.5" /><h2 className="font-semibold">รายละเอียดที่พักและบริการ</h2></div>
         <table className="w-full table-fixed border-collapse">
           <thead><tr className="bg-[#286a5b] text-left text-white">
@@ -108,15 +110,15 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
       </section>
 
       <section
-        className={`mt-4 border-y border-[#286a5b]/20 py-3 ${canUseSideBySideSettlement ? "grid grid-cols-[minmax(0,1fr)_72mm] gap-4" : "block"}`}
+        className={`mt-4 border-y border-[#286a5b]/20 py-3 ${canUseSideBySideSettlement ? "grid grid-cols-12 gap-4" : "block"}`}
         data-document-summary
         data-hospitality-summary-sequential={!canUseSideBySideSettlement || undefined}
       >
-        <div className="min-w-0">
+        <div className="min-w-0" data-layout-block="paymentMethods" style={quotationLayoutBlockStyle(model, "paymentMethods")}>
           {model.paymentMethods.length ? <div data-document-payment-methods><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#286a5b]"><CreditCard aria-hidden="true" className="size-3" />การชำระเงิน</h2><div className="divide-y divide-[#286a5b]/15">{model.paymentMethods.map((method) => <PaymentMethod key={method.id} method={method} />)}</div></div> : null}
           {model.showNotes ? <div className={model.paymentMethods.length ? "mt-3" : ""} data-document-notes><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#286a5b]"><MessageCircle aria-hidden="true" className="size-3" />หมายเหตุ</h2><p className="whitespace-pre-line [overflow-wrap:anywhere]">{payload.publicNotes}</p></div> : null}
         </div>
-        <aside className={`break-inside-avoid self-start rounded-md bg-[#286a5b] p-3 text-white ${canUseSideBySideSettlement ? "" : "mt-3"}`} data-hospitality-settlement data-document-summary-settlement>
+        <aside className={`break-inside-avoid self-start rounded-md bg-[#286a5b] p-3 text-white ${canUseSideBySideSettlement ? "" : "mt-3"}`} data-hospitality-settlement data-document-summary-settlement data-layout-block="summary" style={quotationLayoutBlockStyle(model, "summary")}>
           <h2 className="mb-2 flex items-center gap-1 font-semibold"><ReceiptText aria-hidden="true" className="size-3" />สรุปการชำระ</h2>
           <HospitalityTotal label="มูลค่ารวม" value={formatBaht(calculation.grossTotal)} />
           <HospitalityTotal label="ส่วนลด" value={formatBaht(calculation.discountTotal)} />
@@ -129,7 +131,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
         </aside>
       </section>
 
-      <section className="break-inside-avoid mt-3 grid grid-cols-[16mm_minmax(0,1fr)] gap-4" data-document-certification>
+      <section className="break-inside-avoid mt-3 grid grid-cols-[16mm_minmax(0,1fr)] gap-4" data-document-certification data-layout-block="certification" style={quotationLayoutBlockStyle(model, "certification")}>
         <h2 className="flex items-start gap-1 font-semibold text-[#286a5b]"><Signature aria-hidden="true" className="mt-0.5 size-3" />รับรอง</h2>
         <div className={`grid min-w-0 gap-3 text-center ${model.showCertificationQr ? "grid-cols-5" : "grid-cols-4"}`}>
           {model.showCertificationQr ? <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-public-qr><p className="font-semibold">สแกนเพื่อเปิดด้วยเว็บไซต์</p><div className={`flex items-center justify-center ${compactCertification ? "h-12" : "h-20"}`}>{model.publicQrDataUrl ? <>
@@ -143,7 +145,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
         </div>
       </section>
 
-      <footer className="mt-4 border-t border-[#c79b58] pt-3 text-[9px] text-slate-600" data-hospitality-seller-footer>
+      <footer className="mt-4 border-t border-[#c79b58] pt-3 text-[9px] text-slate-600" data-hospitality-seller-footer data-layout-block="sellerFooter" style={quotationLayoutBlockStyle(model, "sellerFooter")}>
         <p className="font-semibold text-[#286a5b]">{payload.seller.name}</p>
         <p className="whitespace-pre-line [overflow-wrap:anywhere]">{payload.seller.address}</p>
         <p className="[overflow-wrap:anywhere]">{[payload.seller.phone, payload.seller.email, payload.seller.website].filter(Boolean).join(" | ")}</p>

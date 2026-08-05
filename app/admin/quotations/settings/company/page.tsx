@@ -1,23 +1,27 @@
-import { ArrowLeft, BadgeCheck, Building2, CreditCard } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, CreditCard, PanelsTopLeft } from "lucide-react";
 
 import { CertificationSettings, CompanyProfileForm, PaymentMethodsSettings } from "../../../../../components/admin/quotations/company-profile-form";
 import { QuotationSettingsDirtyProvider, QuotationSettingsNavLink } from "../../../../../components/admin/quotations/quotation-settings-dirty";
+import { QuotationLayoutEditor } from "../../../../../components/admin/quotations/quotation-layout-editor";
 import { Button } from "../../../../../components/ui/button";
 import { Empty, EmptyHeader, EmptyTitle } from "../../../../../components/ui/empty";
 import { emptyCertificationSnapshot } from "../../../../../lib/quotation-certification";
 import { cn } from "../../../../../lib/utils";
+import { isQuotationTemplate } from "../../../../../lib/quotation-template";
+import { QUOTATION_TEMPLATES, QUOTATION_TEMPLATE_LABELS } from "../../../../../lib/quotation-template";
 import { canUseQuotation, requireAdmin } from "../../../../../server/auth/admin";
-import { companyProfileToCertification, companyProfileToSeller, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks } from "../../../../../server/repositories/quotations";
+import { companyProfileToCertification, companyProfileToSeller, companyProfileToTemplate, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationDocumentTemplateRevisions, listQuotationDocumentTemplateSnapshots } from "../../../../../server/repositories/quotations";
 
 const sections = [
   { href: "/admin/quotations/settings/company?section=company", icon: Building2, id: "company", label: "ข้อมูลผู้ขายหลัก" },
   { href: "/admin/quotations/settings/company?section=payments", icon: CreditCard, id: "payments", label: "ช่องทางชำระเงิน" },
   { href: "/admin/quotations/settings/company?section=certification", icon: BadgeCheck, id: "certification", label: "ข้อมูลรับรองหลัก" },
+  { href: "/admin/quotations/settings/company?section=layout", icon: PanelsTopLeft, id: "layout", label: "จัดการเลเอาท์" },
 ] as const;
 
-export default async function CompanyProfilePage({ searchParams }: { searchParams: Promise<{ section?: string }> }) {
-  const { section } = await searchParams;
-  const selectedSection = section === "payments" || section === "certification" ? section : "company";
+export default async function CompanyProfilePage({ searchParams }: { searchParams: Promise<{ section?: string; template?: string }> }) {
+  const { section, template: templateValue } = await searchParams;
+  const selectedSection = section === "payments" || section === "certification" || section === "layout" ? section : "company";
   const { adminUser, supabase, user } = await requireAdmin();
   if (!canUseQuotation(adminUser)) return <Empty><EmptyHeader><EmptyTitle>ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ขาย</EmptyTitle></EmptyHeader></Empty>;
   const profile = selectedSection === "payments"
@@ -33,6 +37,15 @@ export default async function CompanyProfilePage({ searchParams }: { searchParam
     address: "", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "", logoUrl: "", name: "", officeType: "head_office" as const, phone: "", taxId: "", website: "",
   };
   const initialCertification = profile ? companyProfileToCertification(profile) : emptyCertificationSnapshot();
+  const selectedTemplate = isQuotationTemplate(templateValue)
+    ? templateValue
+    : profile ? companyProfileToTemplate(profile) : "current";
+  const templateSnapshots = selectedSection === "layout" && profile
+    ? await listQuotationDocumentTemplateSnapshots(supabase, user.id)
+    : null;
+  const revisions = templateSnapshots
+    ? await listQuotationDocumentTemplateRevisions(supabase, templateSnapshots[selectedTemplate].sourceId, selectedTemplate)
+    : [];
   return <QuotationSettingsDirtyProvider><div className="mx-auto grid w-full max-w-6xl gap-5">
     <header className="flex items-start gap-3 border-b pb-4">
       <Button asChild size="icon-sm" variant="ghost"><QuotationSettingsNavLink aria-label="กลับไปหน้ารายการใบเสนอราคา" href="/admin/quotations"><ArrowLeft aria-hidden="true" /></QuotationSettingsNavLink></Button>
@@ -52,6 +65,17 @@ export default async function CompanyProfilePage({ searchParams }: { searchParam
         {selectedSection === "company" ? <CompanyProfileForm initialSeller={seller} /> : null}
         {selectedSection === "payments" ? <PaymentMethodsSettings banks={banks} initialMethods={paymentMethods} /> : null}
         {selectedSection === "certification" ? <CertificationSettings initialCertification={initialCertification} /> : null}
+        {selectedSection === "layout" && templateSnapshots ? <>
+          <div className="mb-5 flex flex-wrap gap-2" aria-label="เลือกเทมเพลตสำหรับจัดการเลเอาท์">
+            {QUOTATION_TEMPLATES.map((template) => <QuotationSettingsNavLink
+              className={cn("rounded-md border px-3 py-2 text-sm", selectedTemplate === template ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}
+              current={selectedTemplate === template}
+              href={`/admin/quotations/settings/company?section=layout&template=${template}`}
+              key={template}
+            >{QUOTATION_TEMPLATE_LABELS[template]}</QuotationSettingsNavLink>)}
+          </div>
+          <QuotationLayoutEditor initial={templateSnapshots[selectedTemplate]} revisions={revisions} template={selectedTemplate} />
+        </> : null}
       </main>
     </div>
   </div></QuotationSettingsDirtyProvider>;

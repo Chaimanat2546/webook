@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import { normalizeQuotationVatChoices } from "../lib/quotation-vat.ts";
 import { QUOTATION_DOCUMENT_DISPLAY_DEFAULTS } from "../lib/quotation-document-display.ts";
+import { canonicalQuotationLayoutSnapshot } from "../lib/quotation-layout.ts";
 import type { QuotationPayload } from "../lib/quotation-types.ts";
 
 function payload(): QuotationPayload {
@@ -22,6 +23,7 @@ function payload(): QuotationPayload {
       { description: "", discountAmount: "0", id: "two", name: "Legacy exempt", position: 2, quantity: "1", unit: "", unitPrice: "100", vatRate: "0", vatTreatment: "exempt" },
       { description: "", discountAmount: "0", id: "three", name: "Zero rated", position: 3, quantity: "1", unit: "", unitPrice: "100", vatRate: "0", vatTreatment: "taxable" },
     ],
+    layout: { ...canonicalQuotationLayoutSnapshot("current"), sourceId: "123e4567-e89b-42d3-a456-426614174099" },
     paymentMethods: [],
     publicNotes: "",
     reference: "",

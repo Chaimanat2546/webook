@@ -97,6 +97,11 @@ const styles = StyleSheet.create({
   certificationImageCompact: { height: 32 },
 });
 
+function layoutFlex(model: QuotationPdfRendererProps["model"], id: "seller" | "documentMetadata") {
+  const block = model.payload.layout.config.blocks.find((item) => item.id === id);
+  return { flexBasis: 0, flexGrow: block?.span ?? 1 };
+}
+
 export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps) {
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
@@ -106,7 +111,7 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
       <Page size="A4" style={styles.page} wrap>
         {/* data-pdf-header */}
         <View style={styles.header}>
-          <View style={styles.seller}>
+          <View style={[styles.seller, layoutFlex(model, "seller")] }>
             {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
             <Detail label="ผู้ขาย" styles={styles} value={payload.seller.name} />
             <Detail label="ที่อยู่" styles={styles} value={payload.seller.address} />
@@ -115,7 +120,7 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
             {payload.seller.email ? <Detail label="อีเมล" styles={styles} value={payload.seller.email} /> : null}
             {payload.seller.website ? <Detail label="เว็บไซต์" styles={styles} value={payload.seller.website} /> : null}
           </View>
-          <View style={styles.titleBox}>
+          <View style={[styles.titleBox, layoutFlex(model, "documentMetadata")] }>
             <Text style={styles.right}>(ต้นฉบับ)</Text>
             <Text style={styles.title}>ใบเสนอราคา</Text>
             <View style={styles.metadata}>
