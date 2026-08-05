@@ -29,8 +29,10 @@ describe("quotation layout editor drag and drop", () => {
 
   it("swaps the source and target positions through the same validated quotation layout draft", () => {
     assert.match(source, /function swapPositions/);
-    assert.match(source, /event\.operation\.source\?\.id/);
-    assert.match(source, /event\.operation\.target\?\.id/);
+    assert.match(source, /isSortable\(sortableSource\)/);
+    assert.match(source, /ordered\[sortableSource\.initialIndex\]/);
+    assert.match(source, /ordered\[sortableSource\.index\]/);
+    assert.match(source, /event\.canceled/);
     assert.match(source, /swapPositions\(source\.id, target\.id\)/);
     assert.match(source, /function directionalTarget/);
     assert.match(source, /function canMoveFromLayout/);

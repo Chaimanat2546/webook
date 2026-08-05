@@ -1,7 +1,7 @@
 "use client";
 
 import { DragDropProvider } from "@dnd-kit/react";
-import { useSortable } from "@dnd-kit/react/sortable";
+import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, GripVertical, History, Redo2, RotateCcw, Undo2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -184,9 +184,11 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
 
   function reorderZone(zone: QuotationLayoutBlock["zone"], event: Parameters<NonNullable<React.ComponentProps<typeof DragDropProvider>["onDragEnd"]>>[0]) {
     const ordered = blocksInZone(draft, zone);
-    const source = ordered.find((block) => block.id === event.operation.source?.id);
-    const target = ordered.find((block) => block.id === event.operation.target?.id);
-    if (!source || !target || source.id === target.id) return;
+    const { source: sortableSource } = event.operation;
+    if (event.canceled || !isSortable(sortableSource)) return;
+    const source = ordered[sortableSource.initialIndex];
+    const target = ordered[sortableSource.index];
+    if (!source || !target || sortableSource.initialIndex === sortableSource.index) return;
     swapPositions(source.id, target.id);
   }
 
