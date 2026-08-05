@@ -72,10 +72,11 @@ history.
   provides an A4 grid preview plus keyboard-accessible up, down, left, and
   right controls. Publishing creates an immutable revision; restoring an old
   revision publishes it again as a new revision rather than rewriting history.
-- The layout editor can also reorder the complete header, body, settlement,
-  and certification sections. Hospitality seller-footer content is fixed at
-  the end of the document. The published section order is rendered consistently
-  by Preview, Print, PDF Download, and Public Read-only.
+- Controls in each layout-canvas section header can reorder the complete
+  header, body, settlement, and certification sections. Hospitality
+  seller-footer content is fixed at the end of the document. The published
+  section order is rendered consistently by Preview, Print, PDF Download, and
+  Public Read-only.
 - A quotation saves its layout source ID, revision number, schema version, and
   complete layout snapshot. Existing quotations therefore preserve their
   document layout. Switching template on an unsaved draft applies that
