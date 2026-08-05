@@ -8,11 +8,11 @@ const source = readFileSync(
 );
 
 describe("quotation layout editor drag and drop", () => {
-  it("makes the complete preview block draggable within its zone", () => {
+  it("adds a zone-scoped sortable drag handle with a selectable document-preview block", () => {
     assert.match(source, /import \{ DragDropProvider \} from "@dnd-kit\/react"/);
     assert.match(source, /useSortable\(/);
     assert.match(source, /group: `quotation-layout-\$\{block\.zone\}`/);
-    assert.match(source, /กดค้างแล้วลากบล็อกทั้งใบ/);
+    assert.match(source, /เพื่อสลับตำแหน่งกัน/);
     assert.match(source, /<DragDropProvider onDragEnd=/);
     assert.match(source, /data-layout-a4-canvas/);
     assert.match(source, /role="button"/);
@@ -25,9 +25,6 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /จำนวนเงินทั้งสิ้น/);
     assert.match(source, /bg-indigo-50/);
     assert.match(source, /disabled=\{isPending \|\| !canMove\(block\.id, "up"\)\}/);
-    assert.match(source, /cursor-grab/);
-    assert.doesNotMatch(source, /ref=\{handleRef\}/);
-    assert.match(source, /data-layout-position-controls onPointerDown/);
   });
 
   it("swaps the source and target positions through the same validated quotation layout draft", () => {
