@@ -23,7 +23,7 @@ export function CurrentQuotationDocument({
         className="grid grid-cols-12 gap-7"
         data-document-header
       >
-        <div className="min-w-0" data-layout-block="seller" style={quotationLayoutBlockStyle(model, "seller")}>
+        <div className="col-span-7 min-w-0">
           {payload.seller.logoUrl ? (
             <picture>
               <img
@@ -89,7 +89,7 @@ export function CurrentQuotationDocument({
             </dl>
           </div>
         </div>
-        <div className="min-w-0" data-layout-block="documentMetadata" style={quotationLayoutBlockStyle(model, "documentMetadata")}>
+        <div className="col-span-5 col-start-8 min-w-0">
           <p className="text-right text-[9px]">(ต้นฉบับ)</p>
           <h1 className="mb-2 text-right text-3xl font-semibold tracking-tight text-indigo-500">
             ใบเสนอราคา

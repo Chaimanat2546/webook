@@ -9,7 +9,6 @@ import {
 
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 import { canKeepQuotationPdfItemTogether } from "../../../../lib/quotation-pdf";
-import { isQuotationLayoutBlockBefore } from "../../../../lib/quotation-layout-renderer";
 
 import type { QuotationPdfRendererProps } from "./quotation-pdf-contract";
 import {
@@ -98,22 +97,16 @@ const styles = StyleSheet.create({
   certificationImageCompact: { height: 32 },
 });
 
-function layoutFlex(model: QuotationPdfRendererProps["model"], id: "seller" | "documentMetadata") {
-  const block = model.payload.layout.config.blocks.find((item) => item.id === id);
-  return { flexBasis: 0, flexGrow: block?.span ?? 1 };
-}
-
 export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps) {
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
   const sellerOffice = office(payload.seller);
-  const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
   return (
     <Document author={payload.seller.name} title={model.documentNumber}>
       <Page size="A4" style={styles.page} wrap>
         {/* data-pdf-header */}
-        <View style={metadataIsLeft ? [styles.header, { flexDirection: "row-reverse" }] : styles.header}>
-          <View style={[styles.seller, layoutFlex(model, "seller")] }>
+        <View style={styles.header}>
+          <View style={styles.seller}>
             {image(images, payload.seller.logoUrl) ? <PdfImage src={image(images, payload.seller.logoUrl)} style={styles.logo} /> : null}
             <Detail label="ผู้ขาย" styles={styles} value={payload.seller.name} />
             <Detail label="ที่อยู่" styles={styles} value={payload.seller.address} />
@@ -122,7 +115,7 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
             {payload.seller.email ? <Detail label="อีเมล" styles={styles} value={payload.seller.email} /> : null}
             {payload.seller.website ? <Detail label="เว็บไซต์" styles={styles} value={payload.seller.website} /> : null}
           </View>
-          <View style={[styles.titleBox, layoutFlex(model, "documentMetadata")] }>
+          <View style={styles.titleBox}>
             <Text style={styles.right}>(ต้นฉบับ)</Text>
             <Text style={styles.title}>ใบเสนอราคา</Text>
             <View style={styles.metadata}>
