@@ -17,6 +17,7 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /data-layout-a4-canvas/);
     assert.match(source, /role="button"/);
     assert.match(source, /BlockPreview/);
+    assert.match(source, /gridRow: block\.order \/ 10/);
   });
 
   it("normalizes drag order through the same validated quotation layout draft", () => {

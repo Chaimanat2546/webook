@@ -11,13 +11,6 @@ export function quotationLayoutBlockStyle(
   if (!block) return {};
   return {
     gridColumn: `${block.column} / span ${block.span}`,
-    order: block.order,
+    gridRow: block.order / 10,
   };
-}
-
-export function quotationLayoutOrder(
-  model: QuotationDocumentViewModel,
-  id: QuotationLayoutBlockId,
-): number {
-  return model.payload.layout.config.blocks.find((item) => item.id === id)?.order ?? 0;
 }
