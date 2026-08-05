@@ -327,8 +327,8 @@ Automated checks cover:
 - Preview using the draft and Print/PDF/Public using the saved snapshot;
 - HTML and PDF resolving equivalent block order, placement, values, visibility,
   totals, and certification content;
-- keyboard controls, drag-and-drop parity, dirty-state protection, conflict
-  recovery, mobile ordered-list editor, and revision history access.
+- position-button controls, disabled invalid moves, dirty-state protection,
+  conflict recovery, mobile ordered-list editor, and revision history access.
 
 Visual QA covers every supported block move and span at 390, 768, 1280, and
 1536 px, plus A4 one-page and multi-page output. Test long content, many items,

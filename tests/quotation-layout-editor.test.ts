@@ -7,13 +7,12 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("quotation layout editor drag and drop", () => {
-  it("adds a zone-scoped sortable drag handle with a selectable document-preview block", () => {
-    assert.match(source, /import \{ DragDropProvider \} from "@dnd-kit\/react"/);
-    assert.match(source, /useSortable\(/);
-    assert.match(source, /group: `quotation-layout-\$\{block\.zone\}`/);
-    assert.match(source, /เพื่อสลับตำแหน่งกัน/);
-    assert.match(source, /<DragDropProvider onDragEnd=/);
+describe("quotation layout editor position controls", () => {
+  it("uses a selectable document-preview block without drag and drop", () => {
+    assert.doesNotMatch(source, /DragDropProvider/);
+    assert.doesNotMatch(source, /useSortable/);
+    assert.doesNotMatch(source, /GripVertical/);
+    assert.doesNotMatch(source, /reorderZone/);
     assert.match(source, /data-layout-a4-canvas/);
     assert.match(source, /role="button"/);
     assert.match(source, /BlockPreview/);
@@ -27,13 +26,8 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /disabled=\{isPending \|\| !canMove\(block\.id, "up"\)\}/);
   });
 
-  it("swaps the source and target positions through the same validated quotation layout draft", () => {
+  it("swaps positions through the same validated quotation layout draft", () => {
     assert.match(source, /function swapPositions/);
-    assert.match(source, /isSortable\(sortableSource\)/);
-    assert.match(source, /ordered\[sortableSource\.initialIndex\]/);
-    assert.match(source, /ordered\[sortableSource\.index\]/);
-    assert.match(source, /event\.canceled/);
-    assert.match(source, /swapPositions\(source\.id, target\.id\)/);
     assert.match(source, /function directionalTarget/);
     assert.match(source, /function canMoveFromLayout/);
     assert.match(source, /function swappedLayout/);
