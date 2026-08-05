@@ -210,7 +210,7 @@ export function CurrentQuotationDocument({
       </div>
 
       <div className="mt-4 grid grid-cols-12 gap-3" data-layout-zone="settlement">
-      <section className="border-b py-3" data-document-summary data-layout-block="summary" style={quotationLayoutBlockStyle(model, "summary")}>
+      <section className="h-full border-b py-3" data-document-summary data-layout-block="summary" style={quotationLayoutBlockStyle(model, "summary")}>
         <div className="grid grid-cols-[16mm_minmax(0,1fr)_78mm] gap-5">
           <h2
             className="flex items-start gap-1 font-semibold"

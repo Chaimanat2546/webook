@@ -45,8 +45,8 @@ describe("quotation layout", () => {
     assert.equal(quotationLayoutBlockRow(reordered, "publicNotes"), 2);
   });
 
-  it("keeps Corporate and Hospitality summaries two rows tall", () => {
-    assert.equal(quotationLayoutBlockRowSpan("current", "summary"), 1);
+  it("keeps every template summary two rows tall", () => {
+    assert.equal(quotationLayoutBlockRowSpan("current", "summary"), 2);
     assert.equal(quotationLayoutBlockRowSpan("corporate", "summary"), 2);
     assert.equal(quotationLayoutBlockRowSpan("hospitality", "summary"), 2);
   });

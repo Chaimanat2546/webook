@@ -88,9 +88,9 @@ const canonical: Record<QuotationTemplate, QuotationLayoutConfig> = {
       { id: "documentMetadata", zone: "header", column: 8, order: 10, span: 5 },
       { id: "customer", zone: "body", column: 1, order: 10, span: 12 },
       { id: "items", zone: "body", column: 1, order: 20, span: 12 },
-      { id: "summary", zone: "settlement", column: 1, order: 10, span: 12 },
-      { id: "paymentMethods", zone: "settlement", column: 1, order: 20, span: 12 },
-      { id: "publicNotes", zone: "settlement", column: 1, order: 30, span: 12 },
+      { id: "paymentMethods", zone: "settlement", column: 1, order: 10, span: 8 },
+      { id: "summary", zone: "settlement", column: 9, order: 10, span: 4 },
+      { id: "publicNotes", zone: "settlement", column: 1, order: 20, span: 8 },
       { id: "certification", zone: "certification", column: 1, order: 10, span: 12 },
     ],
     schemaVersion: QUOTATION_LAYOUT_SCHEMA_VERSION,
@@ -196,7 +196,7 @@ export function quotationLayoutBlockRow(config: QuotationLayoutConfig, id: Quota
 
 /** Fixed visual height rules owned by the document template, not editable layout data. */
 export function quotationLayoutBlockRowSpan(template: QuotationTemplate, id: QuotationLayoutBlockId): number {
-  return id === "summary" && template !== "current" ? 2 : 1;
+  return id === "summary" ? 2 : 1;
 }
 
 export function canonicalQuotationLayoutSnapshot(template: QuotationTemplate): QuotationLayoutSnapshot {

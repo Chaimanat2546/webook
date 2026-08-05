@@ -403,6 +403,6 @@ template's layout snapshot for every managed header, body, and settlement
 block. In particular, customer, items, payment methods, public notes, and
 summary are direct grid items, so a published position is reflected in the
 rendered document as well as the layout editor.
-For Corporate and Hospitality, the summary block has a template-owned fixed
-two-row height so it aligns with payment methods plus public notes; users
-cannot change that height in the editor.
+For every template, the summary block has a template-owned fixed two-row
+height so it aligns with payment methods plus public notes; users cannot
+change that height in the editor.
