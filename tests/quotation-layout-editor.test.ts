@@ -19,6 +19,9 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /BlockPreview/);
     assert.match(source, /quotationLayoutBlockRow\(config, block\.id\)/);
     assert.match(source, /data-layout-position-controls/);
+    assert.match(source, /data-layout-template-preview/);
+    assert.match(source, /data-layout-template=\{template\}/);
+    assert.match(source, /TEMPLATE_PREVIEW/);
   });
 
   it("swaps the source and target positions through the same validated quotation layout draft", () => {
