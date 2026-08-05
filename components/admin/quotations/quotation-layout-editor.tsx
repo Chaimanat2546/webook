@@ -91,8 +91,12 @@ function BlockPreview({ id, template }: { id: QuotationLayoutBlockId; template: 
 function SortableLayoutBlock({ block, canMove, config, index, isPending, onMove, onSelect, selected, template }: { block: QuotationLayoutBlock; canMove: (id: QuotationLayoutBlockId, direction: LayoutMoveDirection) => boolean; config: QuotationLayoutConfig; index: number; isPending: boolean; onMove: (id: QuotationLayoutBlockId, direction: LayoutMoveDirection) => void; onSelect: (id: QuotationLayoutBlockId) => void; selected: boolean; template: QuotationTemplate }) {
   const { handleRef, isDragging, ref } = useSortable({ group: `quotation-layout-${block.zone}`, id: block.id, index });
   const theme = template === "corporate" ? "border-[#142d4c]/25 hover:border-[#142d4c]" : template === "hospitality" ? "border-[#286a5b]/25 hover:border-[#286a5b]" : "border-indigo-200 hover:border-indigo-500";
-  return <div className={cn("relative min-h-20 min-w-0 cursor-pointer rounded-md border bg-white p-3 shadow-sm transition", selected ? "border-primary ring-2 ring-primary/20" : theme, isDragging && "opacity-50")} data-layout-block={block.id} onClick={() => onSelect(block.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(block.id); } }} ref={ref} role="button" style={{ gridColumn: `${block.column} / span ${block.span}`, gridRow: `${quotationLayoutBlockRow(config, block.id)} / span ${quotationLayoutBlockRowSpan(template, block.id)}` }} tabIndex={0}>
-    <div className="mb-2 flex items-center justify-between gap-2"><p className="min-w-0 truncate text-xs font-semibold text-slate-700">{BLOCK_LABELS[block.id]}</p><Button aria-label={`ลาก ${BLOCK_LABELS[block.id]} เพื่อสลับตำแหน่ง`} className="-mr-2 -mt-2 shrink-0 cursor-grab touch-none active:cursor-grabbing" onClick={(event) => event.stopPropagation()} ref={handleRef} size="icon-xs" type="button" variant="ghost"><GripVertical aria-hidden="true" /></Button></div><BlockPreview id={block.id} template={template} />{selected ? <div className="mt-3 border-t pt-2" data-layout-position-controls><p className="mb-1 text-[10px] font-medium text-muted-foreground">ย้ายตำแหน่ง</p><div className="grid grid-cols-2 gap-1"><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ขึ้น`} disabled={isPending || !canMove(block.id, "up")} onClick={(event) => { event.stopPropagation(); onMove(block.id, "up"); }} size="xs" type="button" variant="secondary"><ArrowUp aria-hidden="true" />ขึ้น</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ลง`} disabled={isPending || !canMove(block.id, "down")} onClick={(event) => { event.stopPropagation(); onMove(block.id, "down"); }} size="xs" type="button" variant="secondary"><ArrowDown aria-hidden="true" />ลง</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ซ้าย`} disabled={isPending || !canMove(block.id, "left")} onClick={(event) => { event.stopPropagation(); onMove(block.id, "left"); }} size="xs" type="button" variant="secondary"><ArrowLeft aria-hidden="true" />ซ้าย</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ขวา`} disabled={isPending || !canMove(block.id, "right")} onClick={(event) => { event.stopPropagation(); onMove(block.id, "right"); }} size="xs" type="button" variant="secondary"><ArrowRight aria-hidden="true" />ขวา</Button></div></div> : null}</div>;
+  function setSortableRef(element: HTMLDivElement | null) {
+    ref(element);
+    handleRef(element);
+  }
+  return <div aria-label={`ลาก ${BLOCK_LABELS[block.id]} เพื่อสลับตำแหน่ง`} className={cn("relative min-h-20 min-w-0 cursor-grab touch-none rounded-md border bg-white p-3 shadow-sm transition active:cursor-grabbing", selected ? "border-primary ring-2 ring-primary/20" : theme, isDragging && "opacity-50")} data-layout-block={block.id} onClick={() => onSelect(block.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(block.id); } }} ref={setSortableRef} role="button" style={{ gridColumn: `${block.column} / span ${block.span}`, gridRow: `${quotationLayoutBlockRow(config, block.id)} / span ${quotationLayoutBlockRowSpan(template, block.id)}` }} tabIndex={0}>
+    <div className="mb-2 flex items-center justify-between gap-2"><p className="min-w-0 truncate text-xs font-semibold text-slate-700">{BLOCK_LABELS[block.id]}</p><GripVertical aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /></div><BlockPreview id={block.id} template={template} />{selected ? <div className="mt-3 cursor-default border-t pt-2" data-layout-position-controls onPointerDown={(event) => event.stopPropagation()}><p className="mb-1 text-[10px] font-medium text-muted-foreground">ย้ายตำแหน่ง</p><div className="grid grid-cols-2 gap-1"><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ขึ้น`} disabled={isPending || !canMove(block.id, "up")} onClick={(event) => { event.stopPropagation(); onMove(block.id, "up"); }} size="xs" type="button" variant="secondary"><ArrowUp aria-hidden="true" />ขึ้น</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ลง`} disabled={isPending || !canMove(block.id, "down")} onClick={(event) => { event.stopPropagation(); onMove(block.id, "down"); }} size="xs" type="button" variant="secondary"><ArrowDown aria-hidden="true" />ลง</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ซ้าย`} disabled={isPending || !canMove(block.id, "left")} onClick={(event) => { event.stopPropagation(); onMove(block.id, "left"); }} size="xs" type="button" variant="secondary"><ArrowLeft aria-hidden="true" />ซ้าย</Button><Button aria-label={`ย้าย ${BLOCK_LABELS[block.id]} ขวา`} disabled={isPending || !canMove(block.id, "right")} onClick={(event) => { event.stopPropagation(); onMove(block.id, "right"); }} size="xs" type="button" variant="secondary"><ArrowRight aria-hidden="true" />ขวา</Button></div></div> : null}</div>;
 }
 
 export function QuotationLayoutEditor({ initial, revisions, template }: { initial: QuotationDocumentTemplateSnapshot; revisions: QuotationDocumentTemplateRevision[]; template: QuotationTemplate }) {
@@ -189,6 +193,22 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     const source = ordered[sortableSource.initialIndex];
     const target = ordered[sortableSource.index];
     if (!source || !target || sortableSource.initialIndex === sortableSource.index) return;
+    const swapsSettlementColumns = zone === "settlement"
+      && (source.id === "summary") !== (target.id === "summary")
+      && ["paymentMethods", "publicNotes", "summary"].includes(source.id)
+      && ["paymentMethods", "publicNotes", "summary"].includes(target.id);
+    if (swapsSettlementColumns) {
+      const summary = draft.blocks.find((block) => block.id === "summary");
+      const paymentMethods = draft.blocks.find((block) => block.id === "paymentMethods");
+      if (!summary || !paymentMethods) return;
+      const summaryIsLeft = summary.column < paymentMethods.column;
+      const direction = source.id === "summary"
+        ? summaryIsLeft ? "right" : "left"
+        : summaryIsLeft ? "left" : "right";
+      const next = settlementColumnLayout(source.id, direction);
+      if (next) update(next);
+      return;
+    }
     swapPositions(source.id, target.id);
   }
 
