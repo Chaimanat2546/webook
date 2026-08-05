@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { publishQuotationDocumentTemplateLayoutAction } from "../../../app/admin/quotations/actions";
-import { QuotationLayoutTemplatePreview } from "./quotation-layout-template-preview";
 import {
   isQuotationLayoutConfig,
   quotationLayoutBlockRow,
@@ -201,7 +200,6 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
       <CardContent className="bg-muted/20 p-4 sm:p-6"><div className="mx-auto grid w-full max-w-[210mm] gap-5 rounded-sm bg-white p-5 shadow-md ring-1 ring-border sm:p-7" data-layout-a4-canvas data-layout-template={template}>
         <div className="flex items-center gap-3 border-b pb-3" data-layout-template-preview><span className={`h-8 w-1 rounded-full ${TEMPLATE_PREVIEW[template].accent}`} /><div><p className="text-sm font-semibold">ตัวอย่าง {TEMPLATE_PREVIEW[template].label}</p><p className="text-xs text-muted-foreground">{TEMPLATE_PREVIEW[template].note}</p></div></div>
         {QUOTATION_LAYOUT_ZONES.map((zone) => { const blocks = blocksInZone(draft, zone); if (!blocks.length) return null; return <section className="grid gap-2" data-layout-zone={zone} key={zone}><div className="flex items-center gap-2"><span className="h-px flex-1 bg-slate-200" /><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{ZONE_LABELS[zone]}</p><span className="h-px flex-1 bg-slate-200" /></div><DragDropProvider onDragEnd={(event) => reorderZone(zone, event)}><div className="grid grid-cols-12 gap-2.5">{blocks.map((block, index) => <SortableLayoutBlock block={block} config={draft} index={index} key={block.id} onMove={moveFromLayout} onSelect={setSelectedId} selected={selected?.id === block.id} template={template} />)}</div></DragDropProvider></section>; })}
-        <QuotationLayoutTemplatePreview config={draft} template={template} />
       </div></CardContent>
     </Card>
     <aside className="grid content-start gap-4 xl:sticky xl:top-4 xl:self-start">
