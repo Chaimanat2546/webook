@@ -1,6 +1,6 @@
 import { CreditCard, Globe2, Mail, MessageCircle, Phone, ReceiptText, Signature } from "lucide-react";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
-import { quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
+import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
 import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
 import { DocumentImage, office, PaymentMethod, SignerSlot, Total, vatLabel } from "./quotation-document-shared";
 
@@ -10,6 +10,9 @@ export function CurrentQuotationDocument({
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
   const sellerOffice = office(payload.seller);
+  const sellerBlock = payload.layout.config.blocks.find((block) => block.id === "seller");
+  const metadataBlock = payload.layout.config.blocks.find((block) => block.id === "documentMetadata");
+  const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
   const summaryBlock = payload.layout.config.blocks.find((block) => block.id === "summary");
   const compactSummary = (summaryBlock?.span ?? 12) <= 6;
   return (
@@ -42,8 +45,12 @@ export function CurrentQuotationDocument({
         </div>
       </header>
 
-      <div className="mt-3 grid grid-cols-12 gap-7 border-t pt-3" data-layout-zone="header-details">
-        <div className="min-w-0" data-layout-block="seller" style={quotationLayoutBlockStyle(model, "seller")}>
+      <div
+        className="mt-3 flex gap-7 border-t pt-3"
+        data-layout-zone="header"
+        style={{ flexDirection: metadataIsLeft ? "row-reverse" : "row" }}
+      >
+        <div className="min-w-0" data-layout-block="seller" style={{ flex: `${sellerBlock?.span ?? 7} 1 0%` }}>
           <div className="grid grid-cols-[minmax(0,1fr)_38mm] gap-5">
             <dl
               className="grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-1"
@@ -100,7 +107,7 @@ export function CurrentQuotationDocument({
             </dl>
           </div>
         </div>
-        <div className="min-w-0" data-layout-block="documentMetadata" style={quotationLayoutBlockStyle(model, "documentMetadata")}>
+        <div className="min-w-0" data-layout-block="documentMetadata" style={{ flex: `${metadataBlock?.span ?? 5} 1 0%` }}>
           <dl
             className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-1 rounded-md bg-indigo-50 p-3"
             data-document-metadata
