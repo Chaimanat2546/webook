@@ -1,6 +1,6 @@
 import { CreditCard, MapPin, MessageCircle, ReceiptText, Signature } from "lucide-react";
 
-import { quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
+import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle } from "../../../../lib/quotation-layout-renderer";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 
 import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
@@ -33,6 +33,9 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
   const sellerOffice = office(payload.seller);
+  const sellerBlock = payload.layout.config.blocks.find((block) => block.id === "seller");
+  const metadataBlock = payload.layout.config.blocks.find((block) => block.id === "documentMetadata");
+  const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
   const customerOffice = office(payload.customer);
   const hasContact = Boolean(
     payload.seller.contactName || payload.seller.contactPhone || payload.seller.contactEmail,
@@ -54,15 +57,22 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
               <img alt="โลโก้ผู้ขาย" className="mb-3 max-h-12 max-w-32 object-contain" src={payload.seller.logoUrl} />
             </picture>
           ) : null}
-          <p className="text-lg font-semibold text-[#286a5b] [overflow-wrap:anywhere]">{payload.seller.name}</p>
-          <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.seller.address}</p>
-          <p className="mt-1">เลขที่ภาษี {payload.seller.taxId}{sellerOffice ? ` (${sellerOffice})` : ""}</p>
         </div>
         <div className="col-span-5 col-start-8 min-w-0 text-right">
           <p className="text-[9px]">(ต้นฉบับ)</p>
           <h1 className="text-3xl font-semibold tracking-[0.08em] text-[#286a5b]">QUOTATION</h1>
           <p className="text-base text-[#c79b58]">ใบเสนอราคา</p>
-          <dl className="mt-3 grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2 gap-y-1 rounded-md border border-[#286a5b]/20 bg-white/60 p-3 text-left" data-document-metadata>
+        </div>
+      </header>
+
+      <div className="mt-4 flex gap-6 border-t border-[#286a5b]/20 pt-3" data-layout-zone="header" style={{ flexDirection: metadataIsLeft ? "row-reverse" : "row" }}>
+        <div className="min-w-0" data-layout-block="seller" style={{ flex: `${sellerBlock?.span ?? 7} 1 0%` }}>
+          <p className="text-lg font-semibold text-[#286a5b] [overflow-wrap:anywhere]">{payload.seller.name}</p>
+          <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.seller.address}</p>
+          <p className="mt-1">เลขที่ภาษี {payload.seller.taxId}{sellerOffice ? ` (${sellerOffice})` : ""}</p>
+        </div>
+        <div className="min-w-0" data-layout-block="documentMetadata" style={{ flex: `${metadataBlock?.span ?? 5} 1 0%` }}>
+          <dl className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2 gap-y-1 rounded-md border border-[#286a5b]/20 bg-white/60 p-3 text-left" data-document-metadata>
             <dt className="font-semibold">เลขที่เอกสาร</dt><dd data-document-number className="text-right tabular-nums">{model.documentNumber}</dd>
             <dt className="font-semibold">วันที่ออก</dt><dd className="text-right">{model.issueDate}</dd>
             <dt className="font-semibold">ใช้ได้ถึง</dt><dd className="text-right">{model.validUntil}</dd>
@@ -70,7 +80,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
             {payload.subject ? <><dt className="font-semibold">เรื่อง / ชื่องาน</dt><dd data-document-subject className="text-right [overflow-wrap:anywhere]">{payload.subject}</dd></> : null}
           </dl>
         </div>
-      </header>
+      </div>
 
       <section className="mt-4 grid grid-cols-12 gap-4" data-layout-zone="body">
         <div className="rounded-md border border-[#c79b58]/50 bg-[#fff8e9] p-3" data-hospitality-recipient data-layout-block="customer" style={quotationLayoutBlockStyle(model, "customer")}>
