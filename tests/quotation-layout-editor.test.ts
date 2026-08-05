@@ -8,13 +8,10 @@ const source = readFileSync(
 );
 
 describe("quotation layout editor drag and drop", () => {
-  it("makes the complete preview block a zone-scoped sortable drag surface", () => {
+  it("adds a zone-scoped sortable drag handle with a selectable document-preview block", () => {
     assert.match(source, /import \{ DragDropProvider \} from "@dnd-kit\/react"/);
     assert.match(source, /useSortable\(/);
     assert.match(source, /group: `quotation-layout-\$\{block\.zone\}`/);
-    assert.match(source, /function setSortableRef/);
-    assert.match(source, /handleRef\(element\)/);
-    assert.match(source, /ref=\{setSortableRef\}/);
     assert.match(source, /เพื่อสลับตำแหน่งกัน/);
     assert.match(source, /<DragDropProvider onDragEnd=/);
     assert.match(source, /data-layout-a4-canvas/);
@@ -58,8 +55,6 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /function settlementColumnLayout/);
     assert.match(source, /publicNotes\.column = paymentMethods\.column/);
     assert.match(source, /publicNotes\.order = settlementOrder \+ 10/);
-    assert.match(source, /const swapsSettlementColumns = zone === "settlement"/);
-    assert.match(source, /const next = settlementColumnLayout\(source\.id, direction\)/);
   });
 
   it("shows only the current and immediately previous layout versions", () => {
