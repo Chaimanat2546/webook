@@ -114,18 +114,6 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     setDraft(clone(next));
   }
 
-  function moveColumn(id: QuotationLayoutBlockId, direction: -1 | 1) {
-    const next = clone(draft);
-    const block = next.blocks.find((item) => item.id === id);
-    if (!block) return;
-    block.column += direction;
-    if (!isQuotationLayoutConfig(next, template)) {
-      toast.error("ตำแหน่งปลายทางมีบล็อกอื่นอยู่ จึงย้ายไม่ได้");
-      return;
-    }
-    update(next);
-  }
-
   function swapPositions(sourceId: QuotationLayoutBlockId, targetId: QuotationLayoutBlockId) {
     const next = clone(draft);
     const source = next.blocks.find((block) => block.id === sourceId);
@@ -150,15 +138,6 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     update(next);
   }
 
-  function moveOrder(id: QuotationLayoutBlockId, direction: -1 | 1) {
-    const block = draft.blocks.find((item) => item.id === id);
-    if (!block) return;
-    const siblings = blocksInZone(draft, block.zone);
-    const neighbour = siblings[siblings.findIndex((item) => item.id === id) + direction];
-    if (!neighbour) return;
-    swapPositions(id, neighbour.id);
-  }
-
   function reorderZone(zone: QuotationLayoutBlock["zone"], event: Parameters<NonNullable<React.ComponentProps<typeof DragDropProvider>["onDragEnd"]>>[0]) {
     const ordered = blocksInZone(draft, zone);
     const source = ordered.find((block) => block.id === event.operation.source?.id);
@@ -167,10 +146,28 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     swapPositions(source.id, target.id);
   }
 
+  function directionalTarget(id: QuotationLayoutBlockId, direction: "down" | "left" | "right" | "up") {
+    const source = draft.blocks.find((block) => block.id === id);
+    if (!source) return undefined;
+    const sourceRow = quotationLayoutBlockRow(draft, source.id);
+    const candidates = draft.blocks.filter((block) => block.zone === source.zone && block.id !== source.id);
+
+    if (direction === "left") return candidates.filter((block) => quotationLayoutBlockRow(draft, block.id) === sourceRow && block.column < source.column).sort((left, right) => right.column - left.column)[0];
+    if (direction === "right") return candidates.filter((block) => quotationLayoutBlockRow(draft, block.id) === sourceRow && block.column > source.column).sort((left, right) => left.column - right.column)[0];
+
+    const rows = candidates.map((block) => quotationLayoutBlockRow(draft, block.id));
+    const targetRow = direction === "up" ? Math.max(...rows.filter((row) => row < sourceRow)) : Math.min(...rows.filter((row) => row > sourceRow));
+    if (!Number.isFinite(targetRow)) return undefined;
+    return candidates.filter((block) => quotationLayoutBlockRow(draft, block.id) === targetRow).sort((left, right) => Math.abs(left.column - source.column) - Math.abs(right.column - source.column))[0];
+  }
+
   function moveFromLayout(id: QuotationLayoutBlockId, direction: "down" | "left" | "right" | "up") {
-    if (direction === "up") { moveOrder(id, -1); return; }
-    if (direction === "down") { moveOrder(id, 1); return; }
-    moveColumn(id, direction === "left" ? -1 : 1);
+    const target = directionalTarget(id, direction);
+    if (!target) {
+      toast.error(`ไม่มีบล็อก${direction === "up" ? "ด้านบน" : direction === "down" ? "ด้านล่าง" : direction === "left" ? "ด้านซ้าย" : "ด้านขวา"}ให้สลับ`);
+      return;
+    }
+    swapPositions(id, target.id);
   }
 
   function publish(config: QuotationLayoutConfig) {

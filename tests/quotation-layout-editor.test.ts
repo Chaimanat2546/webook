@@ -26,6 +26,8 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /event\.operation\.source\?\.id/);
     assert.match(source, /event\.operation\.target\?\.id/);
     assert.match(source, /swapPositions\(source\.id, target\.id\)/);
+    assert.match(source, /function directionalTarget/);
+    assert.match(source, /quotationLayoutBlockRow\(draft, block\.id\) === sourceRow/);
   });
 
   it("locks block size and provides position-only controls", () => {
