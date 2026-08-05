@@ -62,6 +62,13 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
           <p className="text-[9px]">(ต้นฉบับ)</p>
           <h1 className="text-3xl font-semibold tracking-[0.08em] text-[#286a5b]">QUOTATION</h1>
           <p className="text-base text-[#c79b58]">ใบเสนอราคา</p>
+          <dl className="mt-3 grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2 gap-y-1 rounded-md border border-[#286a5b]/20 bg-white/60 p-3 text-left" data-document-metadata>
+            <dt className="font-semibold">เลขที่เอกสาร</dt><dd data-document-number className="text-right tabular-nums">{model.documentNumber}</dd>
+            <dt className="font-semibold">วันที่ออก</dt><dd className="text-right">{model.issueDate}</dd>
+            <dt className="font-semibold">ใช้ได้ถึง</dt><dd className="text-right">{model.validUntil}</dd>
+            {model.showReference ? <><dt className="font-semibold">อ้างอิง</dt><dd className="text-right [overflow-wrap:anywhere]">{payload.reference}</dd></> : null}
+            {payload.subject ? <><dt className="font-semibold">เรื่อง / ชื่องาน</dt><dd data-document-subject className="text-right [overflow-wrap:anywhere]">{payload.subject}</dd></> : null}
+          </dl>
         </div>
       </header>
 
@@ -73,16 +80,6 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
           {payload.customer.taxId ? <p className="mt-1">เลขที่ภาษี {payload.customer.taxId}</p> : null}
           {customerOffice ? <p>สำนักงาน {customerOffice}</p> : null}
         </div>
-        <dl className="col-span-12 min-w-0 rounded-md border border-[#286a5b]/20 bg-white/60 p-3" data-document-metadata>
-          <div className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2 gap-y-1">
-            <dt className="font-semibold">เลขที่เอกสาร</dt><dd data-document-number className="text-right tabular-nums">{model.documentNumber}</dd>
-            <dt className="font-semibold">วันที่ออก</dt><dd className="text-right">{model.issueDate}</dd>
-            <dt className="font-semibold">ใช้ได้ถึง</dt><dd className="text-right">{model.validUntil}</dd>
-            {model.showReference ? <><dt className="font-semibold">อ้างอิง</dt><dd className="text-right [overflow-wrap:anywhere]">{payload.reference}</dd></> : null}
-            {payload.subject ? <><dt className="font-semibold">เรื่อง / ชื่องาน</dt><dd data-document-subject className="text-right [overflow-wrap:anywhere]">{payload.subject}</dd></> : null}
-          </div>
-        </dl>
-
       <section className="mt-5" data-document-items data-layout-block="items" style={quotationLayoutBlockStyle(model, "items")}>
         <div className="mb-2 flex items-center gap-2 text-[#286a5b]"><MapPin aria-hidden="true" className="size-3.5" /><h2 className="font-semibold">รายละเอียดที่พักและบริการ</h2></div>
         <table className="w-full table-fixed border-collapse">

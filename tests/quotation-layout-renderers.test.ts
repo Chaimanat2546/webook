@@ -23,6 +23,6 @@ describe("quotation template layout renderers", () => {
     assert.match(hospitality, /data-layout-zone="body"/);
     assert.match(hospitality, /data-layout-zone="settlement"/);
     assert.match(hospitality, /data-layout-block="publicNotes"/);
-    assert.match(hospitality, /className="col-span-12 min-w-0 rounded-md border/);
+    assert.match(hospitality, /data-layout-block="documentMetadata"[\s\S]*?data-document-metadata/);
   });
 });
