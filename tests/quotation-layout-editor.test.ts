@@ -33,7 +33,9 @@ describe("quotation layout editor drag and drop", () => {
   it("swaps the source and target positions through the same validated quotation layout draft", () => {
     assert.match(source, /function swapPositions/);
     assert.match(source, /event\.operation\.source\?\.id/);
-    assert.match(source, /event\.operation\.target\?\.id/);
+    assert.match(source, /move\(ordered, event\)/);
+    assert.match(source, /const targetIndex = moved\.findIndex/);
+    assert.match(source, /const target = ordered\[targetIndex\]/);
     assert.match(source, /swapPositions\(source\.id, target\.id\)/);
     assert.match(source, /function directionalTarget/);
     assert.match(source, /function canMoveFromLayout/);
