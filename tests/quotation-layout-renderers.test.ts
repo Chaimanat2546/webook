@@ -3,9 +3,16 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const corporate = readFileSync("components/admin/quotations/templates/quotation-document-corporate.tsx", "utf8");
+const current = readFileSync("components/admin/quotations/templates/quotation-document-current.tsx", "utf8");
 const hospitality = readFileSync("components/admin/quotations/templates/quotation-document-hospitality.tsx", "utf8");
 
 describe("quotation template layout renderers", () => {
+  it("uses a compact summary when Current is placed in a narrow column", () => {
+    assert.match(current, /const compactSummary = \(summaryBlock\?\.span \?\? 12\) <= 6/);
+    assert.match(current, /compactSummary \? \(/);
+    assert.match(current, /className="break-words text-slate-600"/);
+  });
+
   it("uses the configured grid zones for Corporate blocks", () => {
     assert.match(corporate, /data-layout-zone="body"/);
     assert.match(corporate, /data-layout-zone="settlement"/);

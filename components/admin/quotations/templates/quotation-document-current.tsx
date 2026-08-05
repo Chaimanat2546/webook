@@ -10,6 +10,8 @@ export function CurrentQuotationDocument({
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
   const sellerOffice = office(payload.seller);
+  const summaryBlock = payload.layout.config.blocks.find((block) => block.id === "summary");
+  const compactSummary = (summaryBlock?.span ?? 12) <= 6;
   return (
     <article
       className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-900"
@@ -211,6 +213,45 @@ export function CurrentQuotationDocument({
 
       <div className="mt-4 grid grid-cols-12 gap-3" data-layout-zone="settlement">
       <section className="h-full border-b py-3" data-document-summary data-layout-block="summary" style={quotationLayoutBlockStyle(model, "summary")}>
+        {compactSummary ? (
+          <div className="min-w-0 space-y-2">
+            <h2
+              className="flex items-start gap-1 font-semibold"
+              data-document-summary-heading
+            >
+              <ReceiptText aria-hidden="true" className="mt-0.5 size-3" />
+              สรุป
+            </h2>
+            <div data-document-summary-settlement>
+              <div data-document-summary-grand-total>
+                <Total
+                  emphasized
+                  label="จำนวนเงินทั้งสิ้น"
+                  value={formatBaht(calculation.grandTotal)}
+                />
+              </div>
+              {model.showWithholdingTax ? <Total
+                label="หักภาษี ณ ที่จ่าย"
+                value={formatBaht(calculation.withholdingTaxTotal)}
+              /> : null}
+              <Total
+                label="จำนวนเงินที่ชำระ"
+                value={formatBaht(calculation.amountDue)}
+              />
+            </div>
+            <div className="space-y-1 border-t pt-2" data-document-summary-breakdown>
+              {model.showPreTax ? <Total
+                label="มูลค่าก่อนภาษี"
+                value={formatBaht(calculation.preTaxTotal)}
+              /> : null}
+              {model.showTax ? <Total label="ภาษีมูลค่าเพิ่ม" value={formatBaht(calculation.vatTotal)} /> : null}
+              <div className="space-y-0.5">
+                <p className="font-medium">จำนวนเงินทั้งสิ้น</p>
+                <p className="break-words text-slate-600">{model.amountInWords}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="grid grid-cols-[16mm_minmax(0,1fr)_78mm] gap-5">
           <h2
             className="flex items-start gap-1 font-semibold"
@@ -250,6 +291,7 @@ export function CurrentQuotationDocument({
             />
           </div>
         </div>
+        )}
       </section>
 
       {model.paymentMethods.length ? (
