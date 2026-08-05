@@ -73,7 +73,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
           {payload.customer.taxId ? <p className="mt-1">เลขที่ภาษี {payload.customer.taxId}</p> : null}
           {customerOffice ? <p>สำนักงาน {customerOffice}</p> : null}
         </div>
-        <dl className="rounded-md border border-[#286a5b]/20 bg-white/60 p-3" data-document-metadata>
+        <dl className="col-span-12 min-w-0 rounded-md border border-[#286a5b]/20 bg-white/60 p-3" data-document-metadata>
           <div className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2 gap-y-1">
             <dt className="font-semibold">เลขที่เอกสาร</dt><dd data-document-number className="text-right tabular-nums">{model.documentNumber}</dd>
             <dt className="font-semibold">วันที่ออก</dt><dd className="text-right">{model.issueDate}</dd>
