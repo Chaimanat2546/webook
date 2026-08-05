@@ -36,4 +36,11 @@ describe("quotation layout MVP 2 migration", () => {
     assert.match(sql, /revoke all on table public\.quotation_document_templates from anon, authenticated/i);
     assert.doesNotMatch(sql, /drop table|truncate|delete from/i);
   });
+
+  it("writes the template and layout snapshot together after the base quotation save", () => {
+    const fix = readFileSync("supabase/migrations/20260805170000_fix_quotation_layout_snapshot_save_order.sql", "utf8");
+    assert.match(fix, /document_template_revision_snapshot drop not null/);
+    assert.match(fix, /document_layout_snapshot drop not null/);
+    assert.match(fix, /set document_template_snapshot = v_template,[\s\S]*document_layout_snapshot = v_layout/);
+  });
 });
