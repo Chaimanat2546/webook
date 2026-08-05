@@ -26,9 +26,11 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /update\(next\)/);
   });
 
-  it("provides usable layout controls instead of raw grid-only editing", () => {
-    assert.match(source, /WIDTH_PRESETS/);
-    assert.match(source, /เต็มแถว/);
+  it("locks block size and provides position-only controls", () => {
+    assert.doesNotMatch(source, /WIDTH_PRESETS/);
+    assert.doesNotMatch(source, /ความกว้างและตำแหน่ง/);
+    assert.match(source, /ขนาดล็อกตามเทมเพลต/);
+    assert.match(source, /ตำแหน่ง/);
     assert.match(source, /undoStack/);
     assert.match(source, /redoStack/);
     assert.match(source, /กำลังเลือก/);

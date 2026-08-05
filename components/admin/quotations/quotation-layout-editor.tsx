@@ -46,14 +46,6 @@ const ZONE_LABELS = {
   settlement: "สรุปและการชำระเงิน",
 } as const;
 
-const WIDTH_PRESETS = [
-  { column: 1, label: "เต็มแถว", span: 12 },
-  { column: 1, label: "กว้าง 2/3 ด้านซ้าย", span: 8 },
-  { column: 1, label: "ครึ่งซ้าย", span: 6 },
-  { column: 7, label: "ครึ่งขวา", span: 6 },
-  { column: 9, label: "กว้าง 1/3 ด้านขวา", span: 4 },
-] as const;
-
 function clone(config: QuotationLayoutConfig): QuotationLayoutConfig {
   return structuredClone(config);
 }
@@ -152,16 +144,6 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     update(next);
   }
 
-  function applyWidth(column: number, span: number) {
-    if (!selected) return;
-    const next = clone(draft);
-    const block = next.blocks.find((item) => item.id === selected.id);
-    if (!block) return;
-    block.column = column;
-    block.span = span;
-    update(next);
-  }
-
   function canMoveColumn(direction: -1 | 1) {
     if (!selected) return false;
     const next = clone(draft);
@@ -199,7 +181,7 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
       </div></CardContent>
     </Card>
     <aside className="grid content-start gap-4 xl:sticky xl:top-4 xl:self-start">
-      {selected ? <Card><CardHeader className="pb-3"><p className="text-xs font-medium text-muted-foreground">กำลังเลือก</p><CardTitle className="text-base">{BLOCK_LABELS[selected.id]}</CardTitle><p className="text-sm font-normal text-muted-foreground">{ZONE_LABELS[selected.zone]} · {selected.span === 12 ? "เต็มแถว" : `ความกว้าง ${selected.span}/12`}</p></CardHeader><CardContent className="grid gap-4"><section><p className="mb-2 text-sm font-medium">ความกว้างและตำแหน่ง</p><div className="grid gap-2">{WIDTH_PRESETS.map((preset) => { const candidate = clone(draft); const block = candidate.blocks.find((item) => item.id === selected.id); if (!block) return null; block.column = preset.column; block.span = preset.span; const enabled = isQuotationLayoutConfig(candidate, template); return <Button className="justify-start" disabled={!enabled || isPending} key={preset.label} onClick={() => applyWidth(preset.column, preset.span)} size="sm" type="button" variant={selected.column === preset.column && selected.span === preset.span ? "default" : "outline"}>{preset.label}</Button>; })}</div></section><section><p className="mb-2 text-sm font-medium">เรียงลำดับในส่วนนี้</p><div className="grid grid-cols-2 gap-2"><Button disabled={isPending || !canMoveOrder(-1)} onClick={() => moveOrder(selected.id, -1)} size="sm" type="button" variant="outline"><ArrowUp aria-hidden="true" />ขึ้น</Button><Button disabled={isPending || !canMoveOrder(1)} onClick={() => moveOrder(selected.id, 1)} size="sm" type="button" variant="outline"><ArrowDown aria-hidden="true" />ลง</Button><Button disabled={isPending || !canMoveColumn(-1)} onClick={() => moveColumn(selected.id, -1)} size="sm" type="button" variant="outline"><ArrowLeft aria-hidden="true" />ซ้าย</Button><Button disabled={isPending || !canMoveColumn(1)} onClick={() => moveColumn(selected.id, 1)} size="sm" type="button" variant="outline"><ArrowRight aria-hidden="true" />ขวา</Button></div></section></CardContent></Card> : null}
+      {selected ? <Card><CardHeader className="pb-3"><p className="text-xs font-medium text-muted-foreground">กำลังเลือก</p><CardTitle className="text-base">{BLOCK_LABELS[selected.id]}</CardTitle><p className="text-sm font-normal text-muted-foreground">{ZONE_LABELS[selected.zone]} · ขนาดล็อกตามเทมเพลต</p></CardHeader><CardContent><section><p className="mb-2 text-sm font-medium">ตำแหน่ง</p><p className="mb-3 text-xs text-muted-foreground">ย้ายซ้ายหรือขวาเพื่อจัดแนว และลากหรือย้ายขึ้นลงเพื่อเรียงบล็อก</p><div className="grid grid-cols-2 gap-2"><Button disabled={isPending || !canMoveOrder(-1)} onClick={() => moveOrder(selected.id, -1)} size="sm" type="button" variant="outline"><ArrowUp aria-hidden="true" />ขึ้น</Button><Button disabled={isPending || !canMoveOrder(1)} onClick={() => moveOrder(selected.id, 1)} size="sm" type="button" variant="outline"><ArrowDown aria-hidden="true" />ลง</Button><Button disabled={isPending || !canMoveColumn(-1)} onClick={() => moveColumn(selected.id, -1)} size="sm" type="button" variant="outline"><ArrowLeft aria-hidden="true" />ซ้าย</Button><Button disabled={isPending || !canMoveColumn(1)} onClick={() => moveColumn(selected.id, 1)} size="sm" type="button" variant="outline"><ArrowRight aria-hidden="true" />ขวา</Button></div></section></CardContent></Card> : null}
       <Card><CardHeader className="pb-3"><CardTitle className="text-base">เวอร์ชัน</CardTitle></CardHeader><CardContent className="grid gap-2">{revisions.map((revision) => <div className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm" key={revision.revisionNumber}><span><History aria-hidden="true" className="mr-1 inline size-3" />v{revision.revisionNumber}<span className="mt-0.5 block text-xs text-muted-foreground">ผู้ดูแล · {revisionTimestamp(revision.createdAt)}</span></span>{revision.revisionNumber === initial.revisionNumber ? <span className="text-xs text-muted-foreground">กำลังใช้</span> : <Button disabled={isPending} onClick={() => publish(revision.config)} size="sm" type="button" variant="ghost"><RotateCcw aria-hidden="true" />คืนค่า</Button>}</div>)}</CardContent></Card>
       <div className="flex flex-wrap gap-2"><Button disabled={isPending || !changed} onClick={() => { setDraft(clone(initial.config)); setUndoStack([]); setRedoStack([]); }} type="button" variant="outline">ยกเลิกการแก้ไข</Button><Button disabled={isPending || !changed} onClick={() => publish(draft)} type="button">{isPending ? "กำลังเผยแพร่…" : "เผยแพร่เลเอาท์"}</Button></div>
     </aside>
