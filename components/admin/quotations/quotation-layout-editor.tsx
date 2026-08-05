@@ -128,6 +128,29 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
     setDraft(clone(next));
   }
 
+  function settlementColumnLayout(id: QuotationLayoutBlockId, direction: LayoutMoveDirection): QuotationLayoutConfig | undefined {
+    if ((direction !== "left" && direction !== "right") || !["paymentMethods", "publicNotes", "summary"].includes(id)) return undefined;
+    const next = clone(draft);
+    const summary = next.blocks.find((block) => block.id === "summary");
+    const paymentMethods = next.blocks.find((block) => block.id === "paymentMethods");
+    const publicNotes = next.blocks.find((block) => block.id === "publicNotes");
+    if (!summary || !paymentMethods || !publicNotes || summary.zone !== "settlement" || paymentMethods.zone !== "settlement" || publicNotes.zone !== "settlement") return undefined;
+
+    const summaryIsLeft = summary.column < paymentMethods.column;
+    const movesSummary = id === "summary" && ((direction === "left" && !summaryIsLeft) || (direction === "right" && summaryIsLeft));
+    const movesPaymentColumn = id !== "summary" && ((direction === "right" && !summaryIsLeft) || (direction === "left" && summaryIsLeft));
+    if (!movesSummary && !movesPaymentColumn) return undefined;
+
+    const settlementOrder = Math.min(summary.order, paymentMethods.order);
+    summary.column = summaryIsLeft ? 13 - summary.span : 1;
+    paymentMethods.column = summaryIsLeft ? 1 : 13 - paymentMethods.span;
+    publicNotes.column = paymentMethods.column;
+    summary.order = settlementOrder;
+    paymentMethods.order = settlementOrder;
+    publicNotes.order = settlementOrder + 10;
+    return isQuotationLayoutConfig(next, template) ? next : undefined;
+  }
+
   function swappedLayout(sourceId: QuotationLayoutBlockId, targetId: QuotationLayoutBlockId): QuotationLayoutConfig | undefined {
     const next = clone(draft);
     const source = next.blocks.find((block) => block.id === sourceId);
@@ -181,11 +204,17 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
   }
 
   function canMoveFromLayout(id: QuotationLayoutBlockId, direction: LayoutMoveDirection): boolean {
+    if (settlementColumnLayout(id, direction)) return true;
     const target = directionalTarget(id, direction);
     return Boolean(target && swappedLayout(id, target.id));
   }
 
   function moveFromLayout(id: QuotationLayoutBlockId, direction: LayoutMoveDirection) {
+    const settlementNext = settlementColumnLayout(id, direction);
+    if (settlementNext) {
+      update(settlementNext);
+      return;
+    }
     const target = directionalTarget(id, direction);
     if (!target) {
       toast.error(`ไม่มีบล็อก${direction === "up" ? "ด้านบน" : direction === "down" ? "ด้านล่าง" : direction === "left" ? "ด้านซ้าย" : "ด้านขวา"}ให้สลับ`);
@@ -218,7 +247,7 @@ export function QuotationLayoutEditor({ initial, revisions, template }: { initia
       </div></CardContent>
     </Card>
     <aside className="grid content-start gap-4 xl:sticky xl:top-4 xl:self-start">
-      {selected ? <Card><CardHeader className="pb-3"><p className="text-xs font-medium text-muted-foreground">กำลังเลือก</p><CardTitle className="text-base">{BLOCK_LABELS[selected.id]}</CardTitle><p className="text-sm font-normal text-muted-foreground">{ZONE_LABELS[selected.zone]} · ขนาดล็อกตามเทมเพลต</p></CardHeader><CardContent><p className="text-sm text-muted-foreground">ใช้ปุ่มย้ายตำแหน่งบนบล็อกที่เลือกในหน้ากระดาษได้โดยตรง</p></CardContent></Card> : null}
+      {selected ? <Card><CardHeader className="pb-3"><p className="text-xs font-medium text-muted-foreground">กำลังเลือก</p><CardTitle className="text-base">{BLOCK_LABELS[selected.id]}</CardTitle><p className="text-sm font-normal text-muted-foreground">{ZONE_LABELS[selected.zone]} · ขนาดล็อกตามเทมเพลต</p></CardHeader><CardContent><p className="text-sm text-muted-foreground">{selected.zone === "settlement" && ["paymentMethods", "publicNotes", "summary"].includes(selected.id) ? "ย้ายซ้ายหรือขวาเพื่อสลับคอลัมน์สรุปยอดกับช่องทางชำระเงินและหมายเหตุพร้อมกัน" : "ใช้ปุ่มย้ายตำแหน่งบนบล็อกที่เลือกในหน้ากระดาษได้โดยตรง"}</p></CardContent></Card> : null}
       <Card><CardHeader className="pb-3"><CardTitle className="text-base">เวอร์ชัน</CardTitle></CardHeader><CardContent className="grid gap-2">{revisions.map((revision) => <div className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm" key={revision.revisionNumber}><span><History aria-hidden="true" className="mr-1 inline size-3" />v{revision.revisionNumber}<span className="mt-0.5 block text-xs text-muted-foreground">ผู้ดูแล · {revisionTimestamp(revision.createdAt)}</span></span>{revision.revisionNumber === initial.revisionNumber ? <span className="text-xs text-muted-foreground">กำลังใช้</span> : <Button disabled={isPending} onClick={() => publish(revision.config)} size="sm" type="button" variant="ghost"><RotateCcw aria-hidden="true" />คืนค่า</Button>}</div>)}</CardContent></Card>
       <div className="flex flex-wrap gap-2"><Button disabled={isPending || !changed} onClick={() => { setDraft(clone(initial.config)); setUndoStack([]); setRedoStack([]); }} type="button" variant="outline">ยกเลิกการแก้ไข</Button><Button disabled={isPending || !changed} onClick={() => publish(draft)} type="button">{isPending ? "กำลังเผยแพร่…" : "เผยแพร่เลเอาท์"}</Button></div>
     </aside>

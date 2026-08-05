@@ -48,4 +48,10 @@ describe("quotation layout editor drag and drop", () => {
     assert.match(source, /redoStack/);
     assert.match(source, /กำลังเลือก/);
   });
+
+  it("moves payment methods and public notes as one settlement column", () => {
+    assert.match(source, /function settlementColumnLayout/);
+    assert.match(source, /publicNotes\.column = paymentMethods\.column/);
+    assert.match(source, /publicNotes\.order = settlementOrder \+ 10/);
+  });
 });
