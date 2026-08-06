@@ -1377,6 +1377,7 @@ describe("quotation UI", () => {
     assert.match(editor, /setIsPrinting\(true\)/);
     assert.match(editor, /createPortal\([\s\S]*data-quotation-print[\s\S]*document\.body/);
     assert.match(editor, /window\.addEventListener\("afterprint", cleanup/);
+    assert.doesNotMatch(editor, /window\.setTimeout\(cleanup, 1_000\)/);
     assert.match(
       editor,
       /querySelectorAll<HTMLImageElement>\(\s*"\[data-quotation-print\] img"\s*,?\s*\)/,

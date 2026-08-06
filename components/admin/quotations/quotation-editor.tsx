@@ -1028,7 +1028,6 @@ export function QuotationEditor({
   useEffect(() => {
     if (!isPrinting) return;
     let finished = false;
-    let timeout: number | undefined;
     const controller = new AbortController();
     const printStyle = document.createElement("style");
     // Keep a larger top inset on every paper sheet. This prevents the first
@@ -1039,7 +1038,6 @@ export function QuotationEditor({
       finished = true;
       document.documentElement.classList.remove("quotation-printing");
       printStyle.remove();
-      if (timeout !== undefined) window.clearTimeout(timeout);
       setIsPrinting(false);
     }
 
@@ -1058,7 +1056,6 @@ export function QuotationEditor({
           document.documentElement.classList.add("quotation-printing");
           window.addEventListener("afterprint", cleanup, { once: true });
           window.print();
-          if (!finished) timeout = window.setTimeout(cleanup, 1_000);
         } catch {
           if (!controller.signal.aborted) {
             toast.error(
@@ -1073,7 +1070,6 @@ export function QuotationEditor({
     return () => {
       controller.abort();
       window.cancelAnimationFrame(frame);
-      if (timeout !== undefined) window.clearTimeout(timeout);
       window.removeEventListener("afterprint", cleanup);
       document.documentElement.classList.remove("quotation-printing");
       printStyle.remove();

@@ -58,7 +58,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
 
   return (
     <article
-      className="quotation-zone-order mx-auto flex min-h-[297mm] w-[210mm] flex-col bg-[#fffdf8] p-[10mm] text-[10px] leading-[1.45] text-slate-800"
+      className="quotation-zone-order mx-auto flex min-h-[297mm] w-[210mm] flex-col bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-800"
       data-quotation-document
       data-layout-revision={payload.layout.revisionNumber}
       data-quotation-template="hospitality"

@@ -27,7 +27,7 @@ import {
 const colors = {
   accent: "#c79b58",
   border: "#b7d0c7",
-  paper: "#fffdf8",
+  paper: "#ffffff",
   primary: "#286a5b",
   text: "#17352d",
 };
