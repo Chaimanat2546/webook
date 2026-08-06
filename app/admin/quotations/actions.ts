@@ -205,7 +205,10 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
     const prepared = prepareQuotationPayload(value, itemNames);
     if (prepared.payload.seller.logoUrl) {
       try {
-        validateQuotationAssetUrl(prepared.payload.seller.logoUrl, getQuotationAssetEnv().workerUrl);
+        // The company-logo uploader also resolves its storage target from the
+        // deployed Worker binding.  Validate the saved quotation against that
+        // same origin instead of a potentially stale build-time environment.
+        validateQuotationAssetUrl(prepared.payload.seller.logoUrl, (await getQuotationAssetRuntimeEnv()).workerUrl);
       } catch {
         return {
           fieldErrors: { "seller.logoUrl": "โลโก้ผู้ขายต้องมาจากพื้นที่จัดเก็บของระบบ" },

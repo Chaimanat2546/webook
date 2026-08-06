@@ -146,6 +146,7 @@ describe("quotation repository and actions", () => {
   it("validates payment and certification asset URLs against the deployed runtime origin", () => {
     assert.match(actions, /async function paymentAssetErrors[\s\S]*await getQuotationAssetRuntimeEnv\(\)/);
     assert.match(actions, /async function certificationAssetErrors[\s\S]*await getQuotationAssetRuntimeEnv\(\)/);
+    assert.match(actions, /validateQuotationAssetUrl\(prepared\.payload\.seller\.logoUrl, \(await getQuotationAssetRuntimeEnv\(\)\)\.workerUrl\)/);
     assert.match(actions, /await paymentAssetErrors\(prepared\.payload\.paymentMethods\)/);
     assert.match(actions, /await certificationAssetErrors\(prepared\.payload\.certification\)/);
   });
