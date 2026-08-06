@@ -1,9 +1,8 @@
 const QUOTATION_ASSET_PREFIX = "quotations/assets/";
 const QUOTATION_PAYMENT_ASSET_PREFIX = "quotations/payment-assets/";
 const QUOTATION_CERTIFICATION_ASSET_PREFIX = "quotations/certification-assets/";
-const MAX_BYTES = 10 * 1024 * 1024;
-const PAYMENT_MAX_BYTES = 2 * 1024 * 1024;
-const CERTIFICATION_MAX_BYTES = 2 * 1024 * 1024;
+export const QUOTATION_ASSET_MAX_BYTES = 10 * 1024 * 1024;
+export const QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/i;
 const PAYMENT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.png$/i;
 const CERTIFICATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.png$/i;
@@ -130,7 +129,7 @@ export function validateQuotationAssetFile(file: File): File {
     throw new Error("ไฟล์โลโก้ต้องเป็น PNG, JPEG หรือ WEBP");
   }
   if (file.size === 0) throw new Error("ไฟล์โลโก้ว่างเปล่า");
-  if (file.size > MAX_BYTES) throw new Error("ไฟล์โลโก้ต้องมีขนาดไม่เกิน 10 MB");
+  if (file.size > QUOTATION_ASSET_MAX_BYTES) throw new Error("ไฟล์โลโก้ต้องมีขนาดไม่เกิน 10 MB");
   return file;
 }
 
@@ -139,7 +138,7 @@ export function validateQuotationPaymentAssetFile(file: File): File {
     throw new Error("รูปต้องเป็น PNG, JPEG หรือ WebP");
   }
   if (file.size === 0) throw new Error("ไฟล์รูปว่างเปล่า");
-  if (file.size > PAYMENT_MAX_BYTES) throw new Error("ไฟล์รูปต้องมีขนาดไม่เกิน 2 MB");
+  if (file.size > QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES) throw new Error("ไฟล์รูปต้องมีขนาดไม่เกิน 2 MB");
   return file;
 }
 
@@ -148,6 +147,6 @@ export function validateQuotationCertificationAssetFile(file: File): File {
     throw new Error("รูปการรับรองต้องเป็น PNG, JPEG หรือ WebP");
   }
   if (file.size === 0) throw new Error("ไฟล์รูปว่างเปล่า");
-  if (file.size > CERTIFICATION_MAX_BYTES) throw new Error("ไฟล์รูปต้องมีขนาดไม่เกิน 2 MB");
+  if (file.size > QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES) throw new Error("ไฟล์รูปต้องมีขนาดไม่เกิน 2 MB");
   return file;
 }

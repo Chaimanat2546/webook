@@ -9,14 +9,15 @@ import {
   useState,
   useTransition,
 } from "react";
-import { createPortal } from "react-dom";
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
+  ArrowLeft,
   Download,
   GripVertical,
   Printer,
+  RotateCcw,
   Share2,
   Trash2,
 } from "lucide-react";
@@ -25,8 +26,10 @@ import { toast } from "sonner";
 
 import {
   deleteQuotationAction,
+  rotateQuotationPublicTokenAction,
   saveQuotationAction,
   saveQuotationDocumentDisplayDefaultsAction,
+  saveQuotationTemplateDefaultAction,
 } from "../../../app/admin/quotations/actions";
 import {
   applyQuotationDocumentDisplay,
@@ -53,16 +56,18 @@ import {
   buildQuotationPublicUrl,
   createQuotationPublicQrDataUrl,
 } from "../../../lib/quotation-public-qr";
-import { waitForQuotationPrintImages } from "../../../lib/quotation-print";
 import type {
   CustomerSnapshot,
   OfficeType,
   QuotationPayload,
   SellerSnapshot,
 } from "../../../lib/quotation-types";
+import type { QuotationTemplate } from "../../../lib/quotation-template";
+import type { QuotationDocumentTemplateSnapshot } from "../../../server/repositories/quotations";
 import { normalizeQuotationVatChoices } from "../../../lib/quotation-vat";
 import { cn } from "../../../lib/utils";
 import { Alert, AlertDescription } from "../../ui/alert";
+import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import {
   Dialog,
@@ -77,18 +82,21 @@ import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Textarea } from "../../ui/textarea";
 import { CertificationFields } from "./certification-fields";
 import { QuotationCustomerPicker } from "./customers/customer-picker-dialog";
-import { QuotationDocument } from "./quotation-document";
 import { QuotationDocumentDisplayDialog } from "./quotation-document-display-dialog";
+import { QuotationTemplateDialog } from "./quotation-template-dialog";
 import { PaymentMethodList } from "./payment-method-list";
+import { QuotationDocument } from "./quotation-document";
 
 export interface QuotationEditorProps {
   banks: BankOption[];
   documentNumber: string | null;
   initialPayload: QuotationPayload;
+  initialTemplateDefault: QuotationTemplate;
   itemNames: string[];
   printOnLoad?: boolean;
   publicOrigin: string | null;
   publicToken: string | null;
+  templateSnapshots: Record<QuotationTemplate, QuotationDocumentTemplateSnapshot>;
 }
 type PendingConfirmation = "close" | null;
 type FieldProps = {
@@ -663,15 +671,18 @@ export function QuotationEditor({
   banks,
   documentNumber: initialDocumentNumber,
   initialPayload,
+  initialTemplateDefault,
   itemNames,
   printOnLoad = false,
   publicOrigin,
   publicToken: initialPublicToken,
+  templateSnapshots,
 }: QuotationEditorProps) {
   const router = useRouter();
   const [payload, setPayload] = useState<QuotationPayload>(() =>
     normalizeQuotationVatChoices(initialPayload),
   );
+  const [accountTemplateDefault, setAccountTemplateDefault] = useState(initialTemplateDefault);
   const [documentNumber, setDocumentNumber] = useState(initialDocumentNumber);
   const [publicToken, setPublicToken] = useState(initialPublicToken);
   const [publicQrDataUrl, setPublicQrDataUrl] = useState("");
@@ -728,7 +739,11 @@ export function QuotationEditor({
       : "";
   const draftPublicQrDataUrl = !isDirty ? savedPublicQrDataUrl : "";
   const canPrint = Boolean(
-    documentNumber && lastSavedPayload && !isPending && !publicQrPending,
+    documentNumber
+      && lastSavedPayload
+      && !isPending
+      && !publicQrPending
+      && (!lastSavedPayload.documentDisplay.certificationQr || (publicOrigin && publicToken)),
   );
   const calculationResult = useMemo(() => {
     try {
@@ -747,6 +762,9 @@ export function QuotationEditor({
     [lastSavedPayload],
   );
   const paymentListState = paymentMethodListState(payload.paymentMethods, fieldErrors);
+  const latestLayout = templateSnapshots[payload.template];
+  const hasNewerLayout = latestLayout.sourceId === payload.layout.sourceId
+    && latestLayout.revisionNumber > payload.layout.revisionNumber;
   const money = (value?: string) => (value ? formatBaht(value) : "—");
   function changed(field: string) {
     setIsDirty(true);
@@ -771,6 +789,48 @@ export function QuotationEditor({
     setPayload((current) => applyQuotationDocumentDisplay(current, value));
     if (saveAsDefault) toast.success("บันทึกค่าเริ่มต้นรูปแบบเอกสารแล้ว");
     return true;
+  }
+  async function applyTemplate(
+    value: QuotationTemplate,
+    saveAsDefault: boolean,
+  ): Promise<boolean> {
+    if (saveAsDefault) {
+      const result = await saveQuotationTemplateDefaultAction(value);
+      if (!result.ok) {
+        toast.error(result.formError);
+        return false;
+      }
+    }
+    changed("template");
+    const snapshot = templateSnapshots[value];
+    setPayload((current) => ({
+      ...current,
+      layout: {
+        config: structuredClone(snapshot.config),
+        revisionNumber: snapshot.revisionNumber,
+        schemaVersion: snapshot.schemaVersion,
+        sourceId: snapshot.sourceId,
+      },
+      template: value,
+    }));
+    if (saveAsDefault) {
+      setAccountTemplateDefault(value);
+      toast.success("บันทึกเทมเพลตเริ่มต้นแล้ว");
+    }
+    return true;
+  }
+  function applyLatestLayout() {
+    changed("layout");
+    setPayload((current) => ({
+      ...current,
+      layout: {
+        config: structuredClone(latestLayout.config),
+        revisionNumber: latestLayout.revisionNumber,
+        schemaVersion: latestLayout.schemaVersion,
+        sourceId: latestLayout.sourceId,
+      },
+    }));
+    toast.success(`ใช้เลเอาท์เวอร์ชัน ${latestLayout.revisionNumber} ในฉบับร่างแล้ว`);
   }
   function updateRoot<K extends keyof QuotationPayload>(
     key: K,
@@ -924,6 +984,9 @@ export function QuotationEditor({
       if (!result.ok) {
         const errorFields = Object.keys(result.fieldErrors);
         const firstField = errorFields[0];
+        const firstErrorMessage = firstField
+          ? result.fieldErrors[firstField]
+          : undefined;
         if (firstField) {
           pendingFocusField.current = firstField.startsWith("customer.")
             ? "customer.name"
@@ -931,8 +994,7 @@ export function QuotationEditor({
         }
         setFieldErrors(result.fieldErrors);
         if (result.formError) toast.error(result.formError);
-        else if (errorFields.length)
-          toast.error("กรุณาตรวจสอบข้อมูลที่กรอก");
+        else if (firstErrorMessage) toast.error(firstErrorMessage);
         const completionField = errorFields.find(
           (field) =>
             field === "certification" ||
@@ -964,66 +1026,66 @@ export function QuotationEditor({
       else router.refresh();
     });
   }
-  const printSaved = useCallback(() => {
-    if (!canPrint) return;
+  const printSaved = useCallback(async (replaceCurrentPage = false) => {
+    if (
+      !canPrint ||
+      !lastSavedPayload ||
+      !savedCalculation ||
+      !documentNumber ||
+      isPrinting
+    ) return;
+
+    // Opening a blank tab synchronously keeps browsers from blocking the PDF
+    // viewer as a popup. The browser's PDF viewer prints the PDF itself, so it
+    // does not add the web page URL or timestamp as a header/footer.
+    const printWindow = replaceCurrentPage
+      ? window
+      : window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("เบราว์เซอร์บล็อกหน้าต่าง PDF สำหรับพิมพ์");
+      return;
+    }
+    if (!replaceCurrentPage) printWindow.opener = null;
+
+    const needsPublicQr = lastSavedPayload.documentDisplay.certificationQr;
     setIsPrinting(true);
-  }, [canPrint]);
-  useEffect(() => {
-    if (!isPrinting) return;
-    let finished = false;
-    let timeout: number | undefined;
-    const controller = new AbortController();
-    const printStyle = document.createElement("style");
-    printStyle.textContent = "@page { size: A4; margin: 0; }";
-    function cleanup() {
-      if (finished) return;
-      finished = true;
-      document.documentElement.classList.remove("quotation-printing");
-      printStyle.remove();
-      if (timeout !== undefined) window.clearTimeout(timeout);
+    try {
+      const publicQrDataUrl = needsPublicQr
+        ? savedPublicQrDataUrl || await createQuotationPublicQrDataUrl(
+          buildQuotationPublicUrl(publicOrigin!, publicToken!),
+        )
+        : "";
+      const { createQuotationPdfBlob } = await import("./quotation-pdf");
+      const blob = await createQuotationPdfBlob({
+        calculation: savedCalculation,
+        documentNumber,
+        payload: lastSavedPayload,
+        publicQrDataUrl,
+      });
+      const url = URL.createObjectURL(blob);
+      printWindow.location.assign(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1_000);
+      toast.success("เปิด PDF สำหรับพิมพ์แล้ว");
+    } catch {
+      if (!replaceCurrentPage) printWindow.close();
+      toast.error("ไม่สามารถสร้าง PDF สำหรับพิมพ์ได้ กรุณาลองอีกครั้ง");
+    } finally {
       setIsPrinting(false);
     }
-
-    const frame = window.requestAnimationFrame(() => {
-      void (async () => {
-        try {
-          const images =
-            document.querySelectorAll<HTMLImageElement>(
-              "[data-quotation-print] img",
-            );
-          const ready = await waitForQuotationPrintImages(images, {
-            signal: controller.signal,
-          });
-          if (!ready || controller.signal.aborted) return;
-          document.head.append(printStyle);
-          document.documentElement.classList.add("quotation-printing");
-          window.addEventListener("afterprint", cleanup, { once: true });
-          window.print();
-          if (!finished) timeout = window.setTimeout(cleanup, 1_000);
-        } catch {
-          if (!controller.signal.aborted) {
-            toast.error(
-              "ไม่สามารถเตรียมเอกสารสำหรับพิมพ์ได้ กรุณาลองอีกครั้ง",
-            );
-            cleanup();
-          }
-        }
-      })();
-    });
-
-    return () => {
-      controller.abort();
-      window.cancelAnimationFrame(frame);
-      if (timeout !== undefined) window.clearTimeout(timeout);
-      window.removeEventListener("afterprint", cleanup);
-      document.documentElement.classList.remove("quotation-printing");
-      printStyle.remove();
-    };
-  }, [isPrinting]);
+  }, [
+    canPrint,
+    documentNumber,
+    isPrinting,
+    lastSavedPayload,
+    publicOrigin,
+    publicToken,
+    savedCalculation,
+    savedPublicQrDataUrl,
+  ]);
   useEffect(() => {
     if (!printOnLoad || !canPrint || autoPrintStarted.current) return;
     autoPrintStarted.current = true;
-    printSaved();
+    void printSaved(true);
   }, [canPrint, printOnLoad, printSaved]);
   useEffect(() => {
     let stale = false;
@@ -1081,6 +1143,17 @@ export function QuotationEditor({
     } catch {
       toast.error("ไม่สามารถคัดลอกลิงก์ได้");
     }
+  }
+  async function rotatePublicLink() {
+    if (!payload.id || !canUseSavedDocument) return;
+    const result = await rotateQuotationPublicTokenAction(payload.id);
+    if (!result.ok) {
+      toast.error(result.formError);
+      return;
+    }
+    setPublicToken(result.publicToken);
+    setPublicQrSettledToken("");
+    toast.success("รีเซ็ตลิงก์สาธารณะแล้ว ลิงก์เดิมใช้ไม่ได้ทันที");
   }
   async function downloadSaved() {
     if (!canUseSavedDocument || !lastSavedPayload || !savedCalculation || !documentNumber || isDownloading) return;
@@ -1153,24 +1226,34 @@ export function QuotationEditor({
       data-quotation-editor
     >
       <header
-        className="flex flex-wrap items-start justify-between gap-3 border-b border-foreground/25 pb-3"
+        className="flex flex-col gap-3 border-b border-foreground/25 pb-3 md:flex-row md:items-center md:justify-between"
         data-workbench-command-bar
       >
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            {documentNumber ?? "ใบเสนอราคาใหม่"}
-          </h1>
-          {!documentNumber ? (
-            <p className="text-xs text-muted-foreground">เลขที่ออกเมื่อบันทึก</p>
-          ) : null}
+        <div className="flex flex-col gap-2">
+          <Button
+            className="w-fit px-0"
+            onClick={closeEditor}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            <ArrowLeft aria-hidden="true" className="size-4" />
+            กลับไปรายการใบเสนอราคา
+          </Button>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight">ใบเสนอราคา</h1>
+              <Badge variant="secondary">{documentNumber ?? "ใหม่"}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {documentNumber ? "จัดการข้อมูลใบเสนอราคานี้" : "สร้างใบเสนอราคาใหม่"}
+            </p>
+          </div>
         </div>
         <div
           className="hidden items-center gap-2 md:flex"
           data-desktop-command-actions
         >
-          <Button onClick={closeEditor} type="button" variant="outline">
-            กลับ
-          </Button>
           <Button
             disabled={!calculation}
             onClick={() => setPreviewOpen(true)}
@@ -1234,6 +1317,12 @@ export function QuotationEditor({
           className="flex flex-wrap items-center gap-2"
           data-document-actions
         >
+          <QuotationTemplateDialog
+            accountDefault={accountTemplateDefault}
+            disabled={isPending || uploadingFields.size > 0}
+            onApply={applyTemplate}
+            value={payload.template}
+          />
           <QuotationDocumentDisplayDialog
             disabled={isPending || uploadingFields.size > 0}
             onApply={applyDocumentDisplay}
@@ -1252,14 +1341,27 @@ export function QuotationEditor({
             แชร์
           </Button>
           <Button
-            disabled={!canPrint}
-            onClick={printSaved}
+            disabled={!canUseSavedDocument || !payload.id}
+            onClick={rotatePublicLink}
+            size="sm"
+            title={documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined}
+            type="button"
+            variant="outline"
+          >
+            <RotateCcw aria-hidden="true" className="size-4" />
+            รีเซ็ตลิงก์
+          </Button>
+          <Button
+            disabled={!canPrint || isPrinting}
+            onClick={() => {
+              void printSaved();
+            }}
             size="sm"
             type="button"
             variant="outline"
           >
             <Printer aria-hidden="true" className="size-4" />
-            พิมพ์
+            {isPrinting ? "กำลังเปิด PDF…" : "พิมพ์"}
           </Button>
           <Button
             disabled={!canUseSavedDocument || isDownloading}
@@ -1653,8 +1755,14 @@ export function QuotationEditor({
               variant="outline"
             >
               {completionExpanded ? "ซ่อน" : "แสดง"}
-            </Button>
-          </div>
+          </Button>
+        </div>
+        {hasNewerLayout ? <Alert className="mt-3" data-newer-layout-notice>
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>มีเลเอาท์เวอร์ชันใหม่ (v{latestLayout.revisionNumber}) สำหรับเทมเพลตนี้</span>
+            <Button disabled={isPending} onClick={applyLatestLayout} size="sm" type="button" variant="outline">อัปเดตเป็นเวอร์ชันล่าสุด</Button>
+          </AlertDescription>
+        </Alert> : null}
           <div
             hidden={!completionExpanded}
             id="quotation-completion-content"
@@ -1847,19 +1955,6 @@ export function QuotationEditor({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {isPrinting && lastSavedPayload && savedCalculation
-        ? createPortal(
-            <div data-quotation-print>
-              <QuotationDocument
-                calculation={savedCalculation}
-                documentNumber={documentNumber}
-                payload={lastSavedPayload}
-                publicQrDataUrl={savedPublicQrDataUrl}
-              />
-            </div>,
-            document.body,
-          )
-        : null}
     </div>
   );
 }

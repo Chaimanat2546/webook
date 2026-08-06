@@ -200,7 +200,7 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
       <SettingsGroup id="logo" title="โลโก้ผู้ขาย">
         <div className="grid gap-4 sm:grid-cols-[12rem_minmax(0,1fr)] sm:items-start">
           <div className="flex min-h-28 items-center justify-center rounded-lg border bg-muted/20 p-3">{displayedLogoUrl && !logoUnavailable ? <picture><img alt="โลโก้ผู้ขาย" className="max-h-28 max-w-full object-contain" onError={() => setLogoUnavailable(true)} src={displayedLogoUrl} /></picture> : <p className="text-sm text-muted-foreground">ยังไม่มีโลโก้</p>}</div>
-          <div className="grid gap-2"><Label htmlFor="logo">เลือกโลโก้ใหม่</Label><Input accept="image/png,image/jpeg,image/webp" aria-describedby={logoError ? "logo-error" : undefined} aria-invalid={Boolean(logoError)} data-field="logo" disabled={disabled} id="logo" name="logo" onChange={handleLogoChange} type="file" />{logoError ? <p className="text-sm text-destructive" id="logo-error">{logoError}</p> : null}<p className="text-sm text-muted-foreground">รองรับ PNG, JPEG หรือ WebP ขนาดไม่เกิน 10 MB</p></div>
+          <div className="grid gap-2"><Label htmlFor="logo">เลือกโลโก้ใหม่</Label><Input accept="image/png,image/jpeg,image/webp" aria-describedby={logoError ? "logo-hint logo-error" : "logo-hint"} aria-invalid={Boolean(logoError)} data-field="logo" disabled={disabled} id="logo" name="logo" onChange={handleLogoChange} type="file" />{logoError ? <p className="text-sm text-destructive" id="logo-error">{logoError}</p> : null}<p className="text-sm text-muted-foreground" id="logo-hint">รองรับ PNG, JPEG หรือ WebP ขนาดไม่เกิน 10 MB</p></div>
         </div>
       </SettingsGroup>
     </div>

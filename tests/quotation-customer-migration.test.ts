@@ -50,4 +50,14 @@ describe("quotation customer migration", () => {
     assert.match(branchSql, /unique index[\s\S]*\(tax_id, branch_number\)/i);
     assert.doesNotMatch(branchSql, /where[^;]*is_active/i);
   });
+
+  it("scopes customer identity, reads, and service writes to the owner", () => {
+    assert.match(allSql, /add column if not exists owner_id uuid/i);
+    assert.match(allSql, /owner_id = auth\.uid\(\)/i);
+    assert.match(allSql, /quotation_customers_owner_juristic_branch_uidx/i);
+    assert.match(allSql, /\(owner_id, tax_id, branch_number\)/i);
+    const repository = readFileSync(new URL("../server/repositories/quotation-customers.ts", import.meta.url), "utf8");
+    assert.match(repository, /owner_id: actorId/);
+    assert.match(repository, /\.eq\("owner_id", actorId\)/);
+  });
 });

@@ -59,7 +59,9 @@ The renderer exposes a fixed block catalogue such as:
 
 Each template family defines which blocks are required, which zones each block
 may enter, supported spans, and whether it may share a row. The initial zones
-are `header`, `body`, `settlement`, `footer`, and `certification`.
+are `header`, `body`, `settlement`, `footer`, and `certification`. Users may
+reorder the complete `header`, `body`, `settlement`, and `certification`
+sections. The Hospitality `footer` is not movable and always renders last.
 
 Vertical movement changes `zone` and `order`. Horizontal movement changes
 `column` and `span` within a twelve-column logical grid. The stored layout never
@@ -325,8 +327,8 @@ Automated checks cover:
 - Preview using the draft and Print/PDF/Public using the saved snapshot;
 - HTML and PDF resolving equivalent block order, placement, values, visibility,
   totals, and certification content;
-- keyboard controls, drag-and-drop parity, dirty-state protection, conflict
-  recovery, mobile ordered-list editor, and revision history access.
+- position-button controls, disabled invalid moves, dirty-state protection,
+  conflict recovery, mobile ordered-list editor, and revision history access.
 
 Visual QA covers every supported block move and span at 390, 768, 1280, and
 1536 px, plus A4 one-page and multi-page output. Test long content, many items,

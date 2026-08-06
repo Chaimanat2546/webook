@@ -2,12 +2,32 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  getAdvertisementImageEnv,
   getAwsS3ImageEnv,
   getQuotationPublicOrigin,
   getSupabaseServiceRoleEnv,
 } from "../lib/env.ts";
 
 describe("environment helpers", () => {
+  it("normalizes surrounding whitespace from advertisement image Worker credentials", () => {
+    const previous = {
+      workerSecret: process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET,
+      workerUrl: process.env.ADVERTISEMENT_IMAGE_WORKER_URL,
+    };
+    process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET = " secret-kept-exact ";
+    process.env.ADVERTISEMENT_IMAGE_WORKER_URL = "https://media.example.com\r\n";
+
+    try {
+      assert.deepEqual(getAdvertisementImageEnv(), {
+        workerSecret: "secret-kept-exact",
+        workerUrl: "https://media.example.com",
+      });
+    } finally {
+      restoreEnv("ADVERTISEMENT_IMAGE_WORKER_SECRET", previous.workerSecret);
+      restoreEnv("ADVERTISEMENT_IMAGE_WORKER_URL", previous.workerUrl);
+    }
+  });
+
   it("loads the AWS S3 image delete environment", () => {
     const previous = {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,

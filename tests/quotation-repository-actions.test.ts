@@ -14,6 +14,26 @@ const actions = readFileSync(
   new URL("../app/admin/quotations/actions.ts", import.meta.url),
   "utf8",
 );
+const newPage = readFileSync(
+  new URL("../app/admin/quotations/new/page.tsx", import.meta.url),
+  "utf8",
+);
+const editPage = readFileSync(
+  new URL("../app/admin/quotations/[id]/page.tsx", import.meta.url),
+  "utf8",
+);
+const certificationUploadRoute = readFileSync(
+  new URL("../app/api/admin/quotations/certification-assets/route.ts", import.meta.url),
+  "utf8",
+);
+const certificationUploadService = readFileSync(
+  new URL("../server/services/quotation-certification-assets.ts", import.meta.url),
+  "utf8",
+);
+const certificationFields = readFileSync(
+  new URL("../components/admin/quotations/certification-fields.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("quotation repository and actions", () => {
   it("uses the transactional RPC for writes", () => {
@@ -72,9 +92,40 @@ describe("quotation repository and actions", () => {
     );
   });
 
+  it("loads, validates, and owner-scopes quotation template defaults", () => {
+    assert.match(repository, /document_template_default/);
+    assert.match(repository, /document_template_snapshot/);
+    assert.match(repository, /companyProfileToTemplate/);
+    assert.match(
+      repository,
+      /normalizeQuotationTemplate\(row\.document_template_snapshot\)/,
+    );
+    assert.match(
+      repository,
+      /saveQuotationTemplateDefault[\s\S]*\.eq\("user_id", userId\)/,
+    );
+    assert.match(actions, /isQuotationTemplate\(value\)/);
+    assert.match(
+      actions,
+      /saveQuotationTemplateDefault\(supabase, value, user\.id\)/,
+    );
+  });
+
+  it("initializes a new quotation from the account template default", () => {
+    assert.match(newPage, /companyProfileToTemplate\(profile\)/);
+  });
+
+  it("keeps the account default separate from an edit snapshot", () => {
+    assert.match(editPage, /getQuotationCompanyProfile/);
+    assert.match(
+      editPage,
+      /initialTemplateDefault=\{companyProfileToTemplate\(profile\)\}/,
+    );
+  });
+
   it("validates and uploads normalized payment PNGs after permission checks", () => {
-    assert.match(actions, /validateQuotationPaymentAssetFile\(file\)/);
-    assert.match(actions, /file\.type !== "image\/png"/);
+    assert.match(actions, /validateNormalizedQuotationPng\(file\)/);
+    assert.match(actions, /validateQuotationUploadedImage\(normalized, "png"\)/);
     assert.match(actions, /buildQuotationPaymentAssetObjectKey\(\)/);
     assert.match(actions, /contentType: "image\/png"/);
     assert.match(actions, /validateQuotationPaymentAssetUrl\(url/);
@@ -82,14 +133,33 @@ describe("quotation repository and actions", () => {
   });
 
   it("validates and uploads normalized certification PNGs after permission checks", () => {
-    assert.match(actions, /validateQuotationCertificationAssetFile\(file\)/);
-    assert.match(actions, /file\.type !== "image\/png"/);
+    assert.match(actions, /validateNormalizedQuotationPng\(file\)/);
+    assert.match(actions, /validateQuotationUploadedImage\(normalized, "png"\)/);
     assert.match(actions, /buildQuotationCertificationAssetObjectKey\(\)/);
     assert.match(actions, /contentType: "image\/png"/);
     assert.match(actions, /validateQuotationCertificationAssetUrl\(url/);
     assert.match(actions, /certification\.issuer\.signatureUrl/);
     assert.match(actions, /certification\.approver\.signatureUrl/);
     assert.match(actions, /certification\.companyStampUrl/);
+  });
+
+  it("validates payment and certification asset URLs against the deployed runtime origin", () => {
+    assert.match(actions, /async function paymentAssetErrors[\s\S]*await getQuotationAssetRuntimeEnv\(\)/);
+    assert.match(actions, /async function certificationAssetErrors[\s\S]*await getQuotationAssetRuntimeEnv\(\)/);
+    assert.match(actions, /validateQuotationAssetUrl\(prepared\.payload\.seller\.logoUrl, \(await getQuotationAssetRuntimeEnv\(\)\)\.workerUrl\)/);
+    assert.match(actions, /await paymentAssetErrors\(prepared\.payload\.paymentMethods\)/);
+    assert.match(actions, /await certificationAssetErrors\(prepared\.payload\.certification\)/);
+  });
+
+  it("uploads certification images through an authorized same-origin API boundary", () => {
+    assert.match(certificationUploadRoute, /requestOrigin !== new URL\(request\.url\)\.origin/);
+    assert.match(certificationUploadRoute, /canUseQuotation\(adminUser\)/);
+    assert.match(certificationUploadRoute, /uploadQuotationCertificationImage\(value\)/);
+    assert.match(certificationUploadService, /file\.size > QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES/);
+    assert.match(certificationUploadService, /validateQuotationUploadedImage\(file, "png"\)/);
+    assert.match(certificationUploadService, /contentType: "image\/png"/);
+    assert.match(certificationFields, /fetch\("\/api\/admin\/quotations\/certification-assets"/);
+    assert.doesNotMatch(certificationFields, /uploadQuotationCertificationAssetAction/);
   });
 
   it("saves the certification master through the validated owner-scoped RPC", () => {

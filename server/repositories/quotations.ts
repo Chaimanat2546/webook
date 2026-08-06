@@ -20,6 +20,15 @@ import type {
   QuotationPayload,
   SellerSnapshot,
 } from "../../lib/quotation-types.ts";
+import {
+  normalizeQuotationTemplate,
+  type QuotationTemplate,
+} from "../../lib/quotation-template.ts";
+import {
+  normalizeQuotationLayout,
+  QUOTATION_LAYOUT_SCHEMA_VERSION,
+  type QuotationLayoutSnapshot,
+} from "../../lib/quotation-layout.ts";
 import type { PreparedQuotation } from "../services/quotations";
 import {
   normalizeQuotationDocumentDisplay,
@@ -36,6 +45,7 @@ export interface QuotationCompanyProfileRow {
   contact_email: string;
   contact_name: string;
   contact_phone: string;
+  document_template_default: unknown;
   document_display_defaults: unknown;
   company_stamp_url: string | null;
   email: string;
@@ -80,7 +90,9 @@ export interface SavedQuotation {
 const quotationSelect = `
   id,document_number,issue_date,valid_until,validity_days,reference,subject,
   seller_snapshot,customer_snapshot,public_token,withholding_tax_rate,
-  certification_snapshot,document_display_snapshot,
+  certification_snapshot,document_display_snapshot,document_template_snapshot,
+  document_template_source_id,document_template_revision_snapshot,
+  document_layout_schema_version_snapshot,document_layout_snapshot,
   public_notes,internal_notes,
   quotation_items(
     id,position,name,description,quantity,unit,unit_price,
@@ -128,6 +140,11 @@ type DatabaseQuotationPaymentMethod = {
 type DatabaseQuotationRow = {
   certification_snapshot: unknown;
   document_display_snapshot: unknown;
+  document_layout_schema_version_snapshot: unknown;
+  document_layout_snapshot: unknown;
+  document_template_revision_snapshot: unknown;
+  document_template_snapshot: unknown;
+  document_template_source_id: unknown;
   customer_snapshot: unknown;
   id: unknown;
   internal_notes: unknown;
@@ -212,6 +229,114 @@ export function companyProfileToCertification(
   };
 }
 
+export interface QuotationDocumentTemplateSnapshot {
+  config: QuotationLayoutSnapshot["config"];
+  revisionNumber: number;
+  schemaVersion: number;
+  sourceId: string;
+  template: QuotationTemplate;
+}
+
+export interface QuotationDocumentTemplateRevision {
+  config: QuotationLayoutSnapshot["config"];
+  createdAt: string;
+  revisionNumber: number;
+  schemaVersion: number;
+}
+
+export function companyProfileToTemplate(
+  row: QuotationCompanyProfileRow,
+): QuotationTemplate {
+  return normalizeQuotationTemplate(row.document_template_default);
+}
+
+export async function listQuotationDocumentTemplateSnapshots(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Record<QuotationTemplate, QuotationDocumentTemplateSnapshot>> {
+  const { data: templates, error: templatesError } = await supabase
+    .from("quotation_document_templates")
+    .select("id,template_key,current_revision_number")
+    .eq("user_id", userId);
+  if (templatesError) throw new Error(templatesError.message);
+  const ids = (templates ?? []).map((template) => stringValue(template.id)).filter(Boolean);
+  const { data: revisions, error: revisionsError } = ids.length
+    ? await supabase
+      .from("quotation_document_template_revisions")
+      .select("template_id,revision_number,layout_schema_version,layout_config")
+      .in("template_id", ids)
+    : { data: [], error: null };
+  if (revisionsError) throw new Error(revisionsError.message);
+
+  const snapshots = {} as Record<QuotationTemplate, QuotationDocumentTemplateSnapshot>;
+  for (const template of templates ?? []) {
+    const key = normalizeQuotationTemplate(template.template_key);
+    const currentRevision = Number(template.current_revision_number);
+    const revision = (revisions ?? []).find((item) => stringValue(item.template_id) === stringValue(template.id)
+      && Number(item.revision_number) === currentRevision);
+    if (!revision) throw new Error("Current quotation layout revision not found");
+    snapshots[key] = {
+      config: normalizeQuotationLayout(revision.layout_config, key),
+      revisionNumber: currentRevision,
+      schemaVersion: Number(revision.layout_schema_version),
+      sourceId: stringValue(template.id),
+      template: key,
+    };
+  }
+  for (const template of ["current", "hospitality", "corporate"] as const) {
+    if (!snapshots[template]) throw new Error("Quotation layout template not provisioned");
+  }
+  return snapshots;
+}
+
+export async function listQuotationDocumentTemplateRevisions(
+  supabase: SupabaseClient,
+  sourceId: string,
+  template: QuotationTemplate,
+): Promise<QuotationDocumentTemplateRevision[]> {
+  const { data, error } = await supabase
+    .from("quotation_document_template_revisions")
+    .select("revision_number,layout_schema_version,layout_config,created_at")
+    .eq("template_id", sourceId)
+    .order("revision_number", { ascending: false })
+    .limit(2);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((revision) => ({
+    config: normalizeQuotationLayout(revision.layout_config, template),
+    createdAt: stringValue(revision.created_at),
+    revisionNumber: Number(revision.revision_number),
+    schemaVersion: Number(revision.layout_schema_version),
+  }));
+}
+
+export async function publishQuotationDocumentTemplateLayout(
+  supabase: SupabaseClient,
+  template: QuotationTemplate,
+  expectedRevisionNumber: number,
+  config: QuotationLayoutSnapshot["config"],
+): Promise<QuotationDocumentTemplateSnapshot> {
+  const { data, error } = await supabase.rpc("publish_quotation_document_template_layout", {
+    p_expected_revision_number: expectedRevisionNumber,
+    p_layout_config: config,
+    p_template_key: template,
+  });
+  if (error) throw quotationPersistenceError(error);
+  const row = (data as Array<Record<string, unknown>> | null)?.[0];
+  if (!row) throw new Error("Quotation layout publication returned no revision");
+  const revisionNumber = Number(row.revision_number);
+  const sourceId = stringValue(row.template_id);
+  if (!sourceId || !Number.isSafeInteger(revisionNumber) || revisionNumber < 1) {
+    throw new Error("Quotation layout publication returned invalid revision");
+  }
+  return {
+    config: normalizeQuotationLayout(row.layout_config, template),
+    revisionNumber,
+    schemaVersion: QUOTATION_LAYOUT_SCHEMA_VERSION,
+    sourceId,
+    template,
+  };
+}
+
 function sellerSnapshot(value: unknown): SellerSnapshot {
   const snapshot = objectValue(value);
   return {
@@ -258,7 +383,19 @@ function certificationSnapshot(value: unknown): CertificationSnapshot {
   };
 }
 
+function layoutSnapshot(row: DatabaseQuotationRow, template: QuotationTemplate): QuotationLayoutSnapshot {
+  const revisionNumber = Number(row.document_template_revision_snapshot);
+  const schemaVersion = Number(row.document_layout_schema_version_snapshot);
+  return {
+    config: normalizeQuotationLayout(row.document_layout_snapshot, template),
+    revisionNumber: Number.isSafeInteger(revisionNumber) && revisionNumber > 0 ? revisionNumber : 1,
+    schemaVersion: Number.isSafeInteger(schemaVersion) && schemaVersion > 0 ? schemaVersion : 1,
+    sourceId: stringValue(row.document_template_source_id),
+  };
+}
+
 export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPayload {
+  const template = normalizeQuotationTemplate(row.document_template_snapshot);
   return {
     certification: certificationSnapshot(row.certification_snapshot),
     documentDisplay: normalizeQuotationDocumentDisplay(row.document_display_snapshot),
@@ -303,8 +440,10 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
       .sort((left, right) => left.position - right.position),
     publicNotes: stringValue(row.public_notes),
     reference: stringValue(row.reference),
+    layout: layoutSnapshot(row, template),
     seller: sellerSnapshot(row.seller_snapshot),
     subject: stringValue(row.subject),
+    template,
     validUntil: stringValue(row.valid_until),
     validityDays: row.validity_days == null ? "" : stringValue(row.validity_days),
     withholdingTaxRate: row.withholding_tax_rate == null ? null : stringValue(row.withholding_tax_rate),
@@ -314,7 +453,7 @@ export function quotationRowToPayload(row: DatabaseQuotationRow): QuotationPaylo
 export async function getQuotationCompanyProfile(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("quotation_company_profiles")
-    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,document_display_defaults,updated_at")
+    .select("id,user_id,seller_name,address,tax_id,office_type,branch_number,phone,email,website,contact_name,contact_phone,contact_email,logo_url,issuer_name,issuer_position,issuer_signature_url,approver_name,approver_position,approver_signature_url,company_stamp_url,document_display_defaults,document_template_default,updated_at")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -335,6 +474,20 @@ export async function saveQuotationDocumentDisplayDefaults(
   const { error } = await supabase
     .from("quotation_company_profiles")
     .update({ document_display_defaults: value, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+}
+
+export async function saveQuotationTemplateDefault(
+  supabase: SupabaseClient,
+  value: QuotationTemplate,
+  userId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("quotation_company_profiles")
+    .update({ document_template_default: value, updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .select("id")
     .single();
@@ -556,4 +709,18 @@ export async function softDeleteQuotation(supabase: SupabaseClient, id: string) 
   const { data, error } = await supabase.rpc("soft_delete_quotation", { p_id: id });
   if (error) throw new Error(error.message);
   return String(data);
+}
+
+export async function rotateQuotationPublicToken(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<{ expiresAt: string; publicToken: string }> {
+  const { data, error } = await supabase.rpc("rotate_quotation_public_token", { p_id: id });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+  if (!row) throw new Error("Quotation public link rotation returned no row");
+  return {
+    expiresAt: stringValue(row.public_token_expires_at),
+    publicToken: stringValue(row.public_token),
+  };
 }

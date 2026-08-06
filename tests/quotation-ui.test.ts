@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { emptyPaymentMethod, paymentMethodEditorState, updatePaymentMethodType } from "../lib/quotation-payment-methods.ts";
@@ -8,6 +9,156 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("renders every template from one complete shared fixture", () => {
+    const output = execFileSync(process.execPath, [
+      "--loader", "./tests/tsx-loader.mjs",
+      "./tests/fixtures/quotation-template-parity.mjs",
+    ], { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const renders = JSON.parse(output) as Record<string, {
+      hiddenHtml: string;
+      hiddenPdfByteLength: number;
+      hiddenPdfTreeText: string;
+      html: string;
+      pdfByteLength: number;
+      pdfTreeText: string;
+    }>;
+
+    for (const template of ["current", "hospitality", "corporate"]) {
+      const html = renders[template]!.html;
+      for (const value of [
+        "Seller Fixture",
+        "QO-PARITY-001",
+        "Customer Fixture",
+        "Suite Fixture",
+        "Fixture service detail",
+        "9,876.50",
+        "Fixture payment instruction",
+        "Fixture public note",
+        "Fixture issuer",
+      ]) assert.ok(html.includes(value), `${template} must render ${value}`);
+      assert.ok(html.includes(`data-quotation-template=\"${template}\"`));
+      assert.ok(html.indexOf("data-document-header") < html.indexOf("data-document-certification"));
+      assert.ok(renders[template]!.pdfByteLength > 1_000, `${template} PDF renderer must produce a real document`);
+      assert.ok(renders[template]!.hiddenPdfByteLength > 1_000, `${template} hidden PDF renderer must produce a real document`);
+      for (const value of ["Seller Fixture", "QO-PARITY-001", "Customer Fixture", "Suite Fixture", "Fixture issuer"]) {
+        assert.ok(renders[template]!.pdfTreeText.includes(value), `${template} PDF tree must include ${value}`);
+      }
+      assert.doesNotMatch(renders[template]!.hiddenHtml, /Fixture reference|Fixture public note|>night</);
+      assert.doesNotMatch(renders[template]!.hiddenPdfTreeText, /Fixture reference|Fixture public note|night/);
+    }
+  });
+  it("keeps every HTML template on the shared public-document contract", () => {
+    const templates = [
+      source("../components/admin/quotations/templates/quotation-document-current.tsx"),
+      source("../components/admin/quotations/templates/quotation-document-hospitality.tsx"),
+      source("../components/admin/quotations/templates/quotation-document-corporate.tsx"),
+    ];
+
+    for (const template of templates) {
+      for (const marker of [
+        "data-document-header",
+        "data-document-metadata",
+        "data-document-customer",
+        "data-document-items",
+        "data-document-summary",
+        "data-document-payment-methods",
+        "data-document-notes",
+        "data-document-certification",
+        "payload.seller",
+        "model.documentNumber",
+        "payload.seller.name",
+        "payload.seller.address",
+        "payload.seller.taxId",
+        "model.issueDate",
+        "model.validUntil",
+        "payload.customer.name",
+        "payload.customer.address",
+        "calculation.lines.map",
+        "calculation.grandTotal",
+        "model.paymentMethods.map",
+        "payload.publicNotes",
+        "model.certification",
+      ]) {
+        assert.match(template, new RegExp(marker));
+      }
+      assert.doesNotMatch(template, /internalNotes/);
+      assert.doesNotMatch(template, /calculateQuotation|document_template_default|accountTemplateDefault/);
+    }
+  });
+
+  it("uses the draft only for Preview and the saved snapshot for Print", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(
+      editor,
+      /<QuotationDocument[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{payload\}[\s\S]*publicQrDataUrl=\{draftPublicQrDataUrl\}/,
+    );
+    assert.match(
+      editor,
+      /createQuotationPdfBlob\(\{[\s\S]*calculation:\s*savedCalculation,[\s\S]*payload:\s*lastSavedPayload,[\s\S]*publicQrDataUrl,/,
+    );
+  });
+
+  it("renders Corporate as a distinct procurement-focused document", () => {
+    const corporate = source("../components/admin/quotations/templates/quotation-document-corporate.tsx");
+    const dispatcher = source("../components/admin/quotations/quotation-document.tsx");
+
+    for (const marker of [
+      'data-quotation-template="corporate"',
+      "#142d4c",
+      "#f2f5f8",
+      "data-corporate-company-metadata",
+      "data-corporate-recipient",
+      "data-corporate-settlement",
+      "data-document-items",
+      "data-document-payment-methods",
+      "data-document-notes",
+      "data-document-certification",
+      "payload.seller.contactName",
+      "payload.seller.contactPhone",
+      "payload.seller.contactEmail",
+    ]) {
+      assert.match(corporate, new RegExp(marker));
+    }
+    assert.doesNotMatch(corporate, /CurrentQuotationDocument/);
+    assert.match(dispatcher, /quotation-document-corporate/);
+  });
+
+  it("lets long Corporate payment content flow before its settlement panel", () => {
+    const corporate = source("../components/admin/quotations/templates/quotation-document-corporate.tsx");
+    const css = source("../app/globals.css");
+
+    assert.match(corporate, /data-corporate-summary-sequential/);
+    assert.match(
+      css,
+      /\[data-corporate-summary-sequential\][\s\S]*break-inside: auto !important/,
+    );
+  });
+
+  it("renders Hospitality as a distinct accommodation-focused document", () => {
+    const hospitality = source("../components/admin/quotations/templates/quotation-document-hospitality.tsx");
+    const dispatcher = source("../components/admin/quotations/quotation-document.tsx");
+
+    for (const marker of [
+      'data-quotation-template="hospitality"',
+      "QUOTATION",
+      "#286a5b",
+      "#c79b58",
+      "data-hospitality-recipient",
+      "data-hospitality-settlement",
+      "data-document-items",
+      "data-document-payment-methods",
+      "data-document-notes",
+      "data-document-certification",
+      "มูลค่ารวม",
+      "ส่วนลด",
+    ]) {
+      assert.match(hospitality, new RegExp(marker));
+    }
+    assert.doesNotMatch(hospitality, /CurrentQuotationDocument/);
+    assert.match(dispatcher, /quotation-document-hospitality/);
+  });
+
   it("groups quotation and certification display switches in one modal", () => {
     const dialog = source("../components/admin/quotations/quotation-document-display-dialog.tsx");
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
@@ -25,7 +176,7 @@ describe("quotation UI", () => {
     assert.match(editor, /showTax: payload\.documentDisplay\.tax/);
   });
   it("adapts the shared A4 document to the approved quotation reference", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
 
     assert.match(document, /import \{ formatBaht, formatMoney \}/);
     assert.match(document, /data-document-header/);
@@ -33,7 +184,7 @@ describe("quotation UI", () => {
     assert.match(document, /data-document-customer/);
     assert.match(document, /data-document-items/);
     assert.match(document, /data-document-summary/);
-    assert.match(document, /bg-indigo-50/);
+    assert.match(document, /--quotation-theme-light/);
     assert.match(document, /table-fixed/);
     assert.match(document, /formatMoney\(item\.unitPrice\)/);
     assert.match(document, /formatMoney\(item\.preTaxAmount\)/);
@@ -43,8 +194,28 @@ describe("quotation UI", () => {
     assert.doesNotMatch(document, /internalNotes/);
   });
 
+  it("preserves Current document sections while the root dispatches by template", () => {
+    const currentDocument = source("../components/admin/quotations/templates/quotation-document-current.tsx");
+    const dispatcher = source("../components/admin/quotations/quotation-document.tsx");
+
+    for (const marker of [
+      "data-document-header",
+      "data-document-customer",
+      "data-document-items",
+      "data-document-summary",
+      "data-document-payment-methods",
+      "data-document-notes",
+      "data-document-certification",
+    ]) {
+      assert.match(currentDocument, new RegExp(marker));
+    }
+    assert.match(dispatcher, /buildQuotationDocumentViewModel/);
+    assert.match(dispatcher, /payload\.template/);
+    assert.match(dispatcher, /CurrentQuotationDocument/);
+  });
+
   it("styles document item descriptions as secondary text", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     assert.match(
       document,
       /<p className="ml-5 whitespace-pre-line text-slate-500 \[overflow-wrap:anywhere\]">[\s\S]*?\{item\.description\}[\s\S]*?<\/p>/,
@@ -56,7 +227,7 @@ describe("quotation UI", () => {
   });
 
   it("contains long valid item quantities and money inside fixed table cells", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     const containedNumericCell = String.raw`className="max-w-0 p-2 text-right tabular-nums \[overflow-wrap:anywhere\]"`;
 
     assert.match(
@@ -84,7 +255,7 @@ describe("quotation UI", () => {
     const page = source("../app/admin/quotations/settings/company/page.tsx");
     const form = source("../components/admin/quotations/company-profile-form.tsx");
 
-    assert.match(page, /searchParams: Promise<\{ section\?: string \}>/);
+    assert.match(page, /searchParams: Promise<\{ section\?: string; template\?: string \}>/);
     assert.match(page, /section === "payments" \|\| section === "certification"/);
     assert.match(page, /\?section=company/);
     assert.match(page, /\?section=payments/);
@@ -122,7 +293,7 @@ describe("quotation UI", () => {
     assert.ok(imageInput.indexOf("setPreviewUrl(localPreviewUrl)") < imageInput.indexOf("await onChange(normalized)"));
     assert.match(imageInput, /setPreviewUrl\(""\)/);
     assert.match(imageInput, /onRemove \? <Button/);
-    assert.match(fields, /throw new Error\(message\)/);
+    assert.match(fields, /throw new Error\(isUploadError\(result\) \|\| "ไม่สามารถอัปโหลดรูปการรับรองได้"\)/);
     assert.match(fields, /onChange\(\(current\) => updateCertificationSigner/);
     assert.match(fields, /onUploadStateChange\?\.\(field, busy\)/);
     assert.match(form, /const \[uploadingFields, setUploadingFields\] = useState\(new Set<string>\(\)\)/);
@@ -246,29 +417,31 @@ describe("quotation UI", () => {
   });
 
   it("renders saved payment methods once in the shared document", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
+    const shared = source("../components/admin/quotations/templates/quotation-document-shared.tsx");
     const viewModel = source("../lib/quotation-document-view.ts");
     const globalCss = source("../app/globals.css");
 
     assert.match(document, /model\.paymentMethods\.length/);
     assert.match(viewModel, /\.sort\(\(left, right\) => left\.position - right\.position\)/);
     assert.match(viewModel, /renderThaiQRPaymentMatrix/);
-    assert.match(document, /method\.qrMode === "auto_promptpay"/);
-    assert.match(document, /method\.qrSource/);
-    assert.match(document, /method\.customBankLogoUrl \|\| method\.bankLogoUrl/);
-    assert.match(document, /method\.accountNumber/);
-    assert.match(document, /method\.promptPayId/);
-    assert.match(document, /method\.instructions/);
-    assert.match(document, /break-inside-avoid/);
-    assert.match(document, /\[overflow-wrap:anywhere\]/);
-    assert.match(document, /ไม่สามารถสร้าง QR ได้/);
+    assert.match(shared, /method\.qrMode === "auto_promptpay"/);
+    assert.match(shared, /method\.qrSource/);
+    assert.match(shared, /method\.customBankLogoUrl \|\| method\.bankLogoUrl/);
+    assert.match(shared, /method\.accountNumber/);
+    assert.match(shared, /method\.promptPayId/);
+    assert.match(shared, /method\.instructions/);
+    assert.match(shared, /break-inside-avoid/);
+    assert.match(shared, /\[overflow-wrap:anywhere\]/);
+    assert.match(shared, /ไม่สามารถสร้าง QR ได้/);
     assert.match(viewModel, /amount <= 0/);
     assert.match(globalCss, /\[data-document-payment-methods\]\s*\{\s*break-inside:\s*auto\s*!important/);
-    assert.doesNotMatch(document, /internalNotes/);
+    assert.doesNotMatch(document + shared, /internalNotes/);
   });
 
   it("renders one compact five-slot certification row", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
+    const shared = source("../components/admin/quotations/templates/quotation-document-shared.tsx");
     const imagePath = new URL("../components/admin/quotations/document-image.tsx", import.meta.url);
 
     assert.ok(existsSync(imagePath), "document image fallback should exist");
@@ -276,11 +449,11 @@ describe("quotation UI", () => {
     const certificationMarker = document.indexOf("data-document-certification");
     const certification = document.slice(
       document.lastIndexOf("<section", certificationMarker),
-      document.indexOf("function PaymentMethod"),
+      document.length,
     );
-    const signer = document.slice(
-      document.indexOf("function SignerSlot"),
-      document.indexOf("function Total"),
+    const signer = shared.slice(
+      shared.indexOf("function SignerSlot"),
+      shared.indexOf("function Total"),
     );
 
     assert.match(certification, /grid-cols-5/);
@@ -339,7 +512,8 @@ describe("quotation UI", () => {
   });
 
   it("uses the compact reference hierarchy for preview and print", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
+    const shared = source("../components/admin/quotations/templates/quotation-document-shared.tsx");
 
     assert.match(document, /data-document-seller-details/);
     assert.match(document, /data-document-seller-contact/);
@@ -360,14 +534,14 @@ describe("quotation UI", () => {
     assert.match(document, /data-document-payment-list/);
     assert.match(document, /data-document-payment-heading/);
     assert.match(
-      document,
+      shared,
       /data-document-payment-entry[\s\S]*?data-document-payment-logo[\s\S]*?data-document-payment-details/,
     );
     assert.match(
-      document,
+      shared,
       /data-document-payment-details[\s\S]*?\{title\}[\s\S]*?accountNumberLine[\s\S]*?method\.accountName/,
     );
-    assert.match(document, /data-document-payment-logo[\s\S]*?className="h-9 w-9/);
+    assert.match(shared, /data-document-payment-logo[\s\S]*?className="h-9 w-9/);
     assert.doesNotMatch(document, /grid-cols-2 gap-x-6 gap-y-4/);
     assert.doesNotMatch(document, /border-y/);
     assert.doesNotMatch(document, /formatBaht\(calculation\.grossTotal\)/);
@@ -382,7 +556,7 @@ describe("quotation UI", () => {
   });
 
   it("uses accessible icons for seller contact labels", () => {
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
 
     assert.match(document, /<Phone aria-hidden="true"/);
     assert.match(document, /<Mail aria-hidden="true"/);
@@ -506,7 +680,7 @@ describe("quotation UI", () => {
       paymentEditor.indexOf('{method.type === "promptpay"'),
       paymentEditor.indexOf('{method.type === "qr_payment"'),
     );
-    const documentSource = source("../components/admin/quotations/quotation-document.tsx");
+    const documentSource = source("../components/admin/quotations/templates/quotation-document-shared.tsx");
 
     assert.match(bankEditorScope, /lg:grid-cols-5/);
     assert.match(bankEditorScope, /label="ธนาคาร"[\s\S]*label="ประเภทบัญชี"[\s\S]*label="ชื่อบัญชี"[\s\S]*label="เลขที่บัญชี"[\s\S]*label="QR โอนเงิน"/);
@@ -569,7 +743,8 @@ describe("quotation UI", () => {
     assert.match(form, /aria-describedby=\{fieldErrors\.address \? "address-error" : undefined\}/);
     assert.match(form, /id="address-error"/);
     assert.match(form, /const serverLogoError = fieldErrors\.logo \|\| fieldErrors\.logoUrl/);
-    assert.match(form, /aria-describedby=\{logoError \? "logo-error" : undefined\}/);
+    assert.match(form, /aria-describedby=\{logoError \? "logo-hint logo-error" : "logo-hint"\}/);
+    assert.match(form, /id="logo-hint"/);
     assert.match(form, /id="logo-error"/);
   });
 
@@ -583,7 +758,7 @@ describe("quotation UI", () => {
     assert.match(form, /setLocalLogoError\("รองรับเฉพาะไฟล์ PNG, JPEG หรือ WebP"\)/);
     assert.match(form, /catch \{[\s\S]*setLocalLogoError\("ไม่สามารถเตรียมโลโก้ได้"\)/);
     assert.doesNotMatch(form, /setLocalLogoError\(cause instanceof Error \? cause\.message/);
-    assert.match(form, /aria-describedby=\{logoError \? "logo-error" : undefined\}/);
+    assert.match(form, /aria-describedby=\{logoError \? "logo-hint logo-error" : "logo-hint"\}/);
     assert.match(form, /aria-invalid=\{Boolean\(logoError\)\}/);
   });
 
@@ -596,7 +771,7 @@ describe("quotation UI", () => {
     assert.match(actions, /ไม่มีสิทธิ์จัดการใบเสนอราคา/);
     assert.match(actions, /ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้/);
     assert.match(actions, /ไม่สามารถบันทึกช่องทางชำระเงินได้/);
-    assert.match(actions, /error\.message\.includes\("2 MB"\) \? error\.message/);
+    assert.match(actions, /message\.includes\("2 MB"\) \|\| message\.startsWith\("รูปภาพ"\)/);
     assert.match(payments, /ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้/);
   });
 
@@ -749,15 +924,18 @@ describe("quotation UI", () => {
     const editPage = source("../app/admin/quotations/[id]/page.tsx");
 
     assert.match(newPage, /companyProfileToCertification\(profile\)/);
-    assert.doesNotMatch(editPage, /companyProfileToCertification|getQuotationCompanyProfile/);
+    assert.doesNotMatch(editPage, /companyProfileToCertification/);
+    assert.match(editPage, /getQuotationCompanyProfile\(supabase, user\.id\)/);
   });
 
   it("edits saved payment snapshots without merging current masters", () => {
     const page = source("../app/admin/quotations/[id]/page.tsx");
 
-    assert.match(page, /Promise\.all\(\[getQuotationById\(supabase, id\), listQuotationBanks\(supabase\), listQuotationItemNames\(supabase\)\]\)/);
+    assert.match(page, /getQuotationById\(supabase, id\)/);
+    assert.match(page, /getQuotationCompanyProfile\(supabase, user\.id\)/);
     assert.match(page, /hydratePaymentMethodBanks\(quotation\.payload\.paymentMethods, banks\)/);
     assert.match(page, /initialPayload=\{initialPayload\}/);
+    assert.match(page, /initialTemplateDefault=\{companyProfileToTemplate\(profile\)\}/);
     assert.match(page, /<QuotationEditor banks=\{banks\}/);
     assert.doesNotMatch(page, /listCompanyPaymentMethods/);
   });
@@ -796,7 +974,8 @@ describe("quotation UI", () => {
     assert.match(editor, /setLastSavedPayload\(result\.payload\)/);
     assert.match(editor, /disabled=\{!calculation\}[\s\S]*onClick=\{\(\) => setPreviewOpen\(true\)\}/);
     assert.match(editor, /<Dialog[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{payload\}[\s\S]*<Dialog/);
-    assert.match(editor, /createPortal\([\s\S]*calculation=\{savedCalculation\}[\s\S]*payload=\{lastSavedPayload\}[\s\S]*document\.body/);
+    assert.match(editor, /const \{ createQuotationPdfBlob \} = await import\("\.\/quotation-pdf"\)/);
+    assert.match(editor, /calculation:\s*savedCalculation,[\s\S]*payload:\s*lastSavedPayload,/);
     assert.match(editor, /title=\{documentNumber && isDirty \? "บันทึกการเปลี่ยนแปลงก่อน" : undefined\}/);
   });
 
@@ -871,7 +1050,7 @@ describe("quotation UI", () => {
 
   it("keeps quotation-specific customer and item fields focused on villa services", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     assert.doesNotMatch(editor, /customer\.(contactName|email|phone|serviceLocation|shippingAddress)/);
     assert.doesNotMatch(editor, /items\.\$\{index\}\.sku|aria-label="SKU"|placeholder="SKU"/);
     assert.doesNotMatch(document, /customer\.(contactName|email|phone|serviceLocation|shippingAddress)/);
@@ -1021,7 +1200,7 @@ describe("quotation UI", () => {
 
   it("uses fixed item discounts and pre-tax item values", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     assert.match(editor, /field=\{`items\.\$\{index\}\.discountAmount`\}/);
     assert.match(editor, /calculation\?\.lines\[index\]\?\.preTaxAmount/);
     const item = editor.slice(editor.indexOf("function SortableQuotationItem"), editor.indexOf("function ItemDetailsControls"));
@@ -1050,7 +1229,8 @@ describe("quotation UI", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const commandBar = editor.slice(editor.indexOf("data-workbench-command-bar"), editor.indexOf("data-seller-strip"));
     const sellerStrip = editor.slice(editor.indexOf("data-seller-strip"), editor.indexOf("data-seller-edit"));
-    assert.match(commandBar, /\{documentNumber \?\? "ใบเสนอราคาใหม่"\}/);
+    assert.match(commandBar, /กลับไปรายการใบเสนอราคา/);
+    assert.match(commandBar, /<ArrowLeft[\s\S]*?<Badge variant="secondary">\{documentNumber \?\? "ใหม่"\}<\/Badge>/);
     assert.match(commandBar, /className="hidden[^\"]*md:flex"[\s\S]*?data-desktop-command-actions/);
     assert.match(commandBar, /onClick=\{closeEditor\}[\s\S]*?>[\s\S]*?กลับ/);
     assert.match(commandBar, /onClick=\{\(\) => setPreviewOpen\(true\)\}[\s\S]*?>[\s\S]*?ดูตัวอย่าง/);
@@ -1083,7 +1263,7 @@ describe("quotation UI", () => {
   it("keeps quotation field errors inline and emits one validation toast", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
 
-    assert.match(editor, /const errorFields = Object\.keys\(result\.fieldErrors\)[\s\S]*else if \(errorFields\.length\)[\s\S]*toast\.error\("กรุณาตรวจสอบข้อมูลที่กรอก"\)/);
+    assert.match(editor, /const errorFields = Object\.keys\(result\.fieldErrors\)[\s\S]*const firstErrorMessage = firstField[\s\S]*result\.fieldErrors\[firstField\][\s\S]*else if \(firstErrorMessage\)[\s\S]*toast\.error\(firstErrorMessage\)/);
     assert.match(editor, /const firstField = errorFields\[0\][\s\S]*pendingFocusField\.current = firstField/);
     assert.doesNotMatch(editor, /focusableFieldErrors/);
     assert.doesNotMatch(editor, /<AlertDescription>\{formError\}<\/AlertDescription>/);
@@ -1125,7 +1305,8 @@ describe("quotation UI", () => {
     assert.match(payments, /id=\{errorId\}/);
     const imageInput = source("../components/admin/quotations/quotation-png-image-input.tsx");
     assert.match(imageInput, /data-field=\{field\}/);
-    assert.match(imageInput, /aria-describedby=\{message \? errorId : undefined\}/);
+    assert.match(imageInput, /aria-describedby=\{message \? `\$\{hintId\} \$\{errorId\}` : hintId\}/);
+    assert.match(imageInput, /id=\{hintId\}/);
     assert.match(payments, /error=\{error\("type"\)\} field=\{`paymentMethods\.\$\{index\}\.type`\}/);
     assert.match(payments, /error=\{error\("qrMode"\)\} field=\{`paymentMethods\.\$\{index\}\.qrMode`\}/);
     assert.match(payments, /error=\{error\("instructions"\)\} field=\{`paymentMethods\.\$\{index\}\.instructions`\}/);
@@ -1190,39 +1371,34 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /label=\{labelled \? "อัตรา"/);
   });
 
-  it("prints the saved document through an isolated body-level portal", () => {
+  it("prints the saved document through the generated PDF viewer", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    const css = source("../app/globals.css");
-    const document = source("../components/admin/quotations/quotation-document.tsx");
 
-    assert.match(editor, /import \{ createPortal \} from "react-dom"/);
     assert.match(editor, /const \[isPrinting, setIsPrinting\] = useState\(false\)/);
     assert.match(editor, /setIsPrinting\(true\)/);
-    assert.match(editor, /createPortal\([\s\S]*data-quotation-print[\s\S]*document\.body/);
-    assert.match(editor, /window\.addEventListener\("afterprint", cleanup/);
     assert.match(
       editor,
-      /querySelectorAll<HTMLImageElement>\(\s*"\[data-quotation-print\] img"\s*,?\s*\)/,
+      /window\.open\("", "_blank"\)/,
     );
-    assert.match(editor, /await waitForQuotationPrintImages/);
-    assert.match(editor, /AbortController/);
-    assert.ok(editor.indexOf("await waitForQuotationPrintImages") < editor.indexOf("window.print()"));
+    assert.match(
+      editor,
+      /const \{ createQuotationPdfBlob \} = await import\("\.\/quotation-pdf"\)/,
+    );
+    assert.match(
+      editor,
+      /createQuotationPdfBlob\(\{[\s\S]*calculation:\s*savedCalculation,[\s\S]*documentNumber,[\s\S]*payload:\s*lastSavedPayload,[\s\S]*publicQrDataUrl,/,
+    );
+    assert.match(editor, /printWindow\.location\.assign\(url\)/);
+    assert.match(editor, /URL\.revokeObjectURL\(url\)/);
+    assert.doesNotMatch(editor, /window\.print\(\)/);
+    assert.doesNotMatch(editor, /createPortal\(/);
     assert.match(editor, /setIsPrinting\(false\)/);
     assert.match(
       editor,
-      /catch \{[\s\S]*if \(!controller\.signal\.aborted\)[\s\S]*toast\.error\(\s*"ไม่สามารถเตรียมเอกสารสำหรับพิมพ์ได้ กรุณาลองอีกครั้ง"[\s\S]*cleanup\(\)/,
+      /catch \{[\s\S]*toast\.error\("ไม่สามารถสร้าง PDF สำหรับพิมพ์ได้ กรุณาลองอีกครั้ง"\)/,
     );
-    assert.match(css, /body > :not\(\[data-quotation-print\]\)/);
-    assert.match(css, /display: none !important/);
-    assert.match(css, /thead \{ display: table-header-group/);
-    assert.doesNotMatch(css, /body \* \{ visibility: hidden/);
-    assert.doesNotMatch(css, /height: 297mm|overflow: hidden/);
     assert.match(editor, /lastSavedPayload/);
     assert.match(editor, /setLastSavedPayload\(result\.payload\)/);
-    assert.match(editor, /QuotationDocument/);
-    assert.match(document, /data-quotation-document/);
-    assert.doesNotMatch(document, /internalNotes/);
-    assert.match(document, /payload\.subject/);
   });
 
   it("uses a dialog for every quotation editor confirmation", () => {
@@ -1244,13 +1420,13 @@ describe("quotation UI", () => {
     assert.match(editor, /onClick=\{\(\) => setPendingConfirmation\(null\)\}[\s\S]*ยกเลิก/);
   });
 
-  it("loads an edit quotation with a one-time print option and isolates print CSS", () => {
+  it("loads an edit quotation with a one-time PDF print option", () => {
     const page = source("../app/admin/quotations/[id]/page.tsx");
-    const css = source("../app/globals.css");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(page, /searchParams: Promise<\{ print\?: string \}>/);
     assert.match(page, /printOnLoad=\{print === "1"\}/);
-    assert.match(css, /html\.quotation-printing \[data-quotation-print\]/);
-    assert.match(css, /\[data-quotation-document\] tr/);
+    assert.match(editor, /void printSaved\(true\)/);
+    assert.match(editor, /replaceCurrentPage\s*\? window\s*:\s*window\.open\("", "_blank"\)/);
   });
 
   it("preserves quotation background colors when printing", () => {
@@ -1268,12 +1444,12 @@ describe("quotation UI", () => {
 
   it("prints the last saved quotation while a newer draft is dirty", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /const canPrint = Boolean\([\s\S]*documentNumber && lastSavedPayload && !isPending && !publicQrPending/);
-    assert.match(editor, /if \(!canPrint\) return/);
-    assert.match(editor, /calculation=\{savedCalculation\}/);
-    assert.match(editor, /payload=\{lastSavedPayload\}/);
-    assert.match(editor, /printStyle\.textContent = "@page \{ size: A4; margin: 0; \}"/);
-    assert.match(editor, /printStyle\.remove\(\)/);
+    assert.match(editor, /const canPrint = Boolean\([\s\S]*documentNumber[\s\S]*lastSavedPayload[\s\S]*!isPending[\s\S]*!publicQrPending/);
+    assert.match(editor, /if \([\s\S]*!canPrint \|\|[\s\S]*!lastSavedPayload \|\|[\s\S]*!savedCalculation \|\|/);
+    assert.match(editor, /calculation:\s*savedCalculation,/);
+    assert.match(editor, /payload:\s*lastSavedPayload,/);
+    assert.match(editor, /createQuotationPdfBlob/);
+    assert.doesNotMatch(editor, /window\.print\(\)/);
   });
 
   it("replaces the customer draft through the five-field snapshot contract", () => {
@@ -1295,5 +1471,28 @@ describe("quotation UI", () => {
     assert.doesNotMatch(customerSection, /onChange=/);
     assert.doesNotMatch(customerSection, /<TextInput|<Textarea|<OfficeTypeControls/);
     assert.doesNotMatch(editor, /function updateCustomerOfficeType/);
+  });
+
+  it("offers an accessible quotation template selector with account default scope", () => {
+    const templateDialog = source("../components/admin/quotations/quotation-template-dialog.tsx");
+    const templateThumbnail = source("../components/admin/quotations/quotation-template-thumbnail.tsx");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+
+    assert.match(templateDialog, /Dialog/);
+    assert.match(templateDialog, /RadioGroup/);
+    assert.match(templateDialog, /Card/);
+    assert.match(templateDialog, /กำลังใช้/);
+    assert.match(templateDialog, /ค่าเริ่มต้นของบัญชี/);
+    assert.match(templateDialog, /ใช้เฉพาะใบเสนอราคานี้/);
+    assert.match(templateDialog, /ใช้และบันทึกเป็นค่าเริ่มต้น/);
+    assert.match(templateDialog, /มีผลกับใบใหม่ในอนาคต ไม่เปลี่ยนใบที่บันทึกแล้ว/);
+    for (const key of ["current", "hospitality", "corporate"]) {
+      assert.match(templateThumbnail, new RegExp(`data-template-thumbnail=["']${key}["']`));
+    }
+    assert.match(editor, /saveQuotationTemplateDefaultAction/);
+    assert.match(editor, /initialTemplateDefault: QuotationTemplate/);
+    assert.match(editor, /useState\(initialTemplateDefault\)/);
+    assert.match(editor, /changed\("template"\)/);
+    assert.match(editor, /template: value/);
   });
 });

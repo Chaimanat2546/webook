@@ -814,8 +814,12 @@ export function ImageZoneViewer({
             )}
             {isBusy ? "กำลังอัปโหลด" : "อัปโหลดรูป"}
           </Label>
+          <p className="basis-full text-right text-xs text-muted-foreground" id="house-images-upload-hint">
+            รองรับ AVIF, JPEG, PNG หรือ WebP ขนาดไม่เกิน 10 MB ต่อรูป
+          </p>
           <input
             accept="image/avif,image/jpeg,image/png,image/webp"
+            aria-describedby="house-images-upload-hint"
             className="sr-only"
             disabled={isBusy}
             id="house-images-upload"

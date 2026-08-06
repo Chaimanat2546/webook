@@ -11,6 +11,12 @@ import {
   quotationDocumentDisplayClearImpact,
 } from "../lib/quotation-document-display.ts";
 import {
+  DEFAULT_QUOTATION_TEMPLATE,
+  isQuotationTemplate,
+  normalizeQuotationTemplate,
+} from "../lib/quotation-template.ts";
+import { canonicalQuotationLayoutSnapshot } from "../lib/quotation-layout.ts";
+import {
   prepareQuotationPayload as prepareQuotationPayloadWithCatalog,
   prepareSellerSnapshot,
   QuotationValidationError,
@@ -39,11 +45,13 @@ function validPayload(): QuotationPayload {
     internalNotes: "",
     issueDate: "2026-07-14",
     items: [{ description: "", discountAmount: "0", id: "123e4567-e89b-42d3-a456-426614174001", name: "ค่าบริการ", position: 1, quantity: "1", unit: "job", unitPrice: "10000.00", vatRate: "7.00", vatTreatment: "taxable" }],
+    layout: { ...canonicalQuotationLayoutSnapshot("current"), sourceId: "123e4567-e89b-42d3-a456-426614174099" },
     paymentMethods: [],
     publicNotes: "",
     reference: "",
     seller: { address: "Seller address", branchNumber: "", contactEmail: "", contactName: "", contactPhone: "", email: "seller@example.com", logoUrl: "", name: "Seller", officeType: "head_office", phone: "020000001", taxId: "0100000000000", website: "" },
     subject: "Photography",
+    template: "current",
     validUntil: "2026-07-29",
     validityDays: "15",
     withholdingTaxRate: null,
@@ -73,6 +81,42 @@ function promptPay(qrMode: "auto_promptpay" | "upload", qrImageUrl = "") {
 }
 
 describe("quotation service", () => {
+  it("accepts only the fixed quotation template catalogue", () => {
+    for (const value of ["current", "hospitality", "corporate"]) {
+      assert.equal(isQuotationTemplate(value), true);
+    }
+    for (const value of ["", "CURRENT", "custom", null, 1, {}]) {
+      assert.equal(isQuotationTemplate(value), false);
+    }
+    assert.equal(normalizeQuotationTemplate(undefined), DEFAULT_QUOTATION_TEMPLATE);
+    assert.equal(normalizeQuotationTemplate("corporate"), "corporate");
+    assert.throws(
+      () => normalizeQuotationTemplate("custom"),
+      /Invalid quotation template snapshot/,
+    );
+  });
+
+  it("persists a validated quotation template snapshot", () => {
+    const payload = validPayload();
+    payload.template = "hospitality";
+    payload.layout = {
+      ...canonicalQuotationLayoutSnapshot("hospitality"),
+      sourceId: "123e4567-e89b-42d3-a456-426614174099",
+    };
+    const prepared = prepareQuotationPayload(payload);
+    assert.equal(prepared.payload.template, "hospitality");
+    assert.equal(prepared.rpcPayload.document_template_snapshot, "hospitality");
+  });
+
+  it("rejects an unsupported quotation template", () => {
+    assert.throws(
+      () => prepareQuotationPayload({ ...validPayload(), template: "custom" }),
+      (error: unknown) =>
+        error instanceof QuotationValidationError
+        && error.fieldErrors.template === "เทมเพลตใบเสนอราคาไม่ถูกต้อง",
+    );
+  });
+
   it("rejects an incomplete document display snapshot", () => {
     const payload = validPayload();
     payload.documentDisplay = { reference: true } as QuotationPayload["documentDisplay"];
@@ -194,6 +238,7 @@ describe("quotation service", () => {
     assert.equal(payload.issueDate, "2026-07-14");
     assert.equal(payload.validityDays, "7");
     assert.equal(payload.validUntil, "2026-07-21");
+    assert.equal(payload.template, "current");
     assert.equal(payload.items[0]!.discountAmount, "0");
     assert.equal(payload.items[0]!.vatTreatment, "none");
     assert.equal(payload.items[0]!.vatRate, "0");
