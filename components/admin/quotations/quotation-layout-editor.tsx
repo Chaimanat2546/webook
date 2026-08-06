@@ -691,7 +691,9 @@ export function QuotationLayoutEditor({
                   aria-label={`สีหลักของเทมเพลต ${QUOTATION_TEMPLATE_LABELS[template]}`}
                   className="h-9 w-12 cursor-pointer rounded border bg-background p-1"
                   id={`quotation-theme-${template}`}
-                  onChange={(event) => updateThemeColor(event.target.value)}
+                  onInput={(event) =>
+                    updateThemeColor(event.currentTarget.value)
+                  }
                   type="color"
                   value={draft.themeColor}
                 />

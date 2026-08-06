@@ -59,6 +59,7 @@ describe("quotation layout editor position controls", () => {
 
   it("selects one primary color inside the layout editor", () => {
     assert.match(source, /type="color"/);
+    assert.match(source, /onInput=\{\(event\)/);
     assert.match(source, /updateThemeColor/);
     assert.match(source, /draft\.themeColor/);
     assert.match(source, /สีหลัก/);
