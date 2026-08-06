@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { validateQuotationPaymentAssetFile } from "../../../lib/quotation-assets";
+import {
+  QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES,
+  validateQuotationPaymentAssetFile,
+} from "../../../lib/quotation-assets";
 import { resizeQuotationImageToMax } from "../../../lib/quotation-image-resize";
 import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
@@ -23,17 +26,28 @@ export async function normalizeQuotationPngImage(file: File): Promise<File> {
   validateQuotationPaymentAssetFile(file);
   const bitmap = await createImageBitmap(file);
   try {
-    const canvas = document.createElement("canvas");
-    const size = resizeQuotationImageToMax(bitmap.width, bitmap.height);
-    canvas.width = size.width;
-    canvas.height = size.height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("ไม่สามารถเตรียมรูปภาพได้");
-    context.drawImage(bitmap, 0, 0, size.width, size.height);
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((result) => result ? resolve(result) : reject(new Error("ไม่สามารถแปลงรูปภาพได้")), "image/png");
-    });
-    return validateQuotationPaymentAssetFile(new File([blob], "quotation-image.png", { type: "image/png" }));
+    let { height, width } = resizeQuotationImageToMax(bitmap.width, bitmap.height);
+    while (true) {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("ไม่สามารถเตรียมรูปภาพได้");
+      context.drawImage(bitmap, 0, 0, width, height);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => result ? resolve(result) : reject(new Error("ไม่สามารถแปลงรูปภาพได้")), "image/png");
+      });
+      const normalized = new File([blob], "quotation-image.png", { type: "image/png" });
+      if (normalized.size <= QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES) {
+        return validateQuotationPaymentAssetFile(normalized);
+      }
+      if (Math.max(width, height) <= 64) {
+        throw new Error("รูปภาพหลังปรับขนาดยังเกิน 2 MB กรุณาใช้รูปที่มีรายละเอียดน้อยลง");
+      }
+      const scale = Math.max(0.25, Math.min(0.85, Math.sqrt(QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES / normalized.size) * 0.9));
+      width = Math.max(64, Math.floor(width * scale));
+      height = Math.max(64, Math.floor(height * scale));
+    }
   } finally {
     bitmap.close();
   }

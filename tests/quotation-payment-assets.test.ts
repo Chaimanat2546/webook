@@ -59,12 +59,15 @@ describe("quotation payment assets", () => {
     assert.match(source, /validateQuotationPaymentAssetFile\(file\)/);
     assert.match(source, /createImageBitmap\(file\)/);
     assert.match(source, /resizeQuotationImageToMax\(bitmap\.width, bitmap\.height\)/);
-    assert.match(source, /canvas\.width = size\.width/);
-    assert.match(source, /canvas\.height = size\.height/);
+    assert.match(source, /canvas\.width = width/);
+    assert.match(source, /canvas\.height = height/);
     assert.match(source, /canvas\.toBlob/);
     assert.match(source, /"image\/png"/);
-    assert.match(source, /return validateQuotationPaymentAssetFile\(new File\(\[blob\]/);
+    assert.match(source, /return validateQuotationPaymentAssetFile\(normalized\)/);
     assert.match(source, /URL\.revokeObjectURL/);
     assert.match(source, /รองรับ PNG, JPEG หรือ WebP ขนาดไม่เกิน 2 MB/);
+    assert.match(source, /QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES/);
+    assert.match(source, /while \(true\)/);
+    assert.match(source, /รูปภาพหลังปรับขนาดยังเกิน 2 MB/);
   });
 });
