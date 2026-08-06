@@ -1400,6 +1400,20 @@ describe("quotation UI", () => {
     );
     assert.match(css, /body > :not\(\[data-quotation-print\]\)/);
     assert.match(css, /display: none !important/);
+    assert.match(
+      css,
+      /\[data-quotation-document\] \{[\s\S]*min-height:\s*0 !important;[\s\S]*padding:\s*0 !important;[\s\S]*width:\s*auto !important;/,
+    );
+    assert.match(
+      css,
+      /\[data-quotation-document\] \[data-document-top-rule\] \{\s*margin:\s*0 0 5mm !important;/,
+    );
+    assert.match(css, /\[data-document-customer\] \{\s*break-after:\s*avoid-page;/);
+    assert.match(css, /\[data-document-items\] \{\s*break-before:\s*avoid-page;/);
+    assert.doesNotMatch(
+      css,
+      /\[data-quotation-document\]\[data-quotation-template="current"\] \{[\s\S]*padding:\s*0 !important/,
+    );
     assert.match(css, /thead \{ display: table-header-group/);
     assert.match(css, /\[data-layout-zone="body"\],[\s\S]*\[data-document-items\],[\s\S]*break-inside:\s*auto !important/);
     assert.doesNotMatch(css, /\[data-quotation-document\] section,\s*\[data-document-summary\]/);

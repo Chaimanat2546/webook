@@ -157,28 +157,30 @@
   }
   [data-quotation-document] {
     margin: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   [data-quotation-document] thead { display: table-header-group; }
+  /* Paper margins, rather than a template's screen-only paper padding, must
+     provide the inset for every printed sheet.  This keeps page two and later
+     sheets consistent across all document templates. */
+  [data-quotation-document] [data-document-top-rule] {
+    margin: 0 0 5mm !important;
+  }
   /* Current uses a 12-column editor grid on screen. Flatten that body only
      while printing so the customer block and the table heading form the next
      printable row, while table rows themselves remain free to continue. */
   [data-quotation-document][data-quotation-template="current"] [data-layout-zone="body"] {
     display: block !important;
   }
-  /* Browser page margins repeat on every sheet; component padding does not.
-     Use the page margin for Current so page two has the same top inset. */
-  [data-quotation-document][data-quotation-template="current"] {
-    min-height: 0 !important;
-    padding: 0 !important;
-    width: auto !important;
-  }
-  [data-quotation-document][data-quotation-template="current"] [data-document-customer] {
+  [data-document-customer] {
     break-after: avoid-page;
     page-break-after: avoid;
   }
-  [data-quotation-document][data-quotation-template="current"] [data-document-items] {
+  [data-document-items] {
     break-before: avoid-page;
     page-break-before: avoid;
   }
