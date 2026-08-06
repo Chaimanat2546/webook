@@ -355,6 +355,11 @@ quotations receive the former template color, preserving their appearance.
 Apply this migration before deploying application code that publishes schema
 version 2.
 
+Migration `20260806040000_accept_quotation_layout_schema_v2.sql` updates the
+quotation save wrapper to accept and verify schema-version-2 snapshots. It must
+follow the theme-color migration so Hospitality, Corporate, and Current
+quotations can all save their published themed layout revisions.
+
 A database that already records migration `20260718090000` will not execute
 the amended file again. Inspect its actual schema and migration history first,
 then deliberately reconcile the history/schema or ship an equivalent follow-up

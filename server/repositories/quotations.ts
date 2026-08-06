@@ -26,6 +26,7 @@ import {
 } from "../../lib/quotation-template.ts";
 import {
   normalizeQuotationLayout,
+  QUOTATION_LAYOUT_SCHEMA_VERSION,
   type QuotationLayoutSnapshot,
 } from "../../lib/quotation-layout.ts";
 import type { PreparedQuotation } from "../services/quotations";
@@ -330,7 +331,7 @@ export async function publishQuotationDocumentTemplateLayout(
   return {
     config: normalizeQuotationLayout(row.layout_config, template),
     revisionNumber,
-    schemaVersion: 1,
+    schemaVersion: QUOTATION_LAYOUT_SCHEMA_VERSION,
     sourceId,
     template,
   };
