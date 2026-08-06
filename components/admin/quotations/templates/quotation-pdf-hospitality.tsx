@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
   muted: { color: "#5d7069" },
   header: { flexDirection: "row", paddingBottom: 10 },
   seller: { flexBasis: 0, flexGrow: 1, paddingRight: 16 },
+  sellerRight: { paddingLeft: 16, paddingRight: 0, textAlign: "right" },
   recipientFull: { marginRight: 0, marginTop: 10 },
   logo: { height: 36, marginBottom: 6, objectFit: "contain", width: 100 },
   titleBox: { width: 190 },
@@ -281,7 +282,13 @@ export function HospitalityQuotationPdf({
               : [styles.row, { paddingVertical: 8 }]
           }
         >
-          <View style={[styles.seller, { flexGrow: sellerBlock?.span ?? 7 }]}>
+          <View
+            style={[
+              styles.seller,
+              metadataIsLeft ? styles.sellerRight : {},
+              { flexGrow: sellerBlock?.span ?? 7 },
+            ]}
+          >
             <Text
               style={[styles.bold, { color: theme.dark, fontSize: 13 }]}
             >

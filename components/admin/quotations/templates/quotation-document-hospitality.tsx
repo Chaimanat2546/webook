@@ -67,7 +67,11 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
       </header>
 
       <div className="mt-4 flex gap-6 border-t border-[#286a5b]/20 pt-3" data-layout-zone="header" style={{ flexDirection: metadataIsLeft ? "row-reverse" : "row" }}>
-        <div className="min-w-0" data-layout-block="seller" style={{ flex: `${sellerBlock?.span ?? 7} 1 0%` }}>
+        <div
+          className={`min-w-0 ${metadataIsLeft ? "text-right" : "text-left"}`}
+          data-layout-block="seller"
+          style={{ flex: `${sellerBlock?.span ?? 7} 1 0%` }}
+        >
           <p className="text-lg font-semibold text-[#286a5b] [overflow-wrap:anywhere]">{payload.seller.name}</p>
           <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.seller.address}</p>
           <p className="mt-1">เลขที่ภาษี {payload.seller.taxId}{sellerOffice ? ` (${sellerOffice})` : ""}</p>

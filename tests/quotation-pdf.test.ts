@@ -110,6 +110,24 @@ describe("quotation PDF", () => {
     assert.match(pdfSource, /quotation-pdf-hospitality/);
   });
 
+  it("aligns the Hospitality seller block with its swapped side", () => {
+    assert.match(
+      hospitalityPdf,
+      /sellerRight:\s*\{\s*paddingLeft:\s*16,\s*paddingRight:\s*0,\s*textAlign:\s*"right"\s*\}/,
+    );
+    assert.match(
+      hospitalityPdf,
+      /metadataIsLeft \? styles\.sellerRight : \{\}/,
+    );
+    const hospitalityHtml = source(
+      "components/admin/quotations/templates/quotation-document-hospitality.tsx",
+    );
+    assert.match(
+      hospitalityHtml,
+      /metadataIsLeft \? "text-right" : "text-left"/,
+    );
+  });
+
   it("uses the approved PDF renderer, shared model, Thai fonts, and A4", () => {
     assert.match(pdfSource, /@react-pdf\/renderer/);
     assert.match(pdfSource, /buildQuotationDocumentViewModel/);
