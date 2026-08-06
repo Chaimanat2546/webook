@@ -1449,7 +1449,7 @@ describe("quotation UI", () => {
     assert.match(editor, /if \(!canPrint\) return/);
     assert.match(editor, /calculation=\{savedCalculation\}/);
     assert.match(editor, /payload=\{lastSavedPayload\}/);
-    assert.match(editor, /printStyle\.textContent = "@page \{ size: A4; margin: 10mm; \}"/);
+    assert.match(editor, /printStyle\.textContent = "@page \{ size: A4; margin: 16mm 10mm 10mm; \}"/);
     assert.match(editor, /printStyle\.remove\(\)/);
   });
 

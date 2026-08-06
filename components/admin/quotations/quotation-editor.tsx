@@ -1031,7 +1031,9 @@ export function QuotationEditor({
     let timeout: number | undefined;
     const controller = new AbortController();
     const printStyle = document.createElement("style");
-    printStyle.textContent = "@page { size: A4; margin: 10mm; }";
+    // Keep a larger top inset on every paper sheet. This prevents the first
+    // printable block after a page break from appearing attached to the edge.
+    printStyle.textContent = "@page { size: A4; margin: 16mm 10mm 10mm; }";
     function cleanup() {
       if (finished) return;
       finished = true;
