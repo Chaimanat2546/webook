@@ -1385,6 +1385,14 @@ describe("quotation UI", () => {
     assert.match(editor, /await waitForQuotationPrintImages/);
     assert.match(editor, /AbortController/);
     assert.ok(editor.indexOf("await waitForQuotationPrintImages") < editor.indexOf("window.print()"));
+    assert.match(
+      editor,
+      /document\.documentElement\.classList\.add\("quotation-printing"\)[\s\S]*window\.requestAnimationFrame\(\(\) => \{\s*window\.requestAnimationFrame\(\(\) => resolve\(\)\)/,
+    );
+    assert.ok(
+      editor.indexOf('document.documentElement.classList.add("quotation-printing")') <
+        editor.indexOf("window.print()"),
+    );
     assert.match(editor, /setIsPrinting\(false\)/);
     assert.match(
       editor,

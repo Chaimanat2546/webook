@@ -1054,6 +1054,15 @@ export function QuotationEditor({
           if (!ready || controller.signal.aborted) return;
           document.head.append(printStyle);
           document.documentElement.classList.add("quotation-printing");
+          // Let Chrome recalculate the print tree before it captures the
+          // preview. Without these frames, a later sheet can be captured
+          // before the dynamic @page margin has taken effect.
+          await new Promise<void>((resolve) => {
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => resolve());
+            });
+          });
+          if (controller.signal.aborted) return;
           window.addEventListener("afterprint", cleanup, { once: true });
           window.print();
         } catch {
