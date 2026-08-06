@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
+  canManageHouseRating,
   canUseAccommodation,
   requireAdmin,
 } from "../../../../server/auth/admin";
@@ -38,11 +39,12 @@ export async function saveHouseDetailsAction(propertyId: string, formData: FormD
   const house = await getListingByPropertyId(supabase, propertyId);
   if (!house) throw new Error("House not found");
 
+  const canManageRating = canManageHouseRating(adminUser);
   const normalizedValues = normalizeListingDetailsFormValues(formData);
   const values = {
     ...normalizedValues,
     owner_id: house.owner_id,
-    rating: normalizedValues.rating,
+    rating: canManageRating ? normalizedValues.rating : house.rating,
   };
   await updateListingDetailsByPropertyId(supabase, propertyId, values);
 
