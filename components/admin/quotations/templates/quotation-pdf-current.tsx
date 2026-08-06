@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
+import { Fragment } from "react";
 
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 import { canKeepQuotationPdfItemTogether } from "../../../../lib/quotation-pdf";
@@ -31,6 +32,8 @@ const colors = {
   text: "#0f172a",
 };
 
+const CURRENT_TABLE_ROWS_PER_PAGE = 14;
+
 const styles = StyleSheet.create({
   page: {
     color: colors.text,
@@ -52,11 +55,12 @@ const styles = StyleSheet.create({
   headerDetails: {
     borderTopColor: colors.border,
     borderTopWidth: 0.6,
+    columnGap: 16,
     flexDirection: "row",
     marginTop: 9,
     paddingTop: 9,
   },
-  seller: { flexGrow: 1, flexBasis: 0, paddingRight: 16 },
+  seller: { flexGrow: 1, flexBasis: 0 },
   sellerDetails: { flexBasis: 0, flexGrow: 1 },
   sellerContact: { flexBasis: 82, marginLeft: 14 },
   sellerDetailLabel: { fontWeight: 600, width: 45 },
@@ -144,6 +148,26 @@ function DetailWithLabelWidth({
   );
 }
 
+function ItemTableHeader({
+  backgroundColor,
+  model,
+}: {
+  backgroundColor: string;
+  model: QuotationPdfRendererProps["model"];
+}) {
+  return (
+    <View style={[styles.tableHeader, { backgroundColor }]} wrap={false}>
+      <Text style={styles.descriptionCell}>คำอธิบาย</Text>
+      <Text style={styles.qtyCell}>จำนวน</Text>
+      {model.showUnit ? <Text style={styles.unitCell}>หน่วย</Text> : null}
+      <Text style={styles.moneyCell}>ราคา</Text>
+      {model.showItemDiscount ? <Text style={styles.discountCell}>ส่วนลด</Text> : null}
+      {model.showItemVat ? <Text style={styles.vatCell}>VAT</Text> : null}
+      <Text style={styles.moneyCell}>มูลค่าก่อนภาษี</Text>
+    </View>
+  );
+}
+
 export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps) {
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
@@ -205,32 +229,30 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
 
         {/* data-pdf-items */}
         <View style={styles.table} wrap>
-          <View style={[styles.tableHeader, { backgroundColor: theme.light }]} wrap={false}>
-            <Text style={styles.descriptionCell}>คำอธิบาย</Text>
-            <Text style={styles.qtyCell}>จำนวน</Text>
-            {model.showUnit ? <Text style={styles.unitCell}>หน่วย</Text> : null}
-            <Text style={styles.moneyCell}>ราคา</Text>
-            {model.showItemDiscount ? <Text style={styles.discountCell}>ส่วนลด</Text> : null}
-            {model.showItemVat ? <Text style={styles.vatCell}>VAT</Text> : null}
-            <Text style={styles.moneyCell}>มูลค่าก่อนภาษี</Text>
-          </View>
-          {calculation.lines.map((item) => (
-            <View
-              key={item.id}
-              style={styles.tableRow}
-              wrap={!canKeepQuotationPdfItemTogether(item.name, item.description)}
-            >
-              <View style={styles.descriptionCell}>
-                <Text style={styles.bold}>{item.position}. {item.name}</Text>
-                {item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}
+          <ItemTableHeader backgroundColor={theme.light} model={model} />
+          {calculation.lines.map((item, index) => (
+            <Fragment key={item.id}>
+              {index > 0 && index % CURRENT_TABLE_ROWS_PER_PAGE === 0 ? (
+                <View break data-pdf-continuation-table-header>
+                  <ItemTableHeader backgroundColor={theme.light} model={model} />
+                </View>
+              ) : null}
+              <View
+                style={styles.tableRow}
+                wrap={!canKeepQuotationPdfItemTogether(item.name, item.description)}
+              >
+                <View style={styles.descriptionCell}>
+                  <Text style={styles.bold}>{item.position}. {item.name}</Text>
+                  {item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}
+                </View>
+                <Text style={styles.qtyCell}>{item.quantity}</Text>
+                {model.showUnit ? <Text style={styles.unitCell}>{item.unit}</Text> : null}
+                <Text style={styles.moneyCell}>{formatMoney(item.unitPrice)}</Text>
+                {model.showItemDiscount ? <Text style={styles.discountCell}>{formatMoney(item.discountAmount)}</Text> : null}
+                {model.showItemVat ? <Text style={styles.vatCell}>{vatLabel(item)}</Text> : null}
+                <Text style={styles.moneyCell}>{formatMoney(item.preTaxAmount)}</Text>
               </View>
-              <Text style={styles.qtyCell}>{item.quantity}</Text>
-              {model.showUnit ? <Text style={styles.unitCell}>{item.unit}</Text> : null}
-              <Text style={styles.moneyCell}>{formatMoney(item.unitPrice)}</Text>
-              {model.showItemDiscount ? <Text style={styles.discountCell}>{formatMoney(item.discountAmount)}</Text> : null}
-              {model.showItemVat ? <Text style={styles.vatCell}>{vatLabel(item)}</Text> : null}
-              <Text style={styles.moneyCell}>{formatMoney(item.preTaxAmount)}</Text>
-            </View>
+            </Fragment>
           ))}
         </View>
 

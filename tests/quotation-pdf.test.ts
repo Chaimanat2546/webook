@@ -299,8 +299,12 @@ describe("quotation PDF", () => {
     assert.doesNotMatch(certification, /styles\.section(?:,|\])/);
   });
 
-  it("keeps the ledger in normal flow so it can continue without a blank page", () => {
-    assert.doesNotMatch(currentPdf, /<View\s+fixed[\s\S]*styles\.tableHeader[\s\S]*wrap=\{false\}/);
+  it("keeps the ledger in normal flow and repeats its header on continuation pages", () => {
+    assert.match(
+      currentPdf,
+      /index > 0 && index % CURRENT_TABLE_ROWS_PER_PAGE === 0[\s\S]*<View break data-pdf-continuation-table-header>/,
+    );
+    assert.match(currentPdf, /<ItemTableHeader backgroundColor=\{theme\.light\} model=\{model\} \/>/);
     assert.doesNotMatch(currentPdf, /tableHeader:\s*\{[^}]*position:/);
   });
 
