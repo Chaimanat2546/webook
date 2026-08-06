@@ -48,8 +48,19 @@ const styles = StyleSheet.create({
   section: { borderBottomColor: colors.border, borderBottomWidth: 0.6, paddingVertical: 8 },
   sectionTitle: { fontWeight: 600, width: 48 },
   grow: { flexGrow: 1, flexBasis: 0 },
-  header: { borderBottomColor: colors.border, borderBottomWidth: 0.6, flexDirection: "row", paddingBottom: 10 },
+  header: { flexDirection: "row" },
+  headerDetails: {
+    borderTopColor: colors.border,
+    borderTopWidth: 0.6,
+    flexDirection: "row",
+    marginTop: 9,
+    paddingTop: 9,
+  },
   seller: { flexGrow: 1, flexBasis: 0, paddingRight: 16 },
+  sellerDetails: { flexBasis: 0, flexGrow: 1 },
+  sellerContact: { flexBasis: 82, marginLeft: 14 },
+  sellerDetailLabel: { fontWeight: 600, width: 45 },
+  metadataDetailLabel: { fontWeight: 600, width: 57 },
   logo: { height: 36, marginBottom: 6, objectFit: "contain", width: 100 },
   titleBox: { width: 210 },
   title: { color: colors.accent, fontSize: 22, fontWeight: 600, marginBottom: 5, textAlign: "right" },
@@ -68,9 +79,21 @@ const styles = StyleSheet.create({
   discountCell: { paddingHorizontal: 3, textAlign: "right", width: 58 },
   vatCell: { paddingHorizontal: 3, textAlign: "right", width: 42 },
   itemDescription: { color: colors.muted, marginLeft: 13, marginTop: 1 },
-  totals: { flexDirection: "row", paddingVertical: 9 },
-  totalsWords: { flexGrow: 1, flexBasis: 0, paddingRight: 16 },
-  totalsBox: { width: 220 },
+  settlement: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 0.6,
+    borderTopColor: colors.border,
+    borderTopWidth: 0.6,
+    flexDirection: "row",
+    marginTop: 12,
+    paddingVertical: 9,
+  },
+  settlementSide: { flexBasis: 0, flexGrow: 1, minWidth: 0 },
+  settlementContent: { paddingRight: 14 },
+  settlementContentLeft: { paddingLeft: 14, paddingRight: 0 },
+  summary: { flexBasis: 0, flexGrow: 1, minWidth: 0 },
+  summaryHeading: { fontWeight: 600, marginBottom: 6 },
+  summaryBreakdown: { borderTopColor: colors.border, borderTopWidth: 0.6, marginTop: 7, paddingTop: 7 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
   grandTotal: { backgroundColor: colors.light, borderRadius: 4, fontSize: 10, fontWeight: 600, marginBottom: 4, padding: 7 },
   payment: { paddingVertical: 7 },
@@ -104,11 +127,31 @@ function layoutFlex(model: QuotationPdfRendererProps["model"], id: "seller" | "d
   return { flexBasis: 0, flexGrow: block?.span ?? 1 };
 }
 
+function DetailWithLabelWidth({
+  label,
+  labelStyle,
+  value,
+}: {
+  label: string;
+  labelStyle: typeof styles.sellerDetailLabel;
+  value: string;
+}) {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={labelStyle}>{label}</Text>
+      <Text style={styles.grow}>{value || "-"}</Text>
+    </View>
+  );
+}
+
 export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps) {
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
   const sellerOffice = office(payload.seller);
   const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
+  const summaryIsLeft = isQuotationLayoutBlockBefore(model, "summary", "paymentMethods");
+  const paymentBlock = payload.layout.config.blocks.find((item) => item.id === "paymentMethods");
+  const summaryBlock = payload.layout.config.blocks.find((item) => item.id === "summary");
   const theme = quotationThemePalette(payload.layout.config.themeColor);
   const themedSharedStyles = {
     ...styles,
@@ -128,21 +171,27 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
             <Text style={[styles.title, { color: theme.primary }]}>ใบเสนอราคา</Text>
           </View>
         </View>
-        <View style={metadataIsLeft ? [styles.row, { flexDirection: "row-reverse", paddingVertical: 8 }] : [styles.row, { paddingVertical: 8 }]}>
+        <View style={metadataIsLeft ? [styles.headerDetails, { borderTopColor: theme.border, flexDirection: "row-reverse" }] : [styles.headerDetails, { borderTopColor: theme.border }]}>
           <View style={[styles.seller, layoutFlex(model, "seller")] }>
-            <Detail label="ผู้ขาย" styles={styles} value={payload.seller.name} />
-            <Detail label="ที่อยู่" styles={styles} value={payload.seller.address} />
-            <Detail label="เลขที่ภาษี" styles={styles} value={`${payload.seller.taxId}${sellerOffice ? ` (${sellerOffice})` : ""}`} />
-            {payload.seller.phone ? <Detail label="โทร" styles={styles} value={payload.seller.phone} /> : null}
-            {payload.seller.email ? <Detail label="อีเมล" styles={styles} value={payload.seller.email} /> : null}
-            {payload.seller.website ? <Detail label="เว็บไซต์" styles={styles} value={payload.seller.website} /> : null}
+            <View style={styles.row}>
+              <View style={styles.sellerDetails}>
+                <DetailWithLabelWidth label="ผู้ขาย" labelStyle={styles.sellerDetailLabel} value={payload.seller.name} />
+                <DetailWithLabelWidth label="ที่อยู่" labelStyle={styles.sellerDetailLabel} value={payload.seller.address} />
+                <DetailWithLabelWidth label="เลขที่ภาษี" labelStyle={styles.sellerDetailLabel} value={`${payload.seller.taxId}${sellerOffice ? ` (${sellerOffice})` : ""}`} />
+              </View>
+              {(payload.seller.phone || payload.seller.email || payload.seller.website) ? <View style={styles.sellerContact}>
+                {payload.seller.phone ? <Text>{payload.seller.phone}</Text> : null}
+                {payload.seller.email ? <Text>{payload.seller.email}</Text> : null}
+                {payload.seller.website ? <Text>{payload.seller.website}</Text> : null}
+              </View> : null}
+            </View>
           </View>
           <View style={[styles.metadata, layoutFlex(model, "documentMetadata"), { backgroundColor: theme.light }] }>
-            <Detail label="เลขที่เอกสาร" styles={styles} value={model.documentNumber} />
-            <Detail label="วันที่ออก" styles={styles} value={model.issueDate} />
-            <Detail label="ใช้ได้ถึง" styles={styles} value={model.validUntil} />
-            {model.showReference ? <Detail label="อ้างอิง" styles={styles} value={payload.reference} /> : null}
-            {payload.subject ? <Detail label="เรื่อง / ชื่องาน" styles={styles} value={payload.subject} /> : null}
+            <DetailWithLabelWidth label="เลขที่เอกสาร" labelStyle={styles.metadataDetailLabel} value={model.documentNumber} />
+            <DetailWithLabelWidth label="วันที่ออก" labelStyle={styles.metadataDetailLabel} value={model.issueDate} />
+            <DetailWithLabelWidth label="ใช้ได้ถึง" labelStyle={styles.metadataDetailLabel} value={model.validUntil} />
+            {model.showReference ? <DetailWithLabelWidth label="อ้างอิง" labelStyle={styles.metadataDetailLabel} value={payload.reference} /> : null}
+            {payload.subject ? <DetailWithLabelWidth label="เรื่อง / ชื่องาน" labelStyle={styles.metadataDetailLabel} value={payload.subject} /> : null}
           </View>
         </View>
 
@@ -186,37 +235,34 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
         </View>
 
         {/* data-pdf-totals */}
-        <View style={[styles.section, styles.totals]} wrap={false}>
-          <Text style={styles.sectionTitle}>สรุป</Text>
-          <View style={styles.totalsWords}>
-            {model.showPreTax ? <Total label="มูลค่าก่อนภาษี" styles={styles} value={formatBaht(calculation.preTaxTotal)} /> : null}
-            {model.showTax ? <Total label="ภาษีมูลค่าเพิ่ม" styles={styles} value={formatBaht(calculation.vatTotal)} /> : null}
-            <Text style={styles.muted}>{model.amountInWords}</Text>
+        <View
+          data-pdf-totals
+          style={summaryIsLeft ? [styles.settlement, { borderBottomColor: theme.border, borderTopColor: theme.border, flexDirection: "row-reverse" }] : [styles.settlement, { borderBottomColor: theme.border, borderTopColor: theme.border }]}
+        >
+          <View style={[styles.settlementSide, { flexGrow: paymentBlock?.span ?? 8 }, summaryIsLeft ? styles.settlementContentLeft : styles.settlementContent]}>
+            {model.paymentMethods.length ? (
+              <View data-pdf-payment-methods>
+                <Text style={styles.sectionTitle}>ชำระเงิน</Text>
+                {model.paymentMethods.map((method) => <PaymentMethod images={images} key={method.id} method={method} styles={styles} />)}
+              </View>
+            ) : null}
+            {model.showNotes ? <View style={model.paymentMethods.length ? [styles.notes, styles.summaryBreakdown] : styles.notes} data-pdf-notes>
+              <Text style={styles.sectionTitle}>หมายเหตุ</Text>
+              <Text>{payload.publicNotes}</Text>
+            </View> : null}
           </View>
-          <View style={styles.totalsBox}>
+          <View style={[styles.summary, { flexGrow: summaryBlock?.span ?? 4 }]} wrap={false}>
+            <Text style={styles.summaryHeading}>สรุป</Text>
             <Total emphasized label="จำนวนเงินทั้งสิ้น" styles={themedSharedStyles} value={formatBaht(calculation.grandTotal)} />
             {model.showWithholdingTax ? <Total label="หักภาษี ณ ที่จ่าย" styles={themedSharedStyles} value={formatBaht(calculation.withholdingTaxTotal)} /> : null}
             <Total label="จำนวนเงินที่ชำระ" styles={themedSharedStyles} value={formatBaht(calculation.amountDue)} />
-          </View>
-        </View>
-
-        {/* data-pdf-payment-methods */}
-        {model.paymentMethods.length ? (
-          <View style={styles.section}>
-            <View style={styles.row}>
-              <Text style={styles.sectionTitle}>ชำระเงิน</Text>
-              <View style={styles.grow}>
-                {model.paymentMethods.map((method) => <PaymentMethod images={images} key={method.id} method={method} styles={styles} />)}
-              </View>
+            <View style={[styles.summaryBreakdown, { borderTopColor: theme.border }]}>
+              {model.showPreTax ? <Total label="มูลค่าก่อนภาษี" styles={styles} value={formatBaht(calculation.preTaxTotal)} /> : null}
+              {model.showTax ? <Total label="ภาษีมูลค่าเพิ่ม" styles={styles} value={formatBaht(calculation.vatTotal)} /> : null}
+              <Text style={styles.muted}>{model.amountInWords}</Text>
             </View>
           </View>
-        ) : null}
-
-        {/* data-pdf-notes */}
-        {model.showNotes ? <View style={[styles.section, styles.row, styles.notes]}>
-          <Text style={styles.sectionTitle}>หมายเหตุ</Text>
-          <Text style={styles.grow}>{payload.publicNotes}</Text>
-        </View> : null}
+        </View>
 
         {/* data-pdf-certification */}
         <View style={[styles.row, { paddingVertical: 8 }]} wrap={false}>

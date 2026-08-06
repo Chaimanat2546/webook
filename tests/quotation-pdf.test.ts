@@ -217,7 +217,7 @@ describe("quotation PDF", () => {
 
   it("downloads only through a lazy import and exact document filename", () => {
     assert.match(editorSource, /import\("\.\/quotation-pdf"\)/);
-    assert.match(pdfSource, /`\$\{documentNumber\}\.pdf`/);
+    assert.match(pdfSource, /`\$\{args\.documentNumber\}\.pdf`/);
     assert.match(editorSource, /กำลังสร้าง PDF/);
     assert.match(editorSource, /บันทึกการเปลี่ยนแปลงก่อน/);
   });
@@ -299,8 +299,8 @@ describe("quotation PDF", () => {
     assert.doesNotMatch(certification, /styles\.section(?:,|\])/);
   });
 
-  it("repeats the ledger heading in normal flow on continuation pages", () => {
-    assert.match(currentPdf, /<View\s+fixed[\s\S]*styles\.tableHeader[\s\S]*wrap=\{false\}/);
+  it("keeps the ledger in normal flow so it can continue without a blank page", () => {
+    assert.doesNotMatch(currentPdf, /<View\s+fixed[\s\S]*styles\.tableHeader[\s\S]*wrap=\{false\}/);
     assert.doesNotMatch(currentPdf, /tableHeader:\s*\{[^}]*position:/);
   });
 
@@ -366,7 +366,7 @@ describe("quotation PDF", () => {
     );
 
     assert.match(html, /\{model\.showReference \? \([\s\S]*อ้างอิง[\s\S]*payload\.reference[\s\S]*\) : null\}/);
-    assert.match(currentPdf, /\{model\.showReference \? <Detail label="อ้างอิง" styles=\{styles\} value=\{payload\.reference\} \/> : null\}/);
+    assert.match(currentPdf, /\{model\.showReference \? <DetailWithLabelWidth label="อ้างอิง" labelStyle=\{styles\.metadataDetailLabel\} value=\{payload\.reference\} \/> : null\}/);
     assert.doesNotMatch(html, /payload\.reference \|\| "-"/);
   });
 

@@ -131,8 +131,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 4,
     color: "#ffffff",
+    flexBasis: 0,
+    flexGrow: 1,
+    minWidth: 0,
     padding: 8,
-    width: 195,
   },
   settlementSequential: { marginTop: 8, width: "100%" },
   totalRow: {
@@ -221,6 +223,12 @@ export function HospitalityQuotationPdf({
     model,
     "summary",
     "paymentMethods",
+  );
+  const paymentBlock = payload.layout.config.blocks.find(
+    (block) => block.id === "paymentMethods",
+  );
+  const summaryBlock = payload.layout.config.blocks.find(
+    (block) => block.id === "summary",
   );
   const canUseSideBySideSettlement = canUseHospitalitySideBySideSettlement({
     paymentMethodCount: model.paymentMethods.length,
@@ -435,7 +443,16 @@ export function HospitalityQuotationPdf({
         >
           <View
             style={
-              canUseSideBySideSettlement ? styles.paymentColumn : undefined
+              canUseSideBySideSettlement
+                ? [
+                    styles.paymentColumn,
+                    {
+                      flexGrow: paymentBlock?.span ?? 7,
+                      paddingLeft: summaryIsLeft ? 12 : 0,
+                      paddingRight: summaryIsLeft ? 0 : 12,
+                    },
+                  ]
+                : undefined
             }
           >
             {model.paymentMethods.length ? (
@@ -468,7 +485,11 @@ export function HospitalityQuotationPdf({
               canUseSideBySideSettlement
                 ? [
                     styles.settlement,
-                    { backgroundColor: theme.primary, color: theme.contrast },
+                    {
+                      backgroundColor: theme.primary,
+                      color: theme.contrast,
+                      flexGrow: summaryBlock?.span ?? 5,
+                    },
                   ]
                 : [
                     styles.settlement,

@@ -144,8 +144,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panel,
     borderColor: colors.navy,
     borderWidth: 0.8,
+    flexBasis: 0,
+    flexGrow: 1,
+    minWidth: 0,
     padding: 6,
-    width: 195,
   },
   settlementSequential: { marginTop: 8, width: "100%" },
   totalRow: {
@@ -252,6 +254,12 @@ export function CorporateQuotationPdf({
     model,
     "summary",
     "paymentMethods",
+  );
+  const paymentBlock = payload.layout.config.blocks.find(
+    (block) => block.id === "paymentMethods",
+  );
+  const summaryBlock = payload.layout.config.blocks.find(
+    (block) => block.id === "summary",
   );
 
   return (
@@ -444,7 +452,16 @@ export function CorporateQuotationPdf({
         >
           <View
             style={
-              canUseSideBySideSettlement ? styles.paymentColumn : undefined
+              canUseSideBySideSettlement
+                ? [
+                    styles.paymentColumn,
+                    {
+                      flexGrow: paymentBlock?.span ?? 7,
+                      paddingLeft: summaryIsLeft ? 12 : 0,
+                      paddingRight: summaryIsLeft ? 0 : 12,
+                    },
+                  ]
+                : undefined
             }
           >
             {model.paymentMethods.length ? (
@@ -477,7 +494,11 @@ export function CorporateQuotationPdf({
               canUseSideBySideSettlement
                 ? [
                     styles.settlement,
-                    { backgroundColor: theme.light, borderColor: theme.primary },
+                    {
+                      backgroundColor: theme.light,
+                      borderColor: theme.primary,
+                      flexGrow: summaryBlock?.span ?? 5,
+                    },
                   ]
                 : [
                     styles.settlement,
