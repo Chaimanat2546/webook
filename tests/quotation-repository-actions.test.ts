@@ -34,6 +34,18 @@ const certificationFields = readFileSync(
   new URL("../components/admin/quotations/certification-fields.tsx", import.meta.url),
   "utf8",
 );
+const logoUploadRoute = readFileSync(
+  new URL("../app/api/admin/quotations/logo-assets/route.ts", import.meta.url),
+  "utf8",
+);
+const logoUploadService = readFileSync(
+  new URL("../server/services/quotation-logo-assets.ts", import.meta.url),
+  "utf8",
+);
+const quotationLogoInput = readFileSync(
+  new URL("../components/admin/quotations/quotation-logo-image-input.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("quotation repository and actions", () => {
   it("uses the transactional RPC for writes", () => {
@@ -160,6 +172,18 @@ describe("quotation repository and actions", () => {
     assert.match(certificationUploadService, /contentType: "image\/png"/);
     assert.match(certificationFields, /fetch\("\/api\/admin\/quotations\/certification-assets"/);
     assert.doesNotMatch(certificationFields, /uploadQuotationCertificationAssetAction/);
+  });
+
+  it("uploads quotation-only seller logos through an authorized same-origin API boundary", () => {
+    assert.match(logoUploadRoute, /requestOrigin !== new URL\(request\.url\)\.origin/);
+    assert.match(logoUploadRoute, /canUseQuotation\(adminUser\)/);
+    assert.match(logoUploadRoute, /uploadQuotationLogoImage\(value\)/);
+    assert.match(logoUploadService, /file\.size > QUOTATION_ASSET_MAX_BYTES/);
+    assert.match(logoUploadService, /validateQuotationUploadedImage\(file, "webp"\)/);
+    assert.match(logoUploadService, /contentType: "image\/webp"/);
+    assert.match(quotationLogoInput, /fetch\("\/api\/admin\/quotations\/logo-assets"/);
+    assert.match(quotationLogoInput, /validateQuotationAssetFile\(file\)/);
+    assert.match(quotationLogoInput, /"image\/webp"/);
   });
 
   it("saves the certification master through the validated owner-scoped RPC", () => {

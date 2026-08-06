@@ -732,6 +732,17 @@ describe("quotation UI", () => {
     assert.match(form, /aria-invalid=\{Boolean\(error\)\}/);
   });
 
+  it("allows a seller-logo override for only the open quotation", () => {
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    const logoInput = source("../components/admin/quotations/quotation-logo-image-input.tsx");
+
+    assert.match(editor, /QuotationLogoImageInput/);
+    assert.match(editor, /label="โลโก้สำหรับใบเสนอราคานี้"/);
+    assert.match(editor, /updateSeller\("logoUrl", logoUrl\)/);
+    assert.match(editor, /onRemove=\{\(\) =>[\s\S]*?updateSeller\("logoUrl", ""\)/);
+    assert.match(logoInput, /รองรับ PNG, JPEG หรือ WebP ขนาดไม่เกิน 10 MB/);
+  });
+
   it("connects every seller profile field error to its control", () => {
     const form = source("../components/admin/quotations/company-profile-form.tsx");
 

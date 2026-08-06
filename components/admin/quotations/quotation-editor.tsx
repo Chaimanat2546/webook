@@ -83,6 +83,7 @@ import { Textarea } from "../../ui/textarea";
 import { CertificationFields } from "./certification-fields";
 import { QuotationCustomerPicker } from "./customers/customer-picker-dialog";
 import { QuotationDocumentDisplayDialog } from "./quotation-document-display-dialog";
+import { QuotationLogoImageInput } from "./quotation-logo-image-input";
 import { QuotationTemplateDialog } from "./quotation-template-dialog";
 import { PaymentMethodList } from "./payment-method-list";
 import { QuotationDocument } from "./quotation-document";
@@ -1471,6 +1472,24 @@ export function QuotationEditor({
             onChange={(value) => updateSeller("website", value)}
             value={payload.seller.website}
           />
+          <div className="md:col-span-2">
+            <QuotationLogoImageInput
+              disabled={isPending}
+              error={fieldErrors["seller.logoUrl"]}
+              field="seller.logoUrl"
+              label="โลโก้สำหรับใบเสนอราคานี้"
+              onBusyChange={(busy) => updateUploadState("seller.logoUrl", busy)}
+              onChange={(logoUrl) => {
+                setLogoUnavailable(false);
+                updateSeller("logoUrl", logoUrl);
+              }}
+              onRemove={() => {
+                setLogoUnavailable(false);
+                updateSeller("logoUrl", "");
+              }}
+              value={payload.seller.logoUrl}
+            />
+          </div>
         </section>
       ) : null}
       <div data-workbench-metadata className="grid gap-6 lg:grid-cols-12">
