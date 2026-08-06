@@ -380,10 +380,11 @@ export async function uploadQuotationCertificationAssetAction(
     return { ok: true, url: buildQuotationCertificationAssetUrl(objectKey, env.workerUrl) };
   } catch (error) {
     console.error("Failed to upload quotation certification asset", error instanceof Error ? error.message : "Unknown error");
+    const message = error instanceof Error ? error.message : "";
     return {
       fieldErrors: {},
-      formError: error instanceof Error && error.message.includes("2 MB")
-        ? error.message
+      formError: message.includes("2 MB") || message.startsWith("รูปภาพ") || message.startsWith("ไฟล์รูป")
+        ? message
         : "ไม่สามารถอัปโหลดรูปการรับรองได้",
       ok: false,
     };

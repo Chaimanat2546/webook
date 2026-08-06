@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { validateQuotationPaymentAssetFile } from "../../../lib/quotation-assets";
+import { resizeQuotationImageToMax } from "../../../lib/quotation-image-resize";
 import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
 
@@ -23,11 +24,12 @@ export async function normalizeQuotationPngImage(file: File): Promise<File> {
   const bitmap = await createImageBitmap(file);
   try {
     const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    const size = resizeQuotationImageToMax(bitmap.width, bitmap.height);
+    canvas.width = size.width;
+    canvas.height = size.height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("ไม่สามารถเตรียมรูปภาพได้");
-    context.drawImage(bitmap, 0, 0);
+    context.drawImage(bitmap, 0, 0, size.width, size.height);
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((result) => result ? resolve(result) : reject(new Error("ไม่สามารถแปลงรูปภาพได้")), "image/png");
     });
