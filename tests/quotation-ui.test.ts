@@ -743,7 +743,8 @@ describe("quotation UI", () => {
     assert.match(form, /aria-describedby=\{fieldErrors\.address \? "address-error" : undefined\}/);
     assert.match(form, /id="address-error"/);
     assert.match(form, /const serverLogoError = fieldErrors\.logo \|\| fieldErrors\.logoUrl/);
-    assert.match(form, /aria-describedby=\{logoError \? "logo-error" : undefined\}/);
+    assert.match(form, /aria-describedby=\{logoError \? "logo-hint logo-error" : "logo-hint"\}/);
+    assert.match(form, /id="logo-hint"/);
     assert.match(form, /id="logo-error"/);
   });
 
@@ -757,7 +758,7 @@ describe("quotation UI", () => {
     assert.match(form, /setLocalLogoError\("รองรับเฉพาะไฟล์ PNG, JPEG หรือ WebP"\)/);
     assert.match(form, /catch \{[\s\S]*setLocalLogoError\("ไม่สามารถเตรียมโลโก้ได้"\)/);
     assert.doesNotMatch(form, /setLocalLogoError\(cause instanceof Error \? cause\.message/);
-    assert.match(form, /aria-describedby=\{logoError \? "logo-error" : undefined\}/);
+    assert.match(form, /aria-describedby=\{logoError \? "logo-hint logo-error" : "logo-hint"\}/);
     assert.match(form, /aria-invalid=\{Boolean\(logoError\)\}/);
   });
 
@@ -1304,7 +1305,8 @@ describe("quotation UI", () => {
     assert.match(payments, /id=\{errorId\}/);
     const imageInput = source("../components/admin/quotations/quotation-png-image-input.tsx");
     assert.match(imageInput, /data-field=\{field\}/);
-    assert.match(imageInput, /aria-describedby=\{message \? errorId : undefined\}/);
+    assert.match(imageInput, /aria-describedby=\{message \? `\$\{hintId\} \$\{errorId\}` : hintId\}/);
+    assert.match(imageInput, /id=\{hintId\}/);
     assert.match(payments, /error=\{error\("type"\)\} field=\{`paymentMethods\.\$\{index\}\.type`\}/);
     assert.match(payments, /error=\{error\("qrMode"\)\} field=\{`paymentMethods\.\$\{index\}\.qrMode`\}/);
     assert.match(payments, /error=\{error\("instructions"\)\} field=\{`paymentMethods\.\$\{index\}\.instructions`\}/);

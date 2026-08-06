@@ -48,6 +48,7 @@ export function QuotationPngImageInput({ disabled, error: serverError = "", fiel
   const message = serverError || error;
   const inputId = field.replaceAll(".", "-");
   const errorId = `${inputId}-error`;
+  const hintId = `${inputId}-hint`;
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -83,7 +84,8 @@ export function QuotationPngImageInput({ disabled, error: serverError = "", fiel
 
   return <div className="grid min-w-0 gap-2 text-sm">
     <Label htmlFor={inputId}>{label}</Label>
-    <input accept="image/png,image/jpeg,image/webp" aria-describedby={message ? errorId : undefined} aria-invalid={Boolean(message)} className="w-full min-w-0 max-w-full" data-field={field} disabled={disabled || loading} id={inputId} onChange={(event) => select(event.target.files?.[0] ?? null)} ref={inputRef} type="file" />
+    <input accept="image/png,image/jpeg,image/webp" aria-describedby={message ? `${hintId} ${errorId}` : hintId} aria-invalid={Boolean(message)} className="w-full min-w-0 max-w-full" data-field={field} disabled={disabled || loading} id={inputId} onChange={(event) => select(event.target.files?.[0] ?? null)} ref={inputRef} type="file" />
+    <p className="text-xs text-muted-foreground" id={hintId}>รองรับ PNG, JPEG หรือ WebP ขนาดไม่เกิน 2 MB · ระบบจะแปลงเป็น PNG</p>
     {displayedUrl ? <div className="flex flex-wrap items-start gap-3">
       {/* eslint-disable-next-line @next/next/no-img-element -- Blob and validated asset URLs need a direct preview. */}
       <img alt={`ตัวอย่าง${label}`} className="max-h-40 max-w-full rounded-md border object-contain" src={displayedUrl} />

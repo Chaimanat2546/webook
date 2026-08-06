@@ -65,5 +65,6 @@ describe("quotation payment assets", () => {
     assert.match(source, /"image\/png"/);
     assert.match(source, /return validateQuotationPaymentAssetFile\(new File\(\[blob\]/);
     assert.match(source, /URL\.revokeObjectURL/);
+    assert.match(source, /รองรับ PNG, JPEG หรือ WebP ขนาดไม่เกิน 2 MB/);
   });
 });
