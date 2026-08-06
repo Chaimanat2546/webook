@@ -1063,7 +1063,8 @@ export function QuotationEditor({
       printWindow.location.assign(url);
       window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1_000);
       toast.success("เปิด PDF สำหรับพิมพ์แล้ว");
-    } catch {
+    } catch (error) {
+      console.error("Quotation PDF print failed", error);
       if (!replaceCurrentPage) printWindow.close();
       toast.error("ไม่สามารถสร้าง PDF สำหรับพิมพ์ได้ กรุณาลองอีกครั้ง");
     } finally {
@@ -1170,7 +1171,8 @@ export function QuotationEditor({
         payload: lastSavedPayload,
         publicQrDataUrl,
       });
-    } catch {
+    } catch (error) {
+      console.error("Quotation PDF download failed", error);
       toast.error("ไม่สามารถสร้าง PDF ได้ กรุณาลองอีกครั้ง");
     } finally {
       setIsDownloading(false);
