@@ -1022,30 +1022,9 @@ export function QuotationEditor({
     });
   }
   const printSaved = useCallback(() => {
-    if (!canPrint || !lastSavedPayload || !savedCalculation || !documentNumber) return;
-    const printWindow = window.open("about:blank", "_blank");
-    if (!printWindow) {
-      toast.error("เบราว์เซอร์บล็อกหน้าต่างสำหรับพิมพ์ กรุณาอนุญาต pop-up แล้วลองอีกครั้ง");
-      return;
-    }
-    void (async () => {
-      try {
-        const needsPublicQr = lastSavedPayload.documentDisplay.certificationQr;
-        if (needsPublicQr && (!publicOrigin || !publicToken)) throw new Error("Public QR unavailable");
-        const publicQrDataUrl = needsPublicQr
-          ? savedPublicQrDataUrl || await createQuotationPublicQrDataUrl(buildQuotationPublicUrl(publicOrigin!, publicToken!))
-          : "";
-        const { createQuotationPdfBlob } = await import("./quotation-pdf");
-        const blob = await createQuotationPdfBlob({ calculation: savedCalculation, documentNumber, payload: lastSavedPayload, publicQrDataUrl });
-        const url = URL.createObjectURL(blob);
-        printWindow.location.replace(url);
-        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      } catch {
-        printWindow.close();
-        toast.error("ไม่สามารถเตรียม PDF สำหรับพิมพ์ได้ กรุณาลองอีกครั้ง");
-      }
-    })();
-  }, [canPrint, documentNumber, lastSavedPayload, publicOrigin, publicToken, savedCalculation, savedPublicQrDataUrl]);
+    if (!canPrint) return;
+    setIsPrinting(true);
+  }, [canPrint]);
   useEffect(() => {
     if (!isPrinting) return;
     let finished = false;
