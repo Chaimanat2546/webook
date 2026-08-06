@@ -6,6 +6,10 @@ const source = readFileSync(
   "components/admin/quotations/quotation-layout-editor.tsx",
   "utf8",
 );
+const settingsPageSource = readFileSync(
+  "app/admin/quotations/settings/company/page.tsx",
+  "utf8",
+);
 
 describe("quotation layout editor position controls", () => {
   it("uses a selectable document-preview block without drag and drop", () => {
@@ -63,5 +67,12 @@ describe("quotation layout editor position controls", () => {
     assert.match(source, /updateThemeColor/);
     assert.match(source, /draft\.themeColor/);
     assert.match(source, /สีหลัก/);
+  });
+
+  it("resets the editor draft when switching quotation templates", () => {
+    assert.match(
+      settingsPageSource,
+      /<QuotationLayoutEditor[\s\S]*key=\{selectedTemplate\}[\s\S]*template=\{selectedTemplate\}/,
+    );
   });
 });

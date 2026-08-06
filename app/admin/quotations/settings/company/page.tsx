@@ -74,7 +74,12 @@ export default async function CompanyProfilePage({ searchParams }: { searchParam
               key={template}
             >{QUOTATION_TEMPLATE_LABELS[template]}</QuotationSettingsNavLink>)}
           </div>
-          <QuotationLayoutEditor initial={templateSnapshots[selectedTemplate]} revisions={revisions} template={selectedTemplate} />
+          <QuotationLayoutEditor
+            initial={templateSnapshots[selectedTemplate]}
+            key={selectedTemplate}
+            revisions={revisions}
+            template={selectedTemplate}
+          />
         </> : null}
       </main>
     </div>
