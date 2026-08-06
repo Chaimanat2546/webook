@@ -161,6 +161,20 @@
     print-color-adjust: exact;
   }
   [data-quotation-document] thead { display: table-header-group; }
+  /* Current uses a 12-column editor grid on screen. Flatten that body only
+     while printing so the customer block and the table heading form the next
+     printable row, while table rows themselves remain free to continue. */
+  [data-quotation-document][data-quotation-template="current"] [data-layout-zone="body"] {
+    display: block !important;
+  }
+  [data-quotation-document][data-quotation-template="current"] [data-document-customer] {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+  [data-quotation-document][data-quotation-template="current"] [data-document-items] {
+    break-before: avoid-page;
+    page-break-before: avoid;
+  }
   [data-quotation-document] tr,
   [data-quotation-document] section,
   [data-document-summary] {
