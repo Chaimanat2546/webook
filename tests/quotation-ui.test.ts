@@ -95,7 +95,7 @@ describe("quotation UI", () => {
     );
     assert.match(
       editor,
-      /createPortal\([\s\S]*<QuotationDocument[\s\S]*calculation=\{savedCalculation\}[\s\S]*payload=\{lastSavedPayload\}[\s\S]*publicQrDataUrl=\{savedPublicQrDataUrl\}/,
+      /createQuotationPdfBlob\(\{[\s\S]*calculation:\s*savedCalculation,[\s\S]*payload:\s*lastSavedPayload,[\s\S]*publicQrDataUrl,/,
     );
   });
 
@@ -973,7 +973,8 @@ describe("quotation UI", () => {
     assert.match(editor, /setLastSavedPayload\(result\.payload\)/);
     assert.match(editor, /disabled=\{!calculation\}[\s\S]*onClick=\{\(\) => setPreviewOpen\(true\)\}/);
     assert.match(editor, /<Dialog[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{payload\}[\s\S]*<Dialog/);
-    assert.match(editor, /createPortal\([\s\S]*calculation=\{savedCalculation\}[\s\S]*payload=\{lastSavedPayload\}[\s\S]*document\.body/);
+    assert.match(editor, /const \{ createQuotationPdfBlob \} = await import\("\.\/quotation-pdf"\)/);
+    assert.match(editor, /calculation:\s*savedCalculation,[\s\S]*payload:\s*lastSavedPayload,/);
     assert.match(editor, /title=\{documentNumber && isDirty \? "บันทึกการเปลี่ยนแปลงก่อน" : undefined\}/);
   });
 
@@ -1367,64 +1368,34 @@ describe("quotation UI", () => {
     assert.doesNotMatch(editor, /label=\{labelled \? "อัตรา"/);
   });
 
-  it("prints the saved document through an isolated body-level portal", () => {
+  it("prints the saved document through the generated PDF viewer", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    const css = source("../app/globals.css");
-    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
 
-    assert.match(editor, /import \{ createPortal \} from "react-dom"/);
     assert.match(editor, /const \[isPrinting, setIsPrinting\] = useState\(false\)/);
     assert.match(editor, /setIsPrinting\(true\)/);
-    assert.match(editor, /createPortal\([\s\S]*data-quotation-print[\s\S]*document\.body/);
-    assert.match(editor, /window\.addEventListener\("afterprint", cleanup/);
-    assert.doesNotMatch(editor, /window\.setTimeout\(cleanup, 1_000\)/);
     assert.match(
       editor,
-      /querySelectorAll<HTMLImageElement>\(\s*"\[data-quotation-print\] img"\s*,?\s*\)/,
+      /window\.open\("", "_blank"\)/,
     );
-    assert.match(editor, /await waitForQuotationPrintImages/);
-    assert.match(editor, /AbortController/);
-    assert.ok(editor.indexOf("await waitForQuotationPrintImages") < editor.indexOf("window.print()"));
     assert.match(
       editor,
-      /document\.documentElement\.classList\.add\("quotation-printing"\)[\s\S]*window\.requestAnimationFrame\(\(\) => \{\s*window\.requestAnimationFrame\(\(\) => resolve\(\)\)/,
+      /const \{ createQuotationPdfBlob \} = await import\("\.\/quotation-pdf"\)/,
     );
-    assert.ok(
-      editor.indexOf('document.documentElement.classList.add("quotation-printing")') <
-        editor.indexOf("window.print()"),
+    assert.match(
+      editor,
+      /createQuotationPdfBlob\(\{[\s\S]*calculation:\s*savedCalculation,[\s\S]*documentNumber,[\s\S]*payload:\s*lastSavedPayload,[\s\S]*publicQrDataUrl,/,
     );
+    assert.match(editor, /printWindow\.location\.assign\(url\)/);
+    assert.match(editor, /URL\.revokeObjectURL\(url\)/);
+    assert.doesNotMatch(editor, /window\.print\(\)/);
+    assert.doesNotMatch(editor, /createPortal\(/);
     assert.match(editor, /setIsPrinting\(false\)/);
     assert.match(
       editor,
-      /catch \{[\s\S]*if \(!controller\.signal\.aborted\)[\s\S]*toast\.error\(\s*"ไม่สามารถเตรียมเอกสารสำหรับพิมพ์ได้ กรุณาลองอีกครั้ง"[\s\S]*cleanup\(\)/,
+      /catch \{[\s\S]*toast\.error\("ไม่สามารถสร้าง PDF สำหรับพิมพ์ได้ กรุณาลองอีกครั้ง"\)/,
     );
-    assert.match(css, /body > :not\(\[data-quotation-print\]\)/);
-    assert.match(css, /display: none !important/);
-    assert.match(
-      css,
-      /\[data-quotation-document\] \{[\s\S]*min-height:\s*0 !important;[\s\S]*padding:\s*0 !important;[\s\S]*width:\s*auto !important;/,
-    );
-    assert.match(
-      css,
-      /\[data-quotation-document\] \[data-document-top-rule\] \{\s*margin:\s*0 0 5mm !important;/,
-    );
-    assert.match(css, /\[data-document-customer\] \{\s*break-after:\s*avoid-page;/);
-    assert.match(css, /\[data-document-items\] \{\s*break-before:\s*avoid-page;/);
-    assert.doesNotMatch(
-      css,
-      /\[data-quotation-document\]\[data-quotation-template="current"\] \{[\s\S]*padding:\s*0 !important/,
-    );
-    assert.match(css, /thead \{ display: table-header-group/);
-    assert.match(css, /\[data-layout-zone="body"\],[\s\S]*\[data-document-items\],[\s\S]*break-inside:\s*auto !important/);
-    assert.doesNotMatch(css, /\[data-quotation-document\] section,\s*\[data-document-summary\]/);
-    assert.doesNotMatch(css, /body \* \{ visibility: hidden/);
-    assert.doesNotMatch(css, /height: 297mm|overflow: hidden/);
     assert.match(editor, /lastSavedPayload/);
     assert.match(editor, /setLastSavedPayload\(result\.payload\)/);
-    assert.match(editor, /QuotationDocument/);
-    assert.match(document, /data-quotation-document/);
-    assert.doesNotMatch(document, /internalNotes/);
-    assert.match(document, /payload\.subject/);
   });
 
   it("uses a dialog for every quotation editor confirmation", () => {
@@ -1446,13 +1417,13 @@ describe("quotation UI", () => {
     assert.match(editor, /onClick=\{\(\) => setPendingConfirmation\(null\)\}[\s\S]*ยกเลิก/);
   });
 
-  it("loads an edit quotation with a one-time print option and isolates print CSS", () => {
+  it("loads an edit quotation with a one-time PDF print option", () => {
     const page = source("../app/admin/quotations/[id]/page.tsx");
-    const css = source("../app/globals.css");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
     assert.match(page, /searchParams: Promise<\{ print\?: string \}>/);
     assert.match(page, /printOnLoad=\{print === "1"\}/);
-    assert.match(css, /html\.quotation-printing \[data-quotation-print\]/);
-    assert.match(css, /\[data-quotation-document\] tr/);
+    assert.match(editor, /void printSaved\(true\)/);
+    assert.match(editor, /replaceCurrentPage\s*\? window\s*:\s*window\.open\("", "_blank"\)/);
   });
 
   it("preserves quotation background colors when printing", () => {
@@ -1470,12 +1441,12 @@ describe("quotation UI", () => {
 
   it("prints the last saved quotation while a newer draft is dirty", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(editor, /const canPrint = Boolean\([\s\S]*documentNumber && lastSavedPayload && !isPending && !publicQrPending/);
-    assert.match(editor, /if \(!canPrint\) return/);
-    assert.match(editor, /calculation=\{savedCalculation\}/);
-    assert.match(editor, /payload=\{lastSavedPayload\}/);
-    assert.match(editor, /printStyle\.textContent = "@page \{ size: A4; margin: 16mm 10mm 10mm; \}"/);
-    assert.match(editor, /printStyle\.remove\(\)/);
+    assert.match(editor, /const canPrint = Boolean\([\s\S]*documentNumber[\s\S]*lastSavedPayload[\s\S]*!isPending[\s\S]*!publicQrPending/);
+    assert.match(editor, /if \([\s\S]*!canPrint \|\|[\s\S]*!lastSavedPayload \|\|[\s\S]*!savedCalculation \|\|/);
+    assert.match(editor, /calculation:\s*savedCalculation,/);
+    assert.match(editor, /payload:\s*lastSavedPayload,/);
+    assert.match(editor, /createQuotationPdfBlob/);
+    assert.doesNotMatch(editor, /window\.print\(\)/);
   });
 
   it("replaces the customer draft through the five-field snapshot contract", () => {
