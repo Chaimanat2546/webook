@@ -16,11 +16,10 @@ describe("house detail actions", () => {
     assert.match(actionsSource, /export async function saveHouseDetailsAction/);
     assert.match(actionsSource, /requireAdmin\(\)/);
     assert.match(actionsSource, /canUseAccommodation\(adminUser\)/);
-    assert.match(actionsSource, /canManageHouseRating\(adminUser\)/);
     assert.match(actionsSource, /getListingByPropertyId\(supabase, propertyId\)/);
     assert.match(actionsSource, /normalizeListingDetailsFormValues/);
     assert.match(actionsSource, /owner_id: house\.owner_id/);
-    assert.match(actionsSource, /rating: canManageRating \? normalizedValues\.rating : house\.rating/);
+    assert.match(actionsSource, /rating: normalizedValues\.rating/);
     assert.match(actionsSource, /updateListingDetailsByPropertyId\(supabase, propertyId, values\)/);
     assert.match(actionsSource, /revalidatePath\("\/admin\/houses"\)/);
     assert.match(actionsSource, /redirect\(`/);

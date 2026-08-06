@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { canManageHouseRating, canUseAccommodation, pickAdminUser } from "../server/auth/admin.ts";
+import { canUseAccommodation, pickAdminUser } from "../server/auth/admin.ts";
 import { findSignInEmailByUsername } from "../server/repositories/admin-users.ts";
 
 interface FakeQueryResult {
@@ -53,11 +53,10 @@ describe("admin authorization", () => {
     assert.equal(canUseAccommodation(null), false);
   });
 
-  it("allows house rating management only for role 1", () => {
-    assert.equal(canManageHouseRating({ role_id: 1 }), true);
-    assert.equal(canManageHouseRating({ role_id: 2 }), false);
-    assert.equal(canManageHouseRating({ role_id: null }), false);
-    assert.equal(canManageHouseRating(null), false);
+  it("keeps central-user management as the only role-specific admin capability", () => {
+    const adminAuthSource = readFileSync(new URL("../server/auth/admin.ts", import.meta.url), "utf8");
+    assert.doesNotMatch(adminAuthSource, /canManageHouseRating/);
+    assert.match(adminAuthSource, /canManageCentralUsers/);
   });
 
   it("prefers uid match before email fallback", () => {

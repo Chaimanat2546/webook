@@ -118,8 +118,7 @@ describe("house detail shell UI", () => {
 
     assert.match(source, /saveHouseDetailsAction/);
     assert.match(source, /saveHouseDetailsAction\.bind\(null, propertyId\)/);
-    assert.match(source, /canManageHouseRating\(adminUser\)/);
-    assert.match(source, /const canManageRating = canManageHouseRating\(adminUser\)/);
+    assert.doesNotMatch(source, /canManageHouseRating/);
     assert.match(source, /HouseDetailCombobox/);
     assert.match(source, /Switch/);
     assert.match(source, /poolvilla/);
@@ -134,7 +133,8 @@ describe("house detail shell UI", () => {
     assert.match(source, /4 - ส่งได้ต่อราคาง่าย/);
     assert.match(source, /5 - ส่งได้เลยบ้านใหม่/);
     assert.match(source, /htmlFor="rating"[\s\S]{0,500}<HouseDetailCombobox/);
-    assert.match(source, /id="rating"[\s\S]*name="rating"[\s\S]*disabled=\{!canManageRating\}/);
+    assert.match(source, /id="rating"[\s\S]*name="rating"/);
+    assert.doesNotMatch(source, /disabled=\{!canManageRating\}/);
     assert.match(source, /const ratingAction = \(/);
     assert.match(source, /form=\{HOUSE_DETAILS_FORM_ID\}/);
     assert.match(source, /contentActions=\{activeSection\.key === "details" \? ratingAction : undefined\}/);

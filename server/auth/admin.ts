@@ -24,10 +24,6 @@ export function canUseQuotation(user: Pick<AdminUserForAuth, "allow_tools"> | nu
   return user?.allow_tools?.allow_quotation === true;
 }
 
-export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | null): boolean {
-  return user?.role_id === 1;
-}
-
 export function canManageCentralUsers(
   user: Pick<AdminUserForAuth, "role_id"> | null,
 ): boolean {

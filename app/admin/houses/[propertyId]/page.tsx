@@ -24,7 +24,6 @@ import {
 } from "../../../../lib/listing-facilities";
 import { ZONE_OPTIONS } from "../../../../lib/house-zones";
 import {
-  canManageHouseRating,
   canUseAccommodation,
   requireAdmin,
 } from "../../../../server/auth/admin";
@@ -206,7 +205,6 @@ export default async function HouseDetailPage({
   const detailsAction = saveHouseDetailsAction.bind(null, propertyId);
   const pricesAction = saveHousePricesAction.bind(null, propertyId);
   const facilitiesAction = saveHouseFacilitiesAction.bind(null, propertyId);
-  const canManageRating = canManageHouseRating(adminUser);
   const ActiveSectionIcon = sectionIconByKey[activeSection.key];
   const ratingAction = (
     <div className="grid gap-1">
@@ -217,7 +215,6 @@ export default async function HouseDetailPage({
         form={HOUSE_DETAILS_FORM_ID}
         id="rating"
         name="rating"
-        disabled={!canManageRating}
         options={RATING_OPTIONS}
         placeholder="เลือกเรตติ้ง"
       />
