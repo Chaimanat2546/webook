@@ -1228,7 +1228,8 @@ describe("quotation UI", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
     const commandBar = editor.slice(editor.indexOf("data-workbench-command-bar"), editor.indexOf("data-seller-strip"));
     const sellerStrip = editor.slice(editor.indexOf("data-seller-strip"), editor.indexOf("data-seller-edit"));
-    assert.match(commandBar, /\{documentNumber \?\? "ใบเสนอราคาใหม่"\}/);
+    assert.match(commandBar, /กลับไปรายการใบเสนอราคา/);
+    assert.match(commandBar, /<ArrowLeft[\s\S]*?<Badge variant="secondary">\{documentNumber \?\? "ใหม่"\}<\/Badge>/);
     assert.match(commandBar, /className="hidden[^\"]*md:flex"[\s\S]*?data-desktop-command-actions/);
     assert.match(commandBar, /onClick=\{closeEditor\}[\s\S]*?>[\s\S]*?กลับ/);
     assert.match(commandBar, /onClick=\{\(\) => setPreviewOpen\(true\)\}[\s\S]*?>[\s\S]*?ดูตัวอย่าง/);

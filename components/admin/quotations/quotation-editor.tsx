@@ -13,6 +13,7 @@ import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
+  ArrowLeft,
   Download,
   GripVertical,
   Printer,
@@ -66,6 +67,7 @@ import type { QuotationDocumentTemplateSnapshot } from "../../../server/reposito
 import { normalizeQuotationVatChoices } from "../../../lib/quotation-vat";
 import { cn } from "../../../lib/utils";
 import { Alert, AlertDescription } from "../../ui/alert";
+import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import {
   Dialog,
@@ -1224,24 +1226,34 @@ export function QuotationEditor({
       data-quotation-editor
     >
       <header
-        className="flex flex-wrap items-start justify-between gap-3 border-b border-foreground/25 pb-3"
+        className="flex flex-col gap-3 border-b border-foreground/25 pb-3 md:flex-row md:items-center md:justify-between"
         data-workbench-command-bar
       >
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            {documentNumber ?? "ใบเสนอราคาใหม่"}
-          </h1>
-          {!documentNumber ? (
-            <p className="text-xs text-muted-foreground">เลขที่ออกเมื่อบันทึก</p>
-          ) : null}
+        <div className="flex flex-col gap-2">
+          <Button
+            className="w-fit px-0"
+            onClick={closeEditor}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            <ArrowLeft aria-hidden="true" className="size-4" />
+            กลับไปรายการใบเสนอราคา
+          </Button>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight">ใบเสนอราคา</h1>
+              <Badge variant="secondary">{documentNumber ?? "ใหม่"}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {documentNumber ? "จัดการข้อมูลใบเสนอราคานี้" : "สร้างใบเสนอราคาใหม่"}
+            </p>
+          </div>
         </div>
         <div
           className="hidden items-center gap-2 md:flex"
           data-desktop-command-actions
         >
-          <Button onClick={closeEditor} type="button" variant="outline">
-            กลับ
-          </Button>
           <Button
             disabled={!calculation}
             onClick={() => setPreviewOpen(true)}
