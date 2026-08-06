@@ -1392,6 +1392,8 @@ describe("quotation UI", () => {
     assert.match(css, /body > :not\(\[data-quotation-print\]\)/);
     assert.match(css, /display: none !important/);
     assert.match(css, /thead \{ display: table-header-group/);
+    assert.match(css, /\[data-layout-zone="body"\],[\s\S]*\[data-document-items\],[\s\S]*break-inside:\s*auto !important/);
+    assert.doesNotMatch(css, /\[data-quotation-document\] section,\s*\[data-document-summary\]/);
     assert.doesNotMatch(css, /body \* \{ visibility: hidden/);
     assert.doesNotMatch(css, /height: 297mm|overflow: hidden/);
     assert.match(editor, /lastSavedPayload/);

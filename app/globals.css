@@ -182,8 +182,18 @@
     break-before: avoid-page;
     page-break-before: avoid;
   }
+  /* The body zone contains both the customer panel and a potentially long
+     ledger. It must be allowed to begin on the remaining space of page one
+     and continue its rows on later sheets. */
+  [data-layout-zone="body"],
+  [data-document-items],
+  [data-quotation-document] table {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
   [data-quotation-document] tr,
-  [data-quotation-document] section,
+  [data-document-customer],
+  [data-document-certification],
   [data-document-summary] {
     break-inside: avoid;
   }
