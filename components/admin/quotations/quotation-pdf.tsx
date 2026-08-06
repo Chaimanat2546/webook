@@ -175,7 +175,7 @@ function reorderQuotationPdfDocument(
   return cloneElement(document, undefined, page);
 }
 
-export async function downloadQuotationPdf({
+export async function createQuotationPdfBlob({
   calculation,
   documentNumber,
   payload,
@@ -185,7 +185,7 @@ export async function downloadQuotationPdf({
   documentNumber: string;
   payload: QuotationPayload;
   publicQrDataUrl: string;
-}): Promise<void> {
+}): Promise<Blob> {
   const model = buildQuotationDocumentViewModel({ calculation, documentNumber, payload, publicQrDataUrl });
   const images = await resolveQuotationPdfImages(collectQuotationPdfImageSources(model));
   if (model.showCertificationQr && !images[model.publicQrDataUrl]) throw new Error("Public QR image is unavailable");
@@ -194,12 +194,21 @@ export async function downloadQuotationPdf({
     Renderer({ images, model }),
     model.payload,
   );
-  const blob = await pdf(pdfDocument).toBlob();
+  return pdf(pdfDocument).toBlob();
+}
+
+export async function downloadQuotationPdf(args: {
+  calculation: QuotationCalculation;
+  documentNumber: string;
+  payload: QuotationPayload;
+  publicQrDataUrl: string;
+}): Promise<void> {
+  const blob = await createQuotationPdfBlob(args);
   const url = URL.createObjectURL(blob);
   try {
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${documentNumber}.pdf`;
+    link.download = `${args.documentNumber}.pdf`;
     link.click();
   } finally {
     URL.revokeObjectURL(url);
