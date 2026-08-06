@@ -43,4 +43,14 @@ describe("quotation layout MVP 2 migration", () => {
     assert.match(fix, /document_layout_snapshot drop not null/);
     assert.match(fix, /set document_template_snapshot = v_template,[\s\S]*document_layout_snapshot = v_layout/);
   });
+
+  it("writes layout snapshots in the initial base-row insert", () => {
+    const fix = readFileSync(
+      "supabase/migrations/20260806173000_save_quotation_layout_snapshot_before_insert.sql",
+      "utf8",
+    );
+    assert.match(fix, /create or replace function private\.save_quotation\(p_payload jsonb\)/i);
+    assert.match(fix, /insert into public\.quotations \([\s\S]*document_template_snapshot,[\s\S]*document_layout_snapshot/i);
+    assert.match(fix, /p_payload ->> 'document_template_snapshot'[\s\S]*p_payload -> 'document_layout_snapshot'/i);
+  });
 });

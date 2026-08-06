@@ -6,6 +6,10 @@ const migration = readFileSync(
   "supabase/migrations/20260806121500_complete_quotation_security_hardening.sql",
   "utf8",
 );
+const constraintGrantMigration = readFileSync(
+  "supabase/migrations/20260806170000_grant_quotation_constraint_helpers.sql",
+  "utf8",
+);
 const nextConfig = readFileSync("next.config.ts", "utf8");
 const middleware = readFileSync("middleware.ts", "utf8");
 
@@ -33,5 +37,12 @@ describe("quotation security hardening completion", () => {
     assert.match(middleware, /https:\/\/webook-media\.poolvilla\.workers\.dev/);
     assert.match(middleware, /https:\/\/d24r25u6qcb3zryipzoiqj2jxy0ilqtm\.lambda-url\.ap-southeast-1\.on\.aws/);
     assert.match(middleware, /response\.headers\.delete\("x-powered-by"\)/);
+  });
+
+  it("permits authenticated quotation saves to evaluate their database constraints", () => {
+    assert.match(constraintGrantMigration, /grant usage on schema private to authenticated/);
+    assert.match(constraintGrantMigration, /grant execute on function private\.is_quotation_document_display\(jsonb\) to authenticated/);
+    assert.match(constraintGrantMigration, /grant execute on function private\.is_quotation_template\(text\) to authenticated/);
+    assert.match(constraintGrantMigration, /grant execute on function private\.is_quotation_layout\(jsonb, text\) to authenticated/);
   });
 });
