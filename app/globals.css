@@ -198,3 +198,40 @@
 [data-quotation-document].quotation-zone-order > [data-hospitality-seller-footer] {
   order: 99;
 }
+
+[data-quotation-document] [data-document-top-rule],
+[data-quotation-document][data-quotation-template="corporate"] [data-document-number],
+[data-quotation-document][data-quotation-template="corporate"] table thead tr,
+[data-quotation-document][data-quotation-template="hospitality"] table thead tr,
+[data-quotation-document][data-quotation-template="hospitality"] [data-hospitality-settlement] {
+  background-color: var(--quotation-theme-primary);
+  color: var(--quotation-theme-contrast);
+}
+
+[data-quotation-document][data-quotation-template="corporate"] h1,
+[data-quotation-document][data-quotation-template="corporate"] h2,
+[data-quotation-document][data-quotation-template="corporate"] [data-document-header] p:first-of-type,
+[data-quotation-document][data-quotation-template="corporate"] [data-document-items] tbody span,
+[data-quotation-document][data-quotation-template="hospitality"] h1,
+[data-quotation-document][data-quotation-template="hospitality"] h2,
+[data-quotation-document][data-quotation-template="hospitality"] [data-layout-block="seller"] > p:first-child,
+[data-quotation-document][data-quotation-template="hospitality"] [data-hospitality-seller-footer] > p:first-child {
+  color: var(--quotation-theme-primary);
+}
+
+[data-quotation-document][data-quotation-template="corporate"] [data-corporate-recipient],
+[data-quotation-document][data-quotation-template="corporate"] [data-corporate-settlement],
+[data-quotation-document][data-quotation-template="hospitality"] [data-hospitality-recipient] {
+  background-color: var(--quotation-theme-light);
+  border-color: var(--quotation-theme-primary);
+}
+
+[data-quotation-document][data-quotation-template="corporate"] [data-document-certification],
+[data-quotation-document][data-quotation-template="hospitality"] [data-document-certification],
+[data-quotation-document][data-quotation-template="hospitality"] [data-hospitality-seller-footer],
+[data-quotation-document][data-quotation-template="hospitality"] [data-layout-zone="header"],
+[data-quotation-document][data-quotation-template="hospitality"] [data-layout-zone="settlement"],
+[data-quotation-document][data-quotation-template="hospitality"] [data-document-metadata],
+[data-quotation-document][data-quotation-template="hospitality"] table tbody tr {
+  border-color: var(--quotation-theme-border);
+}

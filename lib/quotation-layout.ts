@@ -1,6 +1,10 @@
 import type { QuotationTemplate } from "./quotation-template";
+import {
+  isQuotationThemeColor,
+  QUOTATION_TEMPLATE_THEME_COLORS,
+} from "./quotation-theme.ts";
 
-export const QUOTATION_LAYOUT_SCHEMA_VERSION = 1;
+export const QUOTATION_LAYOUT_SCHEMA_VERSION = 2;
 
 export const QUOTATION_LAYOUT_BLOCK_IDS = [
   "seller",
@@ -36,6 +40,7 @@ export interface QuotationLayoutBlock {
 export interface QuotationLayoutConfig {
   blocks: QuotationLayoutBlock[];
   schemaVersion: typeof QUOTATION_LAYOUT_SCHEMA_VERSION;
+  themeColor: string;
 }
 
 export interface QuotationLayoutSnapshot {
@@ -81,6 +86,7 @@ const canonical: Record<QuotationTemplate, QuotationLayoutConfig> = {
       { id: "certification", zone: "certification", column: 1, order: 10, span: 12 },
     ],
     schemaVersion: QUOTATION_LAYOUT_SCHEMA_VERSION,
+    themeColor: QUOTATION_TEMPLATE_THEME_COLORS.corporate,
   },
   current: {
     blocks: [
@@ -94,6 +100,7 @@ const canonical: Record<QuotationTemplate, QuotationLayoutConfig> = {
       { id: "certification", zone: "certification", column: 1, order: 10, span: 12 },
     ],
     schemaVersion: QUOTATION_LAYOUT_SCHEMA_VERSION,
+    themeColor: QUOTATION_TEMPLATE_THEME_COLORS.current,
   },
   hospitality: {
     blocks: [
@@ -108,6 +115,7 @@ const canonical: Record<QuotationTemplate, QuotationLayoutConfig> = {
       { id: "sellerFooter", zone: "footer", column: 1, order: 10, span: 12 },
     ],
     schemaVersion: QUOTATION_LAYOUT_SCHEMA_VERSION,
+    themeColor: QUOTATION_TEMPLATE_THEME_COLORS.hospitality,
   },
 };
 
@@ -138,7 +146,7 @@ function isBlock(value: unknown, template: QuotationTemplate): value is Quotatio
 }
 
 export function isQuotationLayoutConfig(value: unknown, template: QuotationTemplate): value is QuotationLayoutConfig {
-  if (!isRecord(value) || Object.keys(value).length !== 2 || value.schemaVersion !== QUOTATION_LAYOUT_SCHEMA_VERSION || !Array.isArray(value.blocks)) return false;
+  if (!isRecord(value) || Object.keys(value).length !== 3 || value.schemaVersion !== QUOTATION_LAYOUT_SCHEMA_VERSION || !Array.isArray(value.blocks) || !isQuotationThemeColor(value.themeColor)) return false;
   const blocks = value.blocks;
   if (blocks.length !== BLOCKS_BY_TEMPLATE[template].length || !blocks.every((block) => isBlock(block, template))) return false;
   if (new Set(blocks.map((block) => block.id)).size !== blocks.length) return false;

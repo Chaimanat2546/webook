@@ -10,6 +10,7 @@ import {
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 import { canKeepQuotationPdfItemTogether } from "../../../../lib/quotation-pdf";
 import { isQuotationLayoutBlockBefore } from "../../../../lib/quotation-layout-renderer";
+import { quotationThemePalette } from "../../../../lib/quotation-theme";
 
 import type { QuotationPdfRendererProps } from "./quotation-pdf-contract";
 import {
@@ -108,6 +109,12 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
   const sellerOffice = office(payload.seller);
   const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
+  const theme = quotationThemePalette(payload.layout.config.themeColor);
+  const themedSharedStyles = {
+    ...styles,
+    grandTotal: { ...styles.grandTotal, backgroundColor: theme.light },
+    signatureBox: { ...styles.signatureBox, borderBottomColor: theme.border },
+  };
   return (
     <Document author={payload.seller.name} title={model.documentNumber}>
       <Page size="A4" style={styles.page} wrap>
@@ -118,7 +125,7 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
           </View>
           <View style={styles.titleBox}>
             <Text style={styles.right}>(ต้นฉบับ)</Text>
-            <Text style={styles.title}>ใบเสนอราคา</Text>
+            <Text style={[styles.title, { color: theme.primary }]}>ใบเสนอราคา</Text>
           </View>
         </View>
         <View style={metadataIsLeft ? [styles.row, { flexDirection: "row-reverse", paddingVertical: 8 }] : [styles.row, { paddingVertical: 8 }]}>
@@ -130,7 +137,7 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
             {payload.seller.email ? <Detail label="อีเมล" styles={styles} value={payload.seller.email} /> : null}
             {payload.seller.website ? <Detail label="เว็บไซต์" styles={styles} value={payload.seller.website} /> : null}
           </View>
-          <View style={[styles.metadata, layoutFlex(model, "documentMetadata")] }>
+          <View style={[styles.metadata, layoutFlex(model, "documentMetadata"), { backgroundColor: theme.light }] }>
             <Detail label="เลขที่เอกสาร" styles={styles} value={model.documentNumber} />
             <Detail label="วันที่ออก" styles={styles} value={model.issueDate} />
             <Detail label="ใช้ได้ถึง" styles={styles} value={model.validUntil} />
@@ -149,7 +156,7 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
 
         {/* data-pdf-items */}
         <View style={styles.table}>
-          <View fixed style={styles.tableHeader} wrap={false}>
+          <View fixed style={[styles.tableHeader, { backgroundColor: theme.light }]} wrap={false}>
             <Text style={styles.descriptionCell}>คำอธิบาย</Text>
             <Text style={styles.qtyCell}>จำนวน</Text>
             {model.showUnit ? <Text style={styles.unitCell}>หน่วย</Text> : null}
@@ -187,9 +194,9 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
             <Text style={styles.muted}>{model.amountInWords}</Text>
           </View>
           <View style={styles.totalsBox}>
-            <Total emphasized label="จำนวนเงินทั้งสิ้น" styles={styles} value={formatBaht(calculation.grandTotal)} />
-            {model.showWithholdingTax ? <Total label="หักภาษี ณ ที่จ่าย" styles={styles} value={formatBaht(calculation.withholdingTaxTotal)} /> : null}
-            <Total label="จำนวนเงินที่ชำระ" styles={styles} value={formatBaht(calculation.amountDue)} />
+            <Total emphasized label="จำนวนเงินทั้งสิ้น" styles={themedSharedStyles} value={formatBaht(calculation.grandTotal)} />
+            {model.showWithholdingTax ? <Total label="หักภาษี ณ ที่จ่าย" styles={themedSharedStyles} value={formatBaht(calculation.withholdingTaxTotal)} /> : null}
+            <Total label="จำนวนเงินที่ชำระ" styles={themedSharedStyles} value={formatBaht(calculation.amountDue)} />
           </View>
         </View>
 

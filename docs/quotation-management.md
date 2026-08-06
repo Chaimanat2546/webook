@@ -70,8 +70,10 @@ history.
   hospitality footer. Freeform HTML and CSS are not stored or accepted.
 - `จัดการเลเอาท์` in quotation settings selects one template at a time. It
   provides an A4 grid preview plus keyboard-accessible up, down, left, and
-  right controls. Publishing creates an immutable revision; restoring an old
-  revision publishes it again as a new revision rather than rewriting history.
+  right controls and one primary-color picker. The renderer derives its light,
+  border, dark, and contrast shades from that single color. Publishing creates
+  an immutable revision; restoring an old revision publishes it again as a new
+  revision rather than rewriting history.
 - Controls in each layout-canvas section header can reorder the complete
   header, body, settlement, and certification sections. Hospitality
   seller-footer content is fixed at the end of the document. The published
@@ -346,6 +348,13 @@ owner-scoped logical template sources, immutable layout revisions, validated
 publish/save RPC boundaries, RLS, and every per-quotation layout snapshot.
 Apply it before opening layout management or saving a quotation with MVP 2.
 
+Migration `20260805190000_add_quotation_template_theme_color.sql` upgrades the
+layout schema to version 2 and stores one validated six-digit hex primary color
+in each template revision and quotation snapshot. Existing revisions and
+quotations receive the former template color, preserving their appearance.
+Apply this migration before deploying application code that publishes schema
+version 2.
+
 A database that already records migration `20260718090000` will not execute
 the amended file again. Inspect its actual schema and migration history first,
 then deliberately reconcile the history/schema or ship an equivalent follow-up
@@ -408,6 +417,10 @@ template's layout snapshot for every managed header, body, and settlement
 block. In particular, customer, items, payment methods, public notes, and
 summary are direct grid items, so a published position is reflected in the
 rendered document as well as the layout editor.
+The saved `themeColor` in that same snapshot is also used by Preview, Print,
+PDF Download, and Public Read-only. Changing an account template color does not
+recolor an existing quotation until the quotation selects the latest layout
+revision and is saved.
 For every template, the summary block has a template-owned fixed two-row
 height so it aligns with payment methods plus public notes; users cannot
 change that height in the editor.

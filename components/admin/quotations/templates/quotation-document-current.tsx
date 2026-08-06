@@ -40,7 +40,7 @@ export function CurrentQuotationDocument({
         </div>
         <div className="col-span-5 col-start-8 min-w-0">
           <p className="text-right text-[9px]">(ต้นฉบับ)</p>
-          <h1 className="mb-2 text-right text-3xl font-semibold tracking-tight text-indigo-500">
+          <h1 className="mb-2 text-right text-3xl font-semibold tracking-tight text-[var(--quotation-theme-primary)]">
             ใบเสนอราคา
           </h1>
         </div>
@@ -110,7 +110,7 @@ export function CurrentQuotationDocument({
         </div>
         <div className="min-w-0" data-layout-block="documentMetadata" style={{ flex: `${metadataBlock?.span ?? 5} 1 0%` }}>
           <dl
-            className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-1 rounded-md bg-indigo-50 p-3"
+            className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-1 rounded-md bg-[var(--quotation-theme-light)] p-3"
             data-document-metadata
           >
             <dt className="font-semibold">เลขที่เอกสาร</dt>
@@ -172,7 +172,7 @@ export function CurrentQuotationDocument({
         style={quotationLayoutBlockStyle(model, "items")}
       >
         <thead>
-          <tr className="bg-indigo-50 text-left">
+          <tr className="bg-[var(--quotation-theme-light)] text-left">
             <th className="rounded-l-md p-2">คำอธิบาย</th>
             <th className="w-[8%] p-2 text-right">จำนวน</th>
             {model.showUnit ? <th className="w-[7%] p-2">หน่วย</th> : null}

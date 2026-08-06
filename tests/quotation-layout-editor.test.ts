@@ -22,7 +22,7 @@ describe("quotation layout editor position controls", () => {
     assert.match(source, /data-layout-template=\{template\}/);
     assert.match(source, /TEMPLATE_CANVAS/);
     assert.match(source, /จำนวนเงินทั้งสิ้น/);
-    assert.match(source, /bg-indigo-50/);
+    assert.match(source, /quotationThemePalette/);
     assert.match(source, /disabled=\{isPending \|\| !canMove\(block\.id, "up"\)\}/);
   });
 
@@ -55,5 +55,12 @@ describe("quotation layout editor position controls", () => {
     assert.match(source, /const visibleRevisions = revisions\.slice\(0, 2\)/);
     assert.match(source, /visibleRevisions\.map/);
     assert.match(source, /"ปัจจุบัน" : "ก่อนหน้า"/);
+  });
+
+  it("selects one primary color inside the layout editor", () => {
+    assert.match(source, /type="color"/);
+    assert.match(source, /updateThemeColor/);
+    assert.match(source, /draft\.themeColor/);
+    assert.match(source, /สีหลัก/);
   });
 });

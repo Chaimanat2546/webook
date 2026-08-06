@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 import { quotationLayoutBlockRow, quotationLayoutBlockRowSpan, quotationLayoutZonePosition, type QuotationLayoutBlockId } from "./quotation-layout";
 import type { QuotationDocumentViewModel } from "./quotation-document-view";
+import { quotationThemePalette } from "./quotation-theme.ts";
 
 export function quotationLayoutBlockStyle(
   model: QuotationDocumentViewModel,
@@ -43,7 +44,14 @@ export function isQuotationLayoutBlockBefore(
 }
 
 export function quotationLayoutDocumentStyle(model: QuotationDocumentViewModel): CSSProperties {
+  const theme = quotationThemePalette(model.payload.layout.config.themeColor);
   return {
+    "--quotation-theme-border": theme.border,
+    "--quotation-theme-contrast": theme.contrast,
+    "--quotation-theme-dark": theme.dark,
+    "--quotation-theme-light": theme.light,
+    "--quotation-theme-muted": theme.muted,
+    "--quotation-theme-primary": theme.primary,
     "--quotation-zone-body": quotationLayoutZonePosition(model.payload.layout.config, "body"),
     "--quotation-zone-certification": quotationLayoutZonePosition(model.payload.layout.config, "certification"),
     "--quotation-zone-header": quotationLayoutZonePosition(model.payload.layout.config, "header"),

@@ -270,7 +270,7 @@ describe("quotation PDF", () => {
   });
 
   it("repeats the ledger heading in normal flow on continuation pages", () => {
-    assert.match(currentPdf, /<View fixed style=\{styles\.tableHeader\} wrap=\{false\}>/);
+    assert.match(currentPdf, /<View\s+fixed[\s\S]*styles\.tableHeader[\s\S]*wrap=\{false\}/);
     assert.doesNotMatch(currentPdf, /tableHeader:\s*\{[^}]*position:/);
   });
 

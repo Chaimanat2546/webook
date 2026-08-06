@@ -184,7 +184,7 @@ describe("quotation UI", () => {
     assert.match(document, /data-document-customer/);
     assert.match(document, /data-document-items/);
     assert.match(document, /data-document-summary/);
-    assert.match(document, /bg-indigo-50/);
+    assert.match(document, /--quotation-theme-light/);
     assert.match(document, /table-fixed/);
     assert.match(document, /formatMoney\(item\.unitPrice\)/);
     assert.match(document, /formatMoney\(item\.preTaxAmount\)/);

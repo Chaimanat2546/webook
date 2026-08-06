@@ -16,6 +16,7 @@ describe("quotation layout", () => {
     for (const template of ["current", "hospitality", "corporate"] as const) {
       const layout = canonicalQuotationLayout(template);
       assert.equal(layout.schemaVersion, QUOTATION_LAYOUT_SCHEMA_VERSION);
+      assert.match(layout.themeColor, /^#[0-9A-F]{6}$/);
       assert.equal(isQuotationLayoutConfig(layout, template), true);
       assert.ok(layout.blocks.some((block) => block.id === "items"));
       assert.ok(layout.blocks.some((block) => block.id === "certification"));
@@ -32,6 +33,22 @@ describe("quotation layout", () => {
   it("returns a defensive canonical layout when a stored layout is invalid", () => {
     const normalized = normalizeQuotationLayout({ schemaVersion: 1, blocks: [] }, "hospitality");
     assert.deepEqual(normalized, canonicalQuotationLayout("hospitality"));
+  });
+
+  it("requires one valid primary theme color in every layout revision", () => {
+    const layout = canonicalQuotationLayout("corporate");
+    assert.equal(
+      isQuotationLayoutConfig({ ...layout, themeColor: "#D946EF" }, "corporate"),
+      true,
+    );
+    assert.equal(
+      isQuotationLayoutConfig({ ...layout, themeColor: "purple" }, "corporate"),
+      false,
+    );
+    assert.equal(
+      isQuotationLayoutConfig({ ...layout, themeColor: undefined }, "corporate"),
+      false,
+    );
   });
 
   it("compacts non-overlapping blocks into the same visual row after reordering", () => {
