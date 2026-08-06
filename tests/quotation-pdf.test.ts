@@ -22,8 +22,20 @@ const corporatePdf = source(
   "components/admin/quotations/templates/quotation-pdf-corporate.tsx",
 );
 const editorSource = source("components/admin/quotations/quotation-editor.tsx");
+const globalStyles = source("app/globals.css");
 
 describe("quotation PDF", () => {
+  it("keeps the logo and document masthead above movable sections", () => {
+    assert.match(
+      globalStyles,
+      /\[data-document-header\],[\s\S]*\[data-document-top-rule\]\s*\{\s*order:\s*-1;/,
+    );
+    assert.match(pdfSource, /fixed: children\.slice\(0, 1\)/);
+    assert.match(pdfSource, /fixed: children\.slice\(0, 2\)/);
+    assert.match(pdfSource, /header: children\.slice\(1, 2\)/);
+    assert.match(pdfSource, /header: children\.slice\(2, 3\)/);
+  });
+
   it("keeps every PDF template on the shared public-document contract", () => {
     for (const template of [currentPdf]) {
       for (const marker of [

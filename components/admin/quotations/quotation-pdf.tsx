@@ -126,9 +126,9 @@ function pdfSections(
     return {
       body: children.slice(2, 4),
       certification: children.slice(-1),
-      fixed: [],
+      fixed: children.slice(0, 1),
       footer: [],
-      header: children.slice(0, 2),
+      header: children.slice(1, 2),
       settlement: children.slice(4, -1),
     };
   }
@@ -136,9 +136,9 @@ function pdfSections(
   return {
     body: children.slice(3, 5),
     certification: children.slice(6, 7),
-    fixed: children.slice(0, 1),
+    fixed: children.slice(0, 2),
     footer: template === "hospitality" ? children.slice(7) : [],
-    header: children.slice(1, 3),
+    header: children.slice(2, 3),
     settlement: children.slice(5, 6),
   };
 }

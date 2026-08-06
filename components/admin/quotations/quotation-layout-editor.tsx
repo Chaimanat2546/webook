@@ -748,6 +748,46 @@ export function QuotationLayoutEditor({
                 ขนาดและรูปทรงเฉพาะเทมเพลต
               </p>
             </div>
+            <section
+              className="grid grid-cols-[minmax(0,1fr)_minmax(8rem,0.7fr)] items-start gap-4 rounded-md border bg-white p-3"
+              data-layout-locked-masthead
+              style={{ borderColor: palette.border }}
+            >
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <div
+                  className="grid size-9 place-items-center rounded border text-[8px] font-semibold"
+                  style={{ borderColor: palette.border, color: palette.primary }}
+                >
+                  LOGO
+                </div>
+                <span>ล็อกอยู่บนสุดเสมอ</span>
+              </div>
+              <div className="text-right">
+                <p className="text-[8px]">(ต้นฉบับ)</p>
+                <p
+                  className="text-base font-semibold tracking-wide"
+                  style={{ color: palette.primary }}
+                >
+                  {template === "current" ? "ใบเสนอราคา" : "QUOTATION"}
+                </p>
+                {template !== "current" ? (
+                  <p className="text-[9px]" style={{ color: palette.muted }}>
+                    ใบเสนอราคา
+                  </p>
+                ) : null}
+                {template === "corporate" ? (
+                  <p
+                    className="mt-1 inline-block rounded px-1.5 py-0.5 text-[8px]"
+                    style={{
+                      backgroundColor: palette.primary,
+                      color: palette.contrast,
+                    }}
+                  >
+                    QO-000001
+                  </p>
+                ) : null}
+              </div>
+            </section>
             {[...movableZones, "footer" as const].map((zone, zoneIndex) => {
               const blocks = blocksInZone(draft, zone);
               if (!blocks.length) return null;

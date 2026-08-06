@@ -75,4 +75,14 @@ describe("quotation layout editor position controls", () => {
       /<QuotationLayoutEditor[\s\S]*key=\{selectedTemplate\}[\s\S]*template=\{selectedTemplate\}/,
     );
   });
+
+  it("shows the non-movable document masthead above every movable section", () => {
+    assert.match(source, /data-layout-locked-masthead/);
+    assert.match(source, /ล็อกอยู่บนสุดเสมอ/);
+    assert.match(source, /QO-000001/);
+    assert.ok(
+      source.indexOf("data-layout-locked-masthead") <
+        source.indexOf('[...movableZones, "footer" as const]'),
+    );
+  });
 });

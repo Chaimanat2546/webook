@@ -176,7 +176,10 @@
 }
 
 [data-quotation-document].quotation-zone-order > [data-document-header],
-[data-quotation-document].quotation-zone-order > [data-document-top-rule],
+[data-quotation-document].quotation-zone-order > [data-document-top-rule] {
+  order: -1;
+}
+
 [data-quotation-document].quotation-zone-order > [data-corporate-company-metadata],
 [data-quotation-document].quotation-zone-order > [data-layout-zone="header"] {
   order: var(--quotation-zone-header);
