@@ -370,6 +370,17 @@ The Next.js admin app deploys to a separate Cloudflare Worker through OpenNext:
 npm.cmd run deploy:cf
 ```
 
+If the OpenNext deploy command cannot start Miniflare/workerd on Windows, run
+`npm ci` first to restore the lockfile's local CLI binaries, then use the
+Windows fallback. It builds the same `.open-next/worker.js`, deploys it without
+starting a local Workers runtime, and preserves existing Worker variables and
+secrets:
+
+```powershell
+npm.cmd ci
+npm.cmd run deploy:cf:windows
+```
+
 The root `wrangler.jsonc` deploys the admin web Worker named `webook-admin`.
 Do not use `workers/media/wrangler.jsonc` for the admin web app.
 The build script runs Next.js with `--webpack` and `--use-system-ca` so OpenNext can bundle server chunks correctly on this Windows workspace.
