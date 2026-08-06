@@ -148,7 +148,7 @@ export function Total({
       className={[
         "flex items-start justify-between gap-3",
         bold ? "border-t pt-2 font-semibold" : "",
-        emphasized ? "rounded-md bg-indigo-50 p-3 text-sm" : "",
+        emphasized ? "rounded-md bg-[var(--quotation-theme-light)] p-3 text-sm" : "",
       ]
         .filter(Boolean)
         .join(" ")}
