@@ -7,6 +7,7 @@ const migration = readFileSync(
   "utf8",
 );
 const nextConfig = readFileSync("next.config.ts", "utf8");
+const middleware = readFileSync("middleware.ts", "utf8");
 
 describe("quotation security hardening completion", () => {
   it("retires legacy public links and requires an expiry for future reads", () => {
@@ -28,5 +29,7 @@ describe("quotation security hardening completion", () => {
     assert.match(nextConfig, /X-Content-Type-Options/);
     assert.match(nextConfig, /X-Frame-Options/);
     assert.match(nextConfig, /Referrer-Policy/);
+    assert.match(middleware, /Content-Security-Policy/);
+    assert.match(middleware, /response\.headers\.delete\("x-powered-by"\)/);
   });
 });
