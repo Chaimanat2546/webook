@@ -58,6 +58,7 @@ export function collectQuotationPdfImageSources(
 }
 
 async function convertQuotationPdfImage(source: string): Promise<string> {
+  if (source.startsWith("data:image/")) return source;
   const response = await fetch(source);
   if (!response.ok) throw new Error(`Unable to load image (${response.status})`);
   const objectUrl = URL.createObjectURL(await response.blob());

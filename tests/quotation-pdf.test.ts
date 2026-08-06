@@ -223,6 +223,7 @@ describe("quotation PDF", () => {
   });
 
   it("converts browser images to contained PNGs with per-image fallback", () => {
+    assert.match(pdfSource, /source\.startsWith\("data:image\/"\)/);
     assert.match(pdfSource, /fetch\(source\)/);
     assert.match(pdfSource, /canvas\.toDataURL\("image\/png"\)/);
     assert.match(currentPdf, /objectFit:\s*"contain"/);

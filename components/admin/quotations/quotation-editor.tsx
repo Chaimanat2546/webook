@@ -1063,14 +1063,9 @@ export function QuotationEditor({
       printWindow.location.assign(url);
       window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1_000);
       toast.success("เปิด PDF สำหรับพิมพ์แล้ว");
-    } catch (error) {
-      const diagnostic = error instanceof Error
-        ? error.message
-        : "Unknown PDF print failure";
-      document.documentElement.dataset.quotationPdfError = diagnostic;
-      console.error("Quotation PDF print failed", error);
+    } catch {
       if (!replaceCurrentPage) printWindow.close();
-      toast.error(`ไม่สามารถสร้าง PDF สำหรับพิมพ์ได้: ${diagnostic}`);
+      toast.error("ไม่สามารถสร้าง PDF สำหรับพิมพ์ได้ กรุณาลองอีกครั้ง");
     } finally {
       setIsPrinting(false);
     }
@@ -1175,13 +1170,8 @@ export function QuotationEditor({
         payload: lastSavedPayload,
         publicQrDataUrl,
       });
-    } catch (error) {
-      const diagnostic = error instanceof Error
-        ? error.message
-        : "Unknown PDF download failure";
-      document.documentElement.dataset.quotationPdfError = diagnostic;
-      console.error("Quotation PDF download failed", error);
-      toast.error(`ไม่สามารถสร้าง PDF ได้: ${diagnostic}`);
+    } catch {
+      toast.error("ไม่สามารถสร้าง PDF ได้ กรุณาลองอีกครั้ง");
     } finally {
       setIsDownloading(false);
     }
