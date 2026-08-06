@@ -58,8 +58,9 @@ describe("quotation payment assets", () => {
     const source = readFileSync("components/admin/quotations/quotation-png-image-input.tsx", "utf8");
     assert.match(source, /validateQuotationPaymentAssetFile\(file\)/);
     assert.match(source, /createImageBitmap\(file\)/);
-    assert.match(source, /canvas\.width = bitmap\.width/);
-    assert.match(source, /canvas\.height = bitmap\.height/);
+    assert.match(source, /resizeQuotationImageToMax\(bitmap\.width, bitmap\.height\)/);
+    assert.match(source, /canvas\.width = size\.width/);
+    assert.match(source, /canvas\.height = size\.height/);
     assert.match(source, /canvas\.toBlob/);
     assert.match(source, /"image\/png"/);
     assert.match(source, /return validateQuotationPaymentAssetFile\(new File\(\[blob\]/);

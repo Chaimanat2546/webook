@@ -57,7 +57,7 @@ describe("quotation public share", () => {
     );
     assert.match(editor, /const draftPublicQrDataUrl = !isDirty \? savedPublicQrDataUrl : ""/);
     assert.equal(editor.match(/publicQrDataUrl=\{draftPublicQrDataUrl\}/g)?.length, 1);
-    assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 1);
+    assert.match(editor, /savedPublicQrDataUrl \|\| await createQuotationPublicQrDataUrl/);
   });
 
   it("waits for a clean saved quotation QR before printing", () => {
@@ -88,13 +88,14 @@ describe("quotation public share", () => {
     assert.doesNotMatch(document, /internalNotes/);
   });
 
-  it("expires public bearer links and lets only the owner rotate them", () => {
-    const migration = source("../supabase/migrations/20260806103000_quotation_security_hardening.sql");
+  it("retires legacy public bearer links and lets only the owner rotate them", () => {
+    const migration = source("../supabase/migrations/20260806121500_complete_quotation_security_hardening.sql");
+    const rotationMigration = source("../supabase/migrations/20260806103000_quotation_security_hardening.sql");
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.match(migration, /public_token_expires_at timestamptz/);
-    assert.match(migration, /public_token_expires_at is null or q\.public_token_expires_at > now\(\)/);
+    assert.match(migration, /retires every link without an expiry/);
+    assert.match(migration, /q\.public_token_expires_at > now\(\)/);
     assert.match(migration, /private\.has_quotation_permission\(\)/);
-    assert.match(migration, /q\.created_by = auth\.uid\(\)/);
+    assert.match(rotationMigration, /q\.created_by = auth\.uid\(\)/);
     assert.match(editor, /rotateQuotationPublicTokenAction/);
     assert.match(editor, /รีเซ็ตลิงก์/);
   });
