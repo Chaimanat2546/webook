@@ -2,7 +2,9 @@ import {
   Document,
   Image as PdfImage,
   Page,
+  Path,
   StyleSheet,
+  Svg,
   Text,
   View,
 } from "@react-pdf/renderer";
@@ -63,6 +65,8 @@ const styles = StyleSheet.create({
   seller: { flexGrow: 1, flexBasis: 0 },
   sellerDetails: { flexBasis: 0, flexGrow: 1 },
   sellerContact: { flexBasis: 82, marginLeft: 14 },
+  sellerContactIcon: { height: 8, marginRight: 4, width: 8 },
+  sellerContactRow: { alignItems: "center", flexDirection: "row", minHeight: 10 },
   sellerDetailLabel: { fontWeight: 600, width: 45 },
   metadataDetailLabel: { fontWeight: 600, width: 57 },
   logo: { height: 36, marginBottom: 6, objectFit: "contain", width: 100 },
@@ -168,6 +172,19 @@ function ItemTableHeader({
   );
 }
 
+function SellerContactIcon({ type }: { type: "email" | "phone" | "website" }) {
+  const pathByType = {
+    email: "M3 5h18v14H3z M3 7l9 6 9-6",
+    phone: "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.79.62 2.65a2 2 0 0 1-.45 2.11L8.01 9.75a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.86.29 1.75.5 2.65.62A2 2 0 0 1 22 16.92z",
+    website: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M2 12h20 M12 2a15.3 15.3 0 0 1 0 20 M12 2a15.3 15.3 0 0 0 0 20",
+  } as const;
+  return (
+    <Svg style={styles.sellerContactIcon} viewBox="0 0 24 24">
+      <Path d={pathByType[type]} fill="none" stroke={colors.muted} strokeWidth={1.8} />
+    </Svg>
+  );
+}
+
 export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps) {
   const { calculation, payload } = model;
   const compactCertification = !model.showCertificationName && !model.showCertificationDate;
@@ -204,9 +221,9 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
                 <DetailWithLabelWidth label="เลขที่ภาษี" labelStyle={styles.sellerDetailLabel} value={`${payload.seller.taxId}${sellerOffice ? ` (${sellerOffice})` : ""}`} />
               </View>
               {(payload.seller.phone || payload.seller.email || payload.seller.website) ? <View style={styles.sellerContact}>
-                {payload.seller.phone ? <Text>{payload.seller.phone}</Text> : null}
-                {payload.seller.email ? <Text>{payload.seller.email}</Text> : null}
-                {payload.seller.website ? <Text>{payload.seller.website}</Text> : null}
+                {payload.seller.phone ? <View style={styles.sellerContactRow}><SellerContactIcon type="phone" /><Text>{payload.seller.phone}</Text></View> : null}
+                {payload.seller.email ? <View style={styles.sellerContactRow}><SellerContactIcon type="email" /><Text>{payload.seller.email}</Text></View> : null}
+                {payload.seller.website ? <View style={styles.sellerContactRow}><SellerContactIcon type="website" /><Text>{payload.seller.website}</Text></View> : null}
               </View> : null}
             </View>
           </View>

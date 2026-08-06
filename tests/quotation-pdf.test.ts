@@ -308,6 +308,13 @@ describe("quotation PDF", () => {
     assert.doesNotMatch(currentPdf, /tableHeader:\s*\{[^}]*position:/);
   });
 
+  it("renders the Current seller contact icons in the PDF", () => {
+    assert.match(currentPdf, /function SellerContactIcon/);
+    assert.match(currentPdf, /<SellerContactIcon type="phone" \/>/);
+    assert.match(currentPdf, /<SellerContactIcon type="email" \/>/);
+    assert.match(currentPdf, /<SellerContactIcon type="website" \/>/);
+  });
+
   it("allows validated long user content to wrap across pages", () => {
     const header = currentPdf.slice(currentPdf.indexOf("data-pdf-header"), currentPdf.indexOf("data-pdf-customer"));
     const customer = currentPdf.slice(currentPdf.indexOf("data-pdf-customer"), currentPdf.indexOf("data-pdf-items"));
