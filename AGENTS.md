@@ -61,6 +61,8 @@ app/ (routes, Server Components, Server Actions)
 - Before any Production deployment, state the exact Supabase project URL and Cloudflare account ID that will be targeted, then wait for confirmation.
 - Never infer Production deployment permission from requests to finish, publish, release, test, or deploy in general.
 - Before deploying, verify the selected environment and its target configuration. Do not deploy when the target is ambiguous or does not match the table above.
+- Deploy Staging only through `npm run deploy:cf:staging` (or `npm run upload:cf:staging`). These commands load `.env.staging` before the OpenNext build and target `wrangler.staging.jsonc`; do not run a Staging build with `.env.production`.
+- After a Staging deploy that changes environment or build scripts, verify the compiled bundle contains the Staging Supabase project reference and no Production project reference. Do not print environment-variable values or secrets while performing this check.
 
 ## Code Style
 
