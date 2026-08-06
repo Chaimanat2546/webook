@@ -150,8 +150,12 @@ function denied(): QuotationActionResult {
   };
 }
 
-function paymentAssetErrors(paymentMethods: QuotationPayload["paymentMethods"]): Record<string, string> {
-  const workerUrl = getQuotationAssetEnv().workerUrl;
+async function paymentAssetErrors(paymentMethods: QuotationPayload["paymentMethods"]): Promise<Record<string, string>> {
+  // Upload requests resolve these values from the deployed Worker binding.  Do
+  // the save-time allowlist check against that same runtime origin: OpenNext's
+  // process.env shim can otherwise retain an old build-time media URL and
+  // reject an image that was just uploaded successfully to Staging storage.
+  const workerUrl = (await getQuotationAssetRuntimeEnv()).workerUrl;
   const errors: Record<string, string> = {};
   for (const [index, method] of paymentMethods.entries()) {
     for (const [key, url] of [["customBankLogoUrl", method.customBankLogoUrl], ["qrImageUrl", method.qrImageUrl]] as const) {
@@ -166,8 +170,8 @@ function paymentAssetErrors(paymentMethods: QuotationPayload["paymentMethods"]):
   return errors;
 }
 
-function certificationAssetErrors(certification: QuotationPayload["certification"]): Record<string, string> {
-  const workerUrl = getQuotationAssetEnv().workerUrl;
+async function certificationAssetErrors(certification: QuotationPayload["certification"]): Promise<Record<string, string>> {
+  const workerUrl = (await getQuotationAssetRuntimeEnv()).workerUrl;
   const errors: Record<string, string> = {};
   for (const [key, url] of [
     ["certification.issuer.signatureUrl", certification.issuer.signatureUrl],
@@ -210,9 +214,9 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
         };
       }
     }
-    const paymentErrors = paymentAssetErrors(prepared.payload.paymentMethods);
+    const paymentErrors = await paymentAssetErrors(prepared.payload.paymentMethods);
     if (Object.keys(paymentErrors).length) return { fieldErrors: paymentErrors, formError: "", ok: false };
-    const certificationErrors = certificationAssetErrors(prepared.payload.certification);
+    const certificationErrors = await certificationAssetErrors(prepared.payload.certification);
     if (Object.keys(certificationErrors).length) return { fieldErrors: certificationErrors, formError: "", ok: false };
     const saved = await saveQuotation(supabase, prepared.rpcPayload);
     revalidatePath("/admin/quotations");
@@ -434,7 +438,7 @@ export async function saveCompanyPaymentMethodsAction(
   }
   try {
     const methods = prepareCompanyPaymentMethods(value);
-    const fieldErrors = paymentAssetErrors(methods);
+    const fieldErrors = await paymentAssetErrors(methods);
     if (Object.keys(fieldErrors).length) return { fieldErrors, formError: "", ok: false };
     await saveCompanyPaymentMethods(supabase, methods);
     revalidatePath("/admin/quotations/settings/company");
@@ -460,7 +464,7 @@ export async function saveCompanyCertificationAction(
   }
   try {
     const certification = prepareCertificationSnapshot(value);
-    const fieldErrors = certificationAssetErrors(certification);
+    const fieldErrors = await certificationAssetErrors(certification);
     if (Object.keys(fieldErrors).length) return { fieldErrors, formError: "", ok: false };
     await saveQuotationCompanyCertification(supabase, certification);
     revalidatePath("/admin/quotations/settings/company");

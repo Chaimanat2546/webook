@@ -143,6 +143,13 @@ describe("quotation repository and actions", () => {
     assert.match(actions, /certification\.companyStampUrl/);
   });
 
+  it("validates payment and certification asset URLs against the deployed runtime origin", () => {
+    assert.match(actions, /async function paymentAssetErrors[\s\S]*await getQuotationAssetRuntimeEnv\(\)/);
+    assert.match(actions, /async function certificationAssetErrors[\s\S]*await getQuotationAssetRuntimeEnv\(\)/);
+    assert.match(actions, /await paymentAssetErrors\(prepared\.payload\.paymentMethods\)/);
+    assert.match(actions, /await certificationAssetErrors\(prepared\.payload\.certification\)/);
+  });
+
   it("uploads certification images through an authorized same-origin API boundary", () => {
     assert.match(certificationUploadRoute, /requestOrigin !== new URL\(request\.url\)\.origin/);
     assert.match(certificationUploadRoute, /canUseQuotation\(adminUser\)/);
