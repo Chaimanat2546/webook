@@ -30,6 +30,8 @@ describe("quotation security hardening completion", () => {
     assert.match(nextConfig, /X-Frame-Options/);
     assert.match(nextConfig, /Referrer-Policy/);
     assert.match(middleware, /Content-Security-Policy/);
+    assert.match(middleware, /https:\/\/webook-media\.poolvilla\.workers\.dev/);
+    assert.match(middleware, /https:\/\/d24r25u6qcb3zryipzoiqj2jxy0ilqtm\.lambda-url\.ap-southeast-1\.on\.aws/);
     assert.match(middleware, /response\.headers\.delete\("x-powered-by"\)/);
   });
 });
