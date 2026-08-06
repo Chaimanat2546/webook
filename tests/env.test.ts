@@ -9,7 +9,7 @@ import {
 } from "../lib/env.ts";
 
 describe("environment helpers", () => {
-  it("normalizes surrounding whitespace from the advertisement image Worker URL", () => {
+  it("normalizes surrounding whitespace from advertisement image Worker credentials", () => {
     const previous = {
       workerSecret: process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET,
       workerUrl: process.env.ADVERTISEMENT_IMAGE_WORKER_URL,
@@ -19,7 +19,7 @@ describe("environment helpers", () => {
 
     try {
       assert.deepEqual(getAdvertisementImageEnv(), {
-        workerSecret: " secret-kept-exact ",
+        workerSecret: "secret-kept-exact",
         workerUrl: "https://media.example.com",
       });
     } finally {

@@ -21,7 +21,7 @@ export function getSupabaseServiceRoleEnv() {
 }
 
 export function getAdvertisementImageEnv() {
-  const workerSecret = process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET;
+  const workerSecret = process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET?.trim();
   const workerUrl = process.env.ADVERTISEMENT_IMAGE_WORKER_URL?.trim();
 
   if (!workerSecret || !workerUrl) {

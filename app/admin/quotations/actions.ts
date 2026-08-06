@@ -47,6 +47,7 @@ import {
   deleteQuotationAssetObject,
   uploadQuotationAssetObject,
 } from "../../../server/storage/quotation-assets";
+import { getQuotationAssetRuntimeEnv } from "../../../server/storage/quotation-asset-env";
 import { validateQuotationUploadedImage } from "../../../server/services/quotation-image-validation";
 
 export type QuotationActionResult =
@@ -238,6 +239,34 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
   }
 }
 
+function quotationImageUploadError(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("2 MB") || message.startsWith("รูปภาพ") || message.startsWith("ไฟล์รูป")) return message;
+
+  // Storage errors contain only the HTTP status and the Media Worker's short public response.
+  // Returning that context lets the user retry a transient failure and lets support identify a
+  // configuration mismatch without exposing the storage secret or URL.
+  if (message.startsWith("Failed to upload quotation asset (")) {
+    return `ระบบจัดเก็บรูปภาพตอบกลับผิดพลาด: ${message.replace("Failed to upload quotation asset ", "")}`;
+  }
+  if (message.startsWith("Missing advertisement image environment variables")) {
+    return "ระบบจัดเก็บรูปภาพยังไม่ได้ตั้งค่า กรุณาลองใหม่อีกครั้ง";
+  }
+  return fallback;
+}
+
+/**
+ * Cloudflare's Server Action multipart implementation can create a File from a
+ * different realm than the worker global.  Do not rely on `instanceof File` at
+ * this trust boundary; validate the file's bytes, MIME type, and size below.
+ */
+function isUploadedFile(value: FormDataEntryValue | null): value is File {
+  return typeof value === "object" && value !== null &&
+    typeof value.arrayBuffer === "function" &&
+    typeof value.size === "number" && Number.isFinite(value.size) &&
+    typeof value.type === "string";
+}
+
 export async function rotateQuotationPublicTokenAction(
   id: string,
 ): Promise<{ ok: true; publicToken: string } | { formError: string; ok: false }> {
@@ -294,11 +323,11 @@ export async function saveCompanyProfileAction(
   try {
     const existing = await getQuotationCompanyProfile(supabase, user.id);
     const value = formData.get("logo");
-    const logo = value instanceof File && value.size > 0 ? validateQuotationAssetFile(value) : null;
+    const logo = isUploadedFile(value) && value.size > 0 ? validateQuotationAssetFile(value) : null;
     if (logo && logo.type !== "image/webp") throw new Error("Logo must be normalized to WebP");
     let logoUrl = existing?.logo_url ?? "";
     if (logo) {
-      const env = getQuotationAssetEnv();
+      const env = await getQuotationAssetRuntimeEnv();
       uploadedObjectKey = buildQuotationAssetObjectKey();
       const body = await validateQuotationUploadedImage(logo, "webp");
       await uploadQuotationAssetObject({ body, contentType: "image/webp", objectKey: uploadedObjectKey, ...env });
@@ -337,11 +366,11 @@ export async function uploadQuotationPaymentAssetAction(
   }
   try {
     const file = formData.get("file");
-    if (!(file instanceof File)) throw new Error("กรุณาเลือกรูปช่องทางชำระเงิน");
+    if (!isUploadedFile(file)) throw new Error("กรุณาเลือกรูปช่องทางชำระเงิน");
     validateQuotationPaymentAssetFile(file);
     if (file.type !== "image/png") throw new Error("Payment image must be normalized to PNG");
     const body = await validateQuotationUploadedImage(file, "png");
-    const env = getQuotationAssetEnv();
+    const env = await getQuotationAssetRuntimeEnv();
     const objectKey = buildQuotationPaymentAssetObjectKey();
     await uploadQuotationAssetObject({
       body,
@@ -352,7 +381,7 @@ export async function uploadQuotationPaymentAssetAction(
     return { ok: true, url: buildQuotationPaymentAssetUrl(objectKey, env.workerUrl) };
   } catch (error) {
     console.error("Failed to upload quotation payment asset", error instanceof Error ? error.message : "Unknown error");
-    return { fieldErrors: {}, formError: error instanceof Error && error.message.includes("2 MB") ? error.message : "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้", ok: false };
+    return { fieldErrors: {}, formError: quotationImageUploadError(error, "ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้"), ok: false };
   }
 }
 
@@ -365,11 +394,11 @@ export async function uploadQuotationCertificationAssetAction(
   }
   try {
     const file = formData.get("file");
-    if (!(file instanceof File)) throw new Error("กรุณาเลือกรูปการรับรอง");
+    if (!isUploadedFile(file)) throw new Error("กรุณาเลือกรูปการรับรอง");
     validateQuotationCertificationAssetFile(file);
     if (file.type !== "image/png") throw new Error("Certification image must be normalized to PNG");
     const body = await validateQuotationUploadedImage(file, "png");
-    const env = getQuotationAssetEnv();
+    const env = await getQuotationAssetRuntimeEnv();
     const objectKey = buildQuotationCertificationAssetObjectKey();
     await uploadQuotationAssetObject({
       body,
@@ -380,12 +409,9 @@ export async function uploadQuotationCertificationAssetAction(
     return { ok: true, url: buildQuotationCertificationAssetUrl(objectKey, env.workerUrl) };
   } catch (error) {
     console.error("Failed to upload quotation certification asset", error instanceof Error ? error.message : "Unknown error");
-    const message = error instanceof Error ? error.message : "";
     return {
       fieldErrors: {},
-      formError: message.includes("2 MB") || message.startsWith("รูปภาพ") || message.startsWith("ไฟล์รูป")
-        ? message
-        : "ไม่สามารถอัปโหลดรูปการรับรองได้",
+      formError: quotationImageUploadError(error, "ไม่สามารถอัปโหลดรูปการรับรองได้"),
       ok: false,
     };
   }
