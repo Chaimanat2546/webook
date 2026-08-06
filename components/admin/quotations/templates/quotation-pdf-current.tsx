@@ -155,8 +155,8 @@ export function CurrentQuotationPdf({ images, model }: QuotationPdfRendererProps
         </View>
 
         {/* data-pdf-items */}
-        <View style={styles.table}>
-          <View fixed style={[styles.tableHeader, { backgroundColor: theme.light }]} wrap={false}>
+        <View style={styles.table} wrap>
+          <View style={[styles.tableHeader, { backgroundColor: theme.light }]} wrap={false}>
             <Text style={styles.descriptionCell}>คำอธิบาย</Text>
             <Text style={styles.qtyCell}>จำนวน</Text>
             {model.showUnit ? <Text style={styles.unitCell}>หน่วย</Text> : null}
