@@ -293,7 +293,7 @@ describe("quotation UI", () => {
     assert.ok(imageInput.indexOf("setPreviewUrl(localPreviewUrl)") < imageInput.indexOf("await onChange(normalized)"));
     assert.match(imageInput, /setPreviewUrl\(""\)/);
     assert.match(imageInput, /onRemove \? <Button/);
-    assert.match(fields, /throw new Error\(message\)/);
+    assert.match(fields, /throw new Error\(isUploadError\(result\) \|\| "ไม่สามารถอัปโหลดรูปการรับรองได้"\)/);
     assert.match(fields, /onChange\(\(current\) => updateCertificationSigner/);
     assert.match(fields, /onUploadStateChange\?\.\(field, busy\)/);
     assert.match(form, /const \[uploadingFields, setUploadingFields\] = useState\(new Set<string>\(\)\)/);
@@ -771,7 +771,7 @@ describe("quotation UI", () => {
     assert.match(actions, /ไม่มีสิทธิ์จัดการใบเสนอราคา/);
     assert.match(actions, /ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้/);
     assert.match(actions, /ไม่สามารถบันทึกช่องทางชำระเงินได้/);
-    assert.match(actions, /error\.message\.includes\("2 MB"\) \? error\.message/);
+    assert.match(actions, /message\.includes\("2 MB"\) \|\| message\.startsWith\("รูปภาพ"\)/);
     assert.match(payments, /ไม่สามารถอัปโหลดรูปช่องทางชำระเงินได้/);
   });
 

@@ -405,6 +405,20 @@ Deploy the media Worker manually:
 npx.cmd wrangler deploy --config workers/media/wrangler.jsonc
 ```
 
+For Staging, deploy the isolated media Worker and R2 bucket configuration
+instead. This prevents Staging quotation-image tests and uploads from sharing
+Production media storage:
+
+```powershell
+npx.cmd wrangler deploy --config workers/media/wrangler.staging.jsonc
+```
+
+Set the same `ADVERTISEMENT_IMAGE_WORKER_SECRET` on the `webook-staging` web
+Worker and the `webook-staging-media` media Worker, then set
+`ADVERTISEMENT_IMAGE_WORKER_URL` on the web Worker to the resulting Staging
+media Worker HTTPS origin. Configure that exact bare origin in
+`private.quotation_payment_asset_config` in the Staging Supabase project.
+
 After applying the quotation payment-asset migrations, configure the private
 database origin once from the same bare HTTPS origin used by
 `ADVERTISEMENT_IMAGE_WORKER_URL` (no trailing slash, path, query, or fragment):

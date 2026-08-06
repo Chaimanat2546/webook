@@ -2,7 +2,6 @@
 
 import type { Dispatch, SetStateAction } from "react";
 
-import { uploadQuotationCertificationAssetAction } from "../../../app/admin/quotations/actions";
 import { updateCertificationSigner, type CertificationSnapshot } from "../../../lib/quotation-certification";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
@@ -52,14 +51,23 @@ function CertificationImageField({ disabled, error: serverError, field, label, o
   async function upload(file: File) {
     const formData = new FormData();
     formData.set("file", file);
-    const result = await uploadQuotationCertificationAssetAction(formData).catch(() => null);
-    if (!result) throw new Error("ไม่สามารถอัปโหลดรูปการรับรองได้");
-    if (result.ok) onChange(result.url);
-    else {
-      const message = result.formError || Object.values(result.fieldErrors)[0] || "ไม่สามารถอัปโหลดรูปการรับรองได้";
-      throw new Error(message);
+    const response = await fetch("/api/admin/quotations/certification-assets", { body: formData, method: "POST" });
+    const result: unknown = await response.json().catch(() => null);
+    if (!response.ok || !isUploadResult(result)) {
+      throw new Error(isUploadError(result) || "ไม่สามารถอัปโหลดรูปการรับรองได้");
     }
+    onChange(result.url);
   }
 
   return <QuotationPngImageInput disabled={disabled} error={serverError} field={field} label={label} onBusyChange={(busy) => onUploadStateChange?.(field, busy)} onChange={upload} onRemove={() => onChange("")} value={value} />;
+}
+
+function isUploadResult(value: unknown): value is { url: string } {
+  return typeof value === "object" && value !== null && "url" in value && typeof value.url === "string";
+}
+
+function isUploadError(value: unknown): string {
+  return typeof value === "object" && value !== null && "error" in value && typeof value.error === "string"
+    ? value.error
+    : "";
 }

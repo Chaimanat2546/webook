@@ -1,0 +1,14 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "account_id": "0df55f166fa309dcc904e992c43f86db",
+  "name": "webook-staging-media",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-26",
+  "workers_dev": true,
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "webook-staging-media"
+    }
+  ]
+}

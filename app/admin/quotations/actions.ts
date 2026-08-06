@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES,
   buildQuotationAssetObjectKey,
   buildQuotationAssetUrl,
   buildQuotationCertificationAssetObjectKey,
@@ -11,9 +12,7 @@ import {
   buildQuotationPaymentAssetUrl,
   validateQuotationAssetFile,
   validateQuotationAssetUrl,
-  validateQuotationCertificationAssetFile,
   validateQuotationCertificationAssetUrl,
-  validateQuotationPaymentAssetFile,
   validateQuotationPaymentAssetUrl,
 } from "../../../lib/quotation-assets";
 import type { QuotationPayload } from "../../../lib/quotation-types";
@@ -267,6 +266,17 @@ function isUploadedFile(value: FormDataEntryValue | null): value is File {
     typeof value.type === "string";
 }
 
+/**
+ * The browser has already normalized these optional document images to PNG.
+ * Trust the server-side PNG signature validation rather than multipart MIME,
+ * which is not preserved consistently by every Worker runtime.
+ */
+function validateNormalizedQuotationPng(file: File): File {
+  if (file.size === 0) throw new Error("ไฟล์รูปว่างเปล่า");
+  if (file.size > QUOTATION_SNAPSHOT_IMAGE_MAX_BYTES) throw new Error("ไฟล์รูปต้องมีขนาดไม่เกิน 2 MB");
+  return file;
+}
+
 export async function rotateQuotationPublicTokenAction(
   id: string,
 ): Promise<{ ok: true; publicToken: string } | { formError: string; ok: false }> {
@@ -367,9 +377,8 @@ export async function uploadQuotationPaymentAssetAction(
   try {
     const file = formData.get("file");
     if (!isUploadedFile(file)) throw new Error("กรุณาเลือกรูปช่องทางชำระเงิน");
-    validateQuotationPaymentAssetFile(file);
-    if (file.type !== "image/png") throw new Error("Payment image must be normalized to PNG");
-    const body = await validateQuotationUploadedImage(file, "png");
+    const normalized = validateNormalizedQuotationPng(file);
+    const body = await validateQuotationUploadedImage(normalized, "png");
     const env = await getQuotationAssetRuntimeEnv();
     const objectKey = buildQuotationPaymentAssetObjectKey();
     await uploadQuotationAssetObject({
@@ -395,9 +404,8 @@ export async function uploadQuotationCertificationAssetAction(
   try {
     const file = formData.get("file");
     if (!isUploadedFile(file)) throw new Error("กรุณาเลือกรูปการรับรอง");
-    validateQuotationCertificationAssetFile(file);
-    if (file.type !== "image/png") throw new Error("Certification image must be normalized to PNG");
-    const body = await validateQuotationUploadedImage(file, "png");
+    const normalized = validateNormalizedQuotationPng(file);
+    const body = await validateQuotationUploadedImage(normalized, "png");
     const env = await getQuotationAssetRuntimeEnv();
     const objectKey = buildQuotationCertificationAssetObjectKey();
     await uploadQuotationAssetObject({
