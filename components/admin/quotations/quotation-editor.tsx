@@ -1031,7 +1031,7 @@ export function QuotationEditor({
     let timeout: number | undefined;
     const controller = new AbortController();
     const printStyle = document.createElement("style");
-    printStyle.textContent = "@page { size: A4; margin: 0; }";
+    printStyle.textContent = "@page { size: A4; margin: 10mm; }";
     function cleanup() {
       if (finished) return;
       finished = true;

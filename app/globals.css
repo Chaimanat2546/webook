@@ -152,7 +152,7 @@
   }
   html.quotation-printing [data-quotation-print] {
     display: block !important;
-    width: 210mm;
+    width: auto;
     margin: 0;
   }
   [data-quotation-document] {
@@ -166,6 +166,13 @@
      printable row, while table rows themselves remain free to continue. */
   [data-quotation-document][data-quotation-template="current"] [data-layout-zone="body"] {
     display: block !important;
+  }
+  /* Browser page margins repeat on every sheet; component padding does not.
+     Use the page margin for Current so page two has the same top inset. */
+  [data-quotation-document][data-quotation-template="current"] {
+    min-height: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
   }
   [data-quotation-document][data-quotation-template="current"] [data-document-customer] {
     break-after: avoid-page;
