@@ -7,8 +7,8 @@ their own seller profile, reusable payment methods, optional certification
 master, and quotations. Every seller profile, payment master, and quotation is linked to the current
 Supabase Auth user. RLS combines that ownership check with the existing
 quotation permission, so one account cannot read or change another account's
-data. ข้อมูลลูกค้า is intentionally different: all quotation-authorized
-users share it and may add, edit, deactivate, or reactivate customers.
+data. ข้อมูลลูกค้า follows the same owner boundary: each seller can add, edit,
+deactivate, reactivate, and search only its own customers.
 
 The customer snapshot contains only name, address, tax ID, office type, and
 branch number. This MVP does not include approval, customer acceptance,
@@ -20,9 +20,15 @@ history.
 - `/admin/quotations` - list, search, print, and soft-delete owned quotations
 - `/admin/quotations/new` - create from the current user's seller and default payment masters
 - `/admin/quotations/[id]` - edit saved seller and payment snapshots
-- `/admin/quotations/customers` - search and manage the shared ข้อมูลลูกค้า
+- `/admin/quotations/customers` - search and manage the current seller's ข้อมูลลูกค้า
 - `/admin/quotations/settings/company` - manage the current user's seller profile, payment masters, and certification master
 - `/q/[token]` - no-login, token-scoped public view of the latest saved quotation
+
+Public quotation links created after this policy are bearer links that expire
+30 days after they are created or reset. The saved-document toolbar can reset
+a link; the prior link stops working immediately and the replacement link
+receives a fresh 30-day expiry. Older links remain readable until their owner
+resets them, which avoids changing existing saved documents as part of rollout.
 
 ## Quotation List UX
 

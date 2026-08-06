@@ -710,3 +710,17 @@ export async function softDeleteQuotation(supabase: SupabaseClient, id: string) 
   if (error) throw new Error(error.message);
   return String(data);
 }
+
+export async function rotateQuotationPublicToken(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<{ expiresAt: string; publicToken: string }> {
+  const { data, error } = await supabase.rpc("rotate_quotation_public_token", { p_id: id });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+  if (!row) throw new Error("Quotation public link rotation returned no row");
+  return {
+    expiresAt: stringValue(row.public_token_expires_at),
+    publicToken: stringValue(row.public_token),
+  };
+}

@@ -2,6 +2,7 @@ import { CreditCard, MapPin, MessageCircle, ReceiptText, Signature } from "lucid
 
 import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle, quotationLayoutDocumentStyle } from "../../../../lib/quotation-layout-renderer";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
+import { canUseHospitalitySideBySideSettlement } from "../../../../lib/quotation-hospitality-layout";
 
 import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
 import {
@@ -40,6 +41,20 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
   const hasContact = Boolean(
     payload.seller.contactName || payload.seller.contactPhone || payload.seller.contactEmail,
   );
+  const canUseSideBySideSettlement = canUseHospitalitySideBySideSettlement({
+    paymentMethodCount: model.paymentMethods.length,
+    paymentContentLength: model.paymentMethods.reduce(
+      (total, method) => total + [
+        method.accountName, method.accountNumber, method.bankName, method.customBankName,
+        method.instructions, method.promptPayId, method.providerName,
+      ].join("").length + (method.qrSource || method.customBankLogoUrl || method.bankLogoUrl ? 240 : 0),
+      0,
+    ),
+    hasPaymentQr: model.paymentMethods.some((method) => Boolean(method.qrSource)),
+    publicNotesLength: payload.publicNotes.length,
+  });
+  const settlementBlockStyle = (id: "paymentMethods" | "publicNotes" | "summary") =>
+    canUseSideBySideSettlement ? quotationLayoutBlockStyle(model, id) : { gridColumn: "1 / -1" };
 
   return (
     <article
@@ -88,7 +103,7 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
       </div>
 
       <section className="mt-4 grid grid-cols-12 gap-4" data-layout-zone="body">
-        <div className="rounded-md border border-[#c79b58]/50 bg-[#fff8e9] p-3" data-hospitality-recipient data-layout-block="customer" style={quotationLayoutBlockStyle(model, "customer")}>
+        <div className="rounded-md border border-[#c79b58]/50 bg-[#fff8e9] p-3" data-document-customer data-hospitality-recipient data-layout-block="customer" style={quotationLayoutBlockStyle(model, "customer")}>
           <p className="mb-2 font-semibold text-[#286a5b]">สำหรับ</p>
           <p className="font-semibold [overflow-wrap:anywhere]">{payload.customer.name}</p>
           <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.customer.address}</p>
@@ -115,12 +130,12 @@ export function HospitalityQuotationDocument({ model }: QuotationDocumentRendere
 
       </section>
 
-      <section className="mt-4 grid grid-cols-12 gap-4 border-y border-[#286a5b]/20 py-3" data-document-summary data-layout-zone="settlement">
-        <div className="min-w-0" data-layout-block="paymentMethods" style={quotationLayoutBlockStyle(model, "paymentMethods")}>
+      <section className="mt-4 grid grid-cols-12 gap-4 border-y border-[#286a5b]/20 py-3" data-document-summary data-hospitality-summary-sequential={!canUseSideBySideSettlement || undefined} data-layout-zone="settlement">
+        <div className="min-w-0" data-layout-block="paymentMethods" style={settlementBlockStyle("paymentMethods")}>
           {model.paymentMethods.length ? <div data-document-payment-methods><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#286a5b]"><CreditCard aria-hidden="true" className="size-3" />การชำระเงิน</h2><div className="divide-y divide-[#286a5b]/15">{model.paymentMethods.map((method) => <PaymentMethod key={method.id} method={method} />)}</div></div> : null}
         </div>
-        {model.showNotes ? <section data-document-notes data-layout-block="publicNotes" style={quotationLayoutBlockStyle(model, "publicNotes")}><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#286a5b]"><MessageCircle aria-hidden="true" className="size-3" />หมายเหตุ</h2><p className="whitespace-pre-line [overflow-wrap:anywhere]">{payload.publicNotes}</p></section> : null}
-        <aside className="break-inside-avoid h-full rounded-md bg-[#286a5b] p-3 text-white" data-hospitality-settlement data-document-summary-settlement data-layout-block="summary" style={quotationLayoutBlockStyle(model, "summary")}>
+        {model.showNotes ? <section data-document-notes data-layout-block="publicNotes" style={settlementBlockStyle("publicNotes")}><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#286a5b]"><MessageCircle aria-hidden="true" className="size-3" />หมายเหตุ</h2><p className="whitespace-pre-line [overflow-wrap:anywhere]">{payload.publicNotes}</p></section> : null}
+        <aside className="break-inside-avoid h-full rounded-md bg-[#286a5b] p-3 text-white" data-hospitality-settlement data-document-summary-settlement data-layout-block="summary" style={settlementBlockStyle("summary")}>
           <h2 className="mb-2 flex items-center gap-1 font-semibold"><ReceiptText aria-hidden="true" className="size-3" />สรุปการชำระ</h2>
           <HospitalityTotal label="มูลค่ารวม" value={formatBaht(calculation.grossTotal)} />
           <HospitalityTotal label="ส่วนลด" value={formatBaht(calculation.discountTotal)} />

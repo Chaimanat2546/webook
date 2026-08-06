@@ -81,11 +81,22 @@ describe("quotation public share", () => {
     assert.match(repository, /document_template_snapshot/);
     assert.match(
       repository,
-      /template: normalizeQuotationTemplate\(row\.document_template_snapshot\)/,
+      /const template = normalizeQuotationTemplate\(row\.document_template_snapshot\)/,
     );
     assert.match(viewModel, /payload\.paymentMethods/);
     assert.match(document, /model\.paymentMethods/);
     assert.doesNotMatch(document, /internalNotes/);
+  });
+
+  it("expires public bearer links and lets only the owner rotate them", () => {
+    const migration = source("../supabase/migrations/20260806103000_quotation_security_hardening.sql");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(migration, /public_token_expires_at timestamptz/);
+    assert.match(migration, /public_token_expires_at is null or q\.public_token_expires_at > now\(\)/);
+    assert.match(migration, /private\.has_quotation_permission\(\)/);
+    assert.match(migration, /q\.created_by = auth\.uid\(\)/);
+    assert.match(editor, /rotateQuotationPublicTokenAction/);
+    assert.match(editor, /รีเซ็ตลิงก์/);
   });
 
   it("passes the public saved template snapshot to the shared document dispatcher", () => {

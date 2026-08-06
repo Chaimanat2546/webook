@@ -5,6 +5,7 @@ import { Font, pdf } from "@react-pdf/renderer";
 
 import { calculateQuotation } from "../../lib/quotation-calculator.ts";
 import { buildQuotationDocumentViewModel } from "../../lib/quotation-document-view.ts";
+import { canonicalQuotationLayoutSnapshot } from "../../lib/quotation-layout.ts";
 import { QuotationDocument } from "../../components/admin/quotations/quotation-document.tsx";
 import { CorporateQuotationPdf } from "../../components/admin/quotations/templates/quotation-pdf-corporate.tsx";
 import { CurrentQuotationPdf } from "../../components/admin/quotations/templates/quotation-pdf-current.tsx";
@@ -56,7 +57,7 @@ async function renderPdfBuffer(Renderer, model) {
 }
 
 const renders = Object.fromEntries(await Promise.all(["current", "hospitality", "corporate"].map(async (template) => {
-  const templatePayload = { ...payload, template };
+  const templatePayload = { ...payload, layout: canonicalQuotationLayoutSnapshot(template), template };
   const model = buildQuotationDocumentViewModel({ calculation, documentNumber: "QO-PARITY-001", payload: templatePayload });
   const Renderer = rendererByTemplate[template];
   const hiddenPayload = {

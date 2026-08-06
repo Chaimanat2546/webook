@@ -32,6 +32,7 @@ import {
   saveQuotationDocumentDisplayDefaults,
   saveQuotationTemplateDefault,
   publishQuotationDocumentTemplateLayout,
+  rotateQuotationPublicToken,
   softDeleteQuotation,
 } from "../../../server/repositories/quotations";
 import { QuotationPaymentAssetOriginNotConfiguredError } from "../../../server/repositories/quotation-errors";
@@ -46,6 +47,7 @@ import {
   deleteQuotationAssetObject,
   uploadQuotationAssetObject,
 } from "../../../server/storage/quotation-assets";
+import { validateQuotationUploadedImage } from "../../../server/services/quotation-image-validation";
 
 export type QuotationActionResult =
   | { documentNumber: string; id: string; ok: true; payload: QuotationPayload; publicToken: string }
@@ -236,6 +238,25 @@ export async function saveQuotationAction(value: unknown): Promise<QuotationActi
   }
 }
 
+export async function rotateQuotationPublicTokenAction(
+  id: string,
+): Promise<{ ok: true; publicToken: string } | { formError: string; ok: false }> {
+  const { adminUser, supabase } = await requireAdmin();
+  if (!canUseQuotation(adminUser)) return { formError: "ไม่มีสิทธิ์จัดการใบเสนอราคา", ok: false };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    return { formError: "รหัสใบเสนอราคาไม่ถูกต้อง", ok: false };
+  }
+  try {
+    const result = await rotateQuotationPublicToken(supabase, id);
+    revalidatePath(`/admin/quotations/${encodeURIComponent(id)}`);
+    revalidatePath(`/q/${encodeURIComponent(result.publicToken)}`);
+    return { ok: true, publicToken: result.publicToken };
+  } catch (error) {
+    console.error("Failed to rotate quotation public link", error instanceof Error ? error.message : "Unknown error");
+    return { formError: "ไม่สามารถรีเซ็ตลิงก์สาธารณะได้ กรุณาลองอีกครั้ง", ok: false };
+  }
+}
+
 export async function deleteQuotationAction(
   id: string,
 ): Promise<{ formError: string; ok: false } | { id: string; ok: true }> {
@@ -279,7 +300,8 @@ export async function saveCompanyProfileAction(
     if (logo) {
       const env = getQuotationAssetEnv();
       uploadedObjectKey = buildQuotationAssetObjectKey();
-      await uploadQuotationAssetObject({ body: await logo.arrayBuffer(), contentType: "image/webp", objectKey: uploadedObjectKey, ...env });
+      const body = await validateQuotationUploadedImage(logo, "webp");
+      await uploadQuotationAssetObject({ body, contentType: "image/webp", objectKey: uploadedObjectKey, ...env });
       logoUrl = buildQuotationAssetUrl(uploadedObjectKey, env.workerUrl);
     }
     const seller = prepareSellerSnapshot({
@@ -318,10 +340,11 @@ export async function uploadQuotationPaymentAssetAction(
     if (!(file instanceof File)) throw new Error("กรุณาเลือกรูปช่องทางชำระเงิน");
     validateQuotationPaymentAssetFile(file);
     if (file.type !== "image/png") throw new Error("Payment image must be normalized to PNG");
+    const body = await validateQuotationUploadedImage(file, "png");
     const env = getQuotationAssetEnv();
     const objectKey = buildQuotationPaymentAssetObjectKey();
     await uploadQuotationAssetObject({
-      body: await file.arrayBuffer(),
+      body,
       contentType: "image/png",
       objectKey,
       ...env,
@@ -345,10 +368,11 @@ export async function uploadQuotationCertificationAssetAction(
     if (!(file instanceof File)) throw new Error("กรุณาเลือกรูปการรับรอง");
     validateQuotationCertificationAssetFile(file);
     if (file.type !== "image/png") throw new Error("Certification image must be normalized to PNG");
+    const body = await validateQuotationUploadedImage(file, "png");
     const env = getQuotationAssetEnv();
     const objectKey = buildQuotationCertificationAssetObjectKey();
     await uploadQuotationAssetObject({
-      body: await file.arrayBuffer(),
+      body,
       contentType: "image/png",
       objectKey,
       ...env,

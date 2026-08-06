@@ -25,6 +25,7 @@ import { toast } from "sonner";
 
 import {
   deleteQuotationAction,
+  rotateQuotationPublicTokenAction,
   saveQuotationAction,
   saveQuotationDocumentDisplayDefaultsAction,
   saveQuotationTemplateDefaultAction,
@@ -1138,6 +1139,17 @@ export function QuotationEditor({
       toast.error("ไม่สามารถคัดลอกลิงก์ได้");
     }
   }
+  async function rotatePublicLink() {
+    if (!payload.id || !canUseSavedDocument) return;
+    const result = await rotateQuotationPublicTokenAction(payload.id);
+    if (!result.ok) {
+      toast.error(result.formError);
+      return;
+    }
+    setPublicToken(result.publicToken);
+    setPublicQrSettledToken("");
+    toast.success("รีเซ็ตลิงก์สาธารณะแล้ว ลิงก์เดิมใช้ไม่ได้ทันที");
+  }
   async function downloadSaved() {
     if (!canUseSavedDocument || !lastSavedPayload || !savedCalculation || !documentNumber || isDownloading) return;
     const needsPublicQr = lastSavedPayload.documentDisplay.certificationQr;
@@ -1312,6 +1324,16 @@ export function QuotationEditor({
           >
             <Share2 aria-hidden="true" className="size-4" />
             แชร์
+          </Button>
+          <Button
+            disabled={!canUseSavedDocument || !payload.id}
+            onClick={rotatePublicLink}
+            size="sm"
+            title={documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined}
+            type="button"
+            variant="outline"
+          >
+            รีเซ็ตลิงก์
           </Button>
           <Button
             disabled={!canPrint}

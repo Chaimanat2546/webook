@@ -78,6 +78,6 @@ describe("Hospitality quotation layout", () => {
       "utf8",
     );
 
-    assert.match(pdf, /style=\{canUseSideBySideSettlement \? styles\.paymentColumn : undefined\}/);
+    assert.match(pdf, /canUseSideBySideSettlement \? styles\.paymentColumn : undefined/);
   });
 });

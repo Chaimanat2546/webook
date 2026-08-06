@@ -255,7 +255,7 @@ describe("quotation UI", () => {
     const page = source("../app/admin/quotations/settings/company/page.tsx");
     const form = source("../components/admin/quotations/company-profile-form.tsx");
 
-    assert.match(page, /searchParams: Promise<\{ section\?: string \}>/);
+    assert.match(page, /searchParams: Promise<\{ section\?: string; template\?: string \}>/);
     assert.match(page, /section === "payments" \|\| section === "certification"/);
     assert.match(page, /\?section=company/);
     assert.match(page, /\?section=payments/);
