@@ -315,6 +315,12 @@ describe("quotation PDF", () => {
     assert.match(currentPdf, /<SellerContactIcon type="website" \/>/);
   });
 
+  it("uses the Current preview's header and seller-contact measurements in the PDF", () => {
+    assert.match(currentPdf, /header: \{ columnGap: 21, flexDirection: "row" \}/);
+    assert.match(currentPdf, /sellerContact: \{ flexBasis: 107\.7, marginLeft: 15 \}/);
+    assert.match(currentPdf, /titleBox: \{ width: 215 \}/);
+  });
+
   it("allows validated long user content to wrap across pages", () => {
     const header = currentPdf.slice(currentPdf.indexOf("data-pdf-header"), currentPdf.indexOf("data-pdf-customer"));
     const customer = currentPdf.slice(currentPdf.indexOf("data-pdf-customer"), currentPdf.indexOf("data-pdf-items"));
