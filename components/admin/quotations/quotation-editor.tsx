@@ -16,6 +16,7 @@ import {
   Download,
   GripVertical,
   Printer,
+  RotateCcw,
   Share2,
   Trash2,
 } from "lucide-react";
@@ -1335,6 +1336,7 @@ export function QuotationEditor({
             type="button"
             variant="outline"
           >
+            <RotateCcw aria-hidden="true" className="size-4" />
             รีเซ็ตลิงก์
           </Button>
           <Button

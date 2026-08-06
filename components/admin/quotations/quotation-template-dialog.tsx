@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LayoutTemplate } from "lucide-react";
 
 import {
   QUOTATION_TEMPLATE_LABELS,
@@ -62,6 +63,7 @@ export function QuotationTemplateDialog({
     <Dialog onOpenChange={changeOpen} open={open}>
       <DialogTrigger asChild>
         <Button disabled={disabled} size="sm" type="button" variant="outline">
+          <LayoutTemplate aria-hidden="true" className="size-4" />
           เลือกเทมเพลต
         </Button>
       </DialogTrigger>
