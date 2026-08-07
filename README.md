@@ -12,6 +12,22 @@ Current focus:
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
 House/accommodation menu access currently requires `allow_tools.allow_accommodation = true`.
 
+## Central User Manager
+
+`/admin/user-manager` is available only to an exact `role_id = 1` administrator.
+It uses a three-column Tenant list, user table, and action panel. The browser submits
+only a server-approved Tenant key; it never receives a Tenant UUID, Worker URL, binding
+name, or Bearer credential. Each configured Tenant has its own named internal Cloudflare
+Service Binding. Production currently binds `CUM_BAANPARTY` to `baan-pool-villa` and
+`CUM_POOLVILLAPATTAYA` to `baan-pool-villa02`, both through
+`CentralUserManagerEntrypoint`. Add a Tenant only by updating the server-only registry,
+Cloudflare binding types, and production `wrangler.jsonc`, then redeploying
+`webook-admin`. Audit rows record only operation metadata and safe status, never an
+email, request payload, or password.
+
+All Tenant Workers must be in the same Cloudflare account as `webook-admin`. Do not
+replace a Service Binding with a Worker URL, `fetch`, or Bearer credential.
+
 ## Quotation management MVP 1
 
 Quotation management is an explicitly added admin module. Users need
@@ -354,6 +370,17 @@ The Next.js admin app deploys to a separate Cloudflare Worker through OpenNext:
 npm.cmd run deploy:cf
 ```
 
+If the OpenNext deploy command cannot start Miniflare/workerd on Windows, run
+`npm ci` first to restore the lockfile's local CLI binaries, then use the
+Windows fallback. It builds the same `.open-next/worker.js`, deploys it without
+starting a local Workers runtime, and preserves existing Worker variables and
+secrets:
+
+```powershell
+npm.cmd ci
+npm.cmd run deploy:cf:windows
+```
+
 The root `wrangler.jsonc` deploys the admin web Worker named `webook-admin`.
 Do not use `workers/media/wrangler.jsonc` for the admin web app.
 The build script runs Next.js with `--webpack` and `--use-system-ca` so OpenNext can bundle server chunks correctly on this Windows workspace.
@@ -388,6 +415,20 @@ Deploy the media Worker manually:
 ```powershell
 npx.cmd wrangler deploy --config workers/media/wrangler.jsonc
 ```
+
+For Staging, deploy the isolated media Worker and R2 bucket configuration
+instead. This prevents Staging quotation-image tests and uploads from sharing
+Production media storage:
+
+```powershell
+npx.cmd wrangler deploy --config workers/media/wrangler.staging.jsonc
+```
+
+Set the same `ADVERTISEMENT_IMAGE_WORKER_SECRET` on the `webook-staging` web
+Worker and the `webook-staging-media` media Worker, then set
+`ADVERTISEMENT_IMAGE_WORKER_URL` on the web Worker to the resulting Staging
+media Worker HTTPS origin. Configure that exact bare origin in
+`private.quotation_payment_asset_config` in the Staging Supabase project.
 
 After applying the quotation payment-asset migrations, configure the private
 database origin once from the same bare HTTPS origin used by

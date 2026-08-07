@@ -23,9 +23,11 @@ import {
 import { TooltipProvider } from "../ui/tooltip";
 
 export function AdminDesktopSidebar({
+  canManageCentralUsers,
   canUseQuotation,
   signOutAction,
 }: {
+  canManageCentralUsers: boolean;
   canUseQuotation: boolean;
   signOutAction: () => Promise<void>;
 }) {
@@ -125,6 +127,20 @@ export function AdminDesktopSidebar({
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>
+                  </SidebarMenuItem>
+                ) : null}
+                {canManageCentralUsers ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith("/admin/user-manager")}
+                      tooltip="จัดการผู้ใช้"
+                    >
+                      <Link href="/admin/user-manager" onClick={closeMobileSidebar}>
+                        <UsersIcon data-icon="inline-start" />
+                        <span>จัดการผู้ใช้</span>
+                      </Link>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) : null}
               </SidebarMenu>

@@ -29,7 +29,18 @@ describe("Cloudflare deployment boundary", () => {
         bucket_name: "webook-admin-next-cache",
       },
     ]);
-    assert.equal(Object.hasOwn(config, "services"), false);
+    assert.deepEqual(config.services, [
+      {
+        binding: "CUM_BAANPARTY",
+        service: "baan-pool-villa",
+        entrypoint: "CentralUserManagerEntrypoint",
+      },
+      {
+        binding: "CUM_POOLVILLAPATTAYA",
+        service: "baan-pool-villa02",
+        entrypoint: "CentralUserManagerEntrypoint",
+      },
+    ]);
     assert.equal(Object.hasOwn(config, "durable_objects"), false);
     assert.equal(Object.hasOwn(config, "migrations"), false);
 

@@ -9,17 +9,165 @@ const source = (path: string) =>
   existsSync(path) ? readFileSync(path, "utf8") : "";
 
 const pdfSource = source("components/admin/quotations/quotation-pdf.tsx");
+const currentPdf = source(
+  "components/admin/quotations/templates/quotation-pdf-current.tsx",
+);
+const sharedPdf = source(
+  "components/admin/quotations/templates/quotation-pdf-shared.tsx",
+);
+const hospitalityPdf = source(
+  "components/admin/quotations/templates/quotation-pdf-hospitality.tsx",
+);
+const corporatePdf = source(
+  "components/admin/quotations/templates/quotation-pdf-corporate.tsx",
+);
 const editorSource = source("components/admin/quotations/quotation-editor.tsx");
+const globalStyles = source("app/globals.css");
 
 describe("quotation PDF", () => {
+  it("keeps the logo and document masthead above movable sections", () => {
+    assert.match(
+      globalStyles,
+      /\[data-document-header\],[\s\S]*\[data-document-top-rule\]\s*\{\s*order:\s*-1;/,
+    );
+    assert.match(pdfSource, /fixed: children\.slice\(0, 1\)/);
+    assert.match(pdfSource, /fixed: children\.slice\(0, 2\)/);
+    assert.match(pdfSource, /header: children\.slice\(1, 2\)/);
+    assert.match(pdfSource, /header: children\.slice\(2, 3\)/);
+  });
+
+  it("keeps every PDF template on the shared public-document contract", () => {
+    for (const template of [currentPdf]) {
+      for (const marker of [
+        "data-pdf-header",
+        "data-pdf-customer",
+        "data-pdf-items",
+        "data-pdf-totals",
+        "data-pdf-payment-methods",
+        "data-pdf-notes",
+        "data-pdf-certification",
+        "payload.seller",
+        "model.documentNumber",
+        "payload.seller.name",
+        "payload.seller.address",
+        "payload.seller.taxId",
+        "model.issueDate",
+        "model.validUntil",
+        "payload.customer.name",
+        "payload.customer.address",
+        "calculation.lines.map",
+        "calculation.grandTotal",
+        "model.paymentMethods.map",
+        "payload.publicNotes",
+        "model.certification",
+      ]) {
+        assert.match(template, new RegExp(marker));
+      }
+      assert.doesNotMatch(template, /internalNotes/);
+      assert.doesNotMatch(template, /calculateQuotation|document_template_default|accountTemplateDefault/);
+    }
+  });
+
+  it("renders Corporate with its own navy PDF layout", () => {
+    for (const marker of [
+      "CorporateQuotationPdf",
+      "#142d4c",
+      "#f2f5f8",
+      "data-pdf-header",
+      "data-pdf-customer",
+      "data-pdf-items",
+      "data-pdf-totals",
+      "data-pdf-payment-methods",
+      "data-pdf-notes",
+      "data-pdf-certification",
+      "data-corporate-settlement",
+      "มูลค่ารวม",
+      "ส่วนลด",
+    ]) {
+      assert.match(corporatePdf, new RegExp(marker));
+    }
+    assert.doesNotMatch(corporatePdf, /CurrentQuotationPdf/);
+    assert.match(pdfSource, /quotation-pdf-corporate/);
+  });
+
+  it("renders Hospitality with its own green PDF layout", () => {
+    for (const marker of [
+      "HospitalityQuotationPdf",
+      "#286a5b",
+      "#c79b58",
+      "data-pdf-header",
+      "data-pdf-items",
+      "data-pdf-totals",
+      "data-pdf-payment-methods",
+      "data-pdf-notes",
+      "data-pdf-certification",
+      "มูลค่ารวม",
+      "ส่วนลด",
+    ]) {
+      assert.match(hospitalityPdf, new RegExp(marker));
+    }
+    assert.doesNotMatch(hospitalityPdf, /CurrentQuotationPdf/);
+    assert.match(pdfSource, /quotation-pdf-hospitality/);
+  });
+
+  it("aligns the Hospitality seller block with its swapped side", () => {
+    assert.match(
+      hospitalityPdf,
+      /sellerRight:\s*\{\s*paddingLeft:\s*16,\s*paddingRight:\s*0,\s*textAlign:\s*"right"\s*\}/,
+    );
+    assert.match(
+      hospitalityPdf,
+      /metadataIsLeft \? styles\.sellerRight : \{\}/,
+    );
+    const hospitalityHtml = source(
+      "components/admin/quotations/templates/quotation-document-hospitality.tsx",
+    );
+    assert.match(
+      hospitalityHtml,
+      /metadataIsLeft \? "text-right" : "text-left"/,
+    );
+  });
+
   it("uses the approved PDF renderer, shared model, Thai fonts, and A4", () => {
     assert.match(pdfSource, /@react-pdf\/renderer/);
     assert.match(pdfSource, /buildQuotationDocumentViewModel/);
-    assert.match(pdfSource, /NotoSansThai-Regular\.ttf/);
-    assert.match(pdfSource, /NotoSansThai-SemiBold\.ttf/);
+    assert.match(pdfSource, /NotoSansThai-Regular-v2\.ttf/);
+    assert.match(pdfSource, /NotoSansThai-SemiBold-v2\.ttf/);
     assert.match(pdfSource, /registerHyphenationCallback/);
-    assert.match(pdfSource, /size="A4"/);
-    assert.match(pdfSource, /wrap/);
+    assert.match(currentPdf, /size="A4"/);
+    assert.match(currentPdf, /wrap/);
+  });
+
+  it("dispatches the resolved model to every fixed template renderer", () => {
+    assert.match(pdfSource, /model\.payload\.template/);
+    assert.match(pdfSource, /CurrentQuotationPdf/);
+    assert.match(pdfSource, /HospitalityQuotationPdf/);
+    assert.match(pdfSource, /CorporateQuotationPdf/);
+  });
+
+  it("uses the saved layout when placing movable PDF header and settlement blocks", () => {
+    for (const template of [currentPdf]) {
+      assert.match(template, /isQuotationLayoutBlockBefore/);
+      assert.match(template, /metadataIsLeft/);
+      assert.match(template, /flexDirection: "row-reverse"/);
+    }
+    for (const template of [hospitalityPdf, corporatePdf]) {
+      assert.match(template, /summaryIsLeft/);
+    }
+  });
+
+  it("reorders whole PDF sections from the saved layout and keeps Hospitality footer last", () => {
+    assert.match(pdfSource, /quotationLayoutZonesInDocumentOrder/);
+    assert.match(pdfSource, /function reorderQuotationPdfDocument/);
+    assert.match(pdfSource, /template === "hospitality" \? children\.slice\(7\) : \[\]/);
+    assert.match(pdfSource, /\.\.\.sections\.fixed[\s\S]*\.\.\.ordered[\s\S]*\.\.\.sections\.footer/);
+  });
+
+  it("keeps the Current document's required semantic sections", () => {
+    assert.match(currentPdf, /data-pdf-header/);
+    assert.match(currentPdf, /data-pdf-items/);
+    assert.match(currentPdf, /data-pdf-totals/);
+    assert.match(currentPdf, /data-pdf-certification/);
   });
 
   it("embeds fonts that cover both Latin values and Thai labels", () => {
@@ -29,11 +177,11 @@ describe("quotation PDF", () => {
       };
     };
     const requiredCharacters =
-      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-/%(): คืน";
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.-/%(): คืนรายละเอียด";
 
     for (const path of [
-      "public/fonts/NotoSansThai-Regular.ttf",
-      "public/fonts/NotoSansThai-SemiBold.ttf",
+      "public/fonts/NotoSansThai-Regular-v2.ttf",
+      "public/fonts/NotoSansThai-SemiBold-v2.ttf",
     ]) {
       const font = fontkit.openSync(path);
       for (const character of requiredCharacters) {
@@ -47,10 +195,10 @@ describe("quotation PDF", () => {
   });
 
   it("lets Thai font metrics determine line height at every text size", () => {
-    const pageStart = pdfSource.indexOf("page: {");
-    const pageEnd = pdfSource.indexOf("row: {");
+    const pageStart = currentPdf.indexOf("page: {");
+    const pageEnd = currentPdf.indexOf("row: {");
     assert.ok(pageStart >= 0 && pageEnd > pageStart);
-    const pageStyle = pdfSource.slice(pageStart, pageEnd);
+    const pageStyle = currentPdf.slice(pageStart, pageEnd);
 
     assert.doesNotMatch(pageStyle, /lineHeight:/);
   });
@@ -69,15 +217,16 @@ describe("quotation PDF", () => {
 
   it("downloads only through a lazy import and exact document filename", () => {
     assert.match(editorSource, /import\("\.\/quotation-pdf"\)/);
-    assert.match(pdfSource, /`\$\{documentNumber\}\.pdf`/);
+    assert.match(pdfSource, /`\$\{args\.documentNumber\}\.pdf`/);
     assert.match(editorSource, /กำลังสร้าง PDF/);
     assert.match(editorSource, /บันทึกการเปลี่ยนแปลงก่อน/);
   });
 
   it("converts browser images to contained PNGs with per-image fallback", () => {
+    assert.match(pdfSource, /source\.startsWith\("data:image\/"\)/);
     assert.match(pdfSource, /fetch\(source\)/);
     assert.match(pdfSource, /canvas\.toDataURL\("image\/png"\)/);
-    assert.match(pdfSource, /objectFit:\s*"contain"/);
+    assert.match(currentPdf, /objectFit:\s*"contain"/);
     assert.match(pdfSource, /URL\.revokeObjectURL/);
     assert.match(pdfSource, /catch/);
   });
@@ -97,17 +246,14 @@ describe("quotation PDF", () => {
       "data-pdf-certification",
     ];
     for (let index = 1; index < sections.length; index += 1) {
-      assert.ok(pdfSource.indexOf(sections[index - 1]!) < pdfSource.indexOf(sections[index]!));
+      assert.ok(currentPdf.indexOf(sections[index - 1]!) < currentPdf.indexOf(sections[index]!));
     }
 
-    const certification = pdfSource.slice(
-      pdfSource.indexOf("data-pdf-certification"),
-      pdfSource.indexOf("</Page>", pdfSource.indexOf("data-pdf-certification")),
+    const certification = currentPdf.slice(
+      currentPdf.indexOf("data-pdf-certification"),
+      currentPdf.indexOf("</Page>", currentPdf.indexOf("data-pdf-certification")),
     );
-    const signer = pdfSource.slice(
-      pdfSource.indexOf("function Signer"),
-      pdfSource.indexOf("function QuotationPdfDocument"),
-    );
+    const signer = sharedPdf;
 
     assert.ok(certification.indexOf("data-pdf-public-qr") > -1);
     assert.match(
@@ -126,15 +272,15 @@ describe("quotation PDF", () => {
     );
     assert.doesNotMatch(certification, /ตำแหน่ง/);
     assert.doesNotMatch(signer, /signer\.position/);
-    assert.doesNotMatch(pdfSource, /pageNumber|totalPages|styles\.footer/);
+    assert.doesNotMatch(currentPdf, /pageNumber|totalPages|styles\.footer/);
     assert.match(certification, /wrap=\{false\}/);
     assert.match(
-      pdfSource,
+      currentPdf,
       /const compactCertification = !model\.showCertificationName && !model\.showCertificationDate/,
     );
-    assert.match(pdfSource, /certificationAssetBoxCompact: \{ height: 36 \}/);
-    assert.match(pdfSource, /signatureBoxCompact: \{ height: 36 \}/);
-    assert.match(pdfSource, /certificationImageCompact: \{ height: 32 \}/);
+    assert.match(currentPdf, /certificationAssetBoxCompact: \{ height: 36 \}/);
+    assert.match(currentPdf, /signatureBoxCompact: \{ height: 36 \}/);
+    assert.match(currentPdf, /certificationImageCompact: \{ height: 32 \}/);
     assert.equal(
       certification.match(/compact=\{compactCertification\}/g)?.length,
       2,
@@ -154,16 +300,33 @@ describe("quotation PDF", () => {
     assert.doesNotMatch(certification, /styles\.section(?:,|\])/);
   });
 
-  it("repeats the ledger heading in normal flow on continuation pages", () => {
-    assert.match(pdfSource, /<View fixed style=\{styles\.tableHeader\} wrap=\{false\}>/);
-    assert.doesNotMatch(pdfSource, /tableHeader:\s*\{[^}]*position:/);
+  it("keeps the ledger in normal flow and repeats its header on continuation pages", () => {
+    assert.match(
+      currentPdf,
+      /index > 0 && index % CURRENT_TABLE_ROWS_PER_PAGE === 0[\s\S]*<View break data-pdf-continuation-table-header>/,
+    );
+    assert.match(currentPdf, /<ItemTableHeader backgroundColor=\{theme\.light\} model=\{model\} \/>/);
+    assert.doesNotMatch(currentPdf, /tableHeader:\s*\{[^}]*position:/);
+  });
+
+  it("renders the Current seller contact icons in the PDF", () => {
+    assert.match(currentPdf, /function SellerContactIcon/);
+    assert.match(currentPdf, /<SellerContactIcon type="phone" \/>/);
+    assert.match(currentPdf, /<SellerContactIcon type="email" \/>/);
+    assert.match(currentPdf, /<SellerContactIcon type="website" \/>/);
+  });
+
+  it("uses the Current preview's header and seller-contact measurements in the PDF", () => {
+    assert.match(currentPdf, /header: \{ columnGap: 21, flexDirection: "row" \}/);
+    assert.match(currentPdf, /sellerContact: \{ flexBasis: 107\.7, marginLeft: 15 \}/);
+    assert.match(currentPdf, /titleBox: \{ width: 215 \}/);
   });
 
   it("allows validated long user content to wrap across pages", () => {
-    const header = pdfSource.slice(pdfSource.indexOf("data-pdf-header"), pdfSource.indexOf("data-pdf-customer"));
-    const customer = pdfSource.slice(pdfSource.indexOf("data-pdf-customer"), pdfSource.indexOf("data-pdf-items"));
-    const items = pdfSource.slice(pdfSource.indexOf("data-pdf-items"), pdfSource.indexOf("data-pdf-totals"));
-    const payment = pdfSource.slice(pdfSource.indexOf("function PaymentMethod"), pdfSource.indexOf("function Signer"));
+    const header = currentPdf.slice(currentPdf.indexOf("data-pdf-header"), currentPdf.indexOf("data-pdf-customer"));
+    const customer = currentPdf.slice(currentPdf.indexOf("data-pdf-customer"), currentPdf.indexOf("data-pdf-items"));
+    const items = currentPdf.slice(currentPdf.indexOf("data-pdf-items"), currentPdf.indexOf("data-pdf-totals"));
+    const payment = sharedPdf.slice(sharedPdf.indexOf("function PaymentMethod"), sharedPdf.indexOf("function Signer"));
 
     assert.doesNotMatch(header, /style=\{styles\.header\} wrap=\{false\}/);
     assert.doesNotMatch(customer, /style=\{styles\.customer\} wrap=\{false\}/);
@@ -179,7 +342,7 @@ describe("quotation PDF", () => {
 
   it("keeps HTML and PDF sections in the same approved order", () => {
     const html = readFileSync(
-      "components/admin/quotations/quotation-document.tsx",
+      "components/admin/quotations/templates/quotation-document-current.tsx",
       "utf8",
     );
     const htmlMarkers = [
@@ -203,7 +366,7 @@ describe("quotation PDF", () => {
 
     for (const [documentSource, markers] of [
       [html, htmlMarkers],
-      [pdfSource, pdfMarkers],
+      [currentPdf, pdfMarkers],
     ] as const) {
       let previous = -1;
       for (const marker of markers) {
@@ -216,22 +379,25 @@ describe("quotation PDF", () => {
 
   it("omits an empty optional reference in HTML and PDF", () => {
     const html = readFileSync(
-      "components/admin/quotations/quotation-document.tsx",
+      "components/admin/quotations/templates/quotation-document-current.tsx",
       "utf8",
     );
 
     assert.match(html, /\{model\.showReference \? \([\s\S]*อ้างอิง[\s\S]*payload\.reference[\s\S]*\) : null\}/);
-    assert.match(pdfSource, /\{model\.showReference \? <Detail label="อ้างอิง" value=\{payload\.reference\} \/> : null\}/);
+    assert.match(currentPdf, /\{model\.showReference \? <DetailWithLabelWidth label="อ้างอิง" labelStyle=\{styles\.metadataDetailLabel\} value=\{payload\.reference\} \/> : null\}/);
     assert.doesNotMatch(html, /payload\.reference \|\| "-"/);
   });
 
   it("keeps unspecified offices blank and uses generic VAT summary labels", () => {
     const html = readFileSync(
-      "components/admin/quotations/quotation-document.tsx",
+      "components/admin/quotations/templates/quotation-document-current.tsx",
+      "utf8",
+    ) + readFileSync(
+      "components/admin/quotations/templates/quotation-document-shared.tsx",
       "utf8",
     );
 
-    for (const documentSource of [html, pdfSource]) {
+    for (const documentSource of [html, `${currentPdf}\n${sharedPdf}`]) {
       assert.match(documentSource, /officeType === "unspecified"[\s\S]*return ""/);
       assert.match(documentSource, /office\(payload\.customer\) \?/);
       assert.match(documentSource, /function vatLabel[\s\S]*item\.vatTreatment === "taxable"[\s\S]*return `\$\{item\.vatRate\}%`[\s\S]*return ""/);

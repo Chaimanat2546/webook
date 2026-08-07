@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "account_id": "0df55f166fa309dcc904e992c43f86db",
+  "name": "webook-staging",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-06-30",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "r2_buckets": [
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "webook-staging-next-cache" }
+  ]
+}

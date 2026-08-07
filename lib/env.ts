@@ -11,7 +11,7 @@ export function getSupabaseEnv() {
 
 export function getSupabaseServiceRoleEnv() {
   const { url } = getSupabaseEnv();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!serviceRoleKey) {
     return null;
@@ -21,8 +21,8 @@ export function getSupabaseServiceRoleEnv() {
 }
 
 export function getAdvertisementImageEnv() {
-  const workerSecret = process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET;
-  const workerUrl = process.env.ADVERTISEMENT_IMAGE_WORKER_URL;
+  const workerSecret = process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET?.trim();
+  const workerUrl = process.env.ADVERTISEMENT_IMAGE_WORKER_URL?.trim();
 
   if (!workerSecret || !workerUrl) {
     throw new Error("Missing advertisement image environment variables");

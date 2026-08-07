@@ -53,6 +53,7 @@ function payload(
       unit: true,
       withholdingTax: true,
     },
+    document_template_snapshot: "current",
     company_profile_id: null as string | null,
     id,
     internal_notes: "",
@@ -210,6 +211,60 @@ describe("quotation local database integration", { skip: !enabled }, () => {
       .single();
     assert.equal(stored.error, null, stored.error?.message);
     assert.deepEqual(stored.data.document_display_snapshot, value.document_display_snapshot);
+  });
+
+  it("persists immutable template snapshots through both public save boundaries", async () => {
+    const createdIds: string[] = [];
+    for (const saveQuotation of [save, saveWithPayments]) {
+      const hospitality = payload(null);
+      hospitality.document_template_snapshot = "hospitality";
+      const created = await saveQuotation(allowed, hospitality);
+      createdIds.push(created.id);
+
+      const stored = await allowed
+        .from("quotations")
+        .select("document_template_snapshot,public_token")
+        .eq("id", created.id)
+        .single();
+      assert.equal(stored.error, null, stored.error?.message);
+      assert.equal(stored.data.document_template_snapshot, "hospitality");
+
+      const publicQuotation = await anonymous.rpc("get_public_quotation", {
+        p_token: stored.data.public_token,
+      });
+      assert.equal(publicQuotation.error, null, publicQuotation.error?.message);
+      assert.equal(publicQuotation.data.document_template_snapshot, "hospitality");
+    }
+
+    const profileUpdate = await allowed
+      .from("quotation_company_profiles")
+      .update({ document_template_default: "corporate" })
+      .eq("id", allowedProfileId);
+    assert.equal(profileUpdate.error, null, profileUpdate.error?.message);
+    const companyProfile = await allowed
+      .from("quotation_company_profiles")
+      .select("document_template_default")
+      .eq("id", allowedProfileId)
+      .single();
+    assert.equal(companyProfile.error, null, companyProfile.error?.message);
+    assert.equal(companyProfile.data.document_template_default, "corporate");
+
+    const unchanged = await allowed
+      .from("quotations")
+      .select("document_template_snapshot")
+      .in("id", createdIds);
+    assert.equal(unchanged.error, null, unchanged.error?.message);
+    assert.deepEqual(
+      unchanged.data.map((quotation) => quotation.document_template_snapshot),
+      ["hospitality", "hospitality"],
+    );
+
+    for (const rpc of ["save_quotation", "save_quotation_with_payments"] as const) {
+      const invalid = payload(null);
+      invalid.document_template_snapshot = "custom";
+      const invalidSave = await allowed.rpc(rpc, { p_payload: invalid });
+      assert.equal(invalidSave.error?.code, "22023");
+    }
   });
 
   after(async () => {

@@ -53,7 +53,7 @@ describe("admin authorization", () => {
     assert.equal(canUseAccommodation(null), false);
   });
 
-  it("allows house rating management only for role 1", () => {
+  it("reserves house rating management for role 1", () => {
     assert.equal(canManageHouseRating({ role_id: 1 }), true);
     assert.equal(canManageHouseRating({ role_id: 2 }), false);
     assert.equal(canManageHouseRating({ role_id: null }), false);

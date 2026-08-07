@@ -2,7 +2,11 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 
 import { AdminShell } from "../../components/layout/admin-shell";
-import { canUseQuotation, requireAdmin } from "../../server/auth/admin";
+import {
+  canManageCentralUsers,
+  canUseQuotation,
+  requireAdmin,
+} from "../../server/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +17,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <AdminShell
+      canManageCentralUsers={canManageCentralUsers(adminUser)}
       canUseQuotation={canUseQuotation(adminUser)}
       defaultSidebarOpen={defaultSidebarOpen}
     >

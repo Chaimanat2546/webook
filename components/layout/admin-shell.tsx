@@ -11,17 +11,23 @@ import { Separator } from "../ui/separator";
 import { Toaster } from "../ui/sonner";
 
 export function AdminShell({
+  canManageCentralUsers,
   canUseQuotation,
   children,
   defaultSidebarOpen = true,
 }: {
+  canManageCentralUsers: boolean;
   canUseQuotation: boolean;
   children: ReactNode;
   defaultSidebarOpen?: boolean;
 }) {
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
-      <AdminDesktopSidebar canUseQuotation={canUseQuotation} signOutAction={signOut} />
+      <AdminDesktopSidebar
+        canManageCentralUsers={canManageCentralUsers}
+        canUseQuotation={canUseQuotation}
+        signOutAction={signOut}
+      />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
           <SidebarTrigger aria-label="เปิด/ปิดเมนู" />

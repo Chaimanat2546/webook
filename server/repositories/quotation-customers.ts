@@ -185,7 +185,7 @@ export async function insertQuotationCustomer(
       }
     : { dbd_address: null, dbd_name: null, dbd_status: null, dbd_verified_at: null };
   const { data, error } = await supabase.from("quotation_customers")
-    .insert({ ...writeValues(input), ...dbd, created_by: actorId, updated_by: actorId }).select("*").single();
+    .insert({ ...writeValues(input), ...dbd, created_by: actorId, owner_id: actorId, updated_by: actorId }).select("*").single();
   if (error) return throwWriteError(supabase, input, error);
   return customerRow(data);
 }
@@ -206,7 +206,7 @@ export async function updateQuotationCustomer(
       }
     : editableValues(input);
   const { data, error } = await supabase.from("quotation_customers")
-    .update({ ...values, updated_by: actorId }).eq("id", input.id).select("*").single();
+    .update({ ...values, updated_by: actorId }).eq("id", input.id).eq("owner_id", actorId).select("*").single();
   if (error) return throwWriteError(supabase, input, error);
   return customerRow(data);
 }
@@ -223,7 +223,7 @@ export async function updateQuotationCustomerDbd(
     dbd_status: defaults.status,
     dbd_verified_at: defaults.verifiedAt,
     updated_by: actorId,
-  }).eq("id", id).eq("customer_type", "juristic").eq("tax_id", defaults.taxId)
+  }).eq("id", id).eq("owner_id", actorId).eq("customer_type", "juristic").eq("tax_id", defaults.taxId)
     .select("*").single();
   if (error) throw new Error(error.message);
   return customerRow(data);
@@ -236,7 +236,7 @@ export async function setQuotationCustomerActive(
   actorId: string,
 ): Promise<QuotationCustomerMaster> {
   const { data, error } = await supabase.from("quotation_customers")
-    .update({ is_active: isActive, updated_by: actorId }).eq("id", id).select("*").single();
+    .update({ is_active: isActive, updated_by: actorId }).eq("id", id).eq("owner_id", actorId).select("*").single();
   if (error) throw new Error(error.message);
   return customerRow(data);
 }

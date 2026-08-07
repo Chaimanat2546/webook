@@ -12,7 +12,10 @@
     "test": "node --import ./tests/register-server-only.mjs --test \"tests/**/*.test.ts\"",
     "preview:cf": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:cf": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:cf:windows": "opennextjs-cloudflare build && set \"OPEN_NEXT_DEPLOY=true\" && npx.cmd --yes wrangler@4.105.0 deploy -c wrangler.jsonc --keep-vars",
     "upload:cf": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "upload:cf:staging": "node scripts/assert-staging-cloudflare-target.mjs && node scripts/run-staging-cloudflare.mjs upload",
+    "deploy:cf:staging": "node scripts/assert-staging-cloudflare-target.mjs && node scripts/run-staging-cloudflare.mjs deploy",
     "verify": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {

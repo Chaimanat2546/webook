@@ -1,9 +1,33 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { getAwsS3ImageEnv, getQuotationPublicOrigin } from "../lib/env.ts";
+import {
+  getAdvertisementImageEnv,
+  getAwsS3ImageEnv,
+  getQuotationPublicOrigin,
+  getSupabaseServiceRoleEnv,
+} from "../lib/env.ts";
 
 describe("environment helpers", () => {
+  it("normalizes surrounding whitespace from advertisement image Worker credentials", () => {
+    const previous = {
+      workerSecret: process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET,
+      workerUrl: process.env.ADVERTISEMENT_IMAGE_WORKER_URL,
+    };
+    process.env.ADVERTISEMENT_IMAGE_WORKER_SECRET = " secret-kept-exact ";
+    process.env.ADVERTISEMENT_IMAGE_WORKER_URL = "https://media.example.com\r\n";
+
+    try {
+      assert.deepEqual(getAdvertisementImageEnv(), {
+        workerSecret: "secret-kept-exact",
+        workerUrl: "https://media.example.com",
+      });
+    } finally {
+      restoreEnv("ADVERTISEMENT_IMAGE_WORKER_SECRET", previous.workerSecret);
+      restoreEnv("ADVERTISEMENT_IMAGE_WORKER_URL", previous.workerUrl);
+    }
+  });
+
   it("loads the AWS S3 image delete environment", () => {
     const previous = {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -39,6 +63,28 @@ describe("environment helpers", () => {
       assert.throws(getAwsS3ImageEnv, /AWS_BUCKET/);
     } finally {
       restoreEnv("AWS_BUCKET", previousBucket);
+    }
+  });
+
+  it("removes a byte-order mark from the Supabase service-role key", () => {
+    const previous = {
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    };
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "\ufeffservice-role-key";
+
+    try {
+      assert.deepEqual(getSupabaseServiceRoleEnv(), {
+        serviceRoleKey: "service-role-key",
+        url: "https://example.supabase.co",
+      });
+    } finally {
+      restoreEnv("SUPABASE_SERVICE_ROLE_KEY", previous.serviceRoleKey);
+      restoreEnv("NEXT_PUBLIC_SUPABASE_URL", previous.url);
+      restoreEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", previous.anonKey);
     }
   });
 
