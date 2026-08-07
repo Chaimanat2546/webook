@@ -152,21 +152,122 @@
   }
   html.quotation-printing [data-quotation-print] {
     display: block !important;
-    width: 210mm;
+    width: auto;
     margin: 0;
   }
   [data-quotation-document] {
     margin: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   [data-quotation-document] thead { display: table-header-group; }
+  /* Paper margins, rather than a template's screen-only paper padding, must
+     provide the inset for every printed sheet.  This keeps page two and later
+     sheets consistent across all document templates. */
+  [data-quotation-document] [data-document-top-rule] {
+    margin: 0 0 5mm !important;
+  }
+  /* Current uses a 12-column editor grid on screen. Flatten that body only
+     while printing so the customer block and the table heading form the next
+     printable row, while table rows themselves remain free to continue. */
+  [data-quotation-document][data-quotation-template="current"] [data-layout-zone="body"] {
+    display: block !important;
+  }
+  [data-document-customer] {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+  [data-document-items] {
+    break-before: avoid-page;
+    page-break-before: avoid;
+  }
+  /* The body zone contains both the customer panel and a potentially long
+     ledger. It must be allowed to begin on the remaining space of page one
+     and continue its rows on later sheets. */
+  [data-layout-zone="body"],
+  [data-document-items],
+  [data-quotation-document] table {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
   [data-quotation-document] tr,
-  [data-quotation-document] section,
+  [data-document-customer],
+  [data-document-certification],
   [data-document-summary] {
     break-inside: avoid;
   }
   [data-document-payment-methods] {
     break-inside: auto !important;
   }
+  [data-hospitality-summary-sequential],
+  [data-corporate-summary-sequential] {
+    break-inside: auto !important;
+  }
+}
+
+[data-quotation-document].quotation-zone-order > [data-document-header],
+[data-quotation-document].quotation-zone-order > [data-document-top-rule] {
+  order: -1;
+}
+
+[data-quotation-document].quotation-zone-order > [data-corporate-company-metadata],
+[data-quotation-document].quotation-zone-order > [data-layout-zone="header"] {
+  order: var(--quotation-zone-header);
+}
+
+[data-quotation-document].quotation-zone-order > [data-layout-zone="body"],
+[data-quotation-document].quotation-zone-order > [data-document-items] {
+  order: var(--quotation-zone-body);
+}
+
+[data-quotation-document].quotation-zone-order > [data-layout-zone="settlement"] {
+  order: var(--quotation-zone-settlement);
+}
+
+[data-quotation-document].quotation-zone-order > [data-document-certification] {
+  order: var(--quotation-zone-certification);
+}
+
+[data-quotation-document].quotation-zone-order > [data-hospitality-seller-footer] {
+  order: 99;
+}
+
+[data-quotation-document] [data-document-top-rule],
+[data-quotation-document][data-quotation-template="corporate"] [data-document-number],
+[data-quotation-document][data-quotation-template="corporate"] table thead tr,
+[data-quotation-document][data-quotation-template="hospitality"] table thead tr,
+[data-quotation-document][data-quotation-template="hospitality"] [data-hospitality-settlement] {
+  background-color: var(--quotation-theme-primary);
+  color: var(--quotation-theme-contrast);
+}
+
+[data-quotation-document][data-quotation-template="corporate"] h1,
+[data-quotation-document][data-quotation-template="corporate"] h2,
+[data-quotation-document][data-quotation-template="corporate"] [data-document-header] p:first-of-type,
+[data-quotation-document][data-quotation-template="corporate"] [data-document-items] tbody span,
+[data-quotation-document][data-quotation-template="hospitality"] h1,
+[data-quotation-document][data-quotation-template="hospitality"] h2,
+[data-quotation-document][data-quotation-template="hospitality"] [data-layout-block="seller"] > p:first-child,
+[data-quotation-document][data-quotation-template="hospitality"] [data-hospitality-seller-footer] > p:first-child {
+  color: var(--quotation-theme-primary);
+}
+
+[data-quotation-document][data-quotation-template="corporate"] [data-corporate-recipient],
+[data-quotation-document][data-quotation-template="corporate"] [data-corporate-settlement],
+[data-quotation-document][data-quotation-template="hospitality"] [data-hospitality-recipient] {
+  background-color: var(--quotation-theme-light);
+  border-color: var(--quotation-theme-primary);
+}
+
+[data-quotation-document][data-quotation-template="corporate"] [data-document-certification],
+[data-quotation-document][data-quotation-template="hospitality"] [data-document-certification],
+[data-quotation-document][data-quotation-template="hospitality"] [data-hospitality-seller-footer],
+[data-quotation-document][data-quotation-template="hospitality"] [data-layout-zone="header"],
+[data-quotation-document][data-quotation-template="hospitality"] [data-layout-zone="settlement"],
+[data-quotation-document][data-quotation-template="hospitality"] [data-document-metadata],
+[data-quotation-document][data-quotation-template="hospitality"] table tbody tr {
+  border-color: var(--quotation-theme-border);
 }

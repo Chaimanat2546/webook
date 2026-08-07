@@ -7,8 +7,8 @@ their own seller profile, reusable payment methods, optional certification
 master, and quotations. Every seller profile, payment master, and quotation is linked to the current
 Supabase Auth user. RLS combines that ownership check with the existing
 quotation permission, so one account cannot read or change another account's
-data. ข้อมูลลูกค้า is intentionally different: all quotation-authorized
-users share it and may add, edit, deactivate, or reactivate customers.
+data. ข้อมูลลูกค้า follows the same owner boundary: each seller can add, edit,
+deactivate, reactivate, and search only its own customers.
 
 The customer snapshot contains only name, address, tax ID, office type, and
 branch number. This MVP does not include approval, customer acceptance,
@@ -20,9 +20,15 @@ history.
 - `/admin/quotations` - list, search, print, and soft-delete owned quotations
 - `/admin/quotations/new` - create from the current user's seller and default payment masters
 - `/admin/quotations/[id]` - edit saved seller and payment snapshots
-- `/admin/quotations/customers` - search and manage the shared ข้อมูลลูกค้า
+- `/admin/quotations/customers` - search and manage the current seller's ข้อมูลลูกค้า
 - `/admin/quotations/settings/company` - manage the current user's seller profile, payment masters, and certification master
 - `/q/[token]` - no-login, token-scoped public view of the latest saved quotation
+
+Public quotation links created after this policy are bearer links that expire
+30 days after they are created or reset. The saved-document toolbar can reset
+a link; the prior link stops working immediately and the replacement link
+receives a fresh 30-day expiry. Older links remain readable until their owner
+resets them, which avoids changing existing saved documents as part of rollout.
 
 ## Quotation List UX
 
@@ -47,6 +53,45 @@ history.
 
 ## Master And Snapshot Rules
 
+- Each account has a default quotation template. The fixed, type-safe
+  catalogue is `current` (the compatible Indigo document), `hospitality`
+  (green and warm-gold accommodation document), and `corporate` (navy and gray
+  procurement document).
+- Create and Edit expose a template selector beside the document-display
+  settings. `ใช้เฉพาะใบเสนอราคานี้` changes only the current draft; the choice
+  becomes the quotation's template snapshot when the document is saved.
+  `ใช้และบันทึกเป็นค่าเริ่มต้น` first saves the same choice as the account
+  default, then applies it to the draft. A failed default save leaves the
+  dialog and draft choice unchanged.
+- A new quotation starts with the account default. A saved quotation always
+  reads its own immutable template snapshot, so changing the account default
+  never changes an existing quotation.
+- Preview uses the current draft template immediately. Print, PDF Download,
+  and Public Read-only use the latest successfully saved template snapshot.
+  Saving a template selection does not change quotation content, calculations,
+  payment methods, certification data, or document-display settings.
+- Each account has a separate layout source for every fixed template. Layouts
+  use an allowlisted versioned grid schema: seller, document metadata,
+  customer, items, totals, payment methods, notes, certification, and the
+  hospitality footer. Freeform HTML and CSS are not stored or accepted.
+- `จัดการเลเอาท์` in quotation settings selects one template at a time. It
+  provides an A4 grid preview plus keyboard-accessible up, down, left, and
+  right controls and one primary-color picker. The renderer derives its light,
+  border, dark, and contrast shades from that single color. Publishing creates
+  an immutable revision; restoring an old revision publishes it again as a new
+  revision rather than rewriting history.
+- Controls in each layout-canvas section header can reorder the complete
+  header, body, settlement, and certification sections. Hospitality
+  seller-footer content is fixed at the end of the document. The published
+  section order is rendered consistently by Preview, Print, PDF Download, and
+  Public Read-only.
+- A quotation saves its layout source ID, revision number, schema version, and
+  complete layout snapshot. Existing quotations therefore preserve their
+  document layout. Switching template on an unsaved draft applies that
+  template's latest account revision; saved preview, print, PDF, and Public
+  Read-only always use the quotation's saved snapshot.
+- The migration backfills existing accounts and quotations to `current`, which
+  preserves the established document appearance.
 - Each account has one seller profile, an ordered reusable payment list, and
   optional issuer, approver, signature, and company-stamp certification data.
 - New quotations copy default payment masters into editable quotation rows.
@@ -171,8 +216,9 @@ Preview, Print, or Public Read-only.
 - Invalid saves show one Toast while keeping field-specific errors inline.
 - Leaving with unsaved changes uses an in-app confirmation dialog. Browser
   refresh and tab close continue to use the browser-native unsaved-changes warning.
-- Preview uses the current draft. Print, PDF Download, and Public Share remain
-  limited to the latest clean saved document.
+- Preview uses the current draft. Print continues to render `lastSavedPayload`,
+  including while a newer draft is dirty. PDF Download and Public Share require
+  a clean saved quotation.
 - Reference and `เรื่อง / ชื่องาน (ถ้ามี)` are optional. Empty optional values
   are omitted from Preview, Public, Print, and PDF instead of showing a placeholder.
 - Currency copy is always `บาท`.
@@ -303,6 +349,23 @@ links every quotation to the profile owned by its `created_by` user. The
 migration stops with an explicit error if a quotation owner is missing from
 Supabase Auth or a seller profile cannot be assigned unambiguously.
 
+Migration `20260805000000_quotation_layout_management_mvp2.sql` creates
+owner-scoped logical template sources, immutable layout revisions, validated
+publish/save RPC boundaries, RLS, and every per-quotation layout snapshot.
+Apply it before opening layout management or saving a quotation with MVP 2.
+
+Migration `20260805190000_add_quotation_template_theme_color.sql` upgrades the
+layout schema to version 2 and stores one validated six-digit hex primary color
+in each template revision and quotation snapshot. Existing revisions and
+quotations receive the former template color, preserving their appearance.
+Apply this migration before deploying application code that publishes schema
+version 2.
+
+Migration `20260806040000_accept_quotation_layout_schema_v2.sql` updates the
+quotation save wrapper to accept and verify schema-version-2 snapshots. It must
+follow the theme-color migration so Hospitality, Corporate, and Current
+quotations can all save their published themed layout revisions.
+
 A database that already records migration `20260718090000` will not execute
 the amended file again. Inspect its actual schema and migration history first,
 then deliberately reconcile the history/schema or ship an equivalent follow-up
@@ -351,9 +414,24 @@ checks do not replace this acceptance step.
 
 ### Seller Settings Navigation
 
-`/admin/quotations/settings/company` has three URL-driven sections:
+`/admin/quotations/settings/company` has four URL-driven sections:
 `?section=company` for the seller profile, `?section=payments` for master
 payment methods, and `?section=certification` for issuer, approver, signatures,
-and company stamp. Image fields preview a selected file locally before save.
+and company stamp, plus `?section=layout&template=current|hospitality|corporate`
+for the selected template's revisioned layout. Image fields preview a selected
+file locally before save.
 Master bank notes remain editable; the per-quotation bank-transfer editor hides
 that field without deleting a previously saved value.
+
+The Current, Corporate, and Hospitality document renderers use the selected
+template's layout snapshot for every managed header, body, and settlement
+block. In particular, customer, items, payment methods, public notes, and
+summary are direct grid items, so a published position is reflected in the
+rendered document as well as the layout editor.
+The saved `themeColor` in that same snapshot is also used by Preview, Print,
+PDF Download, and Public Read-only. Changing an account template color does not
+recolor an existing quotation until the quotation selects the latest layout
+revision and is saved.
+For every template, the summary block has a template-owned fixed two-row
+height so it aligns with payment methods plus public notes; users cannot
+change that height in the editor.

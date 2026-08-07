@@ -111,6 +111,7 @@ describe("advertisement admin UI", () => {
     assert.doesNotMatch(formSource, /ScrollArea className="w-full min-w-0 lg:h-full"/);
     assert.match(formSource, /buttonVariants\(\{ variant: "outline", size: "sm" \}\)/);
     assert.match(formSource, /id="advertisement-images-upload"/);
+    assert.match(formSource, /รองรับ AVIF, JPEG, PNG หรือ WebP ขนาดไม่เกิน 10 MB ต่อรูป/);
     assert.match(formSource, /เลือกทั้งหมด/);
     assert.match(formSource, /ลบที่เลือก \(\{selectedBulkDeleteImages\.length\}\)/);
     assert.match(formSource, /import \{ AdminImageCard/);

@@ -57,7 +57,7 @@ describe("quotation public share", () => {
     );
     assert.match(editor, /const draftPublicQrDataUrl = !isDirty \? savedPublicQrDataUrl : ""/);
     assert.equal(editor.match(/publicQrDataUrl=\{draftPublicQrDataUrl\}/g)?.length, 1);
-    assert.equal(editor.match(/publicQrDataUrl=\{savedPublicQrDataUrl\}/g)?.length, 1);
+    assert.match(editor, /savedPublicQrDataUrl \|\| await createQuotationPublicQrDataUrl/);
   });
 
   it("waits for a clean saved quotation QR before printing", () => {
@@ -72,21 +72,56 @@ describe("quotation public share", () => {
   it("uses the same saved payment document for public read-only", () => {
     const page = source("../app/q/[token]/page.tsx");
     const repository = source("../server/repositories/quotations.ts");
-    const document = source("../components/admin/quotations/quotation-document.tsx");
+    const document = source("../components/admin/quotations/templates/quotation-document-current.tsx");
     const viewModel = source("../lib/quotation-document-view.ts");
 
     assert.match(page, /quotation\.payload/);
     assert.match(repository, /quotation_payment_methods/);
     assert.match(repository, /quotation_payment_methods\([\s\S]*account_type/);
+    assert.match(repository, /document_template_snapshot/);
+    assert.match(
+      repository,
+      /const template = normalizeQuotationTemplate\(row\.document_template_snapshot\)/,
+    );
     assert.match(viewModel, /payload\.paymentMethods/);
     assert.match(document, /model\.paymentMethods/);
     assert.doesNotMatch(document, /internalNotes/);
   });
 
+  it("retires legacy public bearer links and lets only the owner rotate them", () => {
+    const migration = source("../supabase/migrations/20260806121500_complete_quotation_security_hardening.sql");
+    const rotationMigration = source("../supabase/migrations/20260806103000_quotation_security_hardening.sql");
+    const editor = source("../components/admin/quotations/quotation-editor.tsx");
+    assert.match(migration, /retires every link without an expiry/);
+    assert.match(migration, /q\.public_token_expires_at > now\(\)/);
+    assert.match(migration, /private\.has_quotation_permission\(\)/);
+    assert.match(rotationMigration, /q\.created_by = auth\.uid\(\)/);
+    assert.match(editor, /rotateQuotationPublicTokenAction/);
+    assert.match(editor, /รีเซ็ตลิงก์/);
+  });
+
+  it("passes the public saved template snapshot to the shared document dispatcher", () => {
+    const page = source("../app/q/[token]/page.tsx");
+    const dispatcher = source("../components/admin/quotations/quotation-document.tsx");
+
+    assert.match(
+      page,
+      /<QuotationDocument[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{quotation\.payload\}[\s\S]*publicQrDataUrl=\{publicQrDataUrl\}/,
+    );
+    assert.match(dispatcher, /payload\.template/);
+    for (const renderer of [
+      "CurrentQuotationDocument",
+      "HospitalityQuotationDocument",
+      "CorporateQuotationDocument",
+    ]) {
+      assert.match(dispatcher, new RegExp(renderer));
+    }
+  });
+
   it("keeps the public A4 document inside an intentional horizontal viewport", () => {
     const page = source("../app/q/[token]/page.tsx");
     const document = source(
-      "../components/admin/quotations/quotation-document.tsx",
+      "../components/admin/quotations/templates/quotation-document-current.tsx",
     );
 
     assert.match(page, /data-public-quotation-viewport/);

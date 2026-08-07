@@ -283,6 +283,7 @@ describe("house image mobile UI", () => {
     assert.match(source, /formData\.append\("image_zone", item\.zone\)/);
     assert.match(source, /formData\.append\("images", resized\.file\)/);
     assert.match(source, /accept="image\/avif,image\/jpeg,image\/png,image\/webp"/);
+    assert.match(source, /รองรับ AVIF, JPEG, PNG หรือ WebP ขนาดไม่เกิน 10 MB ต่อรูป/);
     assert.match(source, /toast\.loading/);
     assert.match(source, /updateUploadProgressToast/);
     assert.match(source, /toast\.dismiss\(uploadToastId\)/);

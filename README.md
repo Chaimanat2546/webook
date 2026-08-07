@@ -370,6 +370,17 @@ The Next.js admin app deploys to a separate Cloudflare Worker through OpenNext:
 npm.cmd run deploy:cf
 ```
 
+If the OpenNext deploy command cannot start Miniflare/workerd on Windows, run
+`npm ci` first to restore the lockfile's local CLI binaries, then use the
+Windows fallback. It builds the same `.open-next/worker.js`, deploys it without
+starting a local Workers runtime, and preserves existing Worker variables and
+secrets:
+
+```powershell
+npm.cmd ci
+npm.cmd run deploy:cf:windows
+```
+
 The root `wrangler.jsonc` deploys the admin web Worker named `webook-admin`.
 Do not use `workers/media/wrangler.jsonc` for the admin web app.
 The build script runs Next.js with `--webpack` and `--use-system-ca` so OpenNext can bundle server chunks correctly on this Windows workspace.
@@ -404,6 +415,20 @@ Deploy the media Worker manually:
 ```powershell
 npx.cmd wrangler deploy --config workers/media/wrangler.jsonc
 ```
+
+For Staging, deploy the isolated media Worker and R2 bucket configuration
+instead. This prevents Staging quotation-image tests and uploads from sharing
+Production media storage:
+
+```powershell
+npx.cmd wrangler deploy --config workers/media/wrangler.staging.jsonc
+```
+
+Set the same `ADVERTISEMENT_IMAGE_WORKER_SECRET` on the `webook-staging` web
+Worker and the `webook-staging-media` media Worker, then set
+`ADVERTISEMENT_IMAGE_WORKER_URL` on the web Worker to the resulting Staging
+media Worker HTTPS origin. Configure that exact bare origin in
+`private.quotation_payment_asset_config` in the Staging Supabase project.
 
 After applying the quotation payment-asset migrations, configure the private
 database origin once from the same bare HTTPS origin used by

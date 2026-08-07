@@ -5,7 +5,7 @@ import { Button } from "../../../../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../../../../components/ui/empty";
 import { getQuotationPublicOrigin } from "../../../../lib/env";
 import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin";
-import { companyProfileToCertification, companyProfileToDocumentDisplay, companyProfileToSeller, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationItemNames } from "../../../../server/repositories/quotations";
+import { companyProfileToCertification, companyProfileToDocumentDisplay, companyProfileToSeller, companyProfileToTemplate, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationDocumentTemplateSnapshots, listQuotationItemNames } from "../../../../server/repositories/quotations";
 import { emptyQuotationPayload } from "../../../../server/services/quotations";
 
 export const dynamic = "force-dynamic";
@@ -21,12 +21,15 @@ export default async function NewQuotationPage() {
     listQuotationItemNames(supabase),
   ]);
   if (!profile) return <Empty><EmptyHeader><EmptyTitle>ตั้งค่าข้อมูลผู้ขายหลักก่อนสร้างใบเสนอราคา</EmptyTitle><EmptyDescription>ข้อมูลผู้ขายจะถูกคัดลอกลงในใบเสนอราคา</EmptyDescription></EmptyHeader><Button asChild><Link href="/admin/quotations/settings/company">ตั้งค่าข้อมูลผู้ขายหลัก</Link></Button></Empty>;
+  const templateSnapshots = await listQuotationDocumentTemplateSnapshots(supabase, user.id);
 
   const initialPayload = emptyQuotationPayload(
     companyProfileToSeller(profile),
     new Date(),
     companyProfileToCertification(profile),
     companyProfileToDocumentDisplay(profile),
+    companyProfileToTemplate(profile),
+    templateSnapshots[companyProfileToTemplate(profile)],
   );
   initialPayload.paymentMethods = paymentMethods.filter((method) => method.isDefault).map((method, index) => {
     const snapshot = { ...method };
@@ -34,5 +37,5 @@ export default async function NewQuotationPage() {
     return { ...snapshot, id: crypto.randomUUID(), position: index + 1 };
   });
   const publicOrigin = getQuotationPublicOrigin();
-  return <QuotationEditor banks={banks} documentNumber={null} initialPayload={initialPayload} itemNames={itemNames} publicOrigin={publicOrigin} publicToken={null} />;
+  return <QuotationEditor banks={banks} documentNumber={null} initialPayload={initialPayload} initialTemplateDefault={companyProfileToTemplate(profile)} itemNames={itemNames} publicOrigin={publicOrigin} publicToken={null} templateSnapshots={templateSnapshots} />;
 }

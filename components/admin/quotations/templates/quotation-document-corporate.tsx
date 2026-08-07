@@ -1,0 +1,70 @@
+import { Building2, CreditCard, MessageCircle, ReceiptText, Signature } from "lucide-react";
+
+import { isQuotationLayoutBlockBefore, quotationLayoutBlockStyle, quotationLayoutDocumentStyle } from "../../../../lib/quotation-layout-renderer";
+import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
+import { canUseHospitalitySideBySideSettlement } from "../../../../lib/quotation-hospitality-layout";
+
+import type { QuotationDocumentRendererProps } from "./quotation-document-contract";
+import { DocumentImage, office, PaymentMethod, SignerSlot, vatLabel } from "./quotation-document-shared";
+
+function CorporateTotal({ emphasized = false, label, value }: { emphasized?: boolean; label: string; value: string }) {
+  return <div className={emphasized ? "flex justify-between gap-3 border-t border-[#142d4c] pt-2 text-sm font-semibold" : "flex justify-between gap-3"}>
+    <span>{label}</span><span className="text-right tabular-nums [overflow-wrap:anywhere]">{value}</span>
+  </div>;
+}
+
+export function CorporateQuotationDocument({ model }: QuotationDocumentRendererProps) {
+  const { calculation, payload } = model;
+  const compactCertification = !model.showCertificationName && !model.showCertificationDate;
+  const sellerOffice = office(payload.seller);
+  const metadataIsLeft = isQuotationLayoutBlockBefore(model, "documentMetadata", "seller");
+  const customerOffice = office(payload.customer);
+  const sellerContact = [payload.seller.contactName, payload.seller.contactPhone, payload.seller.contactEmail].filter(Boolean).join(" | ");
+  const canUseSideBySideSettlement = canUseHospitalitySideBySideSettlement({
+    paymentMethodCount: model.paymentMethods.length,
+    paymentContentLength: model.paymentMethods.reduce(
+      (total, method) => total + [
+        method.accountName, method.accountNumber, method.bankName, method.customBankName,
+        method.instructions, method.promptPayId, method.providerName,
+      ].join("").length + (method.qrSource || method.customBankLogoUrl || method.bankLogoUrl ? 240 : 0),
+      0,
+    ),
+    hasPaymentQr: model.paymentMethods.some((method) => Boolean(method.qrSource)),
+    publicNotesLength: payload.publicNotes.length,
+  });
+  const settlementBlockStyle = (id: "paymentMethods" | "publicNotes" | "summary") =>
+    canUseSideBySideSettlement ? quotationLayoutBlockStyle(model, id) : { gridColumn: "1 / -1" };
+
+  return <article className="quotation-zone-order mx-auto flex min-h-[297mm] w-[210mm] flex-col bg-white p-[10mm] text-[10px] leading-[1.45] text-slate-800" data-layout-revision={payload.layout.revisionNumber} data-quotation-document data-quotation-template="corporate" style={quotationLayoutDocumentStyle(model)}>
+    <div className="-mx-[10mm] -mt-[10mm] mb-5 h-1.5 bg-[#142d4c]" aria-hidden="true" data-document-top-rule />
+    <header className="grid grid-cols-12 gap-6 border-b border-slate-300 pb-4" data-document-header>
+      <div className="col-span-7 min-w-0">
+        {payload.seller.logoUrl ? <picture><img alt="โลโก้ผู้ขาย" className="mb-3 max-h-12 max-w-32 object-contain" src={payload.seller.logoUrl} /></picture> : null}
+        <p className="text-lg font-semibold text-[#142d4c] [overflow-wrap:anywhere]">{payload.seller.name}</p>
+        <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.seller.address}</p>
+        <p className="mt-1">เลขที่ภาษี {payload.seller.taxId}{sellerOffice ? ` (${sellerOffice})` : ""}</p>
+      </div>
+      <div className="col-span-5 col-start-8 min-w-0 text-right"><p className="text-[9px]">(ต้นฉบับ)</p><h1 className="text-3xl font-semibold tracking-[0.08em] text-[#142d4c]">QUOTATION</h1><p className="text-base text-slate-600">ใบเสนอราคา</p><p className="mt-2 inline-block rounded bg-[#142d4c] px-2 py-1 text-[9px] font-semibold text-white" data-document-number>{model.documentNumber}</p></div>
+    </header>
+
+    <section className="mt-4 flex gap-4" data-corporate-company-metadata style={{ flexDirection: metadataIsLeft ? "row-reverse" : "row" }}>
+      <div className="min-w-0 flex-1 border border-slate-300 p-3" data-layout-block="seller"><h2 className="mb-2 flex items-center gap-1 font-semibold text-[#142d4c]"><Building2 aria-hidden="true" className="size-3" />ข้อมูลผู้ขาย</h2><dl className="grid grid-cols-[4rem_minmax(0,1fr)] gap-x-2 gap-y-1"><dt className="font-semibold">โทร</dt><dd className="[overflow-wrap:anywhere]">{payload.seller.phone || "-"}</dd><dt className="font-semibold">อีเมล</dt><dd className="[overflow-wrap:anywhere]">{payload.seller.email || "-"}</dd><dt className="font-semibold">เว็บไซต์</dt><dd className="[overflow-wrap:anywhere]">{payload.seller.website || "-"}</dd>{sellerContact ? <><dt className="font-semibold">ผู้ติดต่อ</dt><dd className="[overflow-wrap:anywhere]">{sellerContact}</dd></> : null}</dl></div>
+      <dl className="min-w-0 flex-1 border border-slate-300 p-3" data-document-metadata data-layout-block="documentMetadata"><div className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-2 gap-y-1"><dt className="font-semibold">เลขที่เอกสาร</dt><dd className="text-right tabular-nums">{model.documentNumber}</dd><dt className="font-semibold">วันที่ออก</dt><dd className="text-right">{model.issueDate}</dd><dt className="font-semibold">ใช้ได้ถึง</dt><dd className="text-right">{model.validUntil}</dd>{model.showReference ? <><dt className="font-semibold">อ้างอิง</dt><dd className="text-right [overflow-wrap:anywhere]">{payload.reference}</dd></> : null}{payload.subject ? <><dt className="font-semibold">เรื่อง / ชื่องาน</dt><dd className="text-right [overflow-wrap:anywhere]" data-document-subject>{payload.subject}</dd></> : null}</div></dl>
+    </section>
+
+    <section className="mt-4 grid grid-cols-12 gap-y-4" data-layout-zone="body"><section className="border-l-4 border-[#142d4c] bg-[#f2f5f8] p-3" data-corporate-recipient data-document-customer data-layout-block="customer" style={quotationLayoutBlockStyle(model, "customer")}><p className="mb-2 font-semibold text-[#142d4c]">ผู้รับใบเสนอราคา</p><p className="font-semibold [overflow-wrap:anywhere]">{payload.customer.name}</p><p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{payload.customer.address}</p>{payload.customer.taxId ? <p className="mt-1">เลขที่ภาษี {payload.customer.taxId}</p> : null}{customerOffice ? <p>สำนักงาน {customerOffice}</p> : null}</section><section data-document-items data-layout-block="items" style={quotationLayoutBlockStyle(model, "items")}><table className="w-full table-fixed border-collapse"><thead><tr className="bg-[#142d4c] text-left text-white"><th className="p-2">รายละเอียด</th><th className="w-[8%] p-2 text-right">จำนวน</th>{model.showUnit ? <th className="w-[7%] p-2">หน่วย</th> : null}<th className="w-[13%] p-2 text-right">ราคา</th>{model.showItemDiscount ? <th className="w-[10%] p-2">ส่วนลด</th> : null}{model.showItemVat ? <th className="w-[7%] p-2">VAT</th> : null}<th className="w-[15%] p-2 text-right">มูลค่าก่อนภาษี</th></tr></thead><tbody>{calculation.lines.map((item) => <tr className="border-b border-slate-300 align-top" key={item.id}><td className="p-2"><p className="font-medium [overflow-wrap:anywhere]"><span className="mr-2 tabular-nums text-[#142d4c]">{item.position}.</span>{item.name}</p>{item.description ? <p className="mt-1 whitespace-pre-line text-slate-600 [overflow-wrap:anywhere]">{item.description}</p> : null}</td><td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">{item.quantity}</td>{model.showUnit ? <td className="p-2 [overflow-wrap:anywhere]">{item.unit}</td> : null}<td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">{formatMoney(item.unitPrice)}</td>{model.showItemDiscount ? <td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">{formatMoney(item.discountAmount)}</td> : null}{model.showItemVat ? <td className="p-2 text-right">{vatLabel(item)}</td> : null}<td className="max-w-0 p-2 text-right tabular-nums [overflow-wrap:anywhere]">{formatMoney(item.preTaxAmount)}</td></tr>)}</tbody></table></section></section>
+
+    <section className="mt-4 grid grid-cols-12 gap-4 border-y border-slate-300 py-3" data-corporate-summary-sequential={!canUseSideBySideSettlement || undefined} data-document-summary data-layout-zone="settlement">
+      <div className="min-w-0" data-layout-block="paymentMethods" style={settlementBlockStyle("paymentMethods")}>
+        {model.paymentMethods.length ? <div data-document-payment-methods><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#142d4c]"><CreditCard aria-hidden="true" className="size-3" />การชำระเงิน</h2><div className="divide-y divide-slate-200">{model.paymentMethods.map((method) => <PaymentMethod key={method.id} method={method} />)}</div></div> : null}
+      </div>
+      {model.showNotes ? <section data-document-notes data-layout-block="publicNotes" style={settlementBlockStyle("publicNotes")}><h2 className="mb-1 flex items-center gap-1 font-semibold text-[#142d4c]"><MessageCircle aria-hidden="true" className="size-3" />หมายเหตุ</h2><p className="whitespace-pre-line [overflow-wrap:anywhere]">{payload.publicNotes}</p></section> : null}
+      <aside className="break-inside-avoid h-full border border-[#142d4c] bg-[#f2f5f8] p-3" data-corporate-settlement data-document-summary-settlement data-layout-block="summary" style={settlementBlockStyle("summary")}><h2 className="mb-2 flex items-center gap-1 font-semibold text-[#142d4c]"><ReceiptText aria-hidden="true" className="size-3" />สรุปการชำระ</h2><CorporateTotal label="มูลค่ารวม" value={formatBaht(calculation.grossTotal)} /><CorporateTotal label="ส่วนลด" value={formatBaht(calculation.discountTotal)} />{model.showPreTax ? <CorporateTotal label="มูลค่าก่อนภาษี" value={formatBaht(calculation.preTaxTotal)} /> : null}{model.showTax ? <CorporateTotal label="ภาษีมูลค่าเพิ่ม" value={formatBaht(calculation.vatTotal)} /> : null}<CorporateTotal emphasized label="จำนวนเงินทั้งสิ้น" value={formatBaht(calculation.grandTotal)} />{model.showWithholdingTax ? <CorporateTotal label="หักภาษี ณ ที่จ่าย" value={formatBaht(calculation.withholdingTaxTotal)} /> : null}<CorporateTotal label="จำนวนเงินที่ชำระ" value={formatBaht(calculation.amountDue)} /><p className="mt-2 border-t border-slate-300 pt-2 text-right text-[9px] [overflow-wrap:anywhere]">{model.amountInWords}</p></aside>
+    </section>
+
+    <section className="break-inside-avoid mt-3 border-t-2 border-[#142d4c] pt-3" data-document-certification><h2 className="mb-2 flex items-center gap-1 font-semibold text-[#142d4c]"><Signature aria-hidden="true" className="size-3" />รับรอง</h2><div className={`grid min-w-0 gap-3 text-center ${model.showCertificationQr ? "grid-cols-5" : "grid-cols-4"}`}>{model.showCertificationQr ? <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-public-qr><p className="font-semibold">สแกนเพื่อเปิดด้วยเว็บไซต์</p><div className={`flex items-center justify-center ${compactCertification ? "h-12" : "h-20"}`}>{model.publicQrDataUrl ? <>
+      {/* eslint-disable-next-line @next/next/no-img-element -- Generated QR data URLs must remain embeddable in document previews. */}
+      <img alt="QR สำหรับดูใบเสนอราคาออนไลน์" className={`${compactCertification ? "max-h-10" : "max-h-20"} w-full object-contain`} src={model.publicQrDataUrl} />
+    </> : null}</div></div> : null}<SignerSlot compact={compactCertification} issueDate={model.issueDate} label="ผู้ออกเอกสาร" showDate={model.showCertificationDate} showName={model.showCertificationName} signer={model.certification.issuer} /><SignerSlot compact={compactCertification} issueDate={model.issueDate} label="ผู้อนุมัติเอกสาร" showDate={model.showCertificationDate} showName={model.showCertificationName} signer={model.certification.approver} /><div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-stamp><p className="font-semibold">ตราประทับ</p><div className={`flex items-center justify-center ${compactCertification ? "h-12" : "h-20"}`}>{model.certification.companyStampUrl ? <DocumentImage alt="ตราประทับบริษัท" className={`${compactCertification ? "max-h-10" : "max-h-16"} w-full object-contain`} key={model.certification.companyStampUrl} src={model.certification.companyStampUrl} /> : null}</div></div><div className="min-w-0 space-y-1 [overflow-wrap:anywhere]" data-document-receiver><p className="font-semibold">ผู้รับเอกสาร (ลูกค้า)</p><div className={`${compactCertification ? "h-12" : "h-20"} border-b`} aria-hidden="true" />{model.showCertificationName ? <p>{payload.customer.name}</p> : null}{model.showCertificationDate ? <p>วันที่ __________________</p> : null}</div></div></section>
+  </article>;
+}

@@ -1211,8 +1211,12 @@ export function AdvertisementForm({
                     )}
                     {isBusy ? "กำลังอัปโหลด" : "อัปโหลดรูป"}
                   </Label>
+                  <p className="basis-full text-right text-xs text-muted-foreground" id="advertisement-images-upload-hint">
+                    รองรับ AVIF, JPEG, PNG หรือ WebP ขนาดไม่เกิน 10 MB ต่อรูป
+                  </p>
                   <input
                     accept="image/avif,image/jpeg,image/png,image/webp"
+                    aria-describedby="advertisement-images-upload-hint"
                     className="sr-only"
                     disabled={imageUploadDisabled}
                     id="advertisement-images-upload"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 
 import {
   quotationDocumentDisplayClearImpact,
@@ -83,6 +84,7 @@ export function QuotationDocumentDisplayDialog({
     <Dialog onOpenChange={changeOpen} open={open}>
       <DialogTrigger asChild>
         <Button disabled={disabled} size="sm" type="button" variant="outline">
+          <SlidersHorizontal aria-hidden="true" className="size-4" />
           ตั้งค่ารูปแบบเอกสาร
         </Button>
       </DialogTrigger>
