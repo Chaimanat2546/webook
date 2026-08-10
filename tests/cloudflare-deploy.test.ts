@@ -32,17 +32,17 @@ describe("Cloudflare deployment boundary", () => {
     assert.deepEqual(config.services, [
       {
         binding: "CUM_BAANPARTY",
-        service: "baan-pool-villa",
+        service: "baan-party",
         entrypoint: "CentralUserManagerEntrypoint",
       },
       {
         binding: "CUM_POOLVILLAPATTAYA",
-        service: "baan-pool-villa02",
+        service: "pool-villa-pattaya-co-th",
         entrypoint: "CentralUserManagerEntrypoint",
       },
       {
         binding: "CUM_BAANPMHEE",
-        service: "baan-pool-villa03",
+        service: "baan-p-mhee",
         entrypoint: "CentralUserManagerEntrypoint",
       },
       {

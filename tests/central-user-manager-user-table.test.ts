@@ -16,6 +16,7 @@ it("shows only the status-appropriate lifecycle action in each row menu", () => 
   assert.match(source, /function UserActionsMenu\(\{ email, status, onAction \}/);
   assert.match(source, /ออกรหัสผ่านใหม่/);
   assert.match(source, /status === "active" \|\| status === "password_change_required"/);
+  assert.match(source, /status === "active" \|\| status === "password_change_required" \? \([\s\S]*reissue_temporary_password[\s\S]*suspend_user/);
   assert.match(source, /status === "suspended"/);
   assert.match(source, /status=\{user\.status\}/);
   assert.doesNotMatch(source, /<DropdownMenuItem onSelect=\{\(\) => onAction\("suspend_user", email\)\}>[\s\S]*ระงับผู้ใช้[\s\S]*<\/DropdownMenuItem>\s*<DropdownMenuItem onSelect=\{\(\) => onAction\("reactivate_user", email\)\}>/);

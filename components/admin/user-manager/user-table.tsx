@@ -53,13 +53,15 @@ function UserActionsMenu({ email, status, onAction }: { email: string; status: U
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuGroup>
-          <DropdownMenuItem onSelect={() => onAction("reissue_temporary_password", email)}>
-            ออกรหัสผ่านใหม่
-          </DropdownMenuItem>
           {status === "active" || status === "password_change_required" ? (
-            <DropdownMenuItem onSelect={() => onAction("suspend_user", email)}>
-              ระงับผู้ใช้
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem onSelect={() => onAction("reissue_temporary_password", email)}>
+                ออกรหัสผ่านใหม่
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onAction("suspend_user", email)}>
+                ระงับผู้ใช้
+              </DropdownMenuItem>
+            </>
           ) : null}
           {status === "suspended" ? (
             <DropdownMenuItem onSelect={() => onAction("reactivate_user", email)}>
