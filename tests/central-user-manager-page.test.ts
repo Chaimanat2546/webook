@@ -1,10 +1,24 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const source = readFileSync(new URL("../components/admin/user-manager/user-manager-page.tsx", import.meta.url), "utf8");
 
+function renderUserManagerFixture() {
+  const output = execFileSync(process.execPath, [
+    "--import", "./tests/register-server-only.mjs",
+    "--loader", "./tests/tsx-loader.mjs",
+    "./tests/fixtures/central-user-manager-ui.mjs",
+  ], { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  return JSON.parse(output) as { pageHtml: string; staleActionHtml: string };
+}
+
 describe("central user manager page", () => {
+  it("renders the user list heading", () => {
+    assert.match(renderUserManagerFixture().pageHtml, /ผู้ใช้ทั้งหมด/);
+  });
+
   it("uses a tenant list and user table without browser destinations", () => {
     assert.match(source, /grid-cols-\[16rem_minmax\(0,1fr\)_18rem\]/);
     assert.match(source, /tenantKey/);
@@ -49,9 +63,7 @@ describe("central user manager page", () => {
   });
 
   it("shows a clear message when a stale lifecycle action is rejected", () => {
-    assert.match(source, /operation\.error\?\.code === "invalid_lifecycle_transition"/);
-    assert.match(source, /คำสั่งนี้ใช้ไม่ได้กับสถานะผู้ใช้ปัจจุบัน/);
-    assert.match(source, /operationMessage\(result\.operation\)/);
+    assert.match(renderUserManagerFixture().staleActionHtml, /คำสั่งนี้ใช้ไม่ได้กับสถานะผู้ใช้ปัจจุบัน/);
   });
 
   it("uses disabled fields without dialog autofocus and copies passwords only on request", () => {

@@ -27,7 +27,7 @@ function statusMessage(status: Extract<SafeResult, { ok: true }>['operation']['s
   return status === "completed" ? "ดำเนินการเรียบร้อย" : status === "in_progress" ? "คำขอกำลังดำเนินการอยู่" : status === "needs_review" ? "คำขอต้องได้รับการตรวจสอบ" : "คำขอถูกกักไว้เพื่อความปลอดภัย";
 }
 
-function operationMessage(operation: Extract<SafeResult, { ok: true }>['operation']) {
+export function operationMessage(operation: Extract<SafeResult, { ok: true }>['operation']) {
   return operation.error?.code === "invalid_lifecycle_transition"
     ? "คำสั่งนี้ใช้ไม่ได้กับสถานะผู้ใช้ปัจจุบัน กรุณาโหลดรายชื่อใหม่"
     : operation.error?.message ?? statusMessage(operation.status);
