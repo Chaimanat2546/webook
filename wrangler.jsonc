@@ -40,6 +40,16 @@
       "binding": "CUM_BAANPMHEE",
       "service": "baan-pool-villa03",
       "entrypoint": "CentralUserManagerEntrypoint"
+    },
+    {
+      "binding": "CUM_FLUK_NASA_POOLVILLA",
+      "service": "fluk-nasa-poolvilla",
+      "entrypoint": "CentralUserManagerEntrypoint"
+    },
+    {
+      "binding": "CUM_VILLA_MEDIA_POOLVILLA",
+      "service": "villa-media-poolvilla",
+      "entrypoint": "CentralUserManagerEntrypoint"
     }
   ]
 }

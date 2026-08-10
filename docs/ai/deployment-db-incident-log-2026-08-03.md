@@ -13,6 +13,8 @@ Webook deploy เป็น Cloudflare Worker ชื่อ `webook-admin` แล�
 | Baan Party | `CUM_BAANPARTY` | `baan-pool-villa` |
 | Poolvillapattaya | `CUM_POOLVILLAPATTAYA` | `baan-pool-villa02` |
 | PMhee | `CUM_BAANPMHEE` | `baan-pool-villa03` |
+| Fluk Nasa Poolvilla | `CUM_FLUK_NASA_POOLVILLA` | `fluk-nasa-poolvilla` |
+| Villa Media Poolvilla | `CUM_VILLA_MEDIA_POOLVILLA` | `villa-media-poolvilla` |
 
 ## ปัญหาที่พบ
 
