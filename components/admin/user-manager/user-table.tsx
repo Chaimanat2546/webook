@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "../../ui/table";
 
-type UserStatus = "active" | "password_change_required" | "suspended" | "abnormal";
+export type UserStatus = "active" | "password_change_required" | "suspended" | "abnormal";
 
 export type UserTableAction =
   | "reissue_temporary_password"
@@ -32,6 +32,19 @@ export type UserTableProps = {
   users: Array<{ email: string; status: UserStatus }>;
   onAction: (action: UserTableAction, email: string) => void;
 };
+
+const actionLabels: Record<UserTableAction, string> = {
+  reissue_temporary_password: "ออกรหัสผ่านใหม่",
+  suspend_user: "ระงับผู้ใช้",
+  reactivate_user: "เปิดใช้ผู้ใช้",
+};
+
+export function getUserTableActions(status: UserStatus): UserTableAction[] {
+  if (status === "active" || status === "password_change_required") {
+    return ["reissue_temporary_password", "suspend_user"];
+  }
+  return status === "suspended" ? ["reactivate_user"] : [];
+}
 
 function StatusBadge({ status }: { status: UserStatus }) {
   const labels: Record<UserStatus, string> = {
@@ -44,6 +57,8 @@ function StatusBadge({ status }: { status: UserStatus }) {
 }
 
 function UserActionsMenu({ email, status, onAction }: { email: string; status: UserStatus; onAction: UserTableProps["onAction"] }) {
+  const actions = getUserTableActions(status);
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -53,19 +68,11 @@ function UserActionsMenu({ email, status, onAction }: { email: string; status: U
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuGroup>
-          <DropdownMenuItem onSelect={() => onAction("reissue_temporary_password", email)}>
-            ออกรหัสผ่านใหม่
-          </DropdownMenuItem>
-          {status === "active" || status === "password_change_required" ? (
-            <DropdownMenuItem onSelect={() => onAction("suspend_user", email)}>
-              ระงับผู้ใช้
+          {actions.map((action) => (
+            <DropdownMenuItem key={action} onSelect={() => onAction(action, email)}>
+              {actionLabels[action]}
             </DropdownMenuItem>
-          ) : null}
-          {status === "suspended" ? (
-            <DropdownMenuItem onSelect={() => onAction("reactivate_user", email)}>
-              เปิดใช้ผู้ใช้
-            </DropdownMenuItem>
-          ) : null}
+          ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

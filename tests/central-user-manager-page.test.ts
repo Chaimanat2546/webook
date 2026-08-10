@@ -1,15 +1,29 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const source = readFileSync(new URL("../components/admin/user-manager/user-manager-page.tsx", import.meta.url), "utf8");
 
+function renderUserManagerFixture() {
+  const output = execFileSync(process.execPath, [
+    "--import", "./tests/register-server-only.mjs",
+    "--loader", "./tests/tsx-loader.mjs",
+    "./tests/fixtures/central-user-manager-ui.mjs",
+  ], { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  return JSON.parse(output) as { pageHtml: string; staleActionHtml: string };
+}
+
 describe("central user manager page", () => {
+  it("renders the user list heading", () => {
+    assert.match(renderUserManagerFixture().pageHtml, /ผู้ใช้ทั้งหมด/);
+  });
+
   it("uses a tenant list and user table without browser destinations", () => {
     assert.match(source, /grid-cols-\[16rem_minmax\(0,1fr\)_18rem\]/);
     assert.match(source, /tenantKey/);
     assert.match(source, /เลือก Tenant/);
-    assert.match(source, /ผู้ใช้ของ Tenant/);
+    assert.match(source, /ผู้ใช้ทั้งหมด/);
     assert.doesNotMatch(source, /workers\.dev|CUM_BAAN_POOL_VILLA_STAGING|tenantId/);
   });
 
@@ -46,6 +60,10 @@ describe("central user manager page", () => {
     assert.match(source, /setDialogAction\(\{ action, label, email: rowEmail \}\)/);
     assert.match(source, /disabled=\{Boolean\(dialogAction\?\.email\)\}/);
     assert.doesNotMatch(source, /<ul aria-busy/);
+  });
+
+  it("shows a clear message when a stale lifecycle action is rejected", () => {
+    assert.match(renderUserManagerFixture().staleActionHtml, /คำสั่งนี้ใช้ไม่ได้กับสถานะผู้ใช้ปัจจุบัน/);
   });
 
   it("uses disabled fields without dialog autofocus and copies passwords only on request", () => {

@@ -35,6 +35,36 @@ describe("central user manager wire contract", () => {
     assert.deepEqual(result, { ok: false, error: { code: "agent_unavailable", message: "ไม่สามารถจัดการผู้ใช้ได้ในขณะนี้" } });
   });
 
+  it("accepts and safely projects a rejected lifecycle transition", () => {
+    const lifecycleRequest = parseCentralUserRpcRequest({
+      ...request,
+      action: "reissue_temporary_password",
+      payload: { email: "admin@example.com" },
+    });
+    const error = {
+      code: "invalid_lifecycle_transition",
+      message: "This action is not available for the user's current status.",
+    };
+    const tenant = parseTenantCentralUserRpcResult({
+      ok: true,
+      operation: {
+        operationId: lifecycleRequest.operationId,
+        status: "rejected",
+        stage: "rejected",
+        error,
+      },
+    }, lifecycleRequest);
+
+    assert.deepEqual(projectBrowserCentralUserResult(tenant), {
+      ok: true,
+      operation: {
+        operationId: lifecycleRequest.operationId,
+        status: "rejected",
+        error,
+      },
+    });
+  });
+
   it("rejects completed responses whose status, stage, or safe error invariant disagrees", () => {
     const parsed = parseCentralUserRpcRequest(request);
     const invalidStage = parseTenantCentralUserRpcResult({ ok: true, operation: { operationId: parsed.operationId, status: "completed", stage: "listed", result: { user: { userId: "123e4567-e89b-42d3-a456-426614174003", email: "admin@example.com", status: "password_change_required", createdAt: null, lastSignInAt: null, credentialVersion: 1, authCredentialVersion: 1 } } } }, parsed);

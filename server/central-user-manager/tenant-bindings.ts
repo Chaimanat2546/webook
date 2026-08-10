@@ -20,6 +20,18 @@ const CENTRAL_USER_TENANTS = [{
   displayName: "baanPMhee",
   environment: "Production",
   enabled: true,
+}, {
+  key: "fluknasapoolvilla",
+  id: "ce440408-3844-4a06-a5ae-56a4fac8acf8",
+  displayName: "Fluk Nasa Poolvilla",
+  environment: "Production",
+  enabled: true,
+}, {
+  key: "villamediapoolvilla",
+  id: "f216699f-30cc-4076-822c-88657ca4efda",
+  displayName: "Villa Media Poolvilla",
+  environment: "Production",
+  enabled: true,
 }] as const;
 
 export type CentralUserTenant = (typeof CENTRAL_USER_TENANTS)[number];

@@ -2,21 +2,21 @@ import { normalizeCentralUserEmail, type CentralUserRpcRequest } from "./contrac
 
 type TenantUserStatus = "active" | "password_change_required" | "suspended" | "abnormal";
 type TenantUser = { userId: string; email: string; status: TenantUserStatus; createdAt: string | null; lastSignInAt: string | null; credentialVersion: number | null; authCredentialVersion: number | null };
-type TenantOperationStatus = "completed" | "in_progress" | "needs_review" | "quarantined";
+type TenantOperationStatus = "completed" | "rejected" | "in_progress" | "needs_review" | "quarantined";
 type TenantOperation = { operationId: string; status: TenantOperationStatus; stage: string; result?: { users?: TenantUser[]; pagination?: { page: number; pageSize: number; hasMore: boolean }; user?: TenantUser; temporaryPassword?: string }; error?: SafeTenantError };
 type SafeTenantError = { code: keyof typeof SAFE_ERRORS; message: string };
 export type TenantCentralUserRpcResult = { ok: true; operation: TenantOperation } | { ok: false; error: { code: "invalid_request" | "agent_unavailable"; message: string } };
-export type BrowserCentralUserRpcResult = { ok: true; operation: { operationId: string; status: TenantOperationStatus; users?: Array<{ email: string; status: TenantUserStatus }>; pagination?: { page: number; pageSize: number; hasMore: boolean }; user?: { email: string; status: TenantUserStatus }; temporaryPassword?: string } } | { ok: false; error: { code: "invalid_request" | "agent_unavailable"; message: string } };
+export type BrowserCentralUserRpcResult = { ok: true; operation: { operationId: string; status: TenantOperationStatus; users?: Array<{ email: string; status: TenantUserStatus }>; pagination?: { page: number; pageSize: number; hasMore: boolean }; user?: { email: string; status: TenantUserStatus }; temporaryPassword?: string; error?: SafeTenantError } } | { ok: false; error: { code: "invalid_request" | "agent_unavailable"; message: string } };
 
 const SAFE_ERRORS = {
-  invalid_request: "Invalid agent operation request.", provider_failure: "Unable to complete request.", database_unavailable: "The operation database is unavailable.", operation_conflict: "Operation conflicts with an existing request.", lease_conflict: "The operation lease is owned by another request.", operation_quarantined: "The operation is permanently quarantined.", provider_ambiguous: "Provider outcome is ambiguous.", lease_lost: "The operation lease was lost.", user_exists: "An admin user already exists for this email.", identity_mismatch: "The Auth user and admin profile do not match.", profile_write_failed: "Unable to update the admin profile.", profile_data_invalid: "Admin profile data is invalid.", profile_state_conflict: "Admin profile state changed.", credential_version_mismatch: "Credential versions do not match.", create_compensated: "User creation was rolled back safely.",
+  invalid_request: "Invalid agent operation request.", invalid_lifecycle_transition: "This action is not available for the user's current status.", provider_failure: "Unable to complete request.", database_unavailable: "The operation database is unavailable.", operation_conflict: "Operation conflicts with an existing request.", lease_conflict: "The operation lease is owned by another request.", operation_quarantined: "The operation is permanently quarantined.", provider_ambiguous: "Provider outcome is ambiguous.", lease_lost: "The operation lease was lost.", user_exists: "An admin user already exists for this email.", identity_mismatch: "The Auth user and admin profile do not match.", profile_write_failed: "Unable to update the admin profile.", profile_data_invalid: "Admin profile data is invalid.", profile_state_conflict: "Admin profile state changed.", credential_version_mismatch: "Credential versions do not match.", create_compensated: "User creation was rolled back safely.",
 } as const;
 const TOP_LEVEL_ERRORS = {
   invalid_request: "Invalid user management request.",
   agent_unavailable: "Central User Manager Agent is unavailable.",
 } as const;
-const SAFE_STAGES = new Set(["list", "listed", "completed", "needs_review", "quarantined", "claimed", "late_fence", "provider_intent", "provider_outcome", "profile_created", "profile_advanced", "profile_activated", "auth_create_intent", "auth_create_succeeded", "auth_create_rejected", "auth_delete_intent", "auth_delete_succeeded", "auth_delete_rejected", "auth_update_intent", "auth_update_succeeded", "auth_update_rejected", "password_verify_intent", "password_verify_succeeded", "password_verify_rejected", "global_signout_intent", "global_signout_succeeded", "global_signout_rejected", "compensation_ready"]);
-const SAFE_STATUSES = new Set<TenantOperationStatus>(["completed", "in_progress", "needs_review", "quarantined"]);
+const SAFE_STAGES = new Set(["list", "listed", "completed", "rejected", "needs_review", "quarantined", "claimed", "late_fence", "provider_intent", "provider_outcome", "profile_created", "profile_advanced", "profile_activated", "auth_create_intent", "auth_create_succeeded", "auth_create_rejected", "auth_delete_intent", "auth_delete_succeeded", "auth_delete_rejected", "auth_update_intent", "auth_update_succeeded", "auth_update_rejected", "password_verify_intent", "password_verify_succeeded", "password_verify_rejected", "global_signout_intent", "global_signout_succeeded", "global_signout_rejected", "compensation_ready"]);
+const SAFE_STATUSES = new Set<TenantOperationStatus>(["completed", "rejected", "in_progress", "needs_review", "quarantined"]);
 const PASSWORD_ACTIONS = new Set(["create_user", "reissue_temporary_password", "reactivate_user"]);
 const TEMPORARY_PASSWORD = /^[!-~]{20}$/;
 
@@ -65,7 +65,7 @@ export function parseTenantCentralUserRpcResult(value: unknown, request: Central
   if (value.ok !== true || !record(value.operation)) return safeError();
   const operation = value.operation;
   const operationKeys = ["operationId", "status", "stage", ...(operation.result === undefined ? [] : ["result"]), ...(operation.error === undefined ? [] : ["error"])];
-  if (!keys(operation, operationKeys) || operation.operationId !== request.operationId || !SAFE_STATUSES.has(operation.status as TenantOperationStatus) || typeof operation.stage !== "string" || !SAFE_STAGES.has(operation.stage)) return safeError();
+  if (!keys(operation, operationKeys) || operation.operationId !== request.operationId || !SAFE_STATUSES.has(operation.status as TenantOperationStatus) || typeof operation.stage !== "string" || !SAFE_STAGES.has(operation.stage) || (operation.status === "rejected" && operation.stage !== "rejected")) return safeError();
   const parsedError = operation.error === undefined ? undefined : parseSafeTenantError(operation.error);
   if (operation.error !== undefined && parsedError === null) return safeError();
   const error = parsedError ?? undefined;
@@ -82,7 +82,7 @@ export function parseTenantCentralUserRpcResult(value: unknown, request: Central
 export function projectBrowserCentralUserResult(result: TenantCentralUserRpcResult): BrowserCentralUserRpcResult {
   if (!result.ok) return result;
   const { operation } = result;
-  const base = { operationId: operation.operationId, status: operation.status };
+  const base = { operationId: operation.operationId, status: operation.status, ...(operation.error ? { error: operation.error } : {}) };
   if (!operation.result) return { ok: true, operation: base };
   if (operation.result.users && operation.result.pagination) return { ok: true, operation: { ...base, users: operation.result.users.map(({ email, status }) => ({ email, status })), pagination: operation.result.pagination } };
   if (operation.result.user) return { ok: true, operation: { ...base, user: { email: operation.result.user.email, status: operation.result.user.status }, ...(operation.result.temporaryPassword ? { temporaryPassword: operation.result.temporaryPassword } : {}) } };

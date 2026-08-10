@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
 
@@ -13,12 +14,17 @@ it("renders responsive houses-style table/cards", () => {
 });
 
 it("shows only the status-appropriate lifecycle action in each row menu", () => {
-  assert.match(source, /function UserActionsMenu\(\{ email, status, onAction \}/);
-  assert.match(source, /ออกรหัสผ่านใหม่/);
-  assert.match(source, /status === "active" \|\| status === "password_change_required"/);
-  assert.match(source, /status === "suspended"/);
-  assert.match(source, /status=\{user\.status\}/);
-  assert.doesNotMatch(source, /<DropdownMenuItem onSelect=\{\(\) => onAction\("suspend_user", email\)\}>[\s\S]*ระงับผู้ใช้[\s\S]*<\/DropdownMenuItem>\s*<DropdownMenuItem onSelect=\{\(\) => onAction\("reactivate_user", email\)\}>/);
+  const output = execFileSync(process.execPath, [
+    "--import", "./tests/register-server-only.mjs",
+    "--loader", "./tests/tsx-loader.mjs",
+    "./tests/fixtures/central-user-manager-ui.mjs",
+  ], { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  const { actions } = JSON.parse(output) as { actions: Record<string, string[]> };
+  const allowedActions = ["reissue_temporary_password", "suspend_user"];
+  assert.deepEqual(actions.active, allowedActions);
+  assert.deepEqual(actions.passwordChangeRequired, allowedActions);
+  assert.deepEqual(actions.suspended, ["reactivate_user"]);
+  assert.deepEqual(actions.abnormal, []);
 });
 
 it("renders every browser-safe Tenant status without narrowing the list result", () => {
