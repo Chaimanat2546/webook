@@ -1,9 +1,24 @@
 import { readFile } from "node:fs/promises";
+import { resolve as resolvePath } from "node:path";
+import { pathToFileURL } from "node:url";
 import { loadBindings, transform } from "next/dist/build/swc/index.js";
 
 await loadBindings();
 
 export async function resolve(specifier, context, nextResolve) {
+  if (specifier.startsWith("@/")) {
+    const path = resolvePath(process.cwd(), specifier.slice(2));
+    for (const extension of [".ts", ".tsx", ".js"]) {
+      try {
+        return await nextResolve(pathToFileURL(`${path}${extension}`).href, context);
+      } catch {
+        // Try the next project extension.
+      }
+    }
+  }
+  if (specifier.startsWith("next/") && !specifier.endsWith(".js")) {
+    return nextResolve(`${specifier}.js`, context);
+  }
   if (specifier.startsWith(".") && !/\.[cm]?[jt]sx?$/.test(specifier)) {
     for (const extension of [".ts", ".tsx"]) {
       try {

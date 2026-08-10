@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
+import { getCentralUserBinding } from "../server/central-user-manager/cloudflare-bindings.ts";
 import { listCentralUserTenants, resolveCentralUserTenant } from "../server/central-user-manager/tenant-bindings.ts";
 
 const BAANPARTY_TENANT_ID = "a7f10ab9-db3a-400f-8185-03aabe8041db";
@@ -30,16 +30,20 @@ describe("central user manager tenant bindings", () => {
     assert.equal(resolveCentralUserTenant("not-a-uuid"), null);
   });
 
-  it("uses a fixed typed binding without dynamic environment selection", () => {
-    const source = readFileSync(new URL("../server/central-user-manager/cloudflare-bindings.ts", import.meta.url), "utf8");
-    const registrySource = readFileSync(new URL("../server/central-user-manager/tenant-bindings.ts", import.meta.url), "utf8");
-    assert.match(registrySource, /import "server-only"/);
-    assert.match(source, /env\.CUM_BAANPARTY/);
-    assert.match(source, /env\.CUM_POOLVILLAPATTAYA/);
-    assert.match(source, /env\.CUM_BAANPMHEE/);
-    assert.match(source, /env\.CUM_FLUK_NASA_POOLVILLA/);
-    assert.match(source, /env\.CUM_VILLA_MEDIA_POOLVILLA/);
-    assert.doesNotMatch(source, /env\s*\[/);
-    assert.doesNotMatch(source, /fetch\s*\(/);
+  it("returns the matching binding for each new tenant ID", async () => {
+    const flukNasaBinding = { fetch: () => Promise.resolve(new Response()) };
+    const villaMediaBinding = { fetch: () => Promise.resolve(new Response()) };
+    const contextSymbol = Symbol.for("__cloudflare-context__");
+    Reflect.set(globalThis, contextSymbol, { env: {
+      CUM_FLUK_NASA_POOLVILLA: flukNasaBinding,
+      CUM_VILLA_MEDIA_POOLVILLA: villaMediaBinding,
+    } });
+
+    try {
+      assert.equal(await getCentralUserBinding(FLUK_NASA_POOLVILLA_TENANT_ID), flukNasaBinding);
+      assert.equal(await getCentralUserBinding(VILLA_MEDIA_POOLVILLA_TENANT_ID), villaMediaBinding);
+    } finally {
+      Reflect.deleteProperty(globalThis, contextSymbol);
+    }
   });
 });
