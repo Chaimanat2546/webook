@@ -37,8 +37,10 @@ export async function runCentralUserOperation(input: RunCentralUserOperationInpu
   const result = await callTenantAgent(request);
   await finishCentralUserAudit({
     operationId: request.operationId,
-    status: result.ok ? result.operation.status : "failed",
-    safeErrorCode: result.ok ? undefined : result.error.code,
+    status: result.ok
+      ? result.operation.status === "rejected" ? "failed" : result.operation.status
+      : "failed",
+    safeErrorCode: result.ok ? result.operation.error?.code : result.error.code,
   });
   return projectBrowserCentralUserResult(result);
 }

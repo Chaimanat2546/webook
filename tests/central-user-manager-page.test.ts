@@ -9,7 +9,7 @@ describe("central user manager page", () => {
     assert.match(source, /grid-cols-\[16rem_minmax\(0,1fr\)_18rem\]/);
     assert.match(source, /tenantKey/);
     assert.match(source, /เลือก Tenant/);
-    assert.match(source, /ผู้ใช้ของ Tenant/);
+    assert.match(source, /ผู้ใช้ทั้งหมด/);
     assert.doesNotMatch(source, /workers\.dev|CUM_BAAN_POOL_VILLA_STAGING|tenantId/);
   });
 
@@ -46,6 +46,12 @@ describe("central user manager page", () => {
     assert.match(source, /setDialogAction\(\{ action, label, email: rowEmail \}\)/);
     assert.match(source, /disabled=\{Boolean\(dialogAction\?\.email\)\}/);
     assert.doesNotMatch(source, /<ul aria-busy/);
+  });
+
+  it("shows a clear message when a stale lifecycle action is rejected", () => {
+    assert.match(source, /operation\.error\?\.code === "invalid_lifecycle_transition"/);
+    assert.match(source, /คำสั่งนี้ใช้ไม่ได้กับสถานะผู้ใช้ปัจจุบัน/);
+    assert.match(source, /operationMessage\(result\.operation\)/);
   });
 
   it("uses disabled fields without dialog autofocus and copies passwords only on request", () => {

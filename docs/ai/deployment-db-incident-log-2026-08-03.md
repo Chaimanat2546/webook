@@ -10,9 +10,11 @@ Webook deploy เป็น Cloudflare Worker ชื่อ `webook-admin` แล�
 
 | Tenant | Service Binding | Worker |
 | --- | --- | --- |
-| Baan Party | `CUM_BAANPARTY` | `baan-pool-villa` |
-| Poolvillapattaya | `CUM_POOLVILLAPATTAYA` | `baan-pool-villa02` |
-| PMhee | `CUM_BAANPMHEE` | `baan-pool-villa03` |
+| Baan Party | `CUM_BAANPARTY` | `baan-party` |
+| Poolvillapattaya | `CUM_POOLVILLAPATTAYA` | `pool-villa-pattaya-co-th` |
+| PMhee | `CUM_BAANPMHEE` | `baan-p-mhee` |
+| Fluk Nasa Poolvilla | `CUM_FLUK_NASA_POOLVILLA` | `fluk-nasa-poolvilla` |
+| Villa Media Poolvilla | `CUM_VILLA_MEDIA_POOLVILLA` | `villa-media-poolvilla` |
 
 ## ปัญหาที่พบ
 
