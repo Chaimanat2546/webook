@@ -113,7 +113,7 @@ export function AdminDesktopSidebar({
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton asChild isActive={pathname === "/admin/quotations"}>
                           <Link href="/admin/quotations" onClick={closeMobileSidebar}>
-                            <FileTextIcon aria-hidden />
+                            <FileTextIcon aria-hidden/>
                             <span>รายการใบเสนอราคา</span>
                           </Link>
                         </SidebarMenuSubButton>
