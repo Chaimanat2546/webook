@@ -7,6 +7,7 @@ export interface AdminAllowTools {
 
 export interface AdminUserForAuth {
   allow_tools: AdminAllowTools | null;
+  is_banned: boolean;
   mid: number | null;
   role_id: number | null;
 }
@@ -29,6 +30,12 @@ export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | n
 }
 
 export function canManageCentralUsers(
+  user: Pick<AdminUserForAuth, "role_id"> | null,
+): boolean {
+  return user?.role_id === 1;
+}
+
+export function canManageWebookUsers(
   user: Pick<AdminUserForAuth, "role_id"> | null,
 ): boolean {
   return user?.role_id === 1;
@@ -69,6 +76,12 @@ export const requireAdmin = cache(async () => {
   });
   const adminUser = pickAdminUser({ authUser: user, ...matches });
 
+  if (adminUser?.is_banned) {
+    await supabase.auth.signOut();
+    redirect("/login?error=invalid");
+    throw new Error("Banned");
+  }
+
   return {
     adminUser,
     isAuthorized: canUseAccommodation(adminUser),
@@ -80,6 +93,15 @@ export const requireAdmin = cache(async () => {
 export async function requireCentralUserManagerAdmin() {
   const session = await requireAdmin();
   if (!canManageCentralUsers(session.adminUser)) {
+    throw new Error("Forbidden");
+  }
+
+  return session;
+}
+
+export async function requireWebookUserManagerAdmin(): Promise<Awaited<ReturnType<typeof requireAdmin>>> {
+  const session = await requireAdmin();
+  if (!canManageWebookUsers(session.adminUser)) {
     throw new Error("Forbidden");
   }
 
