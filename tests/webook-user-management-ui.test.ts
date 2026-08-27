@@ -35,14 +35,20 @@ function renderedActions(): { active: string[]; banned: string[] } {
 }
 
 describe("Webook user management interface", () => {
-  it("shows desktop columns and mobile cards for every editable field", () => {
+  it("shows every editable field, status, and action menu in mobile cards", () => {
     assert.match(table, /<TableHead[^>]*>ชื่อ<\/TableHead>/);
     assert.match(table, /<TableHead[^>]*>Username<\/TableHead>/);
     assert.match(table, /<TableHead[^>]*>อีเมล<\/TableHead>/);
     assert.match(table, /<TableHead[^>]*>เบอร์โทร<\/TableHead>/);
     assert.match(table, /<TableHead[^>]*>สถานะ<\/TableHead>/);
     assert.match(table, /<TableHead[^>]*>การจัดการ<\/TableHead>/);
-    assert.match(table, /md:hidden/);
+    const mobileCards = table.slice(table.indexOf('className="flex flex-col gap-3 md:hidden"'));
+    assert.match(mobileCards, /<CardTitle[^>]*>\{displayValue\(user\.name\)\}<\/CardTitle>/);
+    assert.match(mobileCards, /\{displayValue\(user\.username\)\}/);
+    assert.match(mobileCards, /<UserStatusBadge isBanned=\{user\.isBanned\} \/>/);
+    assert.match(mobileCards, /<dt[^>]*>อีเมล<\/dt>[\s\S]*?<dd[^>]*>\{displayValue\(user\.email\)\}<\/dd>/);
+    assert.match(mobileCards, /<dt[^>]*>เบอร์โทร<\/dt>[\s\S]*?<dd>\{displayValue\(user\.tel\)\}<\/dd>/);
+    assert.match(mobileCards, /<UserActionsMenu onAction=\{onAction\} user=\{user\} \/>/);
     assert.match(table, /hidden p-0 md:block/);
   });
 
@@ -56,7 +62,7 @@ describe("Webook user management interface", () => {
     assert.match(table, /ShieldCheckIcon/);
     assert.match(table, /aria-hidden/);
     assert.match(table, />\s*แก้ไข\s*</);
-    assert.match(table, />\s*Ban\s*</);
+    assert.match(table, />\s*ระงับผู้ใช้\s*</);
     assert.match(table, />\s*ปลด Ban\s*</);
   });
 
@@ -69,13 +75,14 @@ describe("Webook user management interface", () => {
     assert.doesNotMatch(page, /<Input[^>]*name="id"/);
   });
 
-  it("submits immutable ids through transitions and refreshes only after success", () => {
+  it("submits immutable ids through transitions and refreshes only after successful mutations", () => {
     assert.match(page, /useTransition\(\)/);
     assert.match(page, /data\.set\("id", selectedUser\.id\)/);
     assert.match(page, /updateWebookUserAction/);
     assert.match(page, /banWebookUserAction/);
     assert.match(page, /unbanWebookUserAction/);
-    assert.match(page, /if \(!result\.ok\)/);
+    assert.match(page, /if \(!result\.ok\) \{\s*setDialogError\(result\.message\);\s*return;\s*\}[\s\S]*?router\.refresh\(\)/);
+    assert.equal((page.match(/router\.refresh\(\)/g) ?? []).length, 2);
     assert.match(page, /role="alert"/);
     assert.match(page, /role="status"/);
     assert.match(page, /router\.refresh\(\)/);

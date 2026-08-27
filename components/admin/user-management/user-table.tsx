@@ -89,7 +89,7 @@ function UserActionsMenu({
                   variant="destructive"
                 >
                   <BanIcon aria-hidden />
-                  Ban
+                  ระงับผู้ใช้
                 </DropdownMenuItem>
               );
             }

@@ -251,6 +251,13 @@ to authenticated using (true)
 
 Those allow every logged-in user to read the table through Supabase APIs.
 
+## Administration
+
+- [Webook user management](docs/webook-user-management.md) documents the local
+  `/admin/users` Role 1 workflow, including editable fields, Ban/Unban
+  synchronization, and the `is_banned` migration prerequisite. The independent
+  Central User Manager is at `/admin/user-manager`.
+
 ## Local Admin User
 
 Create a local auth user in Supabase Studio from `supabase status`:
