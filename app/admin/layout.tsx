@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { AdminShell } from "../../components/layout/admin-shell";
 import {
   canManageCentralUsers,
-  canManageWebookUsers,
   canUseQuotation,
   requireAdmin,
 } from "../../server/auth/admin";
@@ -19,7 +18,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <AdminShell
       canManageCentralUsers={canManageCentralUsers(adminUser)}
-      canManageWebookUsers={canManageWebookUsers(adminUser)}
       canUseQuotation={canUseQuotation(adminUser)}
       defaultSidebarOpen={defaultSidebarOpen}
     >

@@ -3,12 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  canManageHouseRating,
-  canManageWebookUsers,
-  canUseAccommodation,
-  pickAdminUser,
-} from "../server/auth/admin.ts";
+import { canManageHouseRating, canUseAccommodation, pickAdminUser } from "../server/auth/admin.ts";
 import { findSignInEmailByUsername } from "../server/repositories/admin-users.ts";
 
 interface FakeQueryResult {
@@ -65,30 +60,24 @@ describe("admin authorization", () => {
     assert.equal(canManageHouseRating(null), false);
   });
 
-  it("reserves Webook User Management for role 1", () => {
-    assert.equal(canManageWebookUsers({ role_id: 1 }), true);
-    assert.equal(canManageWebookUsers({ role_id: 2 }), false);
-    assert.equal(canManageWebookUsers(null), false);
-  });
-
   it("prefers uid match before email fallback", () => {
     const user = pickAdminUser({
       authUser: { id: "auth-1", email: "admin@example.com" },
-      byUid: { allow_tools: { allow_accommodation: false }, is_banned: false, mid: 1, role_id: 3 },
-      byEmail: { allow_tools: { allow_accommodation: true }, is_banned: false, mid: 2, role_id: 1 },
+      byUid: { allow_tools: { allow_accommodation: false }, mid: 1, role_id: 3 },
+      byEmail: { allow_tools: { allow_accommodation: true }, mid: 2, role_id: 1 },
     });
 
-    assert.deepEqual(user, { allow_tools: { allow_accommodation: false }, is_banned: false, mid: 1, role_id: 3 });
+    assert.deepEqual(user, { allow_tools: { allow_accommodation: false }, mid: 1, role_id: 3 });
   });
 
   it("uses email fallback when uid match is missing", () => {
     const user = pickAdminUser({
       authUser: { id: "auth-1", email: "admin@example.com" },
       byUid: null,
-      byEmail: { allow_tools: { allow_accommodation: true }, is_banned: false, mid: 2, role_id: 1 },
+      byEmail: { allow_tools: { allow_accommodation: true }, mid: 2, role_id: 1 },
     });
 
-    assert.deepEqual(user, { allow_tools: { allow_accommodation: true }, is_banned: false, mid: 2, role_id: 1 });
+    assert.deepEqual(user, { allow_tools: { allow_accommodation: true }, mid: 2, role_id: 1 });
   });
 
   it("does not include a local auth override", () => {
@@ -102,20 +91,12 @@ describe("admin authorization", () => {
     assert.doesNotMatch(adminAuthSource, new RegExp(helperName));
   });
 
-  it("loads public users mid, role, tool permissions, and Ban state", () => {
+  it("loads public users mid and allow_tools for feature permissions", () => {
     const repositorySource = readFileSync(new URL("../server/repositories/admin-users.ts", import.meta.url), "utf8");
 
-    assert.match(repositorySource, /\.select\("mid, role_id, allow_tools, is_banned"\)/);
+    assert.match(repositorySource, /\.select\("mid, role_id, allow_tools"\)/);
     assert.doesNotMatch(repositorySource, /\.select\("id, role_id"\)/);
     assert.doesNotMatch(repositorySource, /\.select\("id:dv_id, role_id"\)/);
-  });
-
-  it("loads the Ban state with the current authenticated user", () => {
-    const repositorySource = readFileSync(new URL("../server/repositories/admin-users.ts", import.meta.url), "utf8");
-    const adminAuthSource = readFileSync(new URL("../server/auth/admin.ts", import.meta.url), "utf8");
-
-    assert.match(repositorySource, /\.select\("mid, role_id, allow_tools, is_banned"\)/);
-    assert.match(adminAuthSource, /if \(adminUser\?\.is_banned\) \{/);
   });
 
   it("resolves a unique username to a sign-in email", async () => {
