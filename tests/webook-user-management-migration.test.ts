@@ -19,17 +19,4 @@ describe("Webook user management migration", () => {
     assert.match(sql, /using \(\(select private\.is_webook_user_manager\(\)\)\)/);
     assert.match(sql, /with check \(\(select private\.is_webook_user_manager\(\)\)\)/);
   });
-
-  it("allows authenticated users to read only their current auth record", () => {
-    assert.match(sql, /create policy "Authenticated users can read their own Webook user record"/);
-    assert.match(sql, /for select\s+to authenticated\s+using \(\s*users\.uid = auth\.uid\(\)/);
-    assert.match(sql, /users\.email = auth\.jwt\(\) ->> 'email'/);
-  });
-
-  it("prevents Role 1 users from updating their own record", () => {
-    assert.match(sql, /create policy "Role 1 cannot update their own Webook user record"/);
-    assert.match(sql, /as restrictive\s+for update\s+to authenticated/);
-    assert.match(sql, /users\.uid is distinct from auth\.uid\(\)/);
-    assert.match(sql, /users\.email is distinct from auth\.jwt\(\) ->> 'email'/);
-  });
 });

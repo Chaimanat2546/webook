@@ -29,32 +29,9 @@ revoke all on function private.is_webook_user_manager() from public;
 grant usage on schema private to authenticated;
 grant execute on function private.is_webook_user_manager() to authenticated;
 
-create policy "Authenticated users can read their own Webook user record"
-  on public.users
-  for select
-  to authenticated
-  using (
-    users.uid = auth.uid()
-    or users.email = auth.jwt() ->> 'email'
-  );
-
 create policy "Role 1 can manage Webook users"
   on public.users
   for all
   to authenticated
   using ((select private.is_webook_user_manager()))
   with check ((select private.is_webook_user_manager()));
-
-create policy "Role 1 cannot update their own Webook user record"
-  on public.users
-  as restrictive
-  for update
-  to authenticated
-  using (
-    users.uid is distinct from auth.uid()
-    and users.email is distinct from auth.jwt() ->> 'email'
-  )
-  with check (
-    users.uid is distinct from auth.uid()
-    and users.email is distinct from auth.jwt() ->> 'email'
-  );
