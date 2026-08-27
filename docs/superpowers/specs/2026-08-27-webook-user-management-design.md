@@ -47,13 +47,17 @@ API operations; no privileged client or secret reaches a client component.
 Ban must:
 
 1. Mark the `public.users` record as banned.
-2. Disable the linked Supabase Auth account.
-3. Revoke its existing Auth sessions.
+2. Set a long Supabase Auth ban duration on the linked account, blocking a new
+   sign-in immediately.
+3. Make `requireAdmin` reject a current session whose linked local user is
+   banned, so every subsequent Webook server request loses access immediately.
 
-Unban performs the inverse Auth/account status update and marks the local
-record active again. The implementation must coordinate failure paths so it
-does not claim success when database and Auth states differ; it should apply a
-compensating update where an operation fails after an earlier change.
+Unban removes the Auth ban duration and marks the local record active again.
+Supabase Auth's temporary ban does not revoke an already issued stateless JWT;
+the local check closes that Webook access window on the next request. The
+implementation must coordinate failure paths so it does not claim success when
+database and Auth states differ; it should apply a compensating update where an
+operation fails after an earlier change.
 
 Administrators cannot ban their own account.
 
@@ -108,8 +112,8 @@ Tests cover:
 - Listing and responsive presentation.
 - Edit validation, uniqueness, and database/Auth email synchronization.
 - The mutually exclusive Ban/Unban actions and their icons.
-- Ban session revocation, unban behavior, failed-operation compensation, and
-  the self-ban guard.
+- Ban blocking at sign-in and on the next authenticated Webook request, unban
+  behavior, failed-operation compensation, and the self-ban guard.
 
 Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` before
 the feature is declared complete. Update behavior documentation with the
