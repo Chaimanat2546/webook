@@ -150,11 +150,11 @@ export function AdminDesktopSidebar({
                     <SidebarMenuButton
                       asChild
                       isActive={pathname.startsWith("/admin/users")}
-                      tooltip="ผู้ใช้ Webook"
+                      tooltip="จัดการผู้ใช้ Webook"
                     >
                       <Link href="/admin/users" onClick={closeMobileSidebar}>
                         <UsersIcon data-icon="inline-start" />
-                        <span>ผู้ใช้ Webook</span>
+                        <span>จัดการผู้ใช้ Webook</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

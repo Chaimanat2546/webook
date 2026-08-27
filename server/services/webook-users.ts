@@ -25,6 +25,10 @@ export interface WebookAuthUserAttributes {
 export interface WebookAuthAdminClient {
   auth: {
     admin: {
+      getUserById(uid: string): Promise<{
+        data: { user: { email?: string | null } | null };
+        error: unknown | null;
+      }>;
       updateUserById(
         uid: string,
         attributes: WebookAuthUserAttributes,
@@ -44,6 +48,7 @@ export interface WebookUserLifecycleDependencies<TClient> {
     | WebookAuthAdminClient
     | null
     | Promise<WebookAuthAdminClient | null>;
+  createManagementClient(): TClient | null | Promise<TClient | null>;
   repository: WebookUserRepositoryPort<TClient>;
 }
 
@@ -111,6 +116,19 @@ async function updateAuthUser(
   }
 }
 
+async function getAuthUserEmail(
+  client: WebookAuthAdminClient,
+  uid: string,
+): Promise<string | null> {
+  try {
+    const { data, error } = await client.auth.admin.getUserById(uid);
+    const email = data.user?.email;
+    return error === null && typeof email === "string" && email.trim() ? email : null;
+  } catch {
+    return null;
+  }
+}
+
 async function compensateAuthUser(
   client: WebookAuthAdminClient,
   uid: string,
@@ -133,6 +151,40 @@ async function createAuthAdminClientSafely<TClient>(
   }
 }
 
+async function createManagementClientSafely<TClient>(
+  dependencies: WebookUserLifecycleDependencies<TClient>,
+): Promise<TClient | null> {
+  try {
+    return await dependencies.createManagementClient();
+  } catch {
+    return null;
+  }
+}
+
+function createManagedRecordSerializer() {
+  const operationTails = new Map<string, Promise<void>>();
+
+  return async function serializeManagedRecord<T>(
+    id: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const previous = operationTails.get(id) ?? Promise.resolve();
+    let release = (): void => undefined;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    operationTails.set(id, current);
+
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (operationTails.get(id) === current) operationTails.delete(id);
+    }
+  };
+}
+
 function isActorRecord<TClient>(
   session: WebookManagerSession<TClient>,
   user: WebookManagedUser,
@@ -145,62 +197,100 @@ function isActorRecord<TClient>(
 export function createWebookUserLifecycleService<TClient>(
   dependencies: WebookUserLifecycleDependencies<TClient>,
 ) {
+  const serializeManagedRecord = createManagedRecordSerializer();
+
   async function updateUser(input: UpdateWebookUserInput): Promise<WebookUserMutationResult> {
     const session = await dependencies.authorize();
     const id = validateId(input.id);
     const changes = prepareUserDetails(input);
-    let current: WebookManagedUser | null;
-    try {
-      current = await dependencies.repository.findById(session.supabase, id);
-    } catch {
-      return safeResult("Unable to update user.");
-    }
-    if (!current) return safeResult("User not found.");
+    return serializeManagedRecord(id, async () => {
+      let current: WebookManagedUser | null;
+      try {
+        current = await dependencies.repository.findById(session.supabase, id);
+      } catch {
+        return safeResult("Unable to update user.");
+      }
+      if (!current) return safeResult("User not found.");
 
-    let hasConflict: boolean;
-    try {
-      hasConflict = await dependencies.repository.findConflict(session.supabase, {
-        id,
-        username: changes.username,
-        email: changes.email,
-      });
-    } catch {
-      return safeResult("Unable to update user.");
-    }
-    if (hasConflict) invalidUserData();
-
-    const emailChanged = changes.email !== current.email.trim().toLowerCase();
-    let authClient: WebookAuthAdminClient | null = null;
-    if (current.uid && emailChanged) {
-      authClient = await createAuthAdminClientSafely(dependencies);
-      if (!authClient) return safeResult("Unable to update user.");
-      const authUpdated = await updateAuthUser(authClient, current.uid, {
-        email: changes.email,
-        email_confirm: true,
-      });
-      if (!authUpdated) return safeResult("Unable to update user.");
-    }
-
-    try {
-      const user = await dependencies.repository.updateDetails(session.supabase, id, changes);
-      return { ok: true, user };
-    } catch (error) {
-      if (current.uid && authClient) {
-        await compensateAuthUser(authClient, current.uid, {
-          email: current.email,
-          email_confirm: true,
+      let hasConflict: boolean;
+      try {
+        hasConflict = await dependencies.repository.findConflict(session.supabase, {
+          id,
+          username: changes.username,
+          email: changes.email,
         });
+      } catch {
+        return safeResult("Unable to update user.");
       }
-      if (error instanceof WebookUserConflictError || (
-        error !== null
-        && typeof error === "object"
-        && "code" in error
-        && error.code === "23505"
-      )) {
-        invalidUserData();
+      if (hasConflict) invalidUserData();
+
+      const managementClient = await createManagementClientSafely(dependencies);
+      if (!managementClient) return safeResult("Unable to update user.");
+
+      const lockToken = globalThis.crypto.randomUUID();
+      try {
+        const acquired = await dependencies.repository.acquireLifecycleLock(
+          managementClient,
+          id,
+          lockToken,
+        );
+        if (!acquired) return safeResult("Unable to update user.");
+      } catch {
+        return safeResult("Unable to update user.");
       }
-      return safeResult("Unable to update user.");
-    }
+
+      try {
+        const emailChanged = changes.email !== current.email.trim().toLowerCase();
+        const linkedAuthUid = current.uid ?? (
+          isActorRecord(session, current) ? session.user.id : null
+        );
+        let authClient: WebookAuthAdminClient | null = null;
+        let previousAuthEmail: string | null = null;
+        if (linkedAuthUid && emailChanged) {
+          authClient = await createAuthAdminClientSafely(dependencies);
+          if (!authClient) return safeResult("Unable to update user.");
+          previousAuthEmail = await getAuthUserEmail(authClient, linkedAuthUid);
+          if (!previousAuthEmail) return safeResult("Unable to update user.");
+          const authUpdated = await updateAuthUser(authClient, linkedAuthUid, {
+            email: changes.email,
+            email_confirm: true,
+          });
+          if (!authUpdated) return safeResult("Unable to update user.");
+        }
+
+        try {
+          const user = await dependencies.repository.updateDetails(
+            managementClient,
+            id,
+            changes,
+            lockToken,
+          );
+          return { ok: true, user };
+        } catch (error) {
+          if (linkedAuthUid && authClient && previousAuthEmail) {
+            await compensateAuthUser(authClient, linkedAuthUid, {
+              email: previousAuthEmail,
+              email_confirm: true,
+            });
+          }
+          if (error instanceof WebookUserConflictError || (
+            error !== null
+            && typeof error === "object"
+            && "code" in error
+            && error.code === "23505"
+          )) {
+            invalidUserData();
+          }
+          return safeResult("Unable to update user.");
+        }
+      } finally {
+        try {
+          await dependencies.repository.releaseLifecycleLock(managementClient, id, lockToken);
+        } catch {
+          // The lease expires automatically; release failure must not mask the saga result.
+        }
+      }
+    });
   }
 
   async function setBanState(
@@ -210,44 +300,78 @@ export function createWebookUserLifecycleService<TClient>(
     const session = await dependencies.authorize();
     requireMatchingActor(input.actorUid, session.user.id);
     const id = validateId(input.id);
-    let current: WebookManagedUser | null;
-    try {
-      current = await dependencies.repository.findById(session.supabase, id);
-    } catch {
-      return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
-    }
-    if (!current) return safeResult("User not found.");
-    if (isBanned && isActorRecord(session, current)) {
-      throw new Error("You cannot ban yourself");
-    }
-
-    const desiredDuration = isBanned ? LONG_BAN_DURATION : "none";
-    const compensationDuration = isBanned ? "none" : LONG_BAN_DURATION;
-    let authClient: WebookAuthAdminClient | null = null;
-    if (current.uid) {
-      authClient = await createAuthAdminClientSafely(dependencies);
-      if (!authClient) {
+    return serializeManagedRecord(id, async () => {
+      let current: WebookManagedUser | null;
+      try {
+        current = await dependencies.repository.findById(session.supabase, id);
+      } catch {
         return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
       }
-      const authUpdated = await updateAuthUser(authClient, current.uid, {
-        ban_duration: desiredDuration,
-      });
-      if (!authUpdated) {
+      if (!current) return safeResult("User not found.");
+      if (isBanned && isActorRecord(session, current)) {
+        throw new Error("You cannot ban yourself");
+      }
+
+      const managementClient = await createManagementClientSafely(dependencies);
+      if (!managementClient) {
         return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
       }
-    }
 
-    try {
-      const user = await dependencies.repository.updateBan(session.supabase, id, isBanned);
-      return { ok: true, user };
-    } catch {
-      if (current.uid && authClient) {
-        await compensateAuthUser(authClient, current.uid, {
-          ban_duration: compensationDuration,
-        });
+      const lockToken = globalThis.crypto.randomUUID();
+      try {
+        const acquired = await dependencies.repository.acquireLifecycleLock(
+          managementClient,
+          id,
+          lockToken,
+        );
+        if (!acquired) {
+          return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
+        }
+      } catch {
+        return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
       }
-      return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
-    }
+
+      try {
+        const desiredDuration = isBanned ? LONG_BAN_DURATION : "none";
+        const compensationDuration = isBanned ? "none" : LONG_BAN_DURATION;
+        let authClient: WebookAuthAdminClient | null = null;
+        if (current.uid) {
+          authClient = await createAuthAdminClientSafely(dependencies);
+          if (!authClient) {
+            return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
+          }
+          const authUpdated = await updateAuthUser(authClient, current.uid, {
+            ban_duration: desiredDuration,
+          });
+          if (!authUpdated) {
+            return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
+          }
+        }
+
+        try {
+          const user = await dependencies.repository.updateBan(
+            managementClient,
+            id,
+            isBanned,
+            lockToken,
+          );
+          return { ok: true, user };
+        } catch {
+          if (current.uid && authClient) {
+            await compensateAuthUser(authClient, current.uid, {
+              ban_duration: compensationDuration,
+            });
+          }
+          return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
+        }
+      } finally {
+        try {
+          await dependencies.repository.releaseLifecycleLock(managementClient, id, lockToken);
+        } catch {
+          // The lease expires automatically; release failure must not mask the saga result.
+        }
+      }
+    });
   }
 
   return {
@@ -264,6 +388,10 @@ export function createWebookUserLifecycleService<TClient>(
 const webookUserLifecycleService = createWebookUserLifecycleService<SupabaseClient>({
   authorize: requireWebookUserManagerAdmin,
   async createAuthAdminClient() {
+    const { createSupabaseAdminClient } = await import("../../lib/supabase/admin.ts");
+    return createSupabaseAdminClient();
+  },
+  async createManagementClient() {
     const { createSupabaseAdminClient } = await import("../../lib/supabase/admin.ts");
     return createSupabaseAdminClient();
   },
