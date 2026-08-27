@@ -27,22 +27,10 @@ export interface WebookUserConflictInput {
 }
 
 export interface WebookUserRepositoryPort<TClient> {
-  acquireLifecycleLock(client: TClient, id: string, ownerToken: string): Promise<boolean>;
-  releaseLifecycleLock(client: TClient, id: string, ownerToken: string): Promise<void>;
   findById(client: TClient, id: string): Promise<WebookManagedUser | null>;
   findConflict(client: TClient, input: WebookUserConflictInput): Promise<boolean>;
-  updateDetails(
-    client: TClient,
-    id: string,
-    changes: WebookUserDetails,
-    lockToken: string,
-  ): Promise<WebookManagedUser>;
-  updateBan(
-    client: TClient,
-    id: string,
-    isBanned: boolean,
-    lockToken: string,
-  ): Promise<WebookManagedUser>;
+  updateDetails(client: TClient, id: string, changes: WebookUserDetails): Promise<WebookManagedUser>;
+  updateBan(client: TClient, id: string, isBanned: boolean): Promise<WebookManagedUser>;
 }
 
 export class WebookUserConflictError extends Error {
@@ -138,38 +126,10 @@ export async function findWebookUserConflict(
   return (usernameResult.data?.length ?? 0) > 0 || (emailResult.data?.length ?? 0) > 0;
 }
 
-export async function acquireWebookUserLifecycleLock(
-  supabase: SupabaseClient,
-  id: string,
-  ownerToken: string,
-): Promise<boolean> {
-  const { data, error } = await supabase.rpc("acquire_webook_user_lifecycle_lock", {
-    p_id: id,
-    p_owner_token: ownerToken,
-  });
-
-  throwQueryError(error);
-  return data === true;
-}
-
-export async function releaseWebookUserLifecycleLock(
-  supabase: SupabaseClient,
-  id: string,
-  ownerToken: string,
-): Promise<void> {
-  const { error } = await supabase.rpc("release_webook_user_lifecycle_lock", {
-    p_id: id,
-    p_owner_token: ownerToken,
-  });
-
-  throwQueryError(error);
-}
-
 export async function updateWebookUserDetails(
   supabase: SupabaseClient,
   id: string,
   changes: WebookUserDetails,
-  lockToken: string,
 ): Promise<WebookManagedUser> {
   const { data, error } = await supabase
     .rpc("update_webook_user_details", {
@@ -178,7 +138,6 @@ export async function updateWebookUserDetails(
       p_username: changes.username,
       p_tel: changes.tel,
       p_email: changes.email,
-      p_lock_token: lockToken,
     })
     .single();
 
@@ -191,14 +150,12 @@ export async function updateWebookUserBan(
   supabase: SupabaseClient,
   id: string,
   isBanned: boolean,
-  lockToken: string,
 ): Promise<WebookManagedUser> {
   const { data, error } = await supabase
-    .rpc("set_webook_user_ban", {
-      p_id: id,
-      p_is_banned: isBanned,
-      p_lock_token: lockToken,
-    })
+    .from("users")
+    .update({ is_banned: isBanned, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select(MANAGED_USER_COLUMNS)
     .single();
 
   throwQueryError(error);
@@ -206,8 +163,6 @@ export async function updateWebookUserBan(
 }
 
 export const webookUserRepository: WebookUserRepositoryPort<SupabaseClient> = {
-  acquireLifecycleLock: acquireWebookUserLifecycleLock,
-  releaseLifecycleLock: releaseWebookUserLifecycleLock,
   findById: findWebookUserById,
   findConflict: findWebookUserConflict,
   updateDetails: updateWebookUserDetails,

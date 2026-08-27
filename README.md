@@ -255,9 +255,8 @@ Those allow every logged-in user to read the table through Supabase APIs.
 
 - [Webook user management](docs/webook-user-management.md) documents the local
   `/admin/users` Role 1 workflow, including editable fields, Ban/Unban
-  synchronization, the ordered schema migrations, and next-`requireAdmin()`
-  enforcement for already-issued JWTs. The independent Central User Manager is
-  at `/admin/user-manager`.
+  synchronization, and the `is_banned` migration prerequisite. The independent
+  Central User Manager is at `/admin/user-manager`.
 
 ## Local Admin User
 

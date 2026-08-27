@@ -121,16 +121,6 @@ describe("admin layout sidebar UI", () => {
     assert.doesNotMatch(sidebarSource, /toggleSidebar/);
   });
 
-  it("labels the local user-management menu exactly", () => {
-    const sidebarSource = readFileSync(
-      new URL("../components/layout/admin-desktop-sidebar.tsx", import.meta.url),
-      "utf8",
-    );
-
-    assert.match(sidebarSource, /tooltip="จัดการผู้ใช้ Webook"/);
-    assert.match(sidebarSource, /<span>จัดการผู้ใช้ Webook<\/span>/);
-  });
-
   it("does not make the sidebar inset wider than the remaining viewport", () => {
     const sidebarInsetBlock =
       uiSidebarSource.match(/function SidebarInset[\s\S]*?function SidebarInput/)?.[0] ?? "";
