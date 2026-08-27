@@ -33,6 +33,15 @@ export interface WebookUserRepositoryPort<TClient> {
   updateBan(client: TClient, id: string, isBanned: boolean): Promise<WebookManagedUser>;
 }
 
+export class WebookUserConflictError extends Error {
+  readonly code = "23505";
+
+  constructor() {
+    super("Webook user identity conflict");
+    this.name = "WebookUserConflictError";
+  }
+}
+
 const MANAGED_USER_COLUMNS = "id, uid, name, username, tel, email, is_banned, updated_at";
 
 function recordValue(value: unknown): Record<string, unknown> {
@@ -107,7 +116,7 @@ export async function findWebookUserConflict(
     supabase
       .from("users")
       .select("id")
-      .ilike("email", input.email)
+      .eq("email", input.email)
       .neq("id", input.id)
       .limit(1),
   ]);
@@ -123,18 +132,16 @@ export async function updateWebookUserDetails(
   changes: WebookUserDetails,
 ): Promise<WebookManagedUser> {
   const { data, error } = await supabase
-    .from("users")
-    .update({
-      name: changes.name,
-      username: changes.username,
-      tel: changes.tel,
-      email: changes.email,
-      updated_at: new Date().toISOString(),
+    .rpc("update_webook_user_details", {
+      p_id: id,
+      p_name: changes.name,
+      p_username: changes.username,
+      p_tel: changes.tel,
+      p_email: changes.email,
     })
-    .eq("id", id)
-    .select(MANAGED_USER_COLUMNS)
     .single();
 
+  if (error?.code === "23505") throw new WebookUserConflictError();
   throwQueryError(error);
   return mapWebookManagedUser(data);
 }

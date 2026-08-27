@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireWebookUserManagerAdmin } from "../auth/admin.ts";
 import {
   webookUserRepository,
+  WebookUserConflictError,
   type WebookManagedUser,
   type WebookUserDetails,
   type WebookUserRepositoryPort,
@@ -34,7 +35,7 @@ export interface WebookAuthAdminClient {
 
 interface WebookManagerSession<TClient> {
   supabase: TClient;
-  user: { id: string };
+  user: { id: string; email?: string | null };
 }
 
 export interface WebookUserLifecycleDependencies<TClient> {
@@ -132,6 +133,15 @@ async function createAuthAdminClientSafely<TClient>(
   }
 }
 
+function isActorRecord<TClient>(
+  session: WebookManagerSession<TClient>,
+  user: WebookManagedUser,
+): boolean {
+  if (user.uid === session.user.id) return true;
+  const actorEmail = session.user.email?.trim().toLowerCase();
+  return Boolean(actorEmail) && user.email.trim().toLowerCase() === actorEmail;
+}
+
 export function createWebookUserLifecycleService<TClient>(
   dependencies: WebookUserLifecycleDependencies<TClient>,
 ) {
@@ -139,14 +149,24 @@ export function createWebookUserLifecycleService<TClient>(
     const session = await dependencies.authorize();
     const id = validateId(input.id);
     const changes = prepareUserDetails(input);
-    const current = await dependencies.repository.findById(session.supabase, id);
+    let current: WebookManagedUser | null;
+    try {
+      current = await dependencies.repository.findById(session.supabase, id);
+    } catch {
+      return safeResult("Unable to update user.");
+    }
     if (!current) return safeResult("User not found.");
 
-    const hasConflict = await dependencies.repository.findConflict(session.supabase, {
-      id,
-      username: changes.username,
-      email: changes.email,
-    });
+    let hasConflict: boolean;
+    try {
+      hasConflict = await dependencies.repository.findConflict(session.supabase, {
+        id,
+        username: changes.username,
+        email: changes.email,
+      });
+    } catch {
+      return safeResult("Unable to update user.");
+    }
     if (hasConflict) invalidUserData();
 
     const emailChanged = changes.email !== current.email.trim().toLowerCase();
@@ -164,12 +184,20 @@ export function createWebookUserLifecycleService<TClient>(
     try {
       const user = await dependencies.repository.updateDetails(session.supabase, id, changes);
       return { ok: true, user };
-    } catch {
+    } catch (error) {
       if (current.uid && authClient) {
         await compensateAuthUser(authClient, current.uid, {
           email: current.email,
           email_confirm: true,
         });
+      }
+      if (error instanceof WebookUserConflictError || (
+        error !== null
+        && typeof error === "object"
+        && "code" in error
+        && error.code === "23505"
+      )) {
+        invalidUserData();
       }
       return safeResult("Unable to update user.");
     }
@@ -182,9 +210,14 @@ export function createWebookUserLifecycleService<TClient>(
     const session = await dependencies.authorize();
     requireMatchingActor(input.actorUid, session.user.id);
     const id = validateId(input.id);
-    const current = await dependencies.repository.findById(session.supabase, id);
+    let current: WebookManagedUser | null;
+    try {
+      current = await dependencies.repository.findById(session.supabase, id);
+    } catch {
+      return safeResult(isBanned ? "Unable to ban user." : "Unable to unban user.");
+    }
     if (!current) return safeResult("User not found.");
-    if (isBanned && current.uid === session.user.id) {
+    if (isBanned && isActorRecord(session, current)) {
       throw new Error("You cannot ban yourself");
     }
 

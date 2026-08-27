@@ -4,7 +4,9 @@ import { describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  findWebookUserConflict,
   listWebookUsers,
+  updateWebookUserDetails,
   type WebookManagedUser,
   type WebookUserRepositoryPort,
 } from "../server/repositories/webook-users.ts";
@@ -15,6 +17,7 @@ import {
 } from "../server/services/webook-users.ts";
 
 const actorUid = "10000000-0000-4000-8000-000000000001";
+const actorEmail = "admin@example.com";
 const actorUserId = "20000000-0000-4000-8000-000000000001";
 const userUid = "10000000-0000-4000-8000-000000000002";
 const userId = "20000000-0000-4000-8000-000000000002";
@@ -37,8 +40,11 @@ interface FakeRepositoryState {
   users: Map<string, WebookManagedUser>;
   conflicts: Set<string>;
   failAuthClientCreation: boolean;
+  failConflict: boolean;
   failDetailsUpdate: boolean;
+  failFind: boolean;
   failBanUpdate: boolean;
+  uniqueDetailsConflict: boolean;
   updated: WebookManagedUser | null;
 }
 
@@ -50,18 +56,26 @@ function createFakeRepository(initialUsers: WebookManagedUser[]): {
     users: new Map(initialUsers.map((user) => [user.id, user])),
     conflicts: new Set(),
     failAuthClientCreation: false,
+    failConflict: false,
     failDetailsUpdate: false,
+    failFind: false,
     failBanUpdate: false,
+    uniqueDetailsConflict: false,
     updated: null,
   };
   const repository: WebookUserRepositoryPort<object> = {
     async findById(_client, id) {
+      if (state.failFind) throw new Error("raw database lookup failure");
       return state.users.get(id) ?? null;
     },
     async findConflict(_client, input) {
+      if (state.failConflict) throw new Error("raw database conflict failure");
       return state.conflicts.has(input.username) || state.conflicts.has(input.email);
     },
     async updateDetails(_client, id, changes) {
+      if (state.uniqueDetailsConflict) {
+        throw Object.assign(new Error("duplicate key value leaks schema"), { code: "23505" });
+      }
       if (state.failDetailsUpdate) throw new Error("database details update failed");
       const existing = state.users.get(id);
       if (!existing) throw new Error("missing user");
@@ -109,7 +123,7 @@ function createServiceFixture(initialUsers: WebookManagedUser[] = [managedUser()
   const service = createWebookUserLifecycleService({
     async authorize() {
       events.push("authorize");
-      return { supabase: client, user: { id: actorUid } };
+      return { supabase: client, user: { id: actorUid, email: actorEmail } };
     },
     createAuthAdminClient() {
       if (state.failAuthClientCreation) throw new Error("missing Auth configuration");
@@ -186,6 +200,79 @@ describe("Webook users repository", () => {
       isBanned: false,
       updatedAt: null,
     }]);
+  });
+
+  it("matches normalized email literally when it contains percent or underscore", async () => {
+    const filters: Array<[string, string, string]> = [];
+    const client = {
+      from() {
+        const query = {
+          select() {
+            return this;
+          },
+          eq(column: string, value: string) {
+            filters.push(["eq", column, value]);
+            return this;
+          },
+          ilike(column: string, value: string) {
+            filters.push(["ilike", column, value]);
+            return this;
+          },
+          neq() {
+            return this;
+          },
+          limit() {
+            return Promise.resolve({ data: [], error: null });
+          },
+        };
+        return query;
+      },
+    } as unknown as SupabaseClient;
+
+    const conflict = await findWebookUserConflict(client, {
+      id: userId,
+      username: "literal-user",
+      email: "percent%_literal@example.com",
+    });
+
+    assert.equal(conflict, false);
+    assert.deepEqual(filters, [
+      ["eq", "username", "literal-user"],
+      ["eq", "email", "percent%_literal@example.com"],
+    ]);
+  });
+
+  it("reports an atomic database uniqueness conflict with code 23505", async () => {
+    const client = {
+      rpc(name: string, input: Record<string, unknown>) {
+        assert.equal(name, "update_webook_user_details");
+        assert.deepEqual(input, {
+          p_id: userId,
+          p_name: "Updated User",
+          p_username: "updated",
+          p_tel: "081",
+          p_email: "updated@example.com",
+        });
+        return {
+          single() {
+            return Promise.resolve({
+              data: null,
+              error: { code: "23505", message: "duplicate key value leaks schema" },
+            });
+          },
+        };
+      },
+    } as unknown as SupabaseClient;
+
+    await assert.rejects(
+      () => updateWebookUserDetails(client, userId, {
+        name: "Updated User",
+        username: "updated",
+        tel: "081",
+        email: "updated@example.com",
+      }),
+      (error: unknown) => error instanceof Error && error.name === "WebookUserConflictError",
+    );
   });
 });
 
@@ -292,6 +379,53 @@ describe("Webook user lifecycle service", () => {
     assert.deepEqual(result, { ok: false, message: "Unable to update user." });
   });
 
+  it("returns safe failures for repository lookup and conflict errors", async () => {
+    const lookup = createServiceFixture();
+    lookup.state.failFind = true;
+
+    assert.deepEqual(await lookup.service.updateWebookUser({
+      id: userId,
+      name: "Updated User",
+      username: "updated",
+      tel: "081",
+      email: "updated@example.com",
+    }), { ok: false, message: "Unable to update user." });
+    assert.deepEqual(
+      await lookup.service.banWebookUser({ id: userId, actorUid }),
+      { ok: false, message: "Unable to ban user." },
+    );
+
+    const conflict = createServiceFixture();
+    conflict.state.failConflict = true;
+    const result = await conflict.service.updateWebookUser({
+      id: userId,
+      name: "Updated User",
+      username: "updated",
+      tel: "081",
+      email: "updated@example.com",
+    });
+
+    assert.deepEqual(result, { ok: false, message: "Unable to update user." });
+    assert.doesNotMatch(result.message, /raw database/i);
+  });
+
+  it("compensates Auth and rejects an atomic uniqueness conflict as invalid data", async () => {
+    const { auth, service, state } = createServiceFixture();
+    state.uniqueDetailsConflict = true;
+
+    await assert.rejects(() => service.updateWebookUser({
+      id: userId,
+      name: "Updated User",
+      username: "updated",
+      tel: "081",
+      email: "updated@example.com",
+    }), /Invalid user data/);
+    assert.deepEqual(auth.calls, [
+      ["updateUserById", userUid, { email: "updated@example.com", email_confirm: true }],
+      ["updateUserById", userUid, { email: "existing@example.com", email_confirm: true }],
+    ]);
+  });
+
   it("updates only the local record when no Auth uid is linked", async () => {
     const { auth, service, state } = createServiceFixture([managedUser({ uid: null })]);
 
@@ -321,6 +455,19 @@ describe("Webook user lifecycle service", () => {
 
   it("refuses a self-Ban", async () => {
     const actor = managedUser({ id: actorUserId, uid: actorUid });
+    const { auth, service, state } = createServiceFixture([actor]);
+
+    await assert.rejects(
+      () => service.banWebookUser({ id: actorUserId, actorUid }),
+      /cannot ban yourself/i,
+    );
+
+    assert.deepEqual(auth.calls, []);
+    assert.equal(state.updated, null);
+  });
+
+  it("refuses a self-Ban for an unlinked record resolved by email", async () => {
+    const actor = managedUser({ id: actorUserId, uid: null, email: actorEmail.toUpperCase() });
     const { auth, service, state } = createServiceFixture([actor]);
 
     await assert.rejects(
@@ -364,5 +511,16 @@ describe("Webook user lifecycle service", () => {
       ["updateUserById", userUid, { ban_duration: "none" }],
       ["updateUserById", userUid, { ban_duration: "876000h" }],
     ]);
+  });
+
+  it("bans and unbans an unlinked user through local state only", async () => {
+    const fixture = createServiceFixture([managedUser({ uid: null })]);
+
+    const banned = await fixture.service.banWebookUser({ id: userId, actorUid });
+    const unbanned = await fixture.service.unbanWebookUser({ id: userId, actorUid });
+
+    assert.equal(banned.ok && banned.user.isBanned, true);
+    assert.equal(unbanned.ok && unbanned.user.isBanned, false);
+    assert.deepEqual(fixture.auth.calls, []);
   });
 });
