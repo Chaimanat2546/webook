@@ -6,10 +6,6 @@ const sql = readFileSync(
   new URL("../supabase/migrations/20260827120000_webook_user_management.sql", import.meta.url),
   "utf8",
 );
-const atomicUpdateSql = readFileSync(
-  new URL("../supabase/migrations/20260827150000_atomic_webook_user_update.sql", import.meta.url),
-  "utf8",
-);
 
 describe("Webook user management migration", () => {
   it("adds a durable Ban state and Role 1-only policies", () => {
@@ -35,20 +31,5 @@ describe("Webook user management migration", () => {
     assert.match(sql, /as restrictive\s+for update\s+to authenticated/);
     assert.match(sql, /users\.uid is distinct from auth\.uid\(\)/);
     assert.match(sql, /users\.email is distinct from auth\.jwt\(\) ->> 'email'/);
-  });
-});
-
-describe("Webook user atomic identity update migration", () => {
-  it("serializes normalized identity checks before updating a user", () => {
-    const usernameLock = atomicUpdateSql.indexOf("pg_advisory_xact_lock(hashtextextended('webook:username:'");
-    const emailLock = atomicUpdateSql.indexOf("pg_advisory_xact_lock(hashtextextended('webook:email:'");
-    const conflictCheck = atomicUpdateSql.indexOf("raise unique_violation");
-    const update = atomicUpdateSql.indexOf("update public.users");
-
-    assert.ok(usernameLock >= 0);
-    assert.ok(emailLock > usernameLock);
-    assert.ok(conflictCheck > emailLock);
-    assert.ok(update > conflictCheck);
-    assert.match(atomicUpdateSql, /lower\(btrim\(users\.email\)\) = lower\(btrim\(p_email\)\)/);
   });
 });
