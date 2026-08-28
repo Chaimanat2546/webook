@@ -5,6 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WebookManagedRole, WebookManagedUser } from "../../lib/webook-users";
 import {
   createWebookUsersRepository,
+  type WebookUserSortBy,
+  type WebookUserSortDirection,
   type WebookUsersRepository,
 } from "../repositories/webook-users.ts";
 
@@ -12,6 +14,7 @@ const USER_NAME_MAX_LENGTH = 150;
 const SMALLINT_MAX = 32_767;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const WEBOOK_USERS_PAGE_SIZE = 8;
+const WEBOOK_USER_SORT_FIELDS: readonly WebookUserSortBy[] = ["name", "username", "email", "role", "dvId"];
 
 interface WebookUserServiceDependencies {
   createAdminClient?: () => SupabaseClient | null;
@@ -47,6 +50,21 @@ export function normalizeWebookUsersSearch(value: string | undefined): string {
   return (value ?? "").trim();
 }
 
+export function normalizeWebookUserRoleIds(values: number[] | undefined): number[] {
+  return [...new Set((values ?? []).filter((value) => Number.isSafeInteger(value) && value > 0 && value <= SMALLINT_MAX))]
+    .sort((left, right) => left - right);
+}
+
+export function normalizeWebookUsersSortBy(value: string | undefined): WebookUserSortBy {
+  return WEBOOK_USER_SORT_FIELDS.includes(value as WebookUserSortBy)
+    ? value as WebookUserSortBy
+    : "name";
+}
+
+export function normalizeWebookUsersSortDirection(value: string | undefined): WebookUserSortDirection {
+  return value === "desc" ? "desc" : "asc";
+}
+
 async function resolveRepository(
   dependencies: WebookUserServiceDependencies = {},
 ): Promise<WebookUsersRepository> {
@@ -75,12 +93,12 @@ function parseUpdateInput(input: UpdateWebookUserInput):
     return { ok: false, message: "กรุณาระบุชื่อไม่เกิน 150 ตัวอักษร" };
   }
   if (!/^\d+$/.test(rawRoleId)) {
-    return { ok: false, message: "Role ที่เลือกไม่ถูกต้อง" };
+    return { ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
   }
 
   const roleId = Number(rawRoleId);
   if (!Number.isSafeInteger(roleId) || roleId < 1 || roleId > SMALLINT_MAX) {
-    return { ok: false, message: "Role ที่เลือกไม่ถูกต้อง" };
+    return { ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
   }
 
   return { ok: true, value: { id, name, roleId } };
@@ -89,22 +107,34 @@ function parseUpdateInput(input: UpdateWebookUserInput):
 export async function listWebookUserManagementData(
   {
     page: pageInput,
+    roleIds: roleIdsInput,
     search: searchInput,
+    sortBy: sortByInput,
+    sortDirection: sortDirectionInput,
     ...dependencies
-  }: WebookUserServiceDependencies & { page?: number; search?: string } = {},
+  }: WebookUserServiceDependencies & {
+    page?: number;
+    roleIds?: number[];
+    search?: string;
+    sortBy?: string;
+    sortDirection?: string;
+  } = {},
 ): Promise<WebookUserManagementData> {
   const repository = await resolveRepository(dependencies);
   const page = normalizeWebookUsersPage(pageInput);
+  const roleIds = normalizeWebookUserRoleIds(roleIdsInput);
   const search = normalizeWebookUsersSearch(searchInput);
+  const sortBy = normalizeWebookUsersSortBy(sortByInput);
+  const sortDirection = normalizeWebookUsersSortDirection(sortDirectionInput);
   const [initialUserPage, roles] = await Promise.all([
-    repository.listUsers({ page, pageSize: WEBOOK_USERS_PAGE_SIZE, search }),
+    repository.listUsers({ page, pageSize: WEBOOK_USERS_PAGE_SIZE, roleIds, search, sortBy, sortDirection }),
     repository.listRoles(),
   ]);
   const totalPages = Math.max(1, Math.ceil(initialUserPage.totalUsers / WEBOOK_USERS_PAGE_SIZE));
   const effectivePage = Math.min(page, totalPages);
   const userPage = effectivePage === page
     ? initialUserPage
-    : await repository.listUsers({ page: effectivePage, pageSize: WEBOOK_USERS_PAGE_SIZE, search });
+    : await repository.listUsers({ page: effectivePage, pageSize: WEBOOK_USERS_PAGE_SIZE, roleIds, search, sortBy, sortDirection });
 
   return {
     pagination: {
@@ -137,7 +167,7 @@ export async function updateWebookUser(
 
   const repository = await resolveRepository(dependencies);
   if (!(await repository.roleExists(parsed.value.roleId))) {
-    return { ok: false, message: "Role ที่เลือกไม่ถูกต้อง" };
+    return { ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
   }
 
   const user = await repository.updateUser(parsed.value.id, {

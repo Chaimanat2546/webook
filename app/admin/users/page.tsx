@@ -8,19 +8,51 @@ import { Pagination } from "../../../components/admin/houses/pagination";
 import { requireWebookUserManagerAdmin } from "../../../server/auth/admin";
 import {
   listWebookUserManagementData,
+  normalizeWebookUserRoleIds,
   normalizeWebookUsersPage,
   normalizeWebookUsersSearch,
+  normalizeWebookUsersSortBy,
+  normalizeWebookUsersSortDirection,
 } from "../../../server/services/webook-users";
 
-async function WebookUsersList({ page, search }: { page: number; search: string }) {
-  const { pagination, roles, users } = await listWebookUserManagementData({ page, search });
+function parseRoleIds(value?: string): number[] {
+  return normalizeWebookUserRoleIds(
+    (value ?? "").split(",").map((item) => Number.parseInt(item, 10)),
+  );
+}
+
+async function WebookUsersList({
+  page,
+  roleIds,
+  search,
+  sortBy,
+  sortDirection,
+}: {
+  page: number;
+  roleIds: number[];
+  search: string;
+  sortBy: "dvId" | "email" | "name" | "role" | "username";
+  sortDirection: "asc" | "desc";
+}) {
+  const { pagination, roles, users } = await listWebookUserManagementData({
+    page,
+    roleIds,
+    search,
+    sortBy,
+    sortDirection,
+  });
 
   return (
     <>
-      <UserTable roles={roles} users={users} />
+      <UserTable roleIds={roleIds} roles={roles} search={search} sortBy={sortBy} sortDirection={sortDirection} users={users} />
       <Pagination
         basePath="/admin/users"
         currentPage={pagination.page}
+        query={{
+          ...(roleIds.length > 0 ? { roles: roleIds.join(",") } : {}),
+          ...(sortBy !== "name" ? { sort: sortBy } : {}),
+          ...(sortDirection !== "asc" ? { dir: sortDirection } : {}),
+        }}
         search={search}
         totalPages={pagination.totalPages}
       />
@@ -31,18 +63,21 @@ async function WebookUsersList({ page, search }: { page: number; search: string 
 export default async function WebookUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string; success?: string }>;
+  searchParams: Promise<{ dir?: string; page?: string; q?: string; roles?: string; sort?: string; success?: string }>;
 }) {
   const params = await searchParams;
   const page = normalizeWebookUsersPage(Number.parseInt(params.page ?? "1", 10));
+  const roleIds = parseRoleIds(params.roles);
   const search = normalizeWebookUsersSearch(params.q);
+  const sortBy = normalizeWebookUsersSortBy(params.sort);
+  const sortDirection = normalizeWebookUsersSortDirection(params.dir);
   await requireWebookUserManagerAdmin();
 
   return (
-    <UserManagementPage search={search}>
+    <UserManagementPage roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection}>
       {params.success === "1" ? <UserSaveNotification /> : null}
       <Suspense fallback={<UserListSkeleton />}>
-        <WebookUsersList page={page} search={search} />
+        <WebookUsersList page={page} roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection} />
       </Suspense>
     </UserManagementPage>
   );

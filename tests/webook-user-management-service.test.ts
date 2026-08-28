@@ -27,14 +27,21 @@ function createRepository({
   roles?: WebookManagedRole[];
 } = {}) {
   const updates: Array<{ id: string; name: string; roleId: number }> = [];
-  const listCalls: Array<{ page: number; pageSize: number; search: string }> = [];
+  const listCalls: Array<{
+    page: number;
+    pageSize: number;
+    roleIds: number[];
+    search: string;
+    sortBy: string;
+    sortDirection: string;
+  }> = [];
   const resolvedTotalUsers = totalUsers ?? users.length;
   const repository: WebookUsersRepository = {
     async listRoles() {
       return roles;
     },
-    async listUsers({ page, pageSize, search }: { page: number; pageSize: number; search: string }) {
-      listCalls.push({ page, pageSize, search });
+    async listUsers({ page, pageSize, roleIds = [], search, sortBy = "name", sortDirection = "asc" }) {
+      listCalls.push({ page, pageSize, roleIds, search, sortBy, sortDirection });
       return { totalUsers: resolvedTotalUsers, users };
     },
     async getUser(id) {
@@ -82,7 +89,14 @@ describe("Webook user management service", () => {
       search: "  somchai  ",
     });
 
-    assert.deepEqual(listCalls, [{ page: 2, pageSize: 8, search: "somchai" }]);
+    assert.deepEqual(listCalls, [{
+      page: 2,
+      pageSize: 8,
+      roleIds: [],
+      search: "somchai",
+      sortBy: "name",
+      sortDirection: "asc",
+    }]);
     assert.deepEqual(result, {
       pagination: { page: 2, pageSize: 8, totalPages: 3, totalUsers: 17 },
       roles,
@@ -98,10 +112,33 @@ describe("Webook user management service", () => {
     const result = await service.listWebookUserManagementData({ page: 99, repository });
 
     assert.deepEqual(listCalls, [
-      { page: 99, pageSize: 8, search: "" },
-      { page: 3, pageSize: 8, search: "" },
+      { page: 99, pageSize: 8, roleIds: [], search: "", sortBy: "name", sortDirection: "asc" },
+      { page: 3, pageSize: 8, roleIds: [], search: "", sortBy: "name", sortDirection: "asc" },
     ]);
     assert.equal(result.pagination.page, 3);
+  });
+
+  it("forwards multiple role filters and the requested sort to the repository", async () => {
+    const service = await loadService();
+    assert.ok(service, "Webook user management service must exist");
+    const { listCalls, repository } = createRepository();
+
+    await service.listWebookUserManagementData({
+      page: 1,
+      repository,
+      roleIds: [3, 1, 3, -1],
+      sortBy: "email",
+      sortDirection: "desc",
+    });
+
+    assert.deepEqual(listCalls, [{
+      page: 1,
+      pageSize: 8,
+      roleIds: [1, 3],
+      search: "",
+      sortBy: "email",
+      sortDirection: "desc",
+    }]);
   });
 
   it("trims the name and updates only name and role ID when the selected role exists", async () => {
@@ -160,7 +197,7 @@ describe("Webook user management service", () => {
       { repository },
     );
 
-    assert.deepEqual(result, { ok: false, message: "Role ที่เลือกไม่ถูกต้อง" });
+    assert.deepEqual(result, { ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" });
     assert.deepEqual(updates, []);
   });
 });

@@ -4,6 +4,7 @@ export interface WebookManagedRole {
 }
 
 export interface WebookManagedUser {
+  dvId?: string | null;
   email: string;
   id: string;
   name: string;
