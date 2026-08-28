@@ -29,6 +29,17 @@ describe("Webook user management UI", () => {
     assert.match(table, /user\.dvId \?\? "-"/);
   });
 
+  it("shows each mobile user email only beneath the name", () => {
+    const table = read("../components/admin/user-management/user-table.tsx");
+    const mobileCards = table.slice(
+      table.indexOf('<div className="grid gap-3 md:hidden">'),
+      table.indexOf('<Card className="hidden overflow-hidden p-0 md:block">'),
+    );
+
+    assert.match(mobileCards, /<p className="truncate text-xs text-muted-foreground">\{displayText\(user\.email\)\}<\/p>/);
+    assert.doesNotMatch(mobileCards, /<dt className="text-xs text-muted-foreground">อีเมล<\/dt>/);
+  });
+
   it("uses shadcn checkbox menu items to filter multiple user roles", () => {
     const filter = read("../components/admin/user-management/user-role-filter.tsx");
     const page = read("../components/admin/user-management/user-management-page.tsx");
@@ -51,13 +62,23 @@ describe("Webook user management UI", () => {
     assert.doesNotMatch(table, /BanIcon|ShieldCheckIcon|Ban|ปลด Ban/);
   });
 
-  it("edits only name and a role selected from the loaded roles", () => {
+  it("separates user details from permissions and usage", () => {
     const page = read("../app/admin/users/[id]/page.tsx");
 
-    assert.match(page, /<h1[^>]*>แก้ไขผู้ใช้<\/h1>/);
+    assert.match(page, /label: "ข้อมูลผู้ใช้"/);
+    assert.match(page, /label: "สิทธิ์และการใช้งาน"/);
+    assert.match(page, /section === "permissions"/);
+    assert.match(page, /<UserTaskHeader/);
+    assert.match(page, /<UserWorkspaceShell/);
+    assert.match(page, /contentTitle=\{activeSection\.label\}/);
+    assert.doesNotMatch(page, /HouseWorkspaceShell/);
     assert.match(page, /action=\{updateWebookUserFormAction\}/);
     assert.match(page, /name="name"/);
     assert.match(page, /name="roleId"/);
+    assert.match(page, /type="hidden" value=\{user\.roleId/);
+    assert.match(page, /type="hidden" value=\{user\.name\}/);
+    assert.match(page, /disabled=\{user\.roleId === null\}/);
+    assert.match(page, /กรุณากำหนดสิทธิ์ผู้ใช้ก่อนแก้ไขข้อมูลผู้ใช้/);
     assert.match(page, /roles\.map\(/);
     assert.doesNotMatch(page, /name="(?:email|username|tel)"/);
     assert.doesNotMatch(page, /Ban|ปลด Ban/);
@@ -67,9 +88,11 @@ describe("Webook user management UI", () => {
     const page = read("../app/admin/users/[id]/page.tsx");
     const actions = read("../app/admin/users/actions.ts");
 
-    assert.match(page, /searchParams: Promise<\{ error\?: string \}>/);
+    assert.match(page, /searchParams: Promise<\{ error\?: string; section\?: string \}>/);
     assert.match(page, /role="alert"/);
     assert.match(actions, /\?error=\$\{encodeURIComponent\(result\.message\)\}/);
+    assert.match(actions, /readString\(formData, "section"\) === "permissions"/);
+    assert.match(actions, /&section=permissions/);
   });
 
   it("shows a success toast after returning to the user list", () => {
@@ -102,5 +125,17 @@ describe("Webook user management UI", () => {
 
     assert.match(files, /lib\/webook-users/);
     assert.doesNotMatch(files, /server\/repositories\/webook-users/);
+  });
+
+  it("provides responsive User Workspace presentation primitives", () => {
+    const header = read("../components/admin/user-management/user-task-header.tsx");
+    const shell = read("../components/admin/user-management/user-workspace-shell.tsx");
+    const nav = read("../components/admin/user-management/user-workspace-nav-item.tsx");
+
+    assert.match(header, /กลับไปรายการผู้ใช้/);
+    assert.match(header, /DV-/);
+    assert.match(shell, /lg:grid-cols-\[16rem_minmax\(0,1fr\)\]/);
+    assert.match(nav, /aria-current/);
+    assert.match(nav, /lg:min-w-0/);
   });
 });

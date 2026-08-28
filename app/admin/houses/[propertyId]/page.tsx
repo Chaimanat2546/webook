@@ -3,12 +3,6 @@ import type { LucideIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Button } from "../../../../components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "../../../../components/ui/empty";
 import { HouseDetailCombobox } from "../../../../components/admin/houses/house-detail-combobox";
 import { HouseDetailSectionNav } from "../../../../components/admin/houses/house-detail-section-nav";
 import { HouseDetailSaveNotification } from "../../../../components/admin/houses/house-detail-save-notification";
@@ -25,8 +19,7 @@ import {
 import { ZONE_OPTIONS } from "../../../../lib/house-zones";
 import {
   canManageHouseRating,
-  canUseAccommodation,
-  requireAdmin,
+  requireAccommodationAdmin,
 } from "../../../../server/auth/admin";
 import {
   getFacilities,
@@ -167,18 +160,7 @@ export default async function HouseDetailPage({
   const backHref = safeReturnTo ?? "/admin/houses";
   const selectedSection = getSelectedSection(section);
   const toastTitle = saveToastTitle({ saved, section });
-  const { adminUser, supabase } = await requireAdmin();
-
-  if (!canUseAccommodation(adminUser)) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>ไม่มีสิทธิ์เข้าถึงหมวดบ้านพัก</EmptyTitle>
-          <EmptyDescription>บัญชีนี้ยังไม่ได้เปิด allow_accommodation</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
+  const { adminUser, supabase } = await requireAccommodationAdmin();
 
   const house = await getListingByPropertyId(supabase, propertyId);
 

@@ -3,16 +3,7 @@ import { notFound } from "next/navigation";
 import { HouseTaskHeader } from "../../../../../components/admin/houses/house-task-header";
 import { CoverSelectViewer } from "../../../../../components/admin/images/cover-select-viewer";
 import { ImageZoneViewer } from "../../../../../components/admin/images/image-zone-viewer";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "../../../../../components/ui/empty";
-import {
-  canUseAccommodation,
-  requireAdmin,
-} from "../../../../../server/auth/admin";
+import { requireAccommodationAdmin } from "../../../../../server/auth/admin";
 import { getImagesByPropertyId } from "../../../../../server/repositories/images";
 import { getListingByPropertyId } from "../../../../../server/repositories/listings";
 import { groupImagesByZone } from "../../../../../server/services/images";
@@ -41,18 +32,7 @@ export default async function HouseImagesPage({
   const { mode, returnTo, zone } = await searchParams;
   const safeReturnTo = getSafeReturnTo(returnTo);
   const backHref = safeReturnTo ?? "/admin/houses";
-  const { adminUser, supabase } = await requireAdmin();
-
-  if (!canUseAccommodation(adminUser)) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>ไม่มีสิทธิ์เข้าถึงหมวดบ้านพัก</EmptyTitle>
-          <EmptyDescription>บัญชีนี้ยังไม่ได้เปิด allow_accommodation</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
+  const { supabase } = await requireAccommodationAdmin();
 
   const house = await getListingByPropertyId(supabase, propertyId);
 

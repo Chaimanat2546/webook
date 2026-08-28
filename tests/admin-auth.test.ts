@@ -126,6 +126,37 @@ describe("admin authorization", () => {
     assert.match(layoutSource, /await requireAdmin\(\)/);
     assert.match(layoutSource, /export const dynamic = "force-dynamic"/);
     assert.doesNotMatch(layoutSource, /isAuthorized/);
-    assert.doesNotMatch(layoutSource, /canUseAccommodation/);
+    assert.match(layoutSource, /canUseAccommodation/);
+    assert.match(layoutSource, /canUseAccommodation=\{canUseAccommodation\(adminUser\)\}/);
+  });
+
+  it("hides accommodation navigation and returns 404 for protected routes", () => {
+    const authSource = readFileSync(new URL("../server/auth/admin.ts", import.meta.url), "utf8");
+    const sidebarSource = readFileSync(
+      new URL("../components/layout/admin-desktop-sidebar.tsx", import.meta.url),
+      "utf8",
+    );
+    const shellSource = readFileSync(new URL("../components/layout/admin-shell.tsx", import.meta.url), "utf8");
+    const routeSources = [
+      "../app/admin/houses/page.tsx",
+      "../app/admin/houses/[propertyId]/page.tsx",
+      "../app/admin/houses/[propertyId]/images/page.tsx",
+      "../app/admin/advertisements/page.tsx",
+      "../app/admin/advertisements/new/page.tsx",
+      "../app/admin/advertisements/[id]/page.tsx",
+    ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
+
+    assert.match(authSource, /export async function requireAccommodationAdmin\(\)/);
+    assert.match(authSource, /notFound\(\)/);
+    assert.match(shellSource, /canUseAccommodation: boolean;/);
+    assert.match(shellSource, /canUseAccommodation=\{canUseAccommodation\}/);
+    assert.match(sidebarSource, /canUseAccommodation: boolean;/);
+    assert.match(sidebarSource, /\{canUseAccommodation \? \(/);
+
+    for (const source of routeSources) {
+      assert.match(source, /requireAccommodationAdmin/);
+      assert.doesNotMatch(source, /if \(!canUseAccommodation\(adminUser\)\)/);
+      assert.doesNotMatch(source, /allow_accommodation/);
+    }
   });
 });

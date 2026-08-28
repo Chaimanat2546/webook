@@ -115,10 +115,6 @@ export function UserTable({
                   <dt className="text-xs text-muted-foreground">Username</dt>
                   <dd>{displayText(user.username)}</dd>
                 </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">อีเมล</dt>
-                  <dd className="break-all">{displayText(user.email)}</dd>
-                </div>
               </dl>
               <EditButton userId={user.id} />
             </CardContent>

@@ -33,6 +33,24 @@ action. The dedicated edit page contains a name input and a Role select populate
 email, paginates eight users per page, and shows a responsive skeleton while its
 server-loaded list is pending.
 
+### User Workspace
+
+The dedicated edit route becomes a scalable User Workspace rather than a
+standalone form. It keeps a task header with a back link, the selected user's
+name, and their DV ID. Inside, a responsive workspace frame provides a sidebar
+on desktop and horizontal navigation on mobile. Its navigation is driven by a
+single section configuration so future categories can be added without changing
+the frame layout.
+
+The initial sections are `ข้อมูลผู้ใช้` and `สิทธิ์และการใช้งาน`.
+`ข้อมูลผู้ใช้` owns the name form, while `สิทธิ์และการใช้งาน` owns the Role
+selector. Each section submits the unchanged Server Action with the other
+allowed field preserved as a hidden value. The layout intentionally does not reuse
+`HouseWorkspaceShell`: that component is specific to a house task and its
+house-specific header, labels, and navigation contracts do not apply to a
+user. The User Workspace reuses the existing shared UI primitives and follows
+the same responsive workspace interaction pattern.
+
 ## Architecture and security
 
 ```text
@@ -56,3 +74,8 @@ Tests cover the strict Role 1 predicate and menu wiring, guard ordering,
 service validation, loading Role options, the exact update allowlist, the
 responsive presentation, search, pagination, skeleton loading, and the name/Role-only edit page. Type check, lint, the
 full test suite, and production build must pass before completion.
+
+The User Workspace change additionally verifies the task header, the
+`ข้อมูลผู้ใช้` and `สิทธิ์และการใช้งาน` navigation items, desktop and mobile
+navigation behavior, and that the name and Role forms remain isolated in their
+respective sections.

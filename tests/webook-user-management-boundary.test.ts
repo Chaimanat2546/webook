@@ -12,7 +12,7 @@ describe("Webook user management server boundary", () => {
     const page = read("../app/admin/users/page.tsx");
 
     const guardAt = page.indexOf("await requireWebookUserManagerAdmin()");
-    const listAt = page.indexOf("<WebookUsersList page={page} search={search} />");
+    const listAt = page.indexOf("<WebookUsersList page={page} roleIds={roleIds}");
     assert.ok(guardAt >= 0);
     assert.ok(listAt > guardAt);
     assert.doesNotMatch(page, /createSupabaseAdminClient/);

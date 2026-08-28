@@ -5,6 +5,7 @@ import { AdminShell } from "../../components/layout/admin-shell";
 import {
   canManageCentralUsers,
   canManageWebookUsers,
+  canUseAccommodation,
   canUseQuotation,
   requireAdmin,
 } from "../../server/auth/admin";
@@ -20,6 +21,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <AdminShell
       canManageCentralUsers={canManageCentralUsers(adminUser)}
       canManageWebookUsers={canManageWebookUsers(adminUser)}
+      canUseAccommodation={canUseAccommodation(adminUser)}
       canUseQuotation={canUseQuotation(adminUser)}
       defaultSidebarOpen={defaultSidebarOpen}
     >

@@ -25,11 +25,13 @@ import { TooltipProvider } from "../ui/tooltip";
 export function AdminDesktopSidebar({
   canManageCentralUsers,
   canManageWebookUsers,
+  canUseAccommodation,
   canUseQuotation,
   signOutAction,
 }: {
   canManageCentralUsers: boolean;
   canManageWebookUsers: boolean;
+  canUseAccommodation: boolean;
   canUseQuotation: boolean;
   signOutAction: () => Promise<void>;
 }) {
@@ -72,33 +74,37 @@ export function AdminDesktopSidebar({
             <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith("/admin/houses")}
-                    tooltip="บ้านพัก"
-                  >
-                    <Link href="/admin/houses" onClick={closeMobileSidebar}>
-                      <HouseIcon data-icon="inline-start" />
-                      <span>บ้านพัก</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith("/admin/advertisements")}
-                    tooltip="โฆษณา"
-                  >
-                    <Link
-                      href="/admin/advertisements"
-                      onClick={closeMobileSidebar}
-                    >
-                      <MegaphoneIcon data-icon="inline-start" />
-                      <span>โฆษณา</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {canUseAccommodation ? (
+                  <>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname.startsWith("/admin/houses")}
+                        tooltip="บ้านพัก"
+                      >
+                        <Link href="/admin/houses" onClick={closeMobileSidebar}>
+                          <HouseIcon data-icon="inline-start" />
+                          <span>บ้านพัก</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname.startsWith("/admin/advertisements")}
+                        tooltip="โฆษณา"
+                      >
+                        <Link
+                          href="/admin/advertisements"
+                          onClick={closeMobileSidebar}
+                        >
+                          <MegaphoneIcon data-icon="inline-start" />
+                          <span>โฆษณา</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
+                ) : null}
                 {canUseQuotation ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton
