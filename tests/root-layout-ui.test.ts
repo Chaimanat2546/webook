@@ -5,9 +5,10 @@ import { describe, it } from "node:test";
 const source = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 
 describe("root layout font loading", () => {
-  it("does not preload admin fonts that are not needed immediately on Thai pages", () => {
-    assert.match(source, /Geist\(\{[\s\S]*preload: false[\s\S]*\}\)/);
-    assert.match(source, /Geist_Mono\(\{[\s\S]*preload: false[\s\S]*\}\)/);
-    assert.doesNotMatch(source, /preload: true/);
+  it("loads the bundled Thai font without requiring a Google Fonts download", () => {
+    assert.doesNotMatch(source, /next\/font\/google/);
+    assert.match(source, /next\/font\/local/);
+    assert.match(source, /NotoSansThai-Regular\.ttf/);
+    assert.match(source, /NotoSansThai-SemiBold\.ttf/);
   });
 });
