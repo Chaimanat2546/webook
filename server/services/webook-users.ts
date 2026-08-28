@@ -65,6 +65,13 @@ export function normalizeWebookUsersSortDirection(value: string | undefined): We
   return value === "desc" ? "desc" : "asc";
 }
 
+export async function listWebookUserRoles(
+  dependencies: WebookUserServiceDependencies = {},
+): Promise<WebookManagedRole[]> {
+  const repository = await resolveRepository(dependencies);
+  return repository.listRoles();
+}
+
 async function resolveRepository(
   dependencies: WebookUserServiceDependencies = {},
 ): Promise<WebookUsersRepository> {
@@ -111,10 +118,12 @@ export async function listWebookUserManagementData(
     search: searchInput,
     sortBy: sortByInput,
     sortDirection: sortDirectionInput,
+    roles: suppliedRoles,
     ...dependencies
   }: WebookUserServiceDependencies & {
     page?: number;
     roleIds?: number[];
+    roles?: WebookManagedRole[];
     search?: string;
     sortBy?: string;
     sortDirection?: string;
@@ -128,7 +137,7 @@ export async function listWebookUserManagementData(
   const sortDirection = normalizeWebookUsersSortDirection(sortDirectionInput);
   const [initialUserPage, roles] = await Promise.all([
     repository.listUsers({ page, pageSize: WEBOOK_USERS_PAGE_SIZE, roleIds, search, sortBy, sortDirection }),
-    repository.listRoles(),
+    suppliedRoles ? Promise.resolve(suppliedRoles) : repository.listRoles(),
   ]);
   const totalPages = Math.max(1, Math.ceil(initialUserPage.totalUsers / WEBOOK_USERS_PAGE_SIZE));
   const effectivePage = Math.min(page, totalPages);

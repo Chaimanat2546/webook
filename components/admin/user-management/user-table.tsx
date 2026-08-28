@@ -16,14 +16,13 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
-import { UserRoleFilter } from "./user-role-filter";
 
 function displayText(value: string): string {
-  return value || "-";
+  return value && value.toLowerCase() !== "null" ? value : "-";
 }
 
 function roleName(roles: WebookManagedRole[], roleId: number | null): string {
-  return roles.find((role) => role.id === roleId)?.name ?? "ไม่ระบุสิทธิ์ผู้ใช้";
+  return roles.find((role) => role.id === roleId)?.name ?? "-";
 }
 
 type UserSortBy = "dvId" | "email" | "name" | "role" | "username";
@@ -87,9 +86,6 @@ export function UserTable({
 }) {
   return (
     <>
-      <div className="flex justify-end">
-        <UserRoleFilter roles={roles} selectedRoleIds={roleIds} />
-      </div>
       {users.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">

@@ -1,16 +1,20 @@
 import { SearchIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import type { WebookManagedRole } from "../../../lib/webook-users";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+import { UserRoleFilter } from "./user-role-filter";
 
 export function UserManagementPage({
+  roles,
   roleIds,
   search,
   sortBy,
   sortDirection,
   children,
 }: {
+  roles: WebookManagedRole[];
   roleIds: number[];
   search: string;
   sortBy: string;
@@ -26,7 +30,7 @@ export function UserManagementPage({
         </p>
       </header>
 
-      <form className="flex gap-2 md:max-w-sm">
+      <form className="flex flex-wrap gap-2 md:max-w-xl">
         {roleIds.length > 0 ? <input name="roles" type="hidden" value={roleIds.join(",")} /> : null}
         {sortBy !== "name" ? <input name="sort" type="hidden" value={sortBy} /> : null}
         {sortDirection !== "asc" ? <input name="dir" type="hidden" value={sortDirection} /> : null}
@@ -37,6 +41,7 @@ export function UserManagementPage({
           placeholder="ค้นหาชื่อ, Username หรืออีเมล..."
           type="search"
         />
+        <UserRoleFilter roles={roles} selectedRoleIds={roleIds} />
         <Button className="shrink-0" type="submit">
           <SearchIcon aria-hidden className="size-4" />
           ค้นหา

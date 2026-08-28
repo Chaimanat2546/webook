@@ -121,4 +121,10 @@ describe("Webook users repository", () => {
     assert.match(migration, /json_each_text\(r\.name\)/);
     assert.match(migration, /'ไม่ระบุสิทธิ์ผู้ใช้'/);
   });
+
+  it("puts missing sortable values first for ascending order and last for descending order", () => {
+    const repository = readFileSync(new URL("../server/repositories/webook-users.ts", import.meta.url), "utf8");
+
+    assert.match(repository, /nullsFirst: ascending/);
+  });
 });

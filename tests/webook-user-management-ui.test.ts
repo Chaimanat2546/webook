@@ -21,12 +21,25 @@ describe("Webook user management UI", () => {
     assert.match(table, /hidden[^\"]*md:block/);
   });
 
+  it("renders missing user values as a dash", () => {
+    const table = read("../components/admin/user-management/user-table.tsx");
+
+    assert.match(table, /return value && value\.toLowerCase\(\) !== "null" \? value : "-"/);
+    assert.match(table, /return roles\.find\(\(role\) => role\.id === roleId\)\?\.name \?\? "-"/);
+    assert.match(table, /user\.dvId \?\? "-"/);
+  });
+
   it("uses shadcn checkbox menu items to filter multiple user roles", () => {
     const filter = read("../components/admin/user-management/user-role-filter.tsx");
+    const page = read("../components/admin/user-management/user-management-page.tsx");
+    const table = read("../components/admin/user-management/user-table.tsx");
 
     assert.match(filter, /DropdownMenuCheckboxItem/);
     assert.match(filter, /selectedRoleIds\.includes\(role\.id\)/);
     assert.match(filter, /params\.set\("roles"/);
+    assert.match(page, /<UserRoleFilter/);
+    assert.ok(page.indexOf("<UserRoleFilter") < page.indexOf('type="submit"'));
+    assert.doesNotMatch(table, /UserRoleFilter/);
   });
 
   it("offers only an icon-labelled edit link", () => {

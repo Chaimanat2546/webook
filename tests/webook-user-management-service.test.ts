@@ -66,6 +66,17 @@ function createRepository({
 }
 
 describe("Webook user management service", () => {
+  it("loads roles independently for the search controls", async () => {
+    const service = await loadService();
+    assert.ok(service, "Webook user management service must exist");
+    const roles: WebookManagedRole[] = [{ id: 1, name: "ผู้ดูแลระบบ" }];
+    const { repository } = createRepository({ roles });
+
+    const result = await service.listWebookUserRoles({ repository });
+
+    assert.deepEqual(result, roles);
+  });
+
   it("lists the requested page of users and every role supplied by the roles table repository", async () => {
     const service = await loadService();
     assert.ok(service, "Webook user management service must exist");
