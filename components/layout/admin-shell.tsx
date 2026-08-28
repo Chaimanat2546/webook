@@ -12,11 +12,13 @@ import { Toaster } from "../ui/sonner";
 
 export function AdminShell({
   canManageCentralUsers,
+  canManageWebookUsers,
   canUseQuotation,
   children,
   defaultSidebarOpen = true,
 }: {
   canManageCentralUsers: boolean;
+  canManageWebookUsers: boolean;
   canUseQuotation: boolean;
   children: ReactNode;
   defaultSidebarOpen?: boolean;
@@ -25,6 +27,7 @@ export function AdminShell({
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <AdminDesktopSidebar
         canManageCentralUsers={canManageCentralUsers}
+        canManageWebookUsers={canManageWebookUsers}
         canUseQuotation={canUseQuotation}
         signOutAction={signOut}
       />

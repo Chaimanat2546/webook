@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = Geist({
-  preload: false,
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  preload: false,
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const notoSansThai = localFont({
+  src: [
+    {
+      path: "../public/fonts/NotoSansThai-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/NotoSansThai-SemiBold.ttf",
+      weight: "600",
+      style: "normal",
+    },
+  ],
+  display: "swap",
+  variable: "--font-webook-sans",
 });
 
 export const metadata: Metadata = {
@@ -25,10 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="th"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="th" className={`${notoSansThai.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground">{children}</body>
     </html>
   );

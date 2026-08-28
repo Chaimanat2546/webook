@@ -17,8 +17,9 @@ describe("webook Staging Cloudflare boundary", () => {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
     assert.match(packageJson.scripts["upload:cf:staging"], /^node scripts\/assert-staging-cloudflare-target\.mjs/);
     assert.match(packageJson.scripts["deploy:cf:staging"], /^node scripts\/assert-staging-cloudflare-target\.mjs/);
-    assert.match(packageJson.scripts["deploy:cf:staging"], /-c wrangler\.staging\.jsonc/);
     const guard = readFileSync(new URL("../scripts/assert-staging-cloudflare-target.mjs", import.meta.url), "utf8");
+    const runner = readFileSync(new URL("../scripts/run-staging-cloudflare.mjs", import.meta.url), "utf8");
     assert.match(guard, /Object\.hasOwn\(config, "services"\)/);
+    assert.match(runner, /\[command, "-c", "wrangler\.staging\.jsonc", "--keep-vars"\]/);
   });
 });

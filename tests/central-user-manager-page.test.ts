@@ -50,7 +50,7 @@ describe("central user manager page", () => {
   it("places create user in the page header and removes tenant-panel operation buttons", () => {
     assert.match(source, /flex flex-wrap items-start justify-between/);
     assert.match(source, /disabled=\{!selected\?\.enabled\}/);
-    assert.match(source, /action: createCentralUserAction, label: "สร้างผู้ใช้"/);
+    assert.match(source, /action: createCentralUserAction,[\s\S]*label: "สร้างผู้ใช้"/);
     assert.doesNotMatch(source, /\[\[createCentralUserAction,"สร้างผู้ใช้"\],\[reissueCentralUserPasswordAction/);
     assert.doesNotMatch(source, /<aside className="space-y-3">/);
   });
@@ -69,7 +69,7 @@ describe("central user manager page", () => {
   it("uses disabled fields without dialog autofocus and copies passwords only on request", () => {
     assert.match(source, /disabled=\{Boolean\(dialogAction\?\.email\)\}/);
     assert.match(source, /onOpenAutoFocus=\{\(event\) => event\.preventDefault\(\)\}/);
-    assert.match(source, /aria-label="รหัสผ่านชั่วคราว" disabled/);
+    assert.match(source, /aria-label="รหัสผ่านชั่วคราว"[\s\S]*disabled/);
     assert.match(source, /navigator\.clipboard\.writeText\(password\.value\)/);
     assert.match(source, /คัดลอกแล้ว/);
   });

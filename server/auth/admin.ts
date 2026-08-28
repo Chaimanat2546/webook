@@ -34,6 +34,12 @@ export function canManageCentralUsers(
   return user?.role_id === 1;
 }
 
+export function canManageWebookUsers(
+  user: Pick<AdminUserForAuth, "role_id"> | null,
+): boolean {
+  return user?.role_id === 1;
+}
+
 export function pickAdminUser({
   byEmail,
   byUid,
@@ -80,6 +86,15 @@ export const requireAdmin = cache(async () => {
 export async function requireCentralUserManagerAdmin() {
   const session = await requireAdmin();
   if (!canManageCentralUsers(session.adminUser)) {
+    throw new Error("Forbidden");
+  }
+
+  return session;
+}
+
+export async function requireWebookUserManagerAdmin() {
+  const session = await requireAdmin();
+  if (!canManageWebookUsers(session.adminUser)) {
     throw new Error("Forbidden");
   }
 

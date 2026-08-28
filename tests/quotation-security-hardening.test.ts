@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const migration = readFileSync(
@@ -11,7 +11,7 @@ const constraintGrantMigration = readFileSync(
   "utf8",
 );
 const nextConfig = readFileSync("next.config.ts", "utf8");
-const middleware = readFileSync("middleware.ts", "utf8");
+const securityHeaders = readFileSync("lib/security-headers.ts", "utf8");
 
 describe("quotation security hardening completion", () => {
   it("retires legacy public links and requires an expiry for future reads", () => {
@@ -26,17 +26,21 @@ describe("quotation security hardening completion", () => {
     assert.match(migration, /Quotation users read owned document template revisions[\s\S]*template\.user_id = \(select auth\.uid\(\)\)/);
   });
 
-  it("sets the browser security headers without advertising Next.js", () => {
+  it("sets the browser security headers from Next config without advertising Next.js", () => {
     assert.match(nextConfig, /poweredByHeader: false/);
     assert.match(nextConfig, /Content-Security-Policy/);
-    assert.match(nextConfig, /frame-ancestors 'self'/);
+    assert.match(securityHeaders, /frame-ancestors 'self'/);
     assert.match(nextConfig, /X-Content-Type-Options/);
     assert.match(nextConfig, /X-Frame-Options/);
     assert.match(nextConfig, /Referrer-Policy/);
-    assert.match(middleware, /Content-Security-Policy/);
-    assert.match(middleware, /https:\/\/webook-media\.poolvilla\.workers\.dev/);
-    assert.match(middleware, /https:\/\/d24r25u6qcb3zryipzoiqj2jxy0ilqtm\.lambda-url\.ap-southeast-1\.on\.aws/);
-    assert.match(middleware, /response\.headers\.delete\("x-powered-by"\)/);
+    assert.match(nextConfig, /getContentSecurityPolicy\(process\.env\.NODE_ENV\)/);
+    assert.match(securityHeaders, /https:\/\/webook-media\.poolvilla\.workers\.dev/);
+    assert.match(securityHeaders, /https:\/\/d24r25u6qcb3zryipzoiqj2jxy0ilqtm\.lambda-url\.ap-southeast-1\.on\.aws/);
+    assert.equal(existsSync("middleware.ts"), false);
+  });
+
+  it("allows eval only for the Next.js development refresh runtime", () => {
+    assert.match(nextConfig, /getContentSecurityPolicy\(process\.env\.NODE_ENV\)/);
   });
 
   it("permits authenticated quotation saves to evaluate their database constraints", () => {
