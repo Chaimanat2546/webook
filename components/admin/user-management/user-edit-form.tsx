@@ -1,0 +1,138 @@
+"use client";
+
+import { useActionState, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { updateWebookUserFormAction } from "../../../app/admin/users/actions";
+import type { WebookManagedRole, WebookManagedUser } from "../../../lib/webook-users";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
+import { UserSaveNotification, UserUpdateErrorNotification } from "./user-save-notification";
+
+interface UserEditFormProps {
+  roles: WebookManagedRole[];
+  section: "details" | "permissions";
+  user: WebookManagedUser;
+}
+
+export function UserEditForm({ roles, section, user }: UserEditFormProps) {
+  const router = useRouter();
+  const [state, formAction, isPending] = useActionState(updateWebookUserFormAction, null);
+  const [dvId, setDvId] = useState(user.dvId ?? "");
+  const [hasEditedDvIdSinceSubmit, setHasEditedDvIdSinceSubmit] = useState(false);
+  const hasNameError = state?.ok === false && state.field === "name";
+  const hasDvIdError = state?.ok === false && state.field === "dvId";
+  const hasRoleIdError = state?.ok === false && state.field === "roleId";
+  const hasInlineError = hasNameError || hasDvIdError || hasRoleIdError;
+
+  useEffect(() => {
+    if (state?.ok) router.refresh();
+  }, [router, state]);
+
+  if (section === "permissions") {
+    return (
+      <form action={formAction} className="w-full max-w-none space-y-4">
+        <input name="id" type="hidden" value={user.id} />
+        <input name="name" type="hidden" value={user.name} />
+        <input name="section" type="hidden" value={section} />
+        {state?.ok ? <UserSaveNotification /> : null}
+        {state?.ok === false && !hasInlineError ? <UserUpdateErrorNotification message={state.message} /> : null}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="webook-user-role">สิทธิ์ผู้ใช้</Label>
+            <select
+              aria-describedby="webook-user-role-error"
+              aria-invalid={hasRoleIdError}
+              className={`h-8 w-full rounded-lg border bg-transparent px-2.5 py-1 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 ${hasRoleIdError ? "border-destructive focus-visible:border-destructive focus-visible:ring-3 focus-visible:ring-destructive/20" : "border-input focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"}`}
+              defaultValue={user.roleId === null ? "" : String(user.roleId)}
+              id="webook-user-role"
+              name="roleId"
+            >
+              <option disabled value="">เลือกสิทธิ์ผู้ใช้</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.id}>{role.name}</option>
+              ))}
+            </select>
+            <p className="min-h-5 text-sm text-destructive" id="webook-user-role-error" role={hasRoleIdError ? "alert" : undefined}>
+              {hasRoleIdError ? state.message : null}
+            </p>
+          </div>
+        </div>
+
+        <FormActions disabled={roles.length === 0 || isPending} />
+      </form>
+    );
+  }
+
+  return (
+    <form action={formAction} className="w-full max-w-none space-y-4" onSubmit={() => setHasEditedDvIdSinceSubmit(false)}>
+      <input name="id" type="hidden" value={user.id} />
+      <input name="roleId" type="hidden" value={user.roleId ?? ""} />
+      <input name="section" type="hidden" value={section} />
+      {state?.ok ? <UserSaveNotification /> : null}
+      {state?.ok === false && !hasInlineError ? <UserUpdateErrorNotification message={state.message} /> : null}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="webook-user-name">ชื่อ</Label>
+          <Input
+            aria-describedby="webook-user-name-error"
+            aria-invalid={hasNameError}
+            autoComplete="name"
+            className={hasNameError ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20" : undefined}
+            defaultValue={user.name}
+            id="webook-user-name"
+            maxLength={150}
+            name="name"
+          />
+          <p className="min-h-5 text-sm text-destructive" id="webook-user-name-error" role={hasNameError ? "alert" : undefined}>
+            {hasNameError ? state.message : null}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="webook-user-dv-id">DV ID</Label>
+          <Input
+            aria-describedby="webook-user-dv-id-error"
+            aria-invalid={hasDvIdError}
+            className={hasDvIdError ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20" : undefined}
+            id="webook-user-dv-id"
+            inputMode="numeric"
+            maxLength={19}
+            name="dvId"
+            onInput={(event) => {
+              setHasEditedDvIdSinceSubmit(true);
+              setDvId(event.currentTarget.value.replace(/\D/g, ""));
+            }}
+            value={state?.ok && !hasEditedDvIdSinceSubmit ? state.user.dvId ?? "" : dvId}
+          />
+          <p
+            className={`min-h-5 text-sm ${hasDvIdError ? "text-destructive" : "text-muted-foreground"}`}
+            id="webook-user-dv-id-error"
+            role={hasDvIdError ? "alert" : undefined}
+          >
+            {hasDvIdError ? state.message : "DV ID ต้องเป็นตัวเลข และห้ามซ้ำกับผู้ใช้อื่น"}
+          </p>
+        </div>
+      </div>
+
+      {user.roleId === null ? (
+        <p className="text-sm text-muted-foreground">กรุณากำหนดสิทธิ์ผู้ใช้ก่อนแก้ไขข้อมูลผู้ใช้</p>
+      ) : null}
+
+      <FormActions disabled={user.roleId === null || isPending} />
+    </form>
+  );
+}
+
+function FormActions({ disabled }: { disabled: boolean }) {
+  return (
+    <div className="flex justify-end gap-2">
+      <Button asChild type="button" variant="outline">
+        <Link href="/admin/users">ยกเลิก</Link>
+      </Button>
+      <Button disabled={disabled} type="submit">บันทึก</Button>
+    </div>
+  );
+}

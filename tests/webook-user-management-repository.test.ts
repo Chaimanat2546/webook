@@ -47,6 +47,34 @@ describe("Webook users repository", () => {
     let updatePayload: unknown;
     const client = {
       from(table: string) {
+        if (table === "webook_user_management_list") {
+          return {
+            select(columns: string) {
+              assert.equal(columns, "id, name, username, email, role_id, dv_id");
+              return {
+                eq(column: string, value: string) {
+                  assert.equal(column, "id");
+                  return {
+                    async maybeSingle() {
+                      return {
+                        data: {
+                          dv_id: "9007199254740993",
+                          id: value,
+                          name: "สมชาย",
+                          username: "user",
+                          email: "user@example.com",
+                          role_id: 2,
+                        },
+                        error: null,
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
         assert.equal(table, "users");
         return {
           update(payload: unknown) {
@@ -57,18 +85,11 @@ describe("Webook users repository", () => {
                 assert.equal(value, "7a67c89b-3dd8-466c-86a1-e95fc39729b3");
                 return {
                   select(columns: string) {
-                    assert.equal(columns, "id, name, username, email, role_id, dv_id");
+                    assert.equal(columns, "id");
                     return {
                       async maybeSingle() {
                         return {
-                          data: {
-                            dv_id: "9007199254740993",
-                            id: value,
-                            name: "สมชาย",
-                            username: "user",
-                            email: "user@example.com",
-                            role_id: 2,
-                          },
+                          data: { id: value },
                           error: null,
                         };
                       },
@@ -84,10 +105,10 @@ describe("Webook users repository", () => {
 
     const user = await createWebookUsersRepository(client).updateUser(
       "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
-      { name: "สมชาย", roleId: 2 },
+      { dvId: "42", name: "สมชาย", roleId: 2 },
     );
 
-    assert.deepEqual(updatePayload, { name: "สมชาย", role_id: 2 });
+    assert.deepEqual(updatePayload, { dv_id: "42", name: "สมชาย", role_id: 2 });
     assert.deepEqual(user, {
       email: "user@example.com",
       dvId: "9007199254740993",

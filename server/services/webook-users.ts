@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WebookManagedRole, WebookManagedUser } from "../../lib/webook-users";
 import {
   createWebookUsersRepository,
+  DuplicateWebookUserDvIdError,
   type WebookUserSortBy,
   type WebookUserSortDirection,
   type WebookUsersRepository,
@@ -33,14 +34,18 @@ export interface WebookUserManagementData {
 }
 
 export interface UpdateWebookUserInput {
+  dvId: string;
   id: string;
   name: string;
   roleId: string;
+  updateDvId?: boolean;
 }
+
+export type WebookUserUpdateField = "dvId" | "name" | "roleId";
 
 export type UpdateWebookUserResult =
   | { ok: true; user: WebookManagedUser }
-  | { ok: false; message: string };
+  | { field?: WebookUserUpdateField; ok: false; message: string };
 
 export function normalizeWebookUsersPage(value: number | undefined): number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 1;
@@ -87,28 +92,41 @@ async function resolveRepository(
 }
 
 function parseUpdateInput(input: UpdateWebookUserInput):
-  | { ok: true; value: { id: string; name: string; roleId: number } }
-  | { ok: false; message: string } {
+  | { ok: true; value: { dvId: string | null; id: string; name: string; roleId: number } }
+  | { field?: WebookUserUpdateField; ok: false; message: string } {
   const id = input.id.trim();
   const name = input.name.trim();
+  const rawDvId = input.dvId.trim();
   const rawRoleId = input.roleId.trim();
 
   if (!UUID_PATTERN.test(id)) {
     return { ok: false, message: "ข้อมูลผู้ใช้ไม่ถูกต้อง" };
   }
   if (!name || name.length > USER_NAME_MAX_LENGTH) {
-    return { ok: false, message: "กรุณาระบุชื่อไม่เกิน 150 ตัวอักษร" };
+    return { field: "name", ok: false, message: "กรุณาระบุชื่อไม่เกิน 150 ตัวอักษร" };
+  }
+  if (rawDvId && !/^\d+$/.test(rawDvId)) {
+    return { field: "dvId", ok: false, message: "DV ID ต้องเป็นตัวเลขจำนวนเต็มที่ถูกต้อง" };
+  }
+
+  let dvId: string | null = null;
+  if (rawDvId) {
+    const parsedDvId = BigInt(rawDvId);
+    if (parsedDvId > BigInt("9223372036854775807")) {
+      return { field: "dvId", ok: false, message: "DV ID ต้องเป็นตัวเลขจำนวนเต็มที่ถูกต้อง" };
+    }
+    dvId = parsedDvId.toString();
   }
   if (!/^\d+$/.test(rawRoleId)) {
-    return { ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
+    return { field: "roleId", ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
   }
 
   const roleId = Number(rawRoleId);
   if (!Number.isSafeInteger(roleId) || roleId < 1 || roleId > SMALLINT_MAX) {
-    return { ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
+    return { field: "roleId", ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
   }
 
-  return { ok: true, value: { id, name, roleId } };
+  return { ok: true, value: { dvId, id, name, roleId } };
 }
 
 export async function listWebookUserManagementData(
@@ -176,13 +194,26 @@ export async function updateWebookUser(
 
   const repository = await resolveRepository(dependencies);
   if (!(await repository.roleExists(parsed.value.roleId))) {
-    return { ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
+    return { field: "roleId", ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
+  }
+  const updatesDvId = input.updateDvId !== false;
+  if (updatesDvId && parsed.value.dvId && await repository.dvIdExists(parsed.value.dvId, parsed.value.id)) {
+    return { field: "dvId", ok: false, message: "DV ID นี้ถูกใช้งานแล้ว" };
   }
 
-  const user = await repository.updateUser(parsed.value.id, {
-    name: parsed.value.name,
-    roleId: parsed.value.roleId,
-  });
+  let user: WebookManagedUser | null;
+  try {
+    user = await repository.updateUser(parsed.value.id, {
+      ...(updatesDvId ? { dvId: parsed.value.dvId } : {}),
+      name: parsed.value.name,
+      roleId: parsed.value.roleId,
+    });
+  } catch (error) {
+    if (error instanceof DuplicateWebookUserDvIdError) {
+      return { field: "dvId", ok: false, message: "DV ID นี้ถูกใช้งานแล้ว" };
+    }
+    throw error;
+  }
   if (!user) return { ok: false, message: "ไม่พบผู้ใช้ที่ต้องการแก้ไข" };
 
   return { ok: true, user };

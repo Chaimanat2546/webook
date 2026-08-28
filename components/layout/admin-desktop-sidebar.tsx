@@ -1,6 +1,6 @@
 "use client";
 
-import { FileTextIcon, HouseIcon, LogOutIcon, MegaphoneIcon, UsersIcon } from "lucide-react";
+import { Contact, Files, FileText, House, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -83,7 +83,7 @@ export function AdminDesktopSidebar({
                         tooltip="บ้านพัก"
                       >
                         <Link href="/admin/houses" onClick={closeMobileSidebar}>
-                          <HouseIcon data-icon="inline-start" />
+                          <House data-icon="inline-start" />
                           <span>บ้านพัก</span>
                         </Link>
                       </SidebarMenuButton>
@@ -98,7 +98,7 @@ export function AdminDesktopSidebar({
                           href="/admin/advertisements"
                           onClick={closeMobileSidebar}
                         >
-                          <MegaphoneIcon data-icon="inline-start" />
+                          <Megaphone data-icon="inline-start" />
                           <span>โฆษณา</span>
                         </Link>
                       </SidebarMenuButton>
@@ -113,7 +113,7 @@ export function AdminDesktopSidebar({
                       tooltip="ใบเสนอราคา"
                     >
                       <Link href="/admin/quotations" onClick={closeMobileSidebar}>
-                        <FileTextIcon data-icon="inline-start" />
+                        <FileText data-icon="inline-start" />
                         <span>ใบเสนอราคา</span>
                       </Link>
                     </SidebarMenuButton>
@@ -121,7 +121,7 @@ export function AdminDesktopSidebar({
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton asChild isActive={pathname === "/admin/quotations"}>
                           <Link href="/admin/quotations" onClick={closeMobileSidebar}>
-                            <FileTextIcon aria-hidden/>
+                            <Files aria-hidden/>
                             <span>รายการใบเสนอราคา</span>
                           </Link>
                         </SidebarMenuSubButton>
@@ -129,7 +129,7 @@ export function AdminDesktopSidebar({
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton asChild isActive={pathname.startsWith("/admin/quotations/customers")}>
                           <Link href="/admin/quotations/customers" onClick={closeMobileSidebar}>
-                            <UsersIcon aria-hidden />
+                            <Contact aria-hidden />
                             <span>ข้อมูลลูกค้า</span>
                           </Link>
                         </SidebarMenuSubButton>
@@ -142,11 +142,11 @@ export function AdminDesktopSidebar({
                     <SidebarMenuButton
                       asChild
                       isActive={pathname.startsWith("/admin/user-manager")}
-                      tooltip="จัดการผู้ใช้"
+                      tooltip="ผู้ใช้เว็บไซต์"
                     >
                       <Link href="/admin/user-manager" onClick={closeMobileSidebar}>
-                        <UsersIcon data-icon="inline-start" />
-                        <span>จัดการผู้ใช้</span>
+                        <Users data-icon="inline-start" />
+                        <span>ผู้ใช้เว็บไซต์</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -156,11 +156,11 @@ export function AdminDesktopSidebar({
                     <SidebarMenuButton
                       asChild
                       isActive={pathname.startsWith("/admin/users")}
-                      tooltip="จัดการผู้ใช้ Webook"
+                      tooltip="ผู้ใช้ WeBook"
                     >
                       <Link href="/admin/users" onClick={closeMobileSidebar}>
-                        <UsersIcon data-icon="inline-start" />
-                        <span>จัดการผู้ใช้ Webook</span>
+                        <ShieldUser data-icon="inline-start" />
+                        <span>ผู้ใช้ WeBook</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
