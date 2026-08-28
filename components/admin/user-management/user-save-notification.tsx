@@ -10,3 +10,11 @@ export function UserSaveNotification() {
 
   return null;
 }
+
+export function UserUpdateErrorNotification({ message }: { message: string }) {
+  useEffect(() => {
+    toast.error(message);
+  }, [message]);
+
+  return null;
+}

@@ -25,17 +25,18 @@ describe("Webook user management server boundary", () => {
     const loadAt = page.indexOf("getWebookUserForManagement(id)");
     assert.ok(guardAt >= 0);
     assert.ok(loadAt > guardAt);
-    assert.match(page, /action=\{updateWebookUserFormAction\}/);
+    assert.match(page, /<UserEditForm/);
     assert.doesNotMatch(page, /createSupabaseAdminClient/);
   });
 
-  it("authorizes the update action and accepts only id, name, and roleId", () => {
+  it("authorizes the update action and accepts only editable user fields", () => {
     const actions = read("../app/admin/users/actions.ts");
 
     const guardAt = actions.indexOf("await requireWebookUserManagerAdmin()");
     const updateAt = actions.indexOf("await updateWebookUser(");
     assert.ok(guardAt >= 0);
     assert.ok(updateAt > guardAt);
+    assert.match(actions, /readString\(formData, "dvId"\)/);
     assert.match(actions, /readString\(formData, "id"\)/);
     assert.match(actions, /readString\(formData, "name"\)/);
     assert.match(actions, /readString\(formData, "roleId"\)/);
@@ -53,7 +54,8 @@ describe("Webook user management server boundary", () => {
     assert.match(service, /import "server-only"/);
     assert.match(repository, /\.from\("roles"\)/);
     assert.match(repository, /\.from\("users"\)/);
-    assert.match(repository, /\.update\(\{ name: fields\.name, role_id: fields\.roleId \}\)/);
+    assert.match(repository, /if \(fields\.dvId !== undefined\) updateFields\.dv_id = fields\.dvId/);
+    assert.match(repository, /\.update\(updateFields\)/);
     assert.match(service, /createSupabaseAdminClient/);
     assert.doesNotMatch(service, /auth\.admin|ban|unban/i);
   });

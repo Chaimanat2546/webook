@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WebookManagedRole, WebookManagedUser } from "../../lib/webook-users";
 
 export interface WebookUserUpdateFields {
+  dvId?: string | null;
   name: string;
   roleId: number;
 }
@@ -11,6 +12,12 @@ export interface WebookUserUpdateFields {
 export interface WebookUsersPage {
   totalUsers: number;
   users: WebookManagedUser[];
+}
+
+export class DuplicateWebookUserDvIdError extends Error {
+  constructor() {
+    super("DV ID already exists");
+  }
 }
 
 export type WebookUserSortBy = "dvId" | "email" | "name" | "role" | "username";
@@ -27,6 +34,7 @@ export interface WebookUsersRepository {
     sortDirection: WebookUserSortDirection;
   }): Promise<WebookUsersPage>;
   getUser(id: string): Promise<WebookManagedUser | null>;
+  dvIdExists(dvId: string, excludedUserId: string): Promise<boolean>;
   roleExists(roleId: number): Promise<boolean>;
   updateUser(id: string, fields: WebookUserUpdateFields): Promise<WebookManagedUser | null>;
 }
@@ -108,6 +116,17 @@ function userSearchFilter(search: string): string {
   return `name.ilike.%${pattern}%,username.ilike.%${pattern}%,email.ilike.%${pattern}%`;
 }
 
+async function getUserById(supabase: SupabaseClient, id: string): Promise<WebookManagedUser | null> {
+  const { data, error } = await supabase
+    .from("webook_user_management_list")
+    .select("id, name, username, email, role_id, dv_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data === null ? null : mapUser(data);
+}
+
 export function createWebookUsersRepository(supabase: SupabaseClient): WebookUsersRepository {
   return {
     async listRoles() {
@@ -146,14 +165,7 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
     },
 
     async getUser(id) {
-      const { data, error } = await supabase
-        .from("users")
-        .select("id, name, username, email, role_id, dv_id")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (error) throw new Error(error.message);
-      return data === null ? null : mapUser(data);
+      return getUserById(supabase, id);
     },
 
     async roleExists(roleId) {
@@ -167,16 +179,36 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
       return data !== null;
     },
 
-    async updateUser(id, fields) {
+    async dvIdExists(dvId, excludedUserId) {
       const { data, error } = await supabase
         .from("users")
-        .update({ name: fields.name, role_id: fields.roleId })
-        .eq("id", id)
-        .select("id, name, username, email, role_id, dv_id")
+        .select("id")
+        .eq("dv_id", dvId)
+        .neq("id", excludedUserId)
         .maybeSingle();
 
       if (error) throw new Error(error.message);
-      return data === null ? null : mapUser(data);
+      return data !== null;
+    },
+
+    async updateUser(id, fields) {
+      const updateFields: { dv_id?: string | null; name: string; role_id: number } = {
+        name: fields.name,
+        role_id: fields.roleId,
+      };
+      if (fields.dvId !== undefined) updateFields.dv_id = fields.dvId;
+      const { data, error } = await supabase
+        .from("users")
+        .update(updateFields)
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === "23505") throw new DuplicateWebookUserDvIdError();
+        throw new Error(error.message);
+      }
+      return data === null ? null : getUserById(supabase, id);
     },
   };
 }

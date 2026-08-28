@@ -64,6 +64,7 @@ describe("Webook user management UI", () => {
 
   it("separates user details from permissions and usage", () => {
     const page = read("../app/admin/users/[id]/page.tsx");
+    const form = read("../components/admin/user-management/user-edit-form.tsx");
 
     assert.match(page, /label: "ข้อมูลผู้ใช้"/);
     assert.match(page, /label: "สิทธิ์และการใช้งาน"/);
@@ -72,35 +73,61 @@ describe("Webook user management UI", () => {
     assert.match(page, /<UserWorkspaceShell/);
     assert.match(page, /contentTitle=\{activeSection\.label\}/);
     assert.doesNotMatch(page, /HouseWorkspaceShell/);
-    assert.match(page, /action=\{updateWebookUserFormAction\}/);
-    assert.match(page, /name="name"/);
-    assert.match(page, /name="roleId"/);
-    assert.match(page, /type="hidden" value=\{user\.roleId/);
-    assert.match(page, /type="hidden" value=\{user\.name\}/);
-    assert.match(page, /disabled=\{user\.roleId === null\}/);
-    assert.match(page, /กรุณากำหนดสิทธิ์ผู้ใช้ก่อนแก้ไขข้อมูลผู้ใช้/);
-    assert.match(page, /roles\.map\(/);
-    assert.doesNotMatch(page, /name="(?:email|username|tel)"/);
+    assert.match(page, /<UserEditForm/);
+    assert.match(page, /key=\{`\$\{activeSection\.key\}-\$\{user\.dvId \?\? ""\}`\}/);
+    assert.match(form, /name="name"/);
+    assert.match(form, /name="dvId"/);
+    assert.match(form, /inputMode="numeric"/);
+    assert.match(form, /const \[dvId, setDvId\] = useState\(user\.dvId \?\? ""\)/);
+    assert.match(form, /value=\{state\?\.ok && !hasEditedDvIdSinceSubmit \? state\.user\.dvId \?\? "" : dvId\}/);
+    assert.match(form, /setDvId\(event\.currentTarget\.value\.replace\(\/\\D\/g, ""\)\)/);
+    assert.match(form, /onInput=\{\(event\) => \{/);
+    assert.match(form, /replace\(\/\\D\/g, ""\)/);
+    assert.match(form, /DV ID ต้องเป็นตัวเลข และห้ามซ้ำกับผู้ใช้อื่น/);
+    assert.doesNotMatch(form, /pattern="\[0-9\]\*"/);
+    assert.match(form, /grid gap-4 md:grid-cols-2/);
+    assert.equal((form.match(/grid gap-4 md:grid-cols-2/g) ?? []).length, 2);
+    assert.doesNotMatch(form, /max-w-lg/);
+    assert.match(form, /max-w-none/);
+    assert.match(form, /name="roleId"/);
+    assert.match(form, /type="hidden" value=\{user\.roleId/);
+    assert.match(form, /type="hidden" value=\{user\.name\}/);
+    assert.match(form, /disabled=\{user\.roleId === null \|\| isPending\}/);
+    assert.match(form, /กรุณากำหนดสิทธิ์ผู้ใช้ก่อนแก้ไขข้อมูลผู้ใช้/);
+    assert.match(form, /roles\.map\(/);
+    assert.doesNotMatch(form, /name="(?:email|username|tel)"/);
     assert.doesNotMatch(page, /Ban|ปลด Ban/);
   });
 
   it("shows an update error on the dedicated edit page", () => {
-    const page = read("../app/admin/users/[id]/page.tsx");
     const actions = read("../app/admin/users/actions.ts");
 
-    assert.match(page, /searchParams: Promise<\{ error\?: string; section\?: string \}>/);
-    assert.match(page, /role="alert"/);
-    assert.match(actions, /\?error=\$\{encodeURIComponent\(result\.message\)\}/);
-    assert.match(actions, /readString\(formData, "section"\) === "permissions"/);
-    assert.match(actions, /&section=permissions/);
+    const form = read("../components/admin/user-management/user-edit-form.tsx");
+    assert.match(form, /useActionState/);
+    assert.match(form, /updateWebookUserFormAction/);
+    assert.match(form, /aria-invalid=\{hasDvIdError\}/);
+    assert.match(form, /aria-describedby="webook-user-dv-id-error"/);
+    assert.match(form, /min-h-5/);
+    assert.match(form, /router\.refresh\(\)/);
+    assert.doesNotMatch(form, /router\.push\(/);
+    assert.doesNotMatch(actions, /redirect\(/);
+
+    const notification = read("../components/admin/user-management/user-save-notification.tsx");
+    assert.match(notification, /export function UserUpdateErrorNotification/);
+    assert.match(notification, /toast\.error\(message\)/);
   });
 
-  it("shows a success toast after returning to the user list", () => {
+  it("shows a success toast while remaining on the edit page", () => {
     const page = read("../app/admin/users/page.tsx");
-    const actions = read("../app/admin/users/actions.ts");
+    const editPage = read("../app/admin/users/[id]/page.tsx");
+    const form = read("../components/admin/user-management/user-edit-form.tsx");
     const notification = read("../components/admin/user-management/user-save-notification.tsx");
 
-    assert.match(actions, /redirect\("\/admin\/users\?success=1"\)/);
+    assert.match(form, /state\?\.ok \? <UserSaveNotification \/> : null/);
+    assert.match(form, /const \[hasEditedDvIdSinceSubmit, setHasEditedDvIdSinceSubmit\] = useState\(false\)/);
+    assert.match(form, /state\?\.ok && !hasEditedDvIdSinceSubmit \? state\.user\.dvId \?\? "" : dvId/);
+    assert.match(editPage, /key=\{`\$\{activeSection\.key\}-\$\{user\.dvId \?\? ""\}`\}/);
+    assert.doesNotMatch(form, /router\.push\(/);
     assert.match(page, /<UserSaveNotification \/>/);
     assert.match(notification, /toast\.success\("บันทึกข้อมูลผู้ใช้แล้ว"\)/);
   });

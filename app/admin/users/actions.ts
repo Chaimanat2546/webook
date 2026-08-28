@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { requireWebookUserManagerAdmin } from "../../../server/auth/admin";
 import {
@@ -36,9 +35,11 @@ export async function updateWebookUserAction(
     await requireWebookUserManagerAdmin();
 
     const result = await updateWebookUser({
+      dvId: readString(formData, "dvId"),
       id: readString(formData, "id"),
       name: readString(formData, "name"),
       roleId: readString(formData, "roleId"),
+      updateDvId: readString(formData, "section") !== "permissions",
     });
 
     if (result.ok) revalidatePath("/admin/users");
@@ -49,13 +50,9 @@ export async function updateWebookUserAction(
   }
 }
 
-export async function updateWebookUserFormAction(formData: FormData): Promise<void> {
-  const result = await updateWebookUserAction(formData);
-  if (!result.ok) {
-    const id = readString(formData, "id");
-    const section = readString(formData, "section") === "permissions" ? "&section=permissions" : "";
-    redirect(`/admin/users/${id}?error=${encodeURIComponent(result.message)}${section}`);
-  }
-
-  redirect("/admin/users?success=1");
+export async function updateWebookUserFormAction(
+  _previousState: UpdateWebookUserResult | null,
+  formData: FormData,
+): Promise<UpdateWebookUserResult> {
+  return updateWebookUserAction(formData);
 }
