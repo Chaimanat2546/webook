@@ -132,8 +132,8 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
         : searchFilteredQuery;
       const ascending = sortDirection === "asc";
       const sortedQuery = sortBy === "role"
-        ? filteredQuery.order("role_name", { ascending, nullsFirst: false })
-        : filteredQuery.order(sortBy === "dvId" ? "dv_sort_id" : sortBy, { ascending, nullsFirst: false });
+        ? filteredQuery.order("role_name", { ascending, nullsFirst: ascending })
+        : filteredQuery.order(sortBy === "dvId" ? "dv_sort_id" : sortBy, { ascending, nullsFirst: ascending });
       const { count, data, error } = await sortedQuery
         .order("id", { ascending: true })
         .range(from, to);

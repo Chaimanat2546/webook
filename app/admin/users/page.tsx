@@ -8,6 +8,7 @@ import { Pagination } from "../../../components/admin/houses/pagination";
 import { requireWebookUserManagerAdmin } from "../../../server/auth/admin";
 import {
   listWebookUserManagementData,
+  listWebookUserRoles,
   normalizeWebookUserRoleIds,
   normalizeWebookUsersPage,
   normalizeWebookUsersSearch,
@@ -24,19 +25,22 @@ function parseRoleIds(value?: string): number[] {
 async function WebookUsersList({
   page,
   roleIds,
+  roles,
   search,
   sortBy,
   sortDirection,
 }: {
   page: number;
   roleIds: number[];
+  roles: import("../../../lib/webook-users").WebookManagedRole[];
   search: string;
   sortBy: "dvId" | "email" | "name" | "role" | "username";
   sortDirection: "asc" | "desc";
 }) {
-  const { pagination, roles, users } = await listWebookUserManagementData({
+  const { pagination, roles: loadedRoles, users } = await listWebookUserManagementData({
     page,
     roleIds,
+    roles,
     search,
     sortBy,
     sortDirection,
@@ -44,7 +48,7 @@ async function WebookUsersList({
 
   return (
     <>
-      <UserTable roleIds={roleIds} roles={roles} search={search} sortBy={sortBy} sortDirection={sortDirection} users={users} />
+      <UserTable roleIds={roleIds} roles={loadedRoles} search={search} sortBy={sortBy} sortDirection={sortDirection} users={users} />
       <Pagination
         basePath="/admin/users"
         currentPage={pagination.page}
@@ -72,12 +76,13 @@ export default async function WebookUsersPage({
   const sortBy = normalizeWebookUsersSortBy(params.sort);
   const sortDirection = normalizeWebookUsersSortDirection(params.dir);
   await requireWebookUserManagerAdmin();
+  const roles = await listWebookUserRoles();
 
   return (
-    <UserManagementPage roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection}>
+    <UserManagementPage roles={roles} roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection}>
       {params.success === "1" ? <UserSaveNotification /> : null}
       <Suspense fallback={<UserListSkeleton />}>
-        <WebookUsersList page={page} roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection} />
+        <WebookUsersList page={page} roleIds={roleIds} roles={roles} search={search} sortBy={sortBy} sortDirection={sortDirection} />
       </Suspense>
     </UserManagementPage>
   );

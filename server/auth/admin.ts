@@ -83,6 +83,16 @@ export const requireAdmin = cache(async () => {
   };
 });
 
+export async function requireAccommodationAdmin() {
+  const session = await requireAdmin();
+  if (!canUseAccommodation(session.adminUser)) {
+    const { notFound } = await import("next/navigation");
+    notFound();
+  }
+
+  return session;
+}
+
 export async function requireCentralUserManagerAdmin() {
   const session = await requireAdmin();
   if (!canManageCentralUsers(session.adminUser)) {

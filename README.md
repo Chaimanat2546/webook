@@ -12,6 +12,9 @@ Current focus:
 
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
 House/accommodation menu access currently requires `allow_tools.allow_accommodation = true`.
+Without it, the house and advertisement sidebar entries are hidden and every
+`/admin/houses` and `/admin/advertisements` route returns 404; their Server
+Actions independently enforce the same permission.
 
 ## Central User Manager
 

@@ -53,7 +53,8 @@ export async function updateWebookUserFormAction(formData: FormData): Promise<vo
   const result = await updateWebookUserAction(formData);
   if (!result.ok) {
     const id = readString(formData, "id");
-    redirect(`/admin/users/${id}?error=${encodeURIComponent(result.message)}`);
+    const section = readString(formData, "section") === "permissions" ? "&section=permissions" : "";
+    redirect(`/admin/users/${id}?error=${encodeURIComponent(result.message)}${section}`);
   }
 
   redirect("/admin/users?success=1");

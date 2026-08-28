@@ -287,7 +287,7 @@ describe("advertisement admin UI", () => {
     assert.doesNotMatch(sonnerSource, /toastOptions/);
   });
 
-  it("shows the same unauthorized empty state on advertisement pages", () => {
+  it("uses the shared 404 accommodation guard on advertisement pages", () => {
     const pageSources = [
       readFileSync(new URL("../app/admin/advertisements/page.tsx", import.meta.url), "utf8"),
       readFileSync(new URL("../app/admin/advertisements/[id]/page.tsx", import.meta.url), "utf8"),
@@ -295,11 +295,10 @@ describe("advertisement admin UI", () => {
     ];
 
     for (const source of pageSources) {
-      assert.match(source, /canUseAccommodation/);
-      assert.match(source, /const \{ adminUser(?:, supabase)? \} = await requireAdmin\(\)/);
-      assert.match(source, /if \(!canUseAccommodation\(adminUser\)\) \{/);
-      assert.match(source, /<Empty>/);
-      assert.match(source, /allow_accommodation/);
+      assert.match(source, /requireAccommodationAdmin/);
+      assert.doesNotMatch(source, /canUseAccommodation/);
+      assert.doesNotMatch(source, /ไม่มีสิทธิ์เข้าถึงหมวดโฆษณา/);
+      assert.doesNotMatch(source, /บัญชีนี้ยังไม่ได้เปิด allow_accommodation/);
     }
   });
 });

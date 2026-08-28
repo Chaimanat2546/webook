@@ -4,31 +4,14 @@ import Link from "next/link";
 import { AdvertisementForm } from "../../../../components/admin/advertisements/advertisement-form";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "../../../../components/ui/empty";
-import { canUseAccommodation, requireAdmin } from "../../../../server/auth/admin";
+import { requireAccommodationAdmin } from "../../../../server/auth/admin";
 import {
   createAdvertisementAction,
   uploadAdvertisementImagesAction,
 } from "../actions";
 
 export default async function NewAdvertisementPage() {
-  const { adminUser } = await requireAdmin();
-
-  if (!canUseAccommodation(adminUser)) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>ไม่มีสิทธิ์เข้าถึงหมวดโฆษณา</EmptyTitle>
-          <EmptyDescription>บัญชีนี้ยังไม่ได้เปิด allow_accommodation</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
+  await requireAccommodationAdmin();
 
   return (
     <div className="flex flex-col gap-4">
