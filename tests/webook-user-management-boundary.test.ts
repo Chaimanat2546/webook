@@ -8,13 +8,24 @@ function read(relativePath: string) {
 }
 
 describe("Webook user management server boundary", () => {
-  it("guards the route before loading users and roles through the server-only service", () => {
+  it("guards the route before rendering the server-loaded user list", () => {
     const page = read("../app/admin/users/page.tsx");
 
     const guardAt = page.indexOf("await requireWebookUserManagerAdmin()");
-    const loadAt = page.indexOf("await listWebookUserManagementData()");
+    const listAt = page.indexOf("<WebookUsersList page={page} search={search} />");
+    assert.ok(guardAt >= 0);
+    assert.ok(listAt > guardAt);
+    assert.doesNotMatch(page, /createSupabaseAdminClient/);
+  });
+
+  it("guards the direct edit route before loading the selected user", () => {
+    const page = read("../app/admin/users/[id]/page.tsx");
+
+    const guardAt = page.indexOf("await requireWebookUserManagerAdmin()");
+    const loadAt = page.indexOf("getWebookUserForManagement(id)");
     assert.ok(guardAt >= 0);
     assert.ok(loadAt > guardAt);
+    assert.match(page, /action=\{updateWebookUserFormAction\}/);
     assert.doesNotMatch(page, /createSupabaseAdminClient/);
   });
 

@@ -28,8 +28,10 @@ of scope. This feature needs no schema migration.
 The desktop layout uses the existing shadcn table primitives and keeps an
 Action column on the right. Mobile uses cards with the same read-only identity
 and Role information. Each row or card exposes one icon-labelled `แก้ไข`
-action. The dialog contains a name input and a Role select populated from
-`public.roles`.
+action. The dedicated edit page contains a name input and a Role select populated from
+`public.roles`. The list supports server-side search across name, username, and
+email, paginates eight users per page, and shows a responsive skeleton while its
+server-loaded list is pending.
 
 ## Architecture and security
 
@@ -52,5 +54,5 @@ and confirms the selected Role still exists before writing.
 
 Tests cover the strict Role 1 predicate and menu wiring, guard ordering,
 service validation, loading Role options, the exact update allowlist, the
-responsive presentation, and the name/Role-only dialog. Type check, lint, the
+responsive presentation, search, pagination, skeleton loading, and the name/Role-only edit page. Type check, lint, the
 full test suite, and production build must pass before completion.

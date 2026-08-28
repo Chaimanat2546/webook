@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireWebookUserManagerAdmin } from "../../../server/auth/admin";
 import {
@@ -46,4 +47,14 @@ export async function updateWebookUserAction(
     console.error("WebookUserUpdateFailed", error instanceof Error ? error.name : "UnknownError");
     return { ok: false, message: "ไม่สามารถแก้ไขผู้ใช้ได้ในขณะนี้" };
   }
+}
+
+export async function updateWebookUserFormAction(formData: FormData): Promise<void> {
+  const result = await updateWebookUserAction(formData);
+  if (!result.ok) {
+    const id = readString(formData, "id");
+    redirect(`/admin/users/${id}?error=${encodeURIComponent(result.message)}`);
+  }
+
+  redirect("/admin/users?success=1");
 }

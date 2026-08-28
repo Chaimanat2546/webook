@@ -11,6 +11,7 @@ import {
 const USER_NAME_MAX_LENGTH = 150;
 const SMALLINT_MAX = 32_767;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const WEBOOK_USERS_PAGE_SIZE = 8;
 
 interface WebookUserServiceDependencies {
   createAdminClient?: () => SupabaseClient | null;
@@ -18,6 +19,12 @@ interface WebookUserServiceDependencies {
 }
 
 export interface WebookUserManagementData {
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    totalUsers: number;
+  };
   roles: WebookManagedRole[];
   users: WebookManagedUser[];
 }
@@ -31,6 +38,14 @@ export interface UpdateWebookUserInput {
 export type UpdateWebookUserResult =
   | { ok: true; user: WebookManagedUser }
   | { ok: false; message: string };
+
+export function normalizeWebookUsersPage(value: number | undefined): number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 1;
+}
+
+export function normalizeWebookUsersSearch(value: string | undefined): string {
+  return (value ?? "").trim();
+}
 
 async function resolveRepository(
   dependencies: WebookUserServiceDependencies = {},
@@ -72,15 +87,45 @@ function parseUpdateInput(input: UpdateWebookUserInput):
 }
 
 export async function listWebookUserManagementData(
-  dependencies: WebookUserServiceDependencies = {},
+  {
+    page: pageInput,
+    search: searchInput,
+    ...dependencies
+  }: WebookUserServiceDependencies & { page?: number; search?: string } = {},
 ): Promise<WebookUserManagementData> {
   const repository = await resolveRepository(dependencies);
-  const [users, roles] = await Promise.all([
-    repository.listUsers(),
+  const page = normalizeWebookUsersPage(pageInput);
+  const search = normalizeWebookUsersSearch(searchInput);
+  const [initialUserPage, roles] = await Promise.all([
+    repository.listUsers({ page, pageSize: WEBOOK_USERS_PAGE_SIZE, search }),
     repository.listRoles(),
   ]);
+  const totalPages = Math.max(1, Math.ceil(initialUserPage.totalUsers / WEBOOK_USERS_PAGE_SIZE));
+  const effectivePage = Math.min(page, totalPages);
+  const userPage = effectivePage === page
+    ? initialUserPage
+    : await repository.listUsers({ page: effectivePage, pageSize: WEBOOK_USERS_PAGE_SIZE, search });
 
-  return { roles, users };
+  return {
+    pagination: {
+      page: effectivePage,
+      pageSize: WEBOOK_USERS_PAGE_SIZE,
+      totalPages,
+      totalUsers: initialUserPage.totalUsers,
+    },
+    roles,
+    users: userPage.users,
+  };
+}
+
+export async function getWebookUserForManagement(
+  id: string,
+  dependencies: WebookUserServiceDependencies = {},
+): Promise<WebookManagedUser | null> {
+  if (!UUID_PATTERN.test(id)) return null;
+
+  const repository = await resolveRepository(dependencies);
+  return repository.getUser(id);
 }
 
 export async function updateWebookUser(

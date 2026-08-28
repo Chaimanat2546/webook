@@ -39,6 +39,13 @@ describe("quotation security hardening completion", () => {
     assert.match(middleware, /response\.headers\.delete\("x-powered-by"\)/);
   });
 
+  it("allows eval only for the Next.js development refresh runtime", () => {
+    assert.match(nextConfig, /process\.env\.NODE_ENV === "development"/);
+    assert.match(middleware, /process\.env\.NODE_ENV === "development"/);
+    assert.match(nextConfig, /'unsafe-eval'/);
+    assert.match(middleware, /'unsafe-eval'/);
+  });
+
   it("permits authenticated quotation saves to evaluate their database constraints", () => {
     assert.match(constraintGrantMigration, /grant usage on schema private to authenticated/);
     assert.match(constraintGrantMigration, /grant execute on function private\.is_quotation_document_display\(jsonb\) to authenticated/);

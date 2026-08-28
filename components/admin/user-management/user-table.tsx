@@ -1,4 +1,5 @@
 import { PencilIcon } from "lucide-react";
+import Link from "next/link";
 
 import type {
   WebookManagedRole,
@@ -24,21 +25,21 @@ function roleName(roles: WebookManagedRole[], roleId: number | null): string {
   return roles.find((role) => role.id === roleId)?.name ?? "ไม่ระบุ Role";
 }
 
-function EditButton({ onClick }: { onClick: () => void }) {
+function EditButton({ userId }: { userId: string }) {
   return (
-    <Button onClick={onClick} size="sm" type="button" variant="outline">
-      <PencilIcon aria-hidden data-icon="inline-start" />
-      แก้ไข
+    <Button asChild size="sm" variant="outline">
+      <Link href={`/admin/users/${encodeURIComponent(userId)}`}>
+        <PencilIcon aria-hidden data-icon="inline-start" />
+        แก้ไข
+      </Link>
     </Button>
   );
 }
 
 export function UserTable({
-  onEdit,
   roles,
   users,
 }: {
-  onEdit: (user: WebookManagedUser) => void;
   roles: WebookManagedRole[];
   users: WebookManagedUser[];
 }) {
@@ -75,7 +76,7 @@ export function UserTable({
                   <dd className="break-all">{displayText(user.email)}</dd>
                 </div>
               </dl>
-              <EditButton onClick={() => onEdit(user)} />
+              <EditButton userId={user.id} />
             </CardContent>
           </Card>
         ))}
@@ -102,7 +103,7 @@ export function UserTable({
                   <Badge variant="secondary">{roleName(roles, user.roleId)}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <EditButton onClick={() => onEdit(user)} />
+                  <EditButton userId={user.id} />
                 </TableCell>
               </TableRow>
             ))}

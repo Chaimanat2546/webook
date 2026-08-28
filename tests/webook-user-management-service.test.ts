@@ -17,20 +17,28 @@ async function loadService() {
 
 function createRepository({
   roleExists = true,
+  totalUsers,
   users = [],
   roles = [],
 }: {
   roleExists?: boolean;
+  totalUsers?: number;
   users?: WebookManagedUser[];
   roles?: WebookManagedRole[];
 } = {}) {
   const updates: Array<{ id: string; name: string; roleId: number }> = [];
+  const listCalls: Array<{ page: number; pageSize: number; search: string }> = [];
+  const resolvedTotalUsers = totalUsers ?? users.length;
   const repository: WebookUsersRepository = {
     async listRoles() {
       return roles;
     },
-    async listUsers() {
-      return users;
+    async listUsers({ page, pageSize, search }: { page: number; pageSize: number; search: string }) {
+      listCalls.push({ page, pageSize, search });
+      return { totalUsers: resolvedTotalUsers, users };
+    },
+    async getUser(id) {
+      return users.find((user) => user.id === id) ?? null;
     },
     async roleExists() {
       return roleExists;
@@ -47,11 +55,11 @@ function createRepository({
     },
   };
 
-  return { repository, updates };
+  return { listCalls, repository, updates };
 }
 
 describe("Webook user management service", () => {
-  it("lists users and every role supplied by the roles table repository", async () => {
+  it("lists the requested page of users and every role supplied by the roles table repository", async () => {
     const service = await loadService();
     assert.ok(service, "Webook user management service must exist");
 
@@ -66,11 +74,34 @@ describe("Webook user management service", () => {
       { id: 1, name: "ผู้ดูแลระบบ" },
       { id: 2, name: "พนักงาน" },
     ];
-    const { repository } = createRepository({ users, roles });
+    const { listCalls, repository } = createRepository({ roles, totalUsers: 17, users });
 
-    const result = await service.listWebookUserManagementData({ repository });
+    const result = await service.listWebookUserManagementData({
+      page: 2,
+      repository,
+      search: "  somchai  ",
+    });
 
-    assert.deepEqual(result, { roles, users });
+    assert.deepEqual(listCalls, [{ page: 2, pageSize: 8, search: "somchai" }]);
+    assert.deepEqual(result, {
+      pagination: { page: 2, pageSize: 8, totalPages: 3, totalUsers: 17 },
+      roles,
+      users,
+    });
+  });
+
+  it("uses the final available page when a requested page is out of range", async () => {
+    const service = await loadService();
+    assert.ok(service, "Webook user management service must exist");
+    const { listCalls, repository } = createRepository({ totalUsers: 17 });
+
+    const result = await service.listWebookUserManagementData({ page: 99, repository });
+
+    assert.deepEqual(listCalls, [
+      { page: 99, pageSize: 8, search: "" },
+      { page: 3, pageSize: 8, search: "" },
+    ]);
+    assert.equal(result.pagination.page, 3);
   });
 
   it("trims the name and updates only name and role ID when the selected role exists", async () => {

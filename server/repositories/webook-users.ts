@@ -8,9 +8,15 @@ export interface WebookUserUpdateFields {
   roleId: number;
 }
 
+export interface WebookUsersPage {
+  totalUsers: number;
+  users: WebookManagedUser[];
+}
+
 export interface WebookUsersRepository {
   listRoles(): Promise<WebookManagedRole[]>;
-  listUsers(): Promise<WebookManagedUser[]>;
+  listUsers(input: { page: number; pageSize: number; search: string }): Promise<WebookUsersPage>;
+  getUser(id: string): Promise<WebookManagedUser | null>;
   roleExists(roleId: number): Promise<boolean>;
   updateUser(id: string, fields: WebookUserUpdateFields): Promise<WebookManagedUser | null>;
 }
@@ -76,6 +82,16 @@ function mapUser(value: unknown): WebookManagedUser {
   };
 }
 
+function userSearchFilter(search: string): string {
+  const pattern = search
+    .replace(/[(),]/g, " ")
+    .replace(/\\/g, "\\\\")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_");
+
+  return `name.ilike.%${pattern}%,username.ilike.%${pattern}%,email.ilike.%${pattern}%`;
+}
+
 export function createWebookUsersRepository(supabase: SupabaseClient): WebookUsersRepository {
   return {
     async listRoles() {
@@ -88,15 +104,34 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
       return ((data ?? []) as unknown[]).map(mapRole);
     },
 
-    async listUsers() {
+    async listUsers({ page, pageSize, search }) {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      const query = supabase
+        .from("users")
+        .select("id, name, username, email, role_id", { count: "exact" });
+      const filteredQuery = search ? query.or(userSearchFilter(search)) : query;
+      const { count, data, error } = await filteredQuery
+        .order("name", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+
+      if (error) throw new Error(error.message);
+      return {
+        totalUsers: count ?? 0,
+        users: ((data ?? []) as unknown[]).map(mapUser),
+      };
+    },
+
+    async getUser(id) {
       const { data, error } = await supabase
         .from("users")
         .select("id, name, username, email, role_id")
-        .order("name", { ascending: true, nullsFirst: false })
-        .order("id", { ascending: true });
+        .eq("id", id)
+        .maybeSingle();
 
       if (error) throw new Error(error.message);
-      return ((data ?? []) as unknown[]).map(mapUser);
+      return data === null ? null : mapUser(data);
     },
 
     async roleExists(roleId) {
