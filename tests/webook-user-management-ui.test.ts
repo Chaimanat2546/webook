@@ -8,15 +8,25 @@ function read(relativePath: string) {
 }
 
 describe("Webook user management UI", () => {
-  it("shows a responsive list with identity and role details", () => {
+  it("shows a responsive list with DV ID and sortable user fields", () => {
     const table = read("../components/admin/user-management/user-table.tsx");
 
-    assert.match(table, /<TableHead[^>]*>ชื่อ<\/TableHead>/);
-    assert.match(table, /<TableHead[^>]*>Username<\/TableHead>/);
-    assert.match(table, /<TableHead[^>]*>อีเมล<\/TableHead>/);
-    assert.match(table, /<TableHead[^>]*>Role<\/TableHead>/);
+    assert.match(table, /value="name">ชื่อ<\/SortButton>/);
+    assert.match(table, /value="username">Username<\/SortButton>/);
+    assert.match(table, /value="email">อีเมล<\/SortButton>/);
+    assert.match(table, /value="dvId">DV ID<\/SortButton>/);
+    assert.match(table, /value="role">สิทธิ์ผู้ใช้<\/SortButton>/);
+    assert.match(table, /user\.dvId/);
     assert.match(table, /md:hidden/);
     assert.match(table, /hidden[^\"]*md:block/);
+  });
+
+  it("uses shadcn checkbox menu items to filter multiple user roles", () => {
+    const filter = read("../components/admin/user-management/user-role-filter.tsx");
+
+    assert.match(filter, /DropdownMenuCheckboxItem/);
+    assert.match(filter, /selectedRoleIds\.includes\(role\.id\)/);
+    assert.match(filter, /params\.set\("roles"/);
   });
 
   it("offers only an icon-labelled edit link", () => {

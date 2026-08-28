@@ -1,4 +1,4 @@
-import { PencilIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, ArrowUpDownIcon, PencilIcon } from "lucide-react";
 import Link from "next/link";
 
 import type {
@@ -16,13 +16,47 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
+import { UserRoleFilter } from "./user-role-filter";
 
 function displayText(value: string): string {
   return value || "-";
 }
 
 function roleName(roles: WebookManagedRole[], roleId: number | null): string {
-  return roles.find((role) => role.id === roleId)?.name ?? "ไม่ระบุ Role";
+  return roles.find((role) => role.id === roleId)?.name ?? "ไม่ระบุสิทธิ์ผู้ใช้";
+}
+
+type UserSortBy = "dvId" | "email" | "name" | "role" | "username";
+
+function SortButton({
+  children,
+  roleIds,
+  search,
+  sortBy,
+  sortDirection,
+  value,
+}: {
+  children: string;
+  roleIds: number[];
+  search: string;
+  sortBy: UserSortBy;
+  sortDirection: "asc" | "desc";
+  value: UserSortBy;
+}) {
+  const nextDirection = sortBy === value && sortDirection === "asc" ? "desc" : "asc";
+  const params = new URLSearchParams({ sort: value, dir: nextDirection });
+  if (search) params.set("q", search);
+  if (roleIds.length > 0) params.set("roles", roleIds.join(","));
+  const Icon = sortBy !== value ? ArrowUpDownIcon : sortDirection === "asc" ? ArrowUpIcon : ArrowDownIcon;
+
+  return (
+    <Button asChild className="-ml-2 h-8 font-medium" size="sm" variant="ghost">
+      <Link href={`/admin/users?${params.toString()}`}>
+        {children}
+        <Icon aria-hidden />
+      </Link>
+    </Button>
+  );
 }
 
 function EditButton({ userId }: { userId: string }) {
@@ -38,23 +72,33 @@ function EditButton({ userId }: { userId: string }) {
 
 export function UserTable({
   roles,
+  roleIds,
+  search,
+  sortBy,
+  sortDirection,
   users,
 }: {
   roles: WebookManagedRole[];
+  roleIds: number[];
+  search: string;
+  sortBy: UserSortBy;
+  sortDirection: "asc" | "desc";
   users: WebookManagedUser[];
 }) {
-  if (users.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          ยังไม่มีผู้ใช้ในระบบ
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <>
+      <div className="flex justify-end">
+        <UserRoleFilter roles={roles} selectedRoleIds={roleIds} />
+      </div>
+      {users.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            ยังไม่มีผู้ใช้ในระบบ
+          </CardContent>
+        </Card>
+      ) : null}
+      {users.length > 0 ? (
+        <>
       <div className="grid gap-3 md:hidden">
         {users.map((user) => (
           <Card key={user.id}>
@@ -67,6 +111,10 @@ export function UserTable({
             </CardHeader>
             <CardContent className="space-y-4">
               <dl className="grid gap-3 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">DV ID</dt>
+                  <dd>{user.dvId ?? "-"}</dd>
+                </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Username</dt>
                   <dd>{displayText(user.username)}</dd>
@@ -86,11 +134,12 @@ export function UserTable({
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[28%]">ชื่อ</TableHead>
-              <TableHead className="w-[20%]">Username</TableHead>
-              <TableHead className="w-[28%]">อีเมล</TableHead>
-              <TableHead className="w-[14%]">Role</TableHead>
-              <TableHead className="w-[10%] text-right">การจัดการ</TableHead>
+              <TableHead className="w-[20%]"><SortButton roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection} value="name">ชื่อ</SortButton></TableHead>
+              <TableHead className="w-[15%]"><SortButton roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection} value="username">Username</SortButton></TableHead>
+              <TableHead className="w-[22%]"><SortButton roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection} value="email">อีเมล</SortButton></TableHead>
+              <TableHead className="w-[13%]"><SortButton roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection} value="dvId">DV ID</SortButton></TableHead>
+              <TableHead className="w-[18%]"><SortButton roleIds={roleIds} search={search} sortBy={sortBy} sortDirection={sortDirection} value="role">สิทธิ์ผู้ใช้</SortButton></TableHead>
+              <TableHead className="w-[12%] text-right">การจัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -99,6 +148,7 @@ export function UserTable({
                 <TableCell className="truncate font-medium">{displayText(user.name)}</TableCell>
                 <TableCell className="truncate text-muted-foreground">{displayText(user.username)}</TableCell>
                 <TableCell className="truncate text-muted-foreground">{displayText(user.email)}</TableCell>
+                <TableCell className="truncate text-muted-foreground">{user.dvId ?? "-"}</TableCell>
                 <TableCell>
                   <Badge variant="secondary">{roleName(roles, user.roleId)}</Badge>
                 </TableCell>
@@ -110,6 +160,8 @@ export function UserTable({
           </TableBody>
         </Table>
       </Card>
+        </>
+      ) : null}
     </>
   );
 }

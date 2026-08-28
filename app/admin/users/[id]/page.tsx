@@ -58,7 +58,7 @@ export default async function EditWebookUserPage({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="webook-user-role">Role</Label>
+          <Label htmlFor="webook-user-role">สิทธิ์ผู้ใช้</Label>
           <select
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
             defaultValue={user.roleId === null ? "" : String(user.roleId)}
@@ -66,7 +66,7 @@ export default async function EditWebookUserPage({
             name="roleId"
             required
           >
-            <option disabled value="">เลือก Role</option>
+            <option disabled value="">เลือกสิทธิ์ผู้ใช้</option>
             {roles.map((role) => (
               <option key={role.id} value={role.id}>{role.name}</option>
             ))}

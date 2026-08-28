@@ -13,9 +13,19 @@ export interface WebookUsersPage {
   users: WebookManagedUser[];
 }
 
+export type WebookUserSortBy = "dvId" | "email" | "name" | "role" | "username";
+export type WebookUserSortDirection = "asc" | "desc";
+
 export interface WebookUsersRepository {
   listRoles(): Promise<WebookManagedRole[]>;
-  listUsers(input: { page: number; pageSize: number; search: string }): Promise<WebookUsersPage>;
+  listUsers(input: {
+    page: number;
+    pageSize: number;
+    roleIds: number[];
+    search: string;
+    sortBy: WebookUserSortBy;
+    sortDirection: WebookUserSortDirection;
+  }): Promise<WebookUsersPage>;
   getUser(id: string): Promise<WebookManagedUser | null>;
   roleExists(roleId: number): Promise<boolean>;
   updateUser(id: string, fields: WebookUserUpdateFields): Promise<WebookManagedUser | null>;
@@ -39,6 +49,11 @@ function readRoleId(value: unknown): number | null {
   return typeof value === "number" && Number.isSafeInteger(value) ? value : null;
 }
 
+function readDvId(value: unknown): string | null {
+  if (typeof value === "string" && /^\d+$/.test(value)) return value;
+  return typeof value === "number" && Number.isSafeInteger(value) ? String(value) : null;
+}
+
 function readRoleName(value: unknown, roleId: number): string {
   const directName = readText(value);
   if (directName) return directName;
@@ -57,7 +72,7 @@ function readRoleName(value: unknown, roleId: number): string {
     }
   }
 
-  return `Role ${roleId}`;
+  return `สิทธิ์ผู้ใช้ ${roleId}`;
 }
 
 function mapRole(value: unknown): WebookManagedRole {
@@ -74,6 +89,7 @@ function mapUser(value: unknown): WebookManagedUser {
   if (!id) throw new Error("Invalid user row");
 
   return {
+    dvId: readDvId(record?.dv_id),
     email: readText(record?.email),
     id,
     name: readText(record?.name),
@@ -104,15 +120,21 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
       return ((data ?? []) as unknown[]).map(mapRole);
     },
 
-    async listUsers({ page, pageSize, search }) {
+    async listUsers({ page, pageSize, roleIds, search, sortBy, sortDirection }) {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       const query = supabase
-        .from("users")
-        .select("id, name, username, email, role_id", { count: "exact" });
-      const filteredQuery = search ? query.or(userSearchFilter(search)) : query;
-      const { count, data, error } = await filteredQuery
-        .order("name", { ascending: true, nullsFirst: false })
+        .from("webook_user_management_list")
+        .select("id, name, username, email, role_id, dv_id, dv_sort_id, role_name", { count: "exact" });
+      const searchFilteredQuery = search ? query.or(userSearchFilter(search)) : query;
+      const filteredQuery = roleIds.length > 0
+        ? searchFilteredQuery.in("role_id", roleIds)
+        : searchFilteredQuery;
+      const ascending = sortDirection === "asc";
+      const sortedQuery = sortBy === "role"
+        ? filteredQuery.order("role_name", { ascending, nullsFirst: false })
+        : filteredQuery.order(sortBy === "dvId" ? "dv_sort_id" : sortBy, { ascending, nullsFirst: false });
+      const { count, data, error } = await sortedQuery
         .order("id", { ascending: true })
         .range(from, to);
 
@@ -126,7 +148,7 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
     async getUser(id) {
       const { data, error } = await supabase
         .from("users")
-        .select("id, name, username, email, role_id")
+        .select("id, name, username, email, role_id, dv_id")
         .eq("id", id)
         .maybeSingle();
 
@@ -150,7 +172,7 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
         .from("users")
         .update({ name: fields.name, role_id: fields.roleId })
         .eq("id", id)
-        .select("id, name, username, email, role_id")
+        .select("id, name, username, email, role_id, dv_id")
         .maybeSingle();
 
       if (error) throw new Error(error.message);

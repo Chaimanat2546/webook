@@ -37,7 +37,7 @@ export function UserListSkeleton() {
               <TableHead className="w-[28%]">ชื่อ</TableHead>
               <TableHead className="w-[20%]">Username</TableHead>
               <TableHead className="w-[28%]">อีเมล</TableHead>
-              <TableHead className="w-[14%]">Role</TableHead>
+              <TableHead className="w-[14%]">สิทธิ์ผู้ใช้</TableHead>
               <TableHead className="w-[10%] text-right">การจัดการ</TableHead>
             </TableRow>
           </TableHeader>
