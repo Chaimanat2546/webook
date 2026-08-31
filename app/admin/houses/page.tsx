@@ -12,6 +12,7 @@ import {
 import { Input } from "../../../components/ui/input";
 import {
   canUseAccommodation,
+  canManageHousePrices,
   canViewHousePrices,
   requireHouseListAdmin,
 } from "../../../server/auth/admin";
@@ -71,6 +72,7 @@ export default async function HousesPage({
         <>
           <HouseList
             canManageAccommodation={canUseAccommodation(adminUser)}
+            canManagePrices={canManageHousePrices(adminUser)}
             canViewPrices={canViewHousePrices(adminUser)}
             houses={houses}
             returnTo={returnTo}

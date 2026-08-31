@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { BedDouble, EllipsisVerticalIcon, ImageIcon, MapPinHouse, PencilLineIcon, Toilet } from "lucide-react";
+import {
+  BedDouble,
+  BanknoteIcon,
+  EllipsisVerticalIcon,
+  ImageIcon,
+  MapPinHouse,
+  PencilLineIcon,
+  SparklesIcon,
+  Toilet,
+} from "lucide-react";
 
 import {
   formatHouseActiveStatus,
@@ -55,20 +64,15 @@ function pricesHref(propertyId: string, returnTo: string) {
   return `/admin/houses/${encodeURIComponent(propertyId)}?${params}`;
 }
 
-function coverSelectHref(propertyId: string, returnTo: string) {
-  const params = new URLSearchParams();
-  params.set("returnTo", returnTo);
-  params.set("mode", "cover-select");
-  return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
-}
-
 function HouseActionsMenu({
   canManageAccommodation,
+  canManagePrices,
   canViewPrices,
   propertyId,
   returnTo,
 }: {
   canManageAccommodation: boolean;
+  canManagePrices: boolean;
   canViewPrices: boolean;
   propertyId: string;
   returnTo: string;
@@ -91,7 +95,10 @@ function HouseActionsMenu({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={facilitiesHref(propertyId, returnTo)}>จัดการสิ่งอำนวยความสะดวก</Link>
+                <Link href={facilitiesHref(propertyId, returnTo)}>
+                  <SparklesIcon aria-hidden />
+                  สิ่งอำนวยความสะดวก
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href={imageHref(propertyId, returnTo)}>
@@ -99,14 +106,14 @@ function HouseActionsMenu({
                   จัดการรูป
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={coverSelectHref(propertyId, returnTo)}>เลือกรูปหน้าปก</Link>
-              </DropdownMenuItem>
             </>
           ) : null}
           {canViewPrices ? (
             <DropdownMenuItem asChild>
-              <Link href={pricesHref(propertyId, returnTo)}>จัดการราคา</Link>
+              <Link href={pricesHref(propertyId, returnTo)}>
+                <BanknoteIcon aria-hidden />
+                {canManagePrices ? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"}
+              </Link>
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuGroup>
@@ -117,11 +124,13 @@ function HouseActionsMenu({
 
 export function HouseList({
   canManageAccommodation,
+  canManagePrices,
   canViewPrices,
   houses,
   returnTo,
 }: {
   canManageAccommodation: boolean;
+  canManagePrices: boolean;
   canViewPrices: boolean;
   houses: HouseListItem[];
   returnTo: string;
@@ -161,6 +170,7 @@ export function HouseList({
                 <div className="flex items-end justify-end self-end">
                   <HouseActionsMenu
                     canManageAccommodation={canManageAccommodation}
+                    canManagePrices={canManagePrices}
                     canViewPrices={canViewPrices}
                     propertyId={house.property_id}
                     returnTo={returnTo}
@@ -203,6 +213,7 @@ export function HouseList({
                 <TableCell className="text-right">
                   <HouseActionsMenu
                     canManageAccommodation={canManageAccommodation}
+                    canManagePrices={canManagePrices}
                     canViewPrices={canViewPrices}
                     propertyId={house.property_id}
                     returnTo={returnTo}

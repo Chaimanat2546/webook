@@ -33,6 +33,9 @@ const workspaceShellPath = new URL(
   "../components/admin/houses/house-workspace-shell.tsx",
   import.meta.url,
 );
+const workspaceShellSource = existsSync(workspaceShellPath)
+  ? readFileSync(workspaceShellPath, "utf8")
+  : "";
 const navItemPath = new URL(
   "../components/admin/houses/house-workspace-nav-item.tsx",
   import.meta.url,
@@ -80,6 +83,11 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(source, /grid-rows-\[minmax\(0,1fr\)_auto\]/);
     assert.doesNotMatch(source, /border-t bg-background px-2 pt-3/);
     assert.doesNotMatch(source, /sticky bottom-0/);
+  });
+
+  it("lets mobile content actions wrap within the viewport", () => {
+    assert.match(workspaceShellSource, /flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto/);
+    assert.doesNotMatch(workspaceShellSource, /ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2/);
   });
 
   it("shows the current image task under the house name and moves upload to the far right", () => {

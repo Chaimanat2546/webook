@@ -34,18 +34,29 @@ describe("house list table UI", () => {
     assert.match(source, /href=\{imageHref\(propertyId, returnTo\)\}/);
   });
 
-  it("filters per-house actions by accommodation and price capabilities", () => {
+  it("shows only the permitted house actions with clear Thai labels", () => {
     assert.match(source, /canManageAccommodation: boolean/);
+    assert.match(source, /canManagePrices: boolean/);
     assert.match(source, /canViewPrices: boolean/);
     assert.match(source, /section", "facilities"/);
     assert.match(source, /section", "prices"/);
-    assert.match(source, /mode", "cover-select"/);
     assert.match(source, /params\.set\("returnTo", returnTo\)/);
     assert.match(source, /\{canManageAccommodation \? \(/);
     assert.match(source, /\{canViewPrices \? \(/);
+    assert.match(source, /canManagePrices \? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"/);
+    assert.match(source, /BanknoteIcon/);
+    assert.match(source, /SparklesIcon/);
+    assert.match(source, /<SparklesIcon aria-hidden \/>/);
+    assert.match(source, /<BanknoteIcon aria-hidden \/>/);
+    assert.doesNotMatch(source, /CircleDollarSign/);
+    assert.doesNotMatch(source, /Wrench/);
+    assert.match(source, /สิ่งอำนวยความสะดวก/);
+    assert.doesNotMatch(source, /cover-select/);
+    assert.doesNotMatch(source, /เลือกรูปหน้าปก/);
     assert.match(source, /<HouseActionsMenu[\s\S]*canManageAccommodation=\{canManageAccommodation\}[\s\S]*canViewPrices=\{canViewPrices\}/);
     assert.match(pageSource, /requireHouseListAdmin/);
     assert.match(pageSource, /canManageAccommodation=\{canUseAccommodation\(adminUser\)\}/);
+    assert.match(pageSource, /canManagePrices=\{canManageHousePrices\(adminUser\)\}/);
     assert.match(pageSource, /canViewPrices=\{canViewHousePrices\(adminUser\)\}/);
   });
 
