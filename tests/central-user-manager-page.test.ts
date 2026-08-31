@@ -19,11 +19,17 @@ describe("central user manager page", () => {
     assert.match(renderUserManagerFixture().pageHtml, /ผู้ใช้ทั้งหมด/);
   });
 
-  it("uses a tenant list and user table without browser destinations", () => {
-    assert.match(source, /grid-cols-\[16rem_minmax\(0,1fr\)_18rem\]/);
+  it("uses the website picker only on mobile while keeping the desktop tenant layout", () => {
+    assert.match(source, /DropdownMenuRadioGroup/);
+    assert.match(source, /DropdownMenuRadioItem/);
+    assert.match(source, /เลือกเว็บบ้านพัก/);
+    assert.match(source, /<ChevronDownIcon aria-hidden \/>/);
+    assert.match(source, /<Globe2Icon aria-hidden \/>/);
     assert.match(source, /tenantKey/);
-    assert.match(source, /เลือก Tenant/);
     assert.match(source, /ผู้ใช้ทั้งหมด/);
+    assert.match(source, /<div className="space-y-3 md:hidden">/);
+    assert.match(source, /hidden min-w-0 gap-4 md:grid xl:grid-cols-\[16rem_minmax\(0,1fr\)_18rem\]/);
+    assert.match(source, /กำลังเลือก/);
     assert.doesNotMatch(source, /workers\.dev|CUM_BAAN_POOL_VILLA_STAGING|tenantId/);
   });
 

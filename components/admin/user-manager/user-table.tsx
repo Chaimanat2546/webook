@@ -1,6 +1,13 @@
 "use client";
 
-import { EllipsisVerticalIcon } from "lucide-react";
+import { useState } from "react";
+import {
+  CircleCheckIcon,
+  CirclePauseIcon,
+  EllipsisVerticalIcon,
+  KeyRoundIcon,
+  PencilLineIcon,
+} from "lucide-react";
 
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -12,6 +19,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../../ui/sheet";
 import {
   Table,
   TableBody,
@@ -38,6 +52,11 @@ const actionLabels: Record<UserTableAction, string> = {
   suspend_user: "ระงับผู้ใช้",
   reactivate_user: "เปิดใช้ผู้ใช้",
 };
+
+function ActionIcon({ action }: { action: UserTableAction }) {
+  if (action === "reissue_temporary_password") return <KeyRoundIcon aria-hidden />;
+  return action === "suspend_user" ? <CirclePauseIcon aria-hidden /> : <CircleCheckIcon aria-hidden />;
+}
 
 export function getUserTableActions(status: UserStatus): UserTableAction[] {
   if (status === "active" || status === "password_change_required") {
@@ -70,12 +89,51 @@ function UserActionsMenu({ email, status, onAction }: { email: string; status: U
         <DropdownMenuGroup>
           {actions.map((action) => (
             <DropdownMenuItem key={action} onSelect={() => onAction(action, email)}>
+              <ActionIcon action={action} />
               {actionLabels[action]}
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function UserMobileActionsMenu({ email, status, onAction }: { email: string; status: UserStatus; onAction: UserTableProps["onAction"] }) {
+  const [open, setOpen] = useState(false);
+  const actions = getUserTableActions(status);
+
+  return (
+    <Sheet onOpenChange={setOpen} open={open}>
+      <SheetTrigger asChild>
+        <Button className="w-full" type="button" variant="outline">
+          <PencilLineIcon aria-hidden />
+          จัดการ
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="rounded-t-xl p-0">
+        <SheetHeader>
+          <SheetTitle>จัดการผู้ใช้</SheetTitle>
+        </SheetHeader>
+        <div className="grid gap-2 px-4 pb-4">
+          {actions.map((action) => (
+            <Button
+              className="justify-start"
+              key={action}
+              onClick={() => {
+                setOpen(false);
+                onAction(action, email);
+              }}
+              type="button"
+              variant="outline"
+            >
+              <ActionIcon action={action} />
+              {actionLabels[action]}
+            </Button>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -91,8 +149,8 @@ export function UserTable({ users, onAction }: UserTableProps) {
               </div>
               <StatusBadge status={user.status} />
             </CardHeader>
-            <CardContent className="flex justify-end">
-              <UserActionsMenu email={user.email} onAction={onAction} status={user.status} />
+            <CardContent className="flex flex-col gap-4">
+              <UserMobileActionsMenu email={user.email} onAction={onAction} status={user.status} />
             </CardContent>
           </Card>
         ))}
