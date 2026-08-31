@@ -20,7 +20,9 @@ import { ZONE_OPTIONS } from "../../../../lib/house-zones";
 import {
   canManageHousePrices,
   canManageHouseRating,
-  requireAccommodationAdmin,
+  canUseAccommodation,
+  canViewHousePrices,
+  requireAdmin,
 } from "../../../../server/auth/admin";
 import {
   getFacilities,
@@ -161,9 +163,12 @@ export default async function HouseDetailPage({
   const backHref = safeReturnTo ?? "/admin/houses";
   const selectedSection = getSelectedSection(section);
   const toastTitle = saveToastTitle({ saved, section });
-  const { adminUser, supabase } = await requireAccommodationAdmin();
+  const { adminUser, supabase } = await requireAdmin();
+  const canManageAccommodation = canUseAccommodation(adminUser);
+  const canViewPrices = canViewHousePrices(adminUser);
   const canManagePrices = canManageHousePrices(adminUser);
-  if (selectedSection === "prices" && !canManagePrices) notFound();
+  if (selectedSection === "prices" && !canViewPrices) notFound();
+  if (selectedSection !== "prices" && !canManageAccommodation) notFound();
 
   const house = await getListingByPropertyId(supabase, propertyId);
 
@@ -182,14 +187,15 @@ export default async function HouseDetailPage({
     prices: `${LISTING_PRICE_DAYS.length} วัน`,
     facilities: `${activeFacilityCount} เปิด`,
   };
-  const detailSections = HOUSE_DETAIL_SECTIONS.filter((item) => canManagePrices || item.key !== "prices").map((item) => ({
+  const detailSections = HOUSE_DETAIL_SECTIONS.filter((item) =>
+    item.key === "prices" ? canViewPrices : canManageAccommodation,
+  ).map((item) => ({
     ...item,
     badge: sectionBadges[item.key],
   }));
   const activeSection =
     HOUSE_DETAIL_SECTIONS.find((item) => item.key === selectedSection) ?? HOUSE_DETAIL_SECTIONS[0];
   const detailsAction = saveHouseDetailsAction.bind(null, propertyId);
-  const pricesAction = saveHousePricesAction.bind(null, propertyId);
   const facilitiesAction = saveHouseFacilitiesAction.bind(null, propertyId);
   const canManageRating = canManageHouseRating(adminUser);
   const ActiveSectionIcon = sectionIconByKey[activeSection.key];
@@ -398,65 +404,75 @@ export default async function HouseDetailPage({
                 </div>
               </form>
             ) : activeSection.key === "prices" ? (
-              <form action={pricesAction} className="flex flex-col gap-4 lg:min-h-full" id={HOUSE_PRICES_FORM_ID}>
-                <input name="returnTo" type="hidden" value={safeReturnTo ?? ""} />
-
-                {!canManagePrices ? (
-                  <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    ไม่มีสิทธิ์แก้ไขราคาพื้นฐาน
-                  </p>
-                ) : null}
-
+              canViewPrices && !canManagePrices ? (
                 <div className="grid gap-3 md:grid-cols-2">
                   {LISTING_PRICE_DAYS.map((day) => {
                     const price = priceForDay(prices, day.dayOfWeek);
-                    const devilleId = `deville_price_${day.dayOfWeek}`;
-                    const agencyId = `agency_price_${day.dayOfWeek}`;
 
                     return (
-                      <div
-                        className="grid gap-3 rounded-md border p-3 md:grid-cols-[minmax(9rem,1fr)_minmax(0,12rem)_minmax(0,12rem)] md:items-end"
-                        key={day.dayOfWeek}
-                      >
-                        <div>
-                          <h3 className="text-sm font-semibold">{day.label}</h3>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor={devilleId}>ราคาขาย Deville</Label>
-                          <Input
-                            defaultValue={inputValue(price?.deville_price)}
-                            id={devilleId}
-                            inputMode="numeric"
-                            min={0}
-                            name={`deville_price_${day.dayOfWeek}`}
-                            disabled={!canManagePrices}
-                            type="number"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor={agencyId}>ราคาขาย Agency</Label>
-                          <Input
-                            defaultValue={inputValue(price?.agency_price)}
-                            id={agencyId}
-                            inputMode="numeric"
-                            min={0}
-                            name={`agency_price_${day.dayOfWeek}`}
-                            disabled={!canManagePrices}
-                            type="number"
-                          />
+                      <div className="grid gap-2 rounded-md border p-3" key={day.dayOfWeek}>
+                        <h3 className="text-sm font-semibold">{day.label}</h3>
+                        <div className="grid gap-1">
+                          <span className="text-sm text-muted-foreground">ราคาขาย Agency</span>
+                          <p className="text-lg font-semibold">{inputValue(price?.agency_price)}</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              ) : (
+                <form action={saveHousePricesAction.bind(null, propertyId)} className="flex flex-col gap-4 lg:min-h-full" id={HOUSE_PRICES_FORM_ID}>
+                  <input name="returnTo" type="hidden" value={safeReturnTo ?? ""} />
 
-                <div className="flex justify-end border-t pt-4 lg:mt-auto">
-                  <Button className="w-full sm:w-fit" disabled={!canManagePrices} type="submit">
-                    <SaveIcon data-icon="inline-start" />
-                    บันทึกราคาพื้นฐาน
-                  </Button>
-                </div>
-              </form>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {LISTING_PRICE_DAYS.map((day) => {
+                      const price = priceForDay(prices, day.dayOfWeek);
+                      const devilleId = `deville_price_${day.dayOfWeek}`;
+                      const agencyId = `agency_price_${day.dayOfWeek}`;
+
+                      return (
+                        <div
+                          className="grid gap-3 rounded-md border p-3 md:grid-cols-[minmax(9rem,1fr)_minmax(0,12rem)_minmax(0,12rem)] md:items-end"
+                          key={day.dayOfWeek}
+                        >
+                          <div>
+                            <h3 className="text-sm font-semibold">{day.label}</h3>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor={devilleId}>ราคาขาย Deville</Label>
+                            <Input
+                              defaultValue={inputValue(price?.deville_price)}
+                              id={devilleId}
+                              inputMode="numeric"
+                              min={0}
+                              name={`deville_price_${day.dayOfWeek}`}
+                              type="number"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor={agencyId}>ราคาขาย Agency</Label>
+                            <Input
+                              defaultValue={inputValue(price?.agency_price)}
+                              id={agencyId}
+                              inputMode="numeric"
+                              min={0}
+                              name={`agency_price_${day.dayOfWeek}`}
+                              type="number"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-end border-t pt-4 lg:mt-auto">
+                    <Button className="w-full sm:w-fit" type="submit">
+                      <SaveIcon data-icon="inline-start" />
+                      บันทึกราคาพื้นฐาน
+                    </Button>
+                  </div>
+                </form>
+              )
             ) : activeSection.key === "facilities" ? (
               <form
                 action={facilitiesAction}

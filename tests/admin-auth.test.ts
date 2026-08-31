@@ -161,14 +161,17 @@ describe("admin authorization", () => {
       "utf8",
     );
     const shellSource = readFileSync(new URL("../components/layout/admin-shell.tsx", import.meta.url), "utf8");
-    const routeSources = [
-      "../app/admin/houses/page.tsx",
-      "../app/admin/houses/[propertyId]/page.tsx",
+    const accommodationRouteSources = [
       "../app/admin/houses/[propertyId]/images/page.tsx",
       "../app/admin/advertisements/page.tsx",
       "../app/admin/advertisements/new/page.tsx",
       "../app/admin/advertisements/[id]/page.tsx",
     ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
+    const houseDetailSource = readFileSync(
+      new URL("../app/admin/houses/[propertyId]/page.tsx", import.meta.url),
+      "utf8",
+    );
+    const houseListSource = readFileSync(new URL("../app/admin/houses/page.tsx", import.meta.url), "utf8");
 
     assert.match(authSource, /export async function requireAccommodationAdmin\(\)/);
     assert.match(authSource, /notFound\(\)/);
@@ -181,10 +184,15 @@ describe("admin authorization", () => {
     assert.match(sidebarSource, /\{canAccessHouses \? \(/);
     assert.match(sidebarSource, /\{canUseAccommodation \? \(/);
 
-    for (const source of routeSources) {
+    for (const source of accommodationRouteSources) {
       assert.match(source, /requireAccommodationAdmin/);
       assert.doesNotMatch(source, /if \(!canUseAccommodation\(adminUser\)\)/);
       assert.doesNotMatch(source, /allow_accommodation/);
     }
+
+    assert.match(houseDetailSource, /await requireAdmin\(\)/);
+    assert.match(houseDetailSource, /canUseAccommodation\(adminUser\)/);
+    assert.match(houseDetailSource, /canViewHousePrices\(adminUser\)/);
+    assert.match(houseListSource, /requireHouseListAdmin/);
   });
 });
