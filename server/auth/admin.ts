@@ -110,6 +110,16 @@ export async function requireAccommodationAdmin() {
   return session;
 }
 
+export async function requireQuotationAdmin() {
+  const session = await requireAdmin();
+  if (!canUseQuotation(session.adminUser)) {
+    const { notFound } = await import("next/navigation");
+    notFound();
+  }
+
+  return session;
+}
+
 export async function requireHouseListAdmin() {
   const session = await requireAdmin();
   if (!canAccessHouses(session.adminUser)) {

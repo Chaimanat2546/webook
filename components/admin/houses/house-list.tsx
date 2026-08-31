@@ -26,6 +26,13 @@ import {
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../../ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -122,6 +129,68 @@ function HouseActionsMenu({
   );
 }
 
+function HouseMobileActionsMenu({
+  canManageAccommodation,
+  canManagePrices,
+  canViewPrices,
+  propertyId,
+  returnTo,
+}: {
+  canManageAccommodation: boolean;
+  canManagePrices: boolean;
+  canViewPrices: boolean;
+  propertyId: string;
+  returnTo: string;
+}) {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button className="w-full" type="button" variant="outline">
+          <PencilLineIcon aria-hidden />
+          จัดการ
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="rounded-t-xl p-0">
+        <SheetHeader>
+          <SheetTitle>จัดการบ้านพัก</SheetTitle>
+        </SheetHeader>
+        <div className="grid gap-2 px-4 pb-4">
+          {canManageAccommodation ? (
+            <>
+              <Button asChild className="justify-start" variant="outline">
+                <Link href={houseHref(propertyId, returnTo)}>
+                  <PencilLineIcon aria-hidden />
+                  จัดการข้อมูล
+                </Link>
+              </Button>
+              <Button asChild className="justify-start" variant="outline">
+                <Link href={facilitiesHref(propertyId, returnTo)}>
+                  <SparklesIcon aria-hidden />
+                  สิ่งอำนวยความสะดวก
+                </Link>
+              </Button>
+              <Button asChild className="justify-start" variant="outline">
+                <Link href={imageHref(propertyId, returnTo)}>
+                  <ImageIcon aria-hidden />
+                  จัดการรูป
+                </Link>
+              </Button>
+            </>
+          ) : null}
+          {canViewPrices ? (
+            <Button asChild className="justify-start" variant="outline">
+              <Link href={pricesHref(propertyId, returnTo)}>
+                <BanknoteIcon aria-hidden />
+                {canManagePrices ? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"}
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export function HouseList({
   canManageAccommodation,
   canManagePrices,
@@ -150,7 +219,7 @@ export function HouseList({
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <div className="grid grid-cols-[1fr_1fr_minmax(0,1fr)_auto] gap-2 text-xs text-muted-foreground">
+              <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                 <dl className="contents">
                 <div>
                   <dt>ห้องนอน</dt>
@@ -167,16 +236,14 @@ export function HouseList({
                   </dd>
                 </div>
                 </dl>
-                <div className="flex items-end justify-end self-end">
-                  <HouseActionsMenu
-                    canManageAccommodation={canManageAccommodation}
-                    canManagePrices={canManagePrices}
-                    canViewPrices={canViewPrices}
-                    propertyId={house.property_id}
-                    returnTo={returnTo}
-                  />
-                </div>
               </div>
+              <HouseMobileActionsMenu
+                canManageAccommodation={canManageAccommodation}
+                canManagePrices={canManagePrices}
+                canViewPrices={canViewPrices}
+                propertyId={house.property_id}
+                returnTo={returnTo}
+              />
             </CardContent>
           </Card>
         ))}

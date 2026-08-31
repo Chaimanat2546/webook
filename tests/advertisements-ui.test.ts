@@ -18,6 +18,10 @@ describe("advertisement admin UI", () => {
       new URL("../components/admin/advertisements/advertisement-list.tsx", import.meta.url),
       "utf8",
     );
+    const formSource = readFileSync(
+      new URL("../components/admin/advertisements/advertisement-form.tsx", import.meta.url),
+      "utf8",
+    );
     const pageSource = readFileSync(new URL("../app/admin/advertisements/page.tsx", import.meta.url), "utf8");
 
     assert.doesNotMatch(source, /SearchIcon/);
@@ -48,6 +52,18 @@ describe("advertisement admin UI", () => {
     assert.match(source, /<TableHead className="w-\[34%\]">/);
     assert.match(source, /<span className="block truncate">/);
     assert.match(source, /<TableCell className="truncate text-muted-foreground">/);
+    assert.match(source, /date\.toLocaleDateString\("th-TH"\)/);
+    assert.doesNotMatch(source, /date\.toLocaleString\("th-TH"\)/);
+    assert.match(
+      formSource,
+      /className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto"/,
+    );
+    assert.doesNotMatch(formSource, /ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2/);
+    assert.match(source, /import \{ CalendarDays, Image, MapPinHouse, PencilLineIcon \} from "lucide-react"/);
+    assert.match(
+      source,
+      /<Button asChild className="w-full" variant="outline">\s*<Link href=\{`\/admin\/advertisements\/\$\{encodeURIComponent\(advertisement\.id\)\}`\}>\s*<PencilLineIcon aria-hidden className="size-4" \/>\s*จัดการ\s*<\/Link>/,
+    );
   });
 
   it("adds create and detail forms with immediate edit image operations", () => {

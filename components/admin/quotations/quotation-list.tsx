@@ -32,6 +32,13 @@ import {
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../../ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -95,6 +102,58 @@ function QuotationActionsMenu({
   );
 }
 
+function QuotationMobileActionsMenu({
+  quotation,
+  onDelete,
+}: {
+  quotation: QuotationListItem;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const href = quotationHref(quotation.id);
+
+  function selectDelete() {
+    setOpen(false);
+    onDelete();
+  }
+
+  return (
+    <div onClick={(event) => event.stopPropagation()}>
+      <Sheet onOpenChange={setOpen} open={open}>
+        <SheetTrigger asChild>
+          <Button className="w-full" type="button" variant="outline">
+            <PencilLineIcon aria-hidden />
+            จัดการ
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="rounded-t-xl p-0">
+          <SheetHeader>
+            <SheetTitle>จัดการใบเสนอราคา</SheetTitle>
+          </SheetHeader>
+          <div className="grid gap-2 px-4 pb-4">
+            <Button asChild className="justify-start" variant="outline">
+              <Link href={href}>
+                <PencilLineIcon aria-hidden />
+                แก้ไข
+              </Link>
+            </Button>
+            <Button asChild className="justify-start" variant="outline">
+              <Link href={`${href}?print=1`}>
+                <PrinterIcon aria-hidden />
+                พิมพ์
+              </Link>
+            </Button>
+            <Button className="justify-start" onClick={selectDelete} type="button" variant="destructive">
+              <Trash2Icon aria-hidden />
+              ลบ
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
 export function QuotationList({ quotations }: { quotations: QuotationListItem[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<QuotationListItem | null>(null);
@@ -140,7 +199,7 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
             key={quotation.id}
             onClick={() => openQuotation(quotation)}
           >
-            <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <CardHeader className="flex flex-row items-start gap-3">
               <div className="min-w-0">
                 <CardTitle className="truncate text-sm">
                   <Link
@@ -156,12 +215,8 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
                   {quotation.customerName || "-"}
                 </p>
               </div>
-              <QuotationActionsMenu
-                quotation={quotation}
-                onDelete={() => selectForDelete(quotation)}
-              />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-4">
               <dl className="grid grid-cols-3 gap-3 text-xs">
                 <div>
                   <dt className="text-muted-foreground">วันที่ออก</dt>
@@ -178,6 +233,10 @@ export function QuotationList({ quotations }: { quotations: QuotationListItem[] 
                   </dd>
                 </div>
               </dl>
+              <QuotationMobileActionsMenu
+                quotation={quotation}
+                onDelete={() => selectForDelete(quotation)}
+              />
             </CardContent>
           </Card>
         ))}

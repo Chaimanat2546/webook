@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { UserEditForm } from "../../../../components/admin/user-management/user-edit-form";
 import { UserTaskHeader } from "../../../../components/admin/user-management/user-task-header";
-import { UserWorkspaceNavItem } from "../../../../components/admin/user-management/user-workspace-nav-item";
+import { UserWorkspaceSectionNav } from "../../../../components/admin/user-management/user-workspace-section-nav";
 import { UserWorkspaceShell } from "../../../../components/admin/user-management/user-workspace-shell";
 import { requireWebookUserManagerAdmin } from "../../../../server/auth/admin";
 import {
@@ -65,23 +65,11 @@ export default async function EditWebookUserPage({
         contentIcon={<ActiveSectionIcon aria-hidden />}
         contentTitle={activeSection.label}
         sidebar={(
-          <nav aria-label="หมวดข้อมูลผู้ใช้" className="flex gap-2 overflow-x-auto p-2 lg:block lg:space-y-1 lg:overflow-visible">
-            {USER_EDIT_SECTIONS.map((section) => {
-              const SectionIcon = section.icon;
-              const params = new URLSearchParams();
-              params.set("returnTo", returnTo);
-              if (section.key === "permissions") params.set("section", "permissions");
-              return (
-                <UserWorkspaceNavItem
-                  active={section.key === activeSection.key}
-                  href={`/admin/users/${encodeURIComponent(user.id)}?${params.toString()}`}
-                  icon={<SectionIcon aria-hidden />}
-                  key={section.key}
-                  label={section.label}
-                />
-              );
-            })}
-          </nav>
+          <UserWorkspaceSectionNav
+            returnTo={returnTo}
+            selectedSection={activeSection.key}
+            userId={user.id}
+          />
         )}
         sidebarTitle="หมวดข้อมูล"
       >

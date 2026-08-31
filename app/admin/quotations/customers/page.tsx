@@ -16,7 +16,7 @@ import {
 } from "../../../../components/ui/empty";
 import { Input } from "../../../../components/ui/input";
 import { Skeleton } from "../../../../components/ui/skeleton";
-import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin";
+import { requireQuotationAdmin } from "../../../../server/auth/admin";
 import {
   listQuotationCustomers,
   type QuotationCustomerListResult,
@@ -108,18 +108,7 @@ export default async function QuotationCustomersPage({
   const active = status !== "inactive";
   const requestedPage = Math.max(1, Number.parseInt(page ?? "1", 10) || 1);
   const search = q?.trim() ?? "";
-  const { adminUser, supabase } = await requireAdmin();
-
-  if (!canUseQuotation(adminUser)) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>ไม่มีสิทธิ์เข้าถึงข้อมูลลูกค้า</EmptyTitle>
-          <EmptyDescription>บัญชีนี้ยังไม่ได้เปิด allow_quotation</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
+  const { supabase } = await requireQuotationAdmin();
 
   const statusHref = (next: "active" | "inactive") => {
     const params = new URLSearchParams();

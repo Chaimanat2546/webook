@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/alt-text */
 import Link from "next/link";
-import { CalendarDays, Image, MapPinHouse } from "lucide-react";
+import { CalendarDays, Image, MapPinHouse, PencilLineIcon } from "lucide-react";
 
 import type { AdvertisementRow } from "../../../server/repositories/advertisements";
 import { formatAdvertisementZone } from "../../../server/services/advertisements";
@@ -24,7 +24,7 @@ function StatusBadge({ active }: { active: boolean }) {
 function formatDate(value: string | null) {
   if (!value) return "-";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("th-TH");
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("th-TH");
 }
 
 export function AdvertisementList({
@@ -59,8 +59,11 @@ export function AdvertisementList({
                   <dd className="font-medium text-foreground"><CalendarDays className="inline-block h-4 w-4 mr-1"/>{formatDate(advertisement.updated_at)}</dd>
                 </div>
               </dl>
-              <Button asChild className="w-full">
-                <Link href={`/admin/advertisements/${encodeURIComponent(advertisement.id)}`}>จัดการ</Link>
+              <Button asChild className="w-full" variant="outline">
+                <Link href={`/admin/advertisements/${encodeURIComponent(advertisement.id)}`}>
+                  <PencilLineIcon aria-hidden className="size-4" />
+                  จัดการ
+                </Link>
               </Button>
             </CardContent>
           </Card>

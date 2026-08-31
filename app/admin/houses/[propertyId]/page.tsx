@@ -8,6 +8,7 @@ import { HouseDetailSectionNav } from "../../../../components/admin/houses/house
 import { HouseDetailSaveNotification } from "../../../../components/admin/houses/house-detail-save-notification";
 import { HouseTaskHeader } from "../../../../components/admin/houses/house-task-header";
 import { HouseWorkspaceShell } from "../../../../components/admin/houses/house-workspace-shell";
+import { FacilityIcon } from "../../../../components/admin/houses/facility-icon";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { Switch } from "../../../../components/ui/switch";
@@ -508,6 +509,7 @@ export default async function HouseDetailPage({
                                     name={facilityName}
                                     value="1"
                                   />
+                                  <FacilityIcon facility={facility} />
                                   <span className="grid gap-1">
                                     <span className="font-medium">{formatListingFacilityTitle(facility)}</span>
                                     <span className="text-muted-foreground">
@@ -565,6 +567,7 @@ export default async function HouseDetailPage({
                                 name={facilityName}
                                 value="1"
                               />
+                              <FacilityIcon facility={facility} />
                               <span className="font-medium leading-5">{formatListingFacilityTitle(facility)}</span>
                             </label>
                           );

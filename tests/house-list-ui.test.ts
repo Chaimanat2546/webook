@@ -60,7 +60,7 @@ describe("house list table UI", () => {
     assert.match(pageSource, /canViewPrices=\{canViewHousePrices\(adminUser\)\}/);
   });
 
-  it("uses a single overflow menu for house row actions", () => {
+  it("uses an overflow menu on desktop and a bottom sheet on mobile", () => {
     assert.match(source, /EllipsisVerticalIcon/);
     assert.match(source, /function houseHref\(propertyId: string, returnTo: string\)/);
     assert.match(source, /function HouseActionsMenu/);
@@ -77,32 +77,29 @@ describe("house list table UI", () => {
     assert.match(source, /href=\{imageHref\(propertyId, returnTo\)\}/);
     assert.doesNotMatch(source, /<details/);
     assert.doesNotMatch(source, /<summary/);
-    assert.doesNotMatch(source, /<Button asChild className="w-full">/);
+    assert.match(source, /import \{[\s\S]*Sheet[\s\S]*SheetContent[\s\S]*SheetHeader[\s\S]*SheetTitle[\s\S]*SheetTrigger[\s\S]*\} from "\.\.\/\.\.\/ui\/sheet";/);
+    assert.match(source, /function HouseMobileActionsMenu/);
+    assert.match(source, /<SheetContent side="bottom"/);
+    assert.match(source, /<SheetTitle>จัดการบ้านพัก<\/SheetTitle>/);
+    assert.match(source, /<SheetTrigger asChild>/);
+    assert.match(source, /<Button className="w-full"/);
   });
 
-  it("places the mobile overflow menu after the zone instead of the status", () => {
+  it("places a full-width mobile management button below the house details", () => {
     const mobileHeaderSource = mobileListSource.slice(
       mobileListSource.indexOf("<CardHeader"),
       mobileListSource.indexOf("</CardHeader>"),
     );
-    const mobileZoneIconIndex = mobileListSource.indexOf("<MapPinHouse");
-    const mobileZoneSource = mobileListSource.slice(
-      mobileListSource.lastIndexOf("<dd", mobileZoneIconIndex),
-      mobileListSource.indexOf("</dl>"),
-    );
 
     assert.match(
       mobileListSource,
-      /<div className="grid grid-cols-\[1fr_1fr_minmax\(0,1fr\)_auto\] gap-2 text-xs text-muted-foreground">/,
+      /<div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">/,
     );
     assert.match(mobileListSource, /<dl className="contents">/);
     assert.match(mobileHeaderSource, /<StatusBadge active=\{house\.is_active\} \/>/);
     assert.doesNotMatch(mobileHeaderSource, /HouseActionsMenu/);
-    assert.doesNotMatch(mobileZoneSource, /HouseActionsMenu/);
-    assert.match(
-      mobileListSource,
-      /<\/dl>\s*<div className="flex items-end justify-end self-end">\s*<HouseActionsMenu[\s\S]*propertyId=\{house\.property_id\}[\s\S]*returnTo=\{returnTo\}/,
-    );
+    assert.doesNotMatch(mobileListSource, /<HouseActionsMenu/);
+    assert.match(mobileListSource, /<HouseMobileActionsMenu[\s\S]*propertyId=\{house\.property_id\}[\s\S]*returnTo=\{returnTo\}/);
   });
 
   it("uses Thai display helpers for zone and status values", () => {

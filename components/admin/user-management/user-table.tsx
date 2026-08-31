@@ -1,4 +1,12 @@
-import { ArrowDownIcon, ArrowUpIcon, ArrowUpDownIcon, EllipsisVerticalIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ArrowUpDownIcon,
+  EllipsisVerticalIcon,
+  PencilLineIcon,
+  ShieldCheckIcon,
+  UserRoundIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 import type {
@@ -14,6 +22,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../../ui/sheet";
 import {
   Table,
   TableBody,
@@ -80,13 +95,57 @@ function UserSettingsMenu({ returnTo, userId }: { returnTo: string; userId: stri
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuItem asChild>
-          <Link href={`/admin/users/${encodeURIComponent(userId)}?${detailsParams.toString()}`}>ข้อมูลผู้ใช้</Link>
+          <Link href={`/admin/users/${encodeURIComponent(userId)}?${detailsParams.toString()}`}>
+            <UserRoundIcon aria-hidden />
+            ข้อมูลผู้ใช้
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href={`/admin/users/${encodeURIComponent(userId)}?${permissionParams.toString()}`}>สิทธิ์และการใช้งาน</Link>
+          <Link href={`/admin/users/${encodeURIComponent(userId)}?${permissionParams.toString()}`}>
+            <ShieldCheckIcon aria-hidden />
+            สิทธิ์และการใช้งาน
+          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function UserMobileSettingsMenu({ returnTo, userId }: { returnTo: string; userId: string }) {
+  const detailsParams = new URLSearchParams();
+  detailsParams.set("returnTo", returnTo);
+  const permissionParams = new URLSearchParams();
+  permissionParams.set("returnTo", returnTo);
+  permissionParams.set("section", "permissions");
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button className="w-full" type="button" variant="outline">
+          <PencilLineIcon aria-hidden />
+          จัดการ
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="rounded-t-xl p-0">
+        <SheetHeader>
+          <SheetTitle>จัดการผู้ใช้</SheetTitle>
+        </SheetHeader>
+        <div className="grid gap-2 px-4 pb-4">
+          <Button asChild className="justify-start" variant="outline">
+            <Link href={`/admin/users/${encodeURIComponent(userId)}?${detailsParams.toString()}`}>
+              <UserRoundIcon aria-hidden />
+              ข้อมูลผู้ใช้
+            </Link>
+          </Button>
+          <Button asChild className="justify-start" variant="outline">
+            <Link href={`/admin/users/${encodeURIComponent(userId)}?${permissionParams.toString()}`}>
+              <ShieldCheckIcon aria-hidden />
+              สิทธิ์และการใช้งาน
+            </Link>
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -147,7 +206,7 @@ export function UserTable({
                   <dd>{displayText(user.username)}</dd>
                 </div>
               </dl>
-              <UserSettingsMenu returnTo={returnTo} userId={user.id} />
+              <UserMobileSettingsMenu returnTo={returnTo} userId={user.id} />
             </CardContent>
           </Card>
         ))}

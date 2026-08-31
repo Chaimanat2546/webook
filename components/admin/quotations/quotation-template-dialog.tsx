@@ -27,25 +27,31 @@ import { QuotationTemplateThumbnail } from "./quotation-template-thumbnail";
 export interface QuotationTemplateDialogProps {
   accountDefault: QuotationTemplate;
   disabled: boolean;
+  onOpenChange?: (open: boolean) => void;
   onApply: (
     value: QuotationTemplate,
     saveAsDefault: boolean,
   ) => Promise<boolean>;
+  open?: boolean;
   value: QuotationTemplate;
 }
 
 export function QuotationTemplateDialog({
   accountDefault,
   disabled,
+  onOpenChange,
   onApply,
+  open,
   value,
 }: QuotationTemplateDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [draft, setDraft] = useState(value);
   const [busy, setBusy] = useState(false);
+  const isOpen = open ?? internalOpen;
 
   function changeOpen(next: boolean) {
-    setOpen(next);
+    if (open === undefined) setInternalOpen(next);
+    onOpenChange?.(next);
     if (next) setDraft(value);
   }
 
@@ -60,13 +66,15 @@ export function QuotationTemplateDialog({
   }
 
   return (
-    <Dialog onOpenChange={changeOpen} open={open}>
-      <DialogTrigger asChild>
-        <Button disabled={disabled} size="sm" type="button" variant="outline">
-          <LayoutTemplate aria-hidden="true" className="size-4" />
-          เลือกเทมเพลต
-        </Button>
-      </DialogTrigger>
+    <Dialog onOpenChange={changeOpen} open={isOpen}>
+      {open === undefined ? (
+        <DialogTrigger asChild>
+          <Button disabled={disabled} size="sm" type="button" variant="outline">
+            <LayoutTemplate aria-hidden="true" className="size-4" />
+            เลือกเทมเพลต
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>เลือกเทมเพลตใบเสนอราคา</DialogTitle>
