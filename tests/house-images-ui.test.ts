@@ -198,7 +198,7 @@ describe("house image mobile UI", () => {
     assert.match(pageSource, /<CoverSelectViewer/);
     assert.match(pageSource, /saveAction=\{saveHouseCoverSelectAction\.bind\(null, propertyId\)\}/);
     assert.match(source, /mode: "cover-select"/);
-    assert.match(source, /<ImageIcon data-icon="inline-start" \/>[\s\S]*จัดลำดับรูปแสดง/);
+    assert.match(source, /<ArrowDownUp data-icon="inline-start" \/>[\s\S]*จัดลำดับรูปแสดง/);
   });
 
   it("adds a dedicated cover selection viewer component", () => {

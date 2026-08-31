@@ -740,6 +740,9 @@ export function QuotationEditor({
   const shareUnavailableMessage = !publicOrigin
     ? "ยังไม่ได้ตั้งค่า URL สาธารณะสำหรับใบเสนอราคา"
     : "";
+  const exportUnavailableMessage = isDirty
+    ? "บันทึกการเปลี่ยนแปลงก่อนดาวน์โหลด PDF"
+    : "";
   const publicQrPending = Boolean(
     lastSavedPayload?.documentDisplay.certificationQr
     && publicOrigin
@@ -1372,7 +1375,13 @@ export function QuotationEditor({
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button disabled={!canUseSavedDocument} size="sm" type="button" variant="outline">
+              <Button
+                aria-describedby={shareUnavailableMessage ? "quotation-share-unavailable" : undefined}
+                disabled={!canUseSavedDocument}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
                 <Share2 aria-hidden="true" className="size-4" />
                 เผยแพร่
                 <ChevronDown aria-hidden="true" className="size-4" />
@@ -1396,7 +1405,13 @@ export function QuotationEditor({
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button disabled={!canPrint && !canUseSavedDocument} size="sm" type="button" variant="outline">
+              <Button
+                aria-describedby={exportUnavailableMessage ? "quotation-export-unavailable" : undefined}
+                disabled={!canPrint && !canUseSavedDocument}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
                 <Printer aria-hidden="true" className="size-4" />
                 ส่งออก
                 <ChevronDown aria-hidden="true" className="size-4" />
@@ -1415,10 +1430,15 @@ export function QuotationEditor({
                 onSelect={() => void downloadSaved()}
               >
                 <Download aria-hidden="true" />
-                ดาวน์โหลด PDF
+                {isDownloading ? "กำลังสร้าง PDF" : "ดาวน์โหลด PDF"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {exportUnavailableMessage ? (
+            <p className="basis-full text-xs text-destructive" id="quotation-export-unavailable">
+              {exportUnavailableMessage}
+            </p>
+          ) : null}
           {shareUnavailableMessage ? (
             <p className="basis-full text-xs text-destructive" id="quotation-share-unavailable">
               {shareUnavailableMessage}
