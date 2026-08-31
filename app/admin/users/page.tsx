@@ -48,7 +48,7 @@ async function WebookUsersList({
 
   return (
     <>
-      <UserTable roleIds={roleIds} roles={loadedRoles} search={search} sortBy={sortBy} sortDirection={sortDirection} users={users} />
+      <UserTable page={pagination.page} roleIds={roleIds} roles={loadedRoles} search={search} sortBy={sortBy} sortDirection={sortDirection} users={users} />
       <Pagination
         basePath="/admin/users"
         currentPage={pagination.page}

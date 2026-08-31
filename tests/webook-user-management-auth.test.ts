@@ -4,18 +4,21 @@ import { describe, it } from "node:test";
 
 import * as adminAuth from "../server/auth/admin.ts";
 
-interface WebookUserAuthModule {
-  canManageWebookUsers?: (user: { role_id: number | null } | null) => boolean;
+interface UserManagementAuthModule {
+  canManageCentralUsers?: (user: { allow_tools: { allow_members?: boolean } | null } | null) => boolean;
+  canManageWebookUsers?: (user: { allow_tools: { allow_members?: boolean } | null } | null) => boolean;
 }
 
 describe("Webook user management authorization", () => {
-  it("allows only role 1", () => {
-    const canManageWebookUsers = (adminAuth as WebookUserAuthModule).canManageWebookUsers;
+  it("allows both user management areas only when allow_members is enabled", () => {
+    const { canManageCentralUsers, canManageWebookUsers } = adminAuth as UserManagementAuthModule;
 
     assert.equal(typeof canManageWebookUsers, "function");
-    assert.equal(canManageWebookUsers?.({ role_id: 1 }), true);
-    assert.equal(canManageWebookUsers?.({ role_id: 2 }), false);
-    assert.equal(canManageWebookUsers?.({ role_id: null }), false);
+    assert.equal(typeof canManageCentralUsers, "function");
+    assert.equal(canManageWebookUsers?.({ allow_tools: { allow_members: true } }), true);
+    assert.equal(canManageCentralUsers?.({ allow_tools: { allow_members: true } }), true);
+    assert.equal(canManageWebookUsers?.({ allow_tools: { allow_members: false } }), false);
+    assert.equal(canManageCentralUsers?.({ allow_tools: null }), false);
     assert.equal(canManageWebookUsers?.(null), false);
   });
 
@@ -28,7 +31,7 @@ describe("Webook user management authorization", () => {
     assert.match(shell, /canManageWebookUsers: boolean/);
     assert.match(sidebar, /\{canManageWebookUsers \? \(/);
     assert.match(sidebar, /href="\/admin\/users"/);
-    assert.match(sidebar, />จัดการผู้ใช้ Webook</);
+    assert.match(sidebar, />ผู้ใช้ WeBook</);
     assert.match(sidebar, /href="\/admin\/user-manager"/);
   });
 });

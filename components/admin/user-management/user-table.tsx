@@ -58,10 +58,13 @@ function SortButton({
   );
 }
 
-function EditButton({ userId }: { userId: string }) {
+function EditButton({ returnTo, userId }: { returnTo: string; userId: string }) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnTo);
+
   return (
     <Button asChild size="sm" variant="outline">
-      <Link href={`/admin/users/${encodeURIComponent(userId)}`}>
+      <Link href={`/admin/users/${encodeURIComponent(userId)}?${params.toString()}`}>
         <PencilIcon aria-hidden data-icon="inline-start" />
         แก้ไข
       </Link>
@@ -70,6 +73,7 @@ function EditButton({ userId }: { userId: string }) {
 }
 
 export function UserTable({
+  page,
   roles,
   roleIds,
   search,
@@ -77,6 +81,7 @@ export function UserTable({
   sortDirection,
   users,
 }: {
+  page: number;
   roles: WebookManagedRole[];
   roleIds: number[];
   search: string;
@@ -84,6 +89,14 @@ export function UserTable({
   sortDirection: "asc" | "desc";
   users: WebookManagedUser[];
 }) {
+  const returnToParams = new URLSearchParams();
+  returnToParams.set("page", String(page));
+  returnToParams.set("sort", sortBy);
+  returnToParams.set("dir", sortDirection);
+  if (search) returnToParams.set("q", search);
+  if (roleIds.length > 0) returnToParams.set("roles", roleIds.join(","));
+  const returnTo = `/admin/users?${returnToParams.toString()}`;
+
   return (
     <>
       {users.length === 0 ? (
@@ -116,7 +129,7 @@ export function UserTable({
                   <dd>{displayText(user.username)}</dd>
                 </div>
               </dl>
-              <EditButton userId={user.id} />
+              <EditButton returnTo={returnTo} userId={user.id} />
             </CardContent>
           </Card>
         ))}
@@ -145,7 +158,7 @@ export function UserTable({
                   <Badge variant="secondary">{roleName(roles, user.roleId)}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <EditButton userId={user.id} />
+                  <EditButton returnTo={returnTo} userId={user.id} />
                 </TableCell>
               </TableRow>
             ))}

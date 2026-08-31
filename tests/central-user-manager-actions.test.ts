@@ -8,6 +8,14 @@ const source = readFileSync(
 );
 
 describe("central user manager actions", () => {
+  it("requires the member-management permission before dispatching an operation", () => {
+    const guardAt = source.indexOf("await requireCentralUserManagerAdmin()");
+    const operationAt = source.indexOf("await runCentralUserOperation(");
+
+    assert.ok(guardAt >= 0);
+    assert.ok(operationAt > guardAt);
+  });
+
   it("resolves the browser tenant key on the server", () => {
     assert.match(source, /resolveCentralUserTenant\(readString\(formData, "tenantKey"\)\)/);
     assert.match(source, /if \(!tenant \|\| !tenant\.enabled\)/);

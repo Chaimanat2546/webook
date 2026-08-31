@@ -20,15 +20,27 @@ function displayUserTitle(...values: string[]): string {
   return values.find((value) => value && value.toLowerCase() !== "null") ?? "ผู้ใช้ Webook";
 }
 
+function normalizeReturnTo(value: string | undefined): string {
+  if (!value) return "/admin/users";
+
+  try {
+    const target = new URL(value, "https://webook.local");
+    return target.pathname === "/admin/users" ? `${target.pathname}${target.search}` : "/admin/users";
+  } catch {
+    return "/admin/users";
+  }
+}
+
 export default async function EditWebookUserPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ section?: string }>;
+  searchParams: Promise<{ returnTo?: string; section?: string }>;
 }) {
   const { id } = await params;
-  const { section } = await searchParams;
+  const { returnTo: requestedReturnTo, section } = await searchParams;
+  const returnTo = normalizeReturnTo(requestedReturnTo);
   await requireWebookUserManagerAdmin();
   const [user, { roles }] = await Promise.all([
     getWebookUserForManagement(id),
@@ -43,7 +55,7 @@ export default async function EditWebookUserPage({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 lg:gap-5">
       <UserTaskHeader
-        backHref="/admin/users"
+        backHref={returnTo}
         dvId={user.dvId}
         subtitle="จัดการข้อมูลผู้ใช้"
         title={displayUserTitle(user.name, user.username, user.email)}
@@ -56,10 +68,13 @@ export default async function EditWebookUserPage({
           <nav aria-label="หมวดข้อมูลผู้ใช้" className="flex gap-2 overflow-x-auto p-2 lg:block lg:space-y-1 lg:overflow-visible">
             {USER_EDIT_SECTIONS.map((section) => {
               const SectionIcon = section.icon;
+              const params = new URLSearchParams();
+              params.set("returnTo", returnTo);
+              if (section.key === "permissions") params.set("section", "permissions");
               return (
                 <UserWorkspaceNavItem
                   active={section.key === activeSection.key}
-                  href={`/admin/users/${encodeURIComponent(user.id)}${section.key === "permissions" ? "?section=permissions" : ""}`}
+                  href={`/admin/users/${encodeURIComponent(user.id)}?${params.toString()}`}
                   icon={<SectionIcon aria-hidden />}
                   key={section.key}
                   label={section.label}

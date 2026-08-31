@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
+  canManageHousePrices,
   canManageHouseRating,
   canUseAccommodation,
   requireAdmin,
@@ -22,6 +23,10 @@ import {
 } from "../../../../server/services/houses";
 
 function assertCanUseAccommodation(isAllowed: boolean): void {
+  if (!isAllowed) throw new Error("Unauthorized");
+}
+
+function assertCanManageHousePrices(isAllowed: boolean): void {
   if (!isAllowed) throw new Error("Unauthorized");
 }
 
@@ -82,6 +87,7 @@ export async function saveHouseFacilitiesAction(propertyId: string, formData: Fo
 export async function saveHousePricesAction(propertyId: string, formData: FormData): Promise<never> {
   const { adminUser, supabase } = await requireAdmin();
   assertCanUseAccommodation(canUseAccommodation(adminUser));
+  assertCanManageHousePrices(canManageHousePrices(adminUser));
 
   const house = await getListingByPropertyId(supabase, propertyId);
   if (!house) throw new Error("House not found");

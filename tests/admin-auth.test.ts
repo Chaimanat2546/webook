@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { canManageHouseRating, canUseAccommodation, pickAdminUser } from "../server/auth/admin.ts";
+import {
+  canManageHousePrices,
+  canManageHouseRating,
+  canUseAccommodation,
+  pickAdminUser,
+} from "../server/auth/admin.ts";
 import { findSignInEmailByUsername } from "../server/repositories/admin-users.ts";
 
 interface FakeQueryResult {
@@ -128,6 +133,14 @@ describe("admin authorization", () => {
     assert.doesNotMatch(layoutSource, /isAuthorized/);
     assert.match(layoutSource, /canUseAccommodation/);
     assert.match(layoutSource, /canUseAccommodation=\{canUseAccommodation\(adminUser\)\}/);
+  });
+
+  it("requires allow_price to manage house base prices", () => {
+    assert.equal(canManageHousePrices({ allow_tools: { allow_price: true } }), true);
+    assert.equal(canManageHousePrices({ allow_tools: { allow_price: false } }), false);
+    assert.equal(canManageHousePrices({ allow_tools: {} }), false);
+    assert.equal(canManageHousePrices({ allow_tools: null }), false);
+    assert.equal(canManageHousePrices(null), false);
   });
 
   it("hides accommodation navigation and returns 404 for protected routes", () => {

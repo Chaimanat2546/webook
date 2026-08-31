@@ -43,6 +43,8 @@ describe("house detail actions", () => {
     assert.match(actionsSource, /export async function saveHousePricesAction/);
     assert.match(actionsSource, /requireAdmin\(\)/);
     assert.match(actionsSource, /canUseAccommodation\(adminUser\)/);
+    assert.match(actionsSource, /canManageHousePrices\(adminUser\)/);
+    assert.match(actionsSource, /assertCanManageHousePrices\(canManageHousePrices\(adminUser\)\)/);
     assert.match(actionsSource, /getListingByPropertyId\(supabase, propertyId\)/);
     assert.match(actionsSource, /normalizeListingPriceFormValues/);
     assert.match(actionsSource, /updateListingPricesByListingId\(supabase, house\.id, values\)/);

@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { SaveIcon } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { updateWebookUserFormAction } from "../../../app/admin/users/actions";
@@ -66,7 +65,7 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
         <div className="grid gap-5">
           <div className="grid gap-3">
             <h3 className="text-sm font-medium">สิทธิ์การใช้งานระบบ</h3>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
             {WEBOOK_ALLOW_TOOL_OPTIONS.map((option) => (
               <label
                 className="flex min-h-16 items-start gap-3 rounded-md border p-3 text-sm"
@@ -160,11 +159,11 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
 
 function FormActions({ disabled }: { disabled: boolean }) {
   return (
-    <div className="flex justify-end gap-2">
-      <Button asChild type="button" variant="outline">
-        <Link href="/admin/users">ยกเลิก</Link>
+    <div className="flex justify-end">
+      <Button disabled={disabled} type="submit">
+        <SaveIcon data-icon="inline-start" />
+        บันทึกข้อมูลผู้ใช้
       </Button>
-      <Button disabled={disabled} type="submit">บันทึก</Button>
     </div>
   );
 }

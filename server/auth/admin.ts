@@ -2,6 +2,8 @@ import { cache } from "react";
 
 export interface AdminAllowTools {
   allow_accommodation?: boolean;
+  allow_members?: boolean;
+  allow_price?: boolean;
   allow_quotation?: boolean;
 }
 
@@ -28,16 +30,20 @@ export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | n
   return user?.role_id === 1;
 }
 
+export function canManageHousePrices(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_price === true;
+}
+
 export function canManageCentralUsers(
-  user: Pick<AdminUserForAuth, "role_id"> | null,
+  user: Pick<AdminUserForAuth, "allow_tools"> | null,
 ): boolean {
-  return user?.role_id === 1;
+  return user?.allow_tools?.allow_members === true;
 }
 
 export function canManageWebookUsers(
-  user: Pick<AdminUserForAuth, "role_id"> | null,
+  user: Pick<AdminUserForAuth, "allow_tools"> | null,
 ): boolean {
-  return user?.role_id === 1;
+  return user?.allow_tools?.allow_members === true;
 }
 
 export function pickAdminUser({

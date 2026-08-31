@@ -18,6 +18,7 @@ import {
 } from "../../../../lib/listing-facilities";
 import { ZONE_OPTIONS } from "../../../../lib/house-zones";
 import {
+  canManageHousePrices,
   canManageHouseRating,
   requireAccommodationAdmin,
 } from "../../../../server/auth/admin";
@@ -161,6 +162,8 @@ export default async function HouseDetailPage({
   const selectedSection = getSelectedSection(section);
   const toastTitle = saveToastTitle({ saved, section });
   const { adminUser, supabase } = await requireAccommodationAdmin();
+  const canManagePrices = canManageHousePrices(adminUser);
+  if (selectedSection === "prices" && !canManagePrices) notFound();
 
   const house = await getListingByPropertyId(supabase, propertyId);
 
@@ -179,7 +182,7 @@ export default async function HouseDetailPage({
     prices: `${LISTING_PRICE_DAYS.length} วัน`,
     facilities: `${activeFacilityCount} เปิด`,
   };
-  const detailSections = HOUSE_DETAIL_SECTIONS.map((item) => ({
+  const detailSections = HOUSE_DETAIL_SECTIONS.filter((item) => canManagePrices || item.key !== "prices").map((item) => ({
     ...item,
     badge: sectionBadges[item.key],
   }));
@@ -398,6 +401,12 @@ export default async function HouseDetailPage({
               <form action={pricesAction} className="flex flex-col gap-4 lg:min-h-full" id={HOUSE_PRICES_FORM_ID}>
                 <input name="returnTo" type="hidden" value={safeReturnTo ?? ""} />
 
+                {!canManagePrices ? (
+                  <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    ไม่มีสิทธิ์แก้ไขราคาพื้นฐาน
+                  </p>
+                ) : null}
+
                 <div className="grid gap-3 md:grid-cols-2">
                   {LISTING_PRICE_DAYS.map((day) => {
                     const price = priceForDay(prices, day.dayOfWeek);
@@ -420,6 +429,7 @@ export default async function HouseDetailPage({
                             inputMode="numeric"
                             min={0}
                             name={`deville_price_${day.dayOfWeek}`}
+                            disabled={!canManagePrices}
                             type="number"
                           />
                         </div>
@@ -431,6 +441,7 @@ export default async function HouseDetailPage({
                             inputMode="numeric"
                             min={0}
                             name={`agency_price_${day.dayOfWeek}`}
+                            disabled={!canManagePrices}
                             type="number"
                           />
                         </div>
@@ -440,7 +451,7 @@ export default async function HouseDetailPage({
                 </div>
 
                 <div className="flex justify-end border-t pt-4 lg:mt-auto">
-                  <Button className="w-full sm:w-fit" type="submit">
+                  <Button className="w-full sm:w-fit" disabled={!canManagePrices} type="submit">
                     <SaveIcon data-icon="inline-start" />
                     บันทึกราคาพื้นฐาน
                   </Button>

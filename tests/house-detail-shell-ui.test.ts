@@ -201,6 +201,10 @@ describe("house detail shell UI", () => {
 
     assert.match(source, /saveHousePricesAction/);
     assert.match(source, /saveHousePricesAction\.bind\(null, propertyId\)/);
+    assert.match(source, /canManageHousePrices\(adminUser\)/);
+    assert.match(source, /const canManagePrices = canManageHousePrices\(adminUser\)/);
+    assert.match(source, /if \(selectedSection === "prices" && !canManagePrices\) notFound\(\);/);
+    assert.match(source, /const detailSections = HOUSE_DETAIL_SECTIONS\.filter\(\(item\) => canManagePrices \|\| item\.key !== "prices"\)/);
     assert.match(source, /getListingPricesByListingId\(supabase, house\.id\)/);
     assert.match(source, /LISTING_PRICE_DAYS\.map/);
     assert.match(source, /\{day\.label\}/);
@@ -214,6 +218,9 @@ describe("house detail shell UI", () => {
     assert.match(source, /ราคาขาย Agency/);
     assert.match(source, /name=\{`deville_price_\$\{day\.dayOfWeek\}`\}/);
     assert.match(source, /name=\{`agency_price_\$\{day\.dayOfWeek\}`\}/);
+    assert.match(source, /disabled=\{!canManagePrices\}/);
+    assert.match(source, /Button className="w-full sm:w-fit" disabled=\{!canManagePrices\} type="submit"/);
+    assert.match(source, /ไม่มีสิทธิ์แก้ไขราคาพื้นฐาน/);
     assert.match(source, /activeSection\.key === "prices"/);
     assert.match(source, /HOUSE_PRICES_FORM_ID/);
   });

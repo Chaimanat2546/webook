@@ -58,8 +58,20 @@ describe("Webook user management UI", () => {
 
     assert.match(table, /PencilIcon/);
     assert.match(table, /แก้ไข/);
-    assert.match(table, /href=\{`\/admin\/users\/\$\{encodeURIComponent\(userId\)\}`\}/);
+    assert.match(table, /href=\{`\/admin\/users\/\$\{encodeURIComponent\(userId\)\}\?\$\{params\.toString\(\)\}`\}/);
     assert.doesNotMatch(table, /BanIcon|ShieldCheckIcon|Ban|ปลด Ban/);
+  });
+
+  it("preserves the current user-list query when opening and navigating an edit page", () => {
+    const table = read("../components/admin/user-management/user-table.tsx");
+    const page = read("../app/admin/users/[id]/page.tsx");
+
+    assert.match(table, /returnTo/);
+    assert.match(table, /returnToParams\.set\("page", String\(page\)\)/);
+    assert.match(table, /params\.set\("returnTo", returnTo\)/);
+    assert.match(page, /function normalizeReturnTo/);
+    assert.match(page, /backHref=\{returnTo\}/);
+    assert.match(page, /params\.set\("returnTo", returnTo\)/);
   });
 
   it("separates user details from permissions and usage", () => {
@@ -101,10 +113,14 @@ describe("Webook user management UI", () => {
     assert.match(users, /allow_booking/);
     assert.match(users, /allow_accommodation/);
     assert.match(form, /สิทธิ์การใช้งานระบบ/);
-    assert.match(form, /className="grid grid-cols-2 gap-3 lg:grid-cols-5"/);
+    assert.match(form, /className="grid grid-cols-1 gap-3 lg:grid-cols-5"/);
     assert.match(form, /className="flex min-h-16 items-start gap-3 rounded-md border p-3 text-sm"/);
     assert.match(form, /text-xs text-muted-foreground">\{option\.description\}<\/span>/);
     assert.match(form, /บันทึกสิทธิ์การใช้งาน/);
+    const detailActions = form.slice(form.indexOf("function FormActions"));
+    assert.match(detailActions, /<SaveIcon data-icon="inline-start" \/>/);
+    assert.match(detailActions, /บันทึกข้อมูลผู้ใช้\s*<\/Button>/);
+    assert.doesNotMatch(detailActions, /ยกเลิก|<Link/);
     assert.doesNotMatch(form, /name="(?:email|username|tel)"/);
     assert.doesNotMatch(page, /Ban|ปลด Ban/);
   });
