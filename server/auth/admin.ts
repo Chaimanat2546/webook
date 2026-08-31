@@ -2,6 +2,7 @@ import { cache } from "react";
 
 export interface AdminAllowTools {
   allow_accommodation?: boolean;
+  allow_cost?: boolean;
   allow_members?: boolean;
   allow_price?: boolean;
   allow_quotation?: boolean;
@@ -20,6 +21,16 @@ export interface AuthUserIdentity {
 
 export function canUseAccommodation(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
   return user?.allow_tools?.allow_accommodation === true;
+}
+
+export function canAccessHouses(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_accommodation === true
+    || user?.allow_tools?.allow_price === true
+    || user?.allow_tools?.allow_cost === true;
+}
+
+export function canViewHousePrices(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_price === true || user?.allow_tools?.allow_cost === true;
 }
 
 export function canUseQuotation(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
@@ -92,6 +103,16 @@ export const requireAdmin = cache(async () => {
 export async function requireAccommodationAdmin() {
   const session = await requireAdmin();
   if (!canUseAccommodation(session.adminUser)) {
+    const { notFound } = await import("next/navigation");
+    notFound();
+  }
+
+  return session;
+}
+
+export async function requireHouseListAdmin() {
+  const session = await requireAdmin();
+  if (!canAccessHouses(session.adminUser)) {
     const { notFound } = await import("next/navigation");
     notFound();
   }

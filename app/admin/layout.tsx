@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import { AdminShell } from "../../components/layout/admin-shell";
 import {
+  canAccessHouses,
   canManageCentralUsers,
   canManageWebookUsers,
   canUseAccommodation,
@@ -19,6 +20,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <AdminShell
+      canAccessHouses={canAccessHouses(adminUser)}
       canManageCentralUsers={canManageCentralUsers(adminUser)}
       canManageWebookUsers={canManageWebookUsers(adminUser)}
       canUseAccommodation={canUseAccommodation(adminUser)}

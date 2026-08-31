@@ -4,9 +4,11 @@ import { describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  canAccessHouses,
   canManageHousePrices,
   canManageHouseRating,
   canUseAccommodation,
+  canViewHousePrices,
   pickAdminUser,
 } from "../server/auth/admin.ts";
 import { findSignInEmailByUsername } from "../server/repositories/admin-users.ts";
@@ -56,6 +58,14 @@ describe("admin authorization", () => {
     assert.equal(canUseAccommodation({ allow_tools: {} }), false);
     assert.equal(canUseAccommodation({ allow_tools: null }), false);
     assert.equal(canUseAccommodation(null), false);
+  });
+
+  it("derives house access and price visibility from the permitted tools", () => {
+    assert.equal(canAccessHouses({ allow_tools: { allow_cost: true } }), true);
+    assert.equal(canAccessHouses({ allow_tools: { allow_price: true } }), true);
+    assert.equal(canAccessHouses({ allow_tools: {} }), false);
+    assert.equal(canViewHousePrices({ allow_tools: { allow_cost: true } }), true);
+    assert.equal(canManageHousePrices({ allow_tools: { allow_cost: true } }), false);
   });
 
   it("reserves house rating management for role 1", () => {
@@ -133,6 +143,7 @@ describe("admin authorization", () => {
     assert.doesNotMatch(layoutSource, /isAuthorized/);
     assert.match(layoutSource, /canUseAccommodation/);
     assert.match(layoutSource, /canUseAccommodation=\{canUseAccommodation\(adminUser\)\}/);
+    assert.match(layoutSource, /canAccessHouses=\{canAccessHouses\(adminUser\)\}/);
   });
 
   it("requires allow_price to manage house base prices", () => {
@@ -143,7 +154,7 @@ describe("admin authorization", () => {
     assert.equal(canManageHousePrices(null), false);
   });
 
-  it("hides accommodation navigation and returns 404 for protected routes", () => {
+  it("separates Houses navigation from Advertisements access", () => {
     const authSource = readFileSync(new URL("../server/auth/admin.ts", import.meta.url), "utf8");
     const sidebarSource = readFileSync(
       new URL("../components/layout/admin-desktop-sidebar.tsx", import.meta.url),
@@ -163,7 +174,11 @@ describe("admin authorization", () => {
     assert.match(authSource, /notFound\(\)/);
     assert.match(shellSource, /canUseAccommodation: boolean;/);
     assert.match(shellSource, /canUseAccommodation=\{canUseAccommodation\}/);
+    assert.match(shellSource, /canAccessHouses: boolean;/);
+    assert.match(shellSource, /canAccessHouses=\{canAccessHouses\}/);
     assert.match(sidebarSource, /canUseAccommodation: boolean;/);
+    assert.match(sidebarSource, /canAccessHouses: boolean;/);
+    assert.match(sidebarSource, /\{canAccessHouses \? \(/);
     assert.match(sidebarSource, /\{canUseAccommodation \? \(/);
 
     for (const source of routeSources) {

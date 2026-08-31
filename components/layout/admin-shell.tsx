@@ -11,6 +11,7 @@ import { Separator } from "../ui/separator";
 import { Toaster } from "../ui/sonner";
 
 export function AdminShell({
+  canAccessHouses,
   canManageCentralUsers,
   canManageWebookUsers,
   canUseAccommodation,
@@ -18,6 +19,7 @@ export function AdminShell({
   children,
   defaultSidebarOpen = true,
 }: {
+  canAccessHouses: boolean;
   canManageCentralUsers: boolean;
   canManageWebookUsers: boolean;
   canUseAccommodation: boolean;
@@ -28,6 +30,7 @@ export function AdminShell({
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <AdminDesktopSidebar
+        canAccessHouses={canAccessHouses}
         canManageCentralUsers={canManageCentralUsers}
         canManageWebookUsers={canManageWebookUsers}
         canUseAccommodation={canUseAccommodation}
