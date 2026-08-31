@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireCentralUserManagerAdmin } from "../../../server/auth/admin.ts";
 import { resolveCentralUserTenant } from "../../../server/central-user-manager/tenant-bindings.ts";
 import { runCentralUserOperation } from "../../../server/services/central-user-manager.ts";
 
@@ -24,6 +25,7 @@ function assertFormSize(formData: FormData) {
 async function dispatch(action: "list_users" | "create_user" | "reissue_temporary_password" | "suspend_user" | "reactivate_user", formData: FormData) {
   try {
     assertFormSize(formData);
+    await requireCentralUserManagerAdmin();
     const tenant = resolveCentralUserTenant(readString(formData, "tenantKey"));
     if (!tenant || !tenant.enabled) throw new Error("Invalid request");
     const operationId = readString(formData, "operationId");

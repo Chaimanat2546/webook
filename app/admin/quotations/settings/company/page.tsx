@@ -4,12 +4,11 @@ import { CertificationSettings, CompanyProfileForm, PaymentMethodsSettings } fro
 import { QuotationSettingsDirtyProvider, QuotationSettingsNavLink } from "../../../../../components/admin/quotations/quotation-settings-dirty";
 import { QuotationLayoutEditor } from "../../../../../components/admin/quotations/quotation-layout-editor";
 import { Button } from "../../../../../components/ui/button";
-import { Empty, EmptyHeader, EmptyTitle } from "../../../../../components/ui/empty";
 import { emptyCertificationSnapshot } from "../../../../../lib/quotation-certification";
 import { cn } from "../../../../../lib/utils";
 import { isQuotationTemplate } from "../../../../../lib/quotation-template";
 import { QUOTATION_TEMPLATES, QUOTATION_TEMPLATE_LABELS } from "../../../../../lib/quotation-template";
-import { canUseQuotation, requireAdmin } from "../../../../../server/auth/admin";
+import { requireQuotationAdmin } from "../../../../../server/auth/admin";
 import { companyProfileToCertification, companyProfileToSeller, companyProfileToTemplate, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationDocumentTemplateRevisions, listQuotationDocumentTemplateSnapshots } from "../../../../../server/repositories/quotations";
 
 const sections = [
@@ -22,8 +21,7 @@ const sections = [
 export default async function CompanyProfilePage({ searchParams }: { searchParams: Promise<{ section?: string; template?: string }> }) {
   const { section, template: templateValue } = await searchParams;
   const selectedSection = section === "payments" || section === "certification" || section === "layout" ? section : "company";
-  const { adminUser, supabase, user } = await requireAdmin();
-  if (!canUseQuotation(adminUser)) return <Empty><EmptyHeader><EmptyTitle>ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ขาย</EmptyTitle></EmptyHeader></Empty>;
+  const { supabase, user } = await requireQuotationAdmin();
   const profile = selectedSection === "payments"
     ? null
     : await getQuotationCompanyProfile(supabase, user.id);

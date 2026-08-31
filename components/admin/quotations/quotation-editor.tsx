@@ -14,11 +14,14 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
   ArrowLeft,
+  ChevronDown,
   Download,
   GripVertical,
+  LayoutTemplate,
   Printer,
   RotateCcw,
   Share2,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -77,6 +80,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu";
 import { Input } from "../../ui/input";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Textarea } from "../../ui/textarea";
@@ -704,6 +714,8 @@ export function QuotationEditor({
       initialDocumentNumber ? initialPayload : null,
     );
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [documentDisplayDialogOpen, setDocumentDisplayDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] =
     useState<PendingConfirmation>(null);
@@ -727,6 +739,9 @@ export function QuotationEditor({
   );
   const shareUnavailableMessage = !publicOrigin
     ? "ยังไม่ได้ตั้งค่า URL สาธารณะสำหรับใบเสนอราคา"
+    : "";
+  const exportUnavailableMessage = isDirty
+    ? "บันทึกการเปลี่ยนแปลงก่อนดาวน์โหลด PDF"
     : "";
   const publicQrPending = Boolean(
     lastSavedPayload?.documentDisplay.certificationQr
@@ -1318,63 +1333,112 @@ export function QuotationEditor({
           className="flex flex-wrap items-center gap-2"
           data-document-actions
         >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" type="button" variant="outline">
+                <LayoutTemplate aria-hidden="true" className="size-4" />
+                ตั้งค่าเอกสาร
+                <ChevronDown aria-hidden="true" className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={isPending || uploadingFields.size > 0}
+                onSelect={() => setTemplateDialogOpen(true)}
+              >
+                <LayoutTemplate aria-hidden="true" />
+                เลือกเทมเพลต
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={isPending || uploadingFields.size > 0}
+                onSelect={() => setDocumentDisplayDialogOpen(true)}
+              >
+                <SlidersHorizontal aria-hidden="true" />
+                ตั้งค่ารูปแบบเอกสาร
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <QuotationTemplateDialog
             accountDefault={accountTemplateDefault}
             disabled={isPending || uploadingFields.size > 0}
             onApply={applyTemplate}
+            onOpenChange={setTemplateDialogOpen}
+            open={templateDialogOpen}
             value={payload.template}
           />
           <QuotationDocumentDisplayDialog
             disabled={isPending || uploadingFields.size > 0}
             onApply={applyDocumentDisplay}
+            onOpenChange={setDocumentDisplayDialogOpen}
+            open={documentDisplayDialogOpen}
             payload={payload}
           />
-          <Button
-            aria-describedby={shareUnavailableMessage ? "quotation-share-unavailable" : undefined}
-            disabled={!canUseSavedDocument}
-            onClick={shareSaved}
-            size="sm"
-            title={shareUnavailableMessage || (documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined)}
-            type="button"
-            variant="outline"
-          >
-            <Share2 aria-hidden="true" className="size-4" />
-            แชร์
-          </Button>
-          <Button
-            disabled={!canUseSavedDocument || !payload.id}
-            onClick={rotatePublicLink}
-            size="sm"
-            title={documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined}
-            type="button"
-            variant="outline"
-          >
-            <RotateCcw aria-hidden="true" className="size-4" />
-            รีเซ็ตลิงก์
-          </Button>
-          <Button
-            disabled={!canPrint || isPrinting}
-            onClick={() => {
-              void printSaved();
-            }}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <Printer aria-hidden="true" className="size-4" />
-            {isPrinting ? "กำลังเปิด PDF…" : "พิมพ์"}
-          </Button>
-          <Button
-            disabled={!canUseSavedDocument || isDownloading}
-            onClick={downloadSaved}
-            size="sm"
-            title={documentNumber && isDirty ? "บันทึกการเปลี่ยนแปลงก่อน" : undefined}
-            type="button"
-            variant="outline"
-          >
-            <Download aria-hidden="true" className="size-4" />
-            {isDownloading ? "กำลังสร้าง PDF…" : "ดาวน์โหลด"}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-describedby={shareUnavailableMessage ? "quotation-share-unavailable" : undefined}
+                disabled={!canUseSavedDocument}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <Share2 aria-hidden="true" className="size-4" />
+                เผยแพร่
+                <ChevronDown aria-hidden="true" className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void shareSaved()}>
+                <Share2 aria-hidden="true" />
+                แชร์
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={!payload.id}
+                onSelect={() => void rotatePublicLink()}
+                variant="destructive"
+              >
+                <RotateCcw aria-hidden="true" />
+                รีเซ็ตลิงก์
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-describedby={exportUnavailableMessage ? "quotation-export-unavailable" : undefined}
+                disabled={!canPrint && !canUseSavedDocument}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <Printer aria-hidden="true" className="size-4" />
+                ส่งออก
+                <ChevronDown aria-hidden="true" className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={!canPrint || isPrinting}
+                onSelect={() => void printSaved()}
+              >
+                <Printer aria-hidden="true" />
+                พิมพ์
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canUseSavedDocument || isDownloading}
+                onSelect={() => void downloadSaved()}
+              >
+                <Download aria-hidden="true" />
+                {isDownloading ? "กำลังสร้าง PDF" : "ดาวน์โหลด PDF"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {exportUnavailableMessage ? (
+            <p className="basis-full text-xs text-destructive" id="quotation-export-unavailable">
+              {exportUnavailableMessage}
+            </p>
+          ) : null}
           {shareUnavailableMessage ? (
             <p className="basis-full text-xs text-destructive" id="quotation-share-unavailable">
               {shareUnavailableMessage}

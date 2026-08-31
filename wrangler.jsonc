@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
+  "account_id": "7c1d945e149fc6fad2124176124d8f33",
   "name": "webook-admin",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-06-30",

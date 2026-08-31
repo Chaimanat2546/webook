@@ -1,14 +1,18 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import Link from "next/link";
+import { BadgeDollarSign, BanknoteIcon, FileText, House, SaveIcon, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { FaFileInvoiceDollar } from "react-icons/fa6";
+import { MdAssessment, MdEventAvailable, MdReceipt, MdReceiptLong } from "react-icons/md";
+import { TbReceiptTax } from "react-icons/tb";
 
 import { updateWebookUserFormAction } from "../../../app/admin/users/actions";
-import type { WebookManagedRole, WebookManagedUser } from "../../../lib/webook-users";
+import { WEBOOK_ALLOW_TOOL_OPTIONS, type WebookManagedRole, type WebookManagedUser } from "../../../lib/webook-users";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
+import { Switch } from "../../ui/switch";
 import { UserSaveNotification, UserUpdateErrorNotification } from "./user-save-notification";
 
 interface UserEditFormProps {
@@ -16,6 +20,20 @@ interface UserEditFormProps {
   section: "details" | "permissions";
   user: WebookManagedUser;
 }
+
+const permissionIconByName = {
+  BadgeDollarSign,
+  BanknoteIcon,
+  FaFileInvoiceDollar,
+  FileText,
+  House,
+  MdAssessment,
+  MdEventAvailable,
+  MdReceipt,
+  MdReceiptLong,
+  TbReceiptTax,
+  Users,
+} as const;
 
 export function UserEditForm({ roles, section, user }: UserEditFormProps) {
   const router = useRouter();
@@ -33,7 +51,7 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
 
   if (section === "permissions") {
     return (
-      <form action={formAction} className="w-full max-w-none space-y-4">
+      <form action={formAction} className="flex min-h-full flex-col gap-4">
         <input name="id" type="hidden" value={user.id} />
         <input name="name" type="hidden" value={user.name} />
         <input name="section" type="hidden" value={section} />
@@ -61,7 +79,44 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
           </div>
         </div>
 
-        <FormActions disabled={roles.length === 0 || isPending} />
+        <div className="grid gap-5">
+          <div className="grid gap-3">
+            <h3 className="text-sm font-medium">สิทธิ์การใช้งานระบบ</h3>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+            {WEBOOK_ALLOW_TOOL_OPTIONS.map((option) => {
+              const PermissionIcon = permissionIconByName[option.icon];
+
+              return (
+                <label
+                  className="flex min-h-16 items-start gap-3 rounded-md border p-3 text-sm"
+                  htmlFor={`webook-user-${option.key}`}
+                  key={option.key}
+                >
+                  <Switch
+                    defaultChecked={user.allowTools?.[option.key] === true}
+                    id={`webook-user-${option.key}`}
+                    name={option.key}
+                  />
+                  <span className="flex min-w-0 gap-2">
+                    <PermissionIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span className="grid gap-1">
+                      <span className="font-medium leading-5">{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end border-t pt-4 lg:mt-auto">
+          <Button className="w-full sm:w-fit" disabled={roles.length === 0 || isPending} type="submit">
+            <SaveIcon data-icon="inline-start" />
+            บันทึกสิทธิ์การใช้งาน
+          </Button>
+        </div>
       </form>
     );
   }
@@ -128,11 +183,11 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
 
 function FormActions({ disabled }: { disabled: boolean }) {
   return (
-    <div className="flex justify-end gap-2">
-      <Button asChild type="button" variant="outline">
-        <Link href="/admin/users">ยกเลิก</Link>
+    <div className="flex justify-end">
+      <Button disabled={disabled} type="submit">
+        <SaveIcon data-icon="inline-start" />
+        บันทึกข้อมูลผู้ใช้
       </Button>
-      <Button disabled={disabled} type="submit">บันทึก</Button>
     </div>
   );
 }

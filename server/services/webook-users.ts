@@ -2,7 +2,12 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { WebookManagedRole, WebookManagedUser } from "../../lib/webook-users";
+import {
+  WEBOOK_ALLOW_TOOL_OPTIONS,
+  type WebookAllowTools,
+  type WebookManagedRole,
+  type WebookManagedUser,
+} from "../../lib/webook-users.ts";
 import {
   createWebookUsersRepository,
   DuplicateWebookUserDvIdError,
@@ -34,6 +39,7 @@ export interface WebookUserManagementData {
 }
 
 export interface UpdateWebookUserInput {
+  allowTools?: Record<string, unknown>;
   dvId: string;
   id: string;
   name: string;
@@ -91,8 +97,15 @@ async function resolveRepository(
   return createWebookUsersRepository(adminClient);
 }
 
+function normalizeAllowTools(value: Record<string, unknown> | undefined): WebookAllowTools | undefined {
+  if (value === undefined) return undefined;
+  return Object.fromEntries(
+    WEBOOK_ALLOW_TOOL_OPTIONS.map(({ key }) => [key, value[key] === true]),
+  ) as WebookAllowTools;
+}
+
 function parseUpdateInput(input: UpdateWebookUserInput):
-  | { ok: true; value: { dvId: string | null; id: string; name: string; roleId: number } }
+  | { ok: true; value: { allowTools?: WebookAllowTools; dvId: string | null; id: string; name: string; roleId: number } }
   | { field?: WebookUserUpdateField; ok: false; message: string } {
   const id = input.id.trim();
   const name = input.name.trim();
@@ -126,7 +139,7 @@ function parseUpdateInput(input: UpdateWebookUserInput):
     return { field: "roleId", ok: false, message: "สิทธิ์ผู้ใช้ที่เลือกไม่ถูกต้อง" };
   }
 
-  return { ok: true, value: { dvId, id, name, roleId } };
+  return { ok: true, value: { allowTools: normalizeAllowTools(input.allowTools), dvId, id, name, roleId } };
 }
 
 export async function listWebookUserManagementData(
@@ -204,6 +217,7 @@ export async function updateWebookUser(
   let user: WebookManagedUser | null;
   try {
     user = await repository.updateUser(parsed.value.id, {
+      ...(parsed.value.allowTools !== undefined ? { allowTools: parsed.value.allowTools } : {}),
       ...(updatesDvId ? { dvId: parsed.value.dvId } : {}),
       name: parsed.value.name,
       roleId: parsed.value.roleId,

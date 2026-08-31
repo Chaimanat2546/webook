@@ -34,6 +34,13 @@ import {
   DropdownMenuTrigger,
 } from "../../../ui/dropdown-menu";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../../../ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -100,6 +107,54 @@ function CustomerActions({
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function CustomerMobileActions({
+  customer,
+  onEdit,
+  onToggle,
+}: {
+  customer: QuotationCustomerMaster;
+  onEdit: () => void;
+  onToggle: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  function selectAction(action: () => void) {
+    setOpen(false);
+    action();
+  }
+
+  return (
+    <Sheet onOpenChange={setOpen} open={open}>
+      <SheetTrigger asChild>
+        <Button className="w-full" type="button" variant="outline">
+          <PencilLineIcon aria-hidden />
+          จัดการ
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="rounded-t-xl p-0">
+        <SheetHeader>
+          <SheetTitle>จัดการลูกค้า</SheetTitle>
+        </SheetHeader>
+        <div className="grid gap-2 px-4 pb-4">
+          <Button className="justify-start" onClick={() => selectAction(onEdit)} type="button" variant="outline">
+            <PencilLineIcon aria-hidden />
+            แก้ไข
+          </Button>
+          <Button
+            className="justify-start"
+            onClick={() => selectAction(onToggle)}
+            type="button"
+            variant={customer.isActive ? "destructive" : "outline"}
+          >
+            {customer.isActive ? <PowerIcon aria-hidden /> : <RotateCcwIcon aria-hidden />}
+            {customer.isActive ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -214,7 +269,7 @@ export function QuotationCustomerList({
       {customers.length ? <div className="space-y-3 md:hidden">
         {customers.map((customer) => (
           <Card key={customer.id}>
-            <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <CardHeader>
               <div className="min-w-0 space-y-1">
                 <CardTitle className="break-words text-base">{customer.name}</CardTitle>
                 <div className="flex flex-wrap gap-2">
@@ -222,14 +277,14 @@ export function QuotationCustomerList({
                   <Badge variant="secondary">{officeLabel(customer)}</Badge>
                 </div>
               </div>
-              <CustomerActions customer={customer} onEdit={() => setEditing(customer)} onToggle={() => setToggleCustomer(customer)} />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-4">
               <dl className="space-y-3 text-sm">
                 <div><dt className="text-muted-foreground">เลขผู้เสียภาษี</dt><dd className="font-mono">{customer.taxId}</dd></div>
                 <div><dt className="text-muted-foreground">ผู้ติดต่อ</dt><dd className="break-words">{contactSummary(customer)}</dd></div>
                 <div><dt className="text-muted-foreground">DBD</dt><dd><DbdState customer={customer} /></dd></div>
               </dl>
+              <CustomerMobileActions customer={customer} onEdit={() => setEditing(customer)} onToggle={() => setToggleCustomer(customer)} />
             </CardContent>
           </Card>
         ))}

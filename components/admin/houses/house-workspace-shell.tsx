@@ -51,7 +51,7 @@ export function HouseWorkspaceShell({
             </div>
           </div>
           {contentActions ? (
-            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
               {contentActions}
             </div>
           ) : null}

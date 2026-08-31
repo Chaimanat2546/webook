@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { ChevronDownIcon, Globe2Icon } from "lucide-react";
 
 import {
   createCentralUserAction,
@@ -10,6 +11,7 @@ import {
   suspendCentralUserAction,
 } from "../../../app/admin/user-manager/actions";
 import { Button } from "../../ui/button";
+import { Card, CardContent, CardHeader } from "../../ui/card";
 import {
   Dialog,
   DialogContent,
@@ -18,9 +20,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Skeleton } from "../../ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../ui/table";
 import { createCentralUserListFormData } from "./user-list-request";
 import { UserTable, type UserTableAction } from "./user-table";
 
@@ -46,6 +65,49 @@ const rowActions: Record<UserTableAction, { action: Action; label: string }> = {
     label: "เปิดใช้ผู้ใช้",
   },
 };
+
+const skeletonRows = Array.from({ length: 5 });
+
+function CentralUserListSkeleton() {
+  return (
+    <div aria-label="กำลังโหลดรายชื่อผู้ใช้" className="space-y-3" role="status">
+      <div className="flex flex-col gap-3 md:hidden">
+        {skeletonRows.map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <Skeleton className="h-4 w-3/5" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </CardHeader>
+            <CardContent className="flex justify-end">
+              <Skeleton className="h-8 w-8" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="hidden overflow-hidden p-0 md:block">
+        <Table className="table-fixed">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[60%]">อีเมล</TableHead>
+              <TableHead className="w-[24%]">สถานะ</TableHead>
+              <TableHead className="w-[16%] text-right">การจัดการ</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {skeletonRows.map((_, index) => (
+              <TableRow key={index}>
+                <TableCell><Skeleton className="h-4 w-3/5" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                <TableCell><Skeleton className="ml-auto h-8 w-8" /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+}
 
 function statusMessage(
   status: Extract<SafeResult, { ok: true }>["operation"]["status"]
@@ -112,11 +174,75 @@ export function UserManagerPage({ tenants }: { tenants: Tenant[] }) {
   const selectedEmail = dialogAction?.email ?? email;
   const currentPage = listed?.pagination?.page ?? 1;
 
+  function selectTenant(tenantKey: string) {
+    if (tenantKey === selectedKey) return;
+    setSelectedKey(tenantKey);
+    setListed(null);
+    setListError("");
+    setPassword(null);
+    setMutationMessage("");
+  }
+
   async function copyTemporaryPassword() {
     if (!password) return;
     await navigator.clipboard.writeText(password.value);
     setCopyMessage("คัดลอกแล้ว");
   }
+
+  const userListPanel = (
+    <div>
+      <h2 className="mb-3 font-medium">ผู้ใช้ทั้งหมด</h2>
+      {listPending && !listed ? <CentralUserListSkeleton /> : null}
+      {listError ? (
+        <p className="text-sm text-destructive" role="alert">
+          {listError}
+        </p>
+      ) : null}
+      {listed?.users && listed.pagination ? (
+        <>
+          <div aria-busy={listPending}>
+            {listed.users.length ? (
+              <UserTable
+                onAction={(actionName, rowEmail) => {
+                  const { action, label } = rowActions[actionName];
+                  setEmail(rowEmail);
+                  setDialogAction({ action, label, email: rowEmail });
+                }}
+                users={listed.users}
+              />
+            ) : (
+              <p className="py-2 text-sm text-muted-foreground">ไม่พบผู้ใช้</p>
+            )}
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              หน้า {listed.pagination.page} · {listed.pagination.hasMore ? "มีหน้าถัดไป" : "หน้าสุดท้าย"}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                disabled={listPending || listed.pagination.page === 1}
+                onClick={() => loadUsers(selectedKey, listed.pagination!.page - 1)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                ก่อนหน้า
+              </Button>
+              <Button
+                disabled={listPending || !listed.pagination.hasMore}
+                onClick={() => loadUsers(selectedKey, listed.pagination!.page + 1)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                ถัดไป
+              </Button>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -146,129 +272,61 @@ export function UserManagerPage({ tenants }: { tenants: Tenant[] }) {
           สร้างผู้ใช้
         </Button>
       </div>
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[16rem_minmax(0,1fr)_18rem]">
+      <div className="space-y-3 md:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="w-full justify-between sm:w-auto" type="button" variant="outline">
+              <span className="flex min-w-0 items-center gap-2">
+                <Globe2Icon aria-hidden />
+                <span className="truncate">{selected?.displayName ?? "เลือกเว็บบ้านพัก"}</span>
+              </span>
+              <ChevronDownIcon aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-72">
+            <DropdownMenuLabel>เลือกเว็บบ้านพัก</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup onValueChange={selectTenant} value={selectedKey}>
+              {tenants.map((tenant) => (
+                <DropdownMenuRadioItem disabled={!tenant.enabled} key={tenant.key} value={tenant.key}>
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{tenant.displayName}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {tenant.environment}{tenant.enabled ? "" : " · ปิดใช้งาน"}
+                    </span>
+                  </span>
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {userListPanel}
+      </div>
+      <div className="hidden min-w-0 gap-4 md:grid xl:grid-cols-[16rem_minmax(0,1fr)_18rem]">
         <aside className="rounded-md border p-3">
           <h2 className="mb-2 font-medium">เลือกเว็บบ้านพัก</h2>
           <div className="space-y-2">
             {tenants.map((tenant) => (
               <button
-                className={`w-full rounded p-2 text-left text-sm ${
-                  tenant.key === selectedKey
-                    ? "bg-muted-foreground text-white"
-                    : "hover:bg-muted-foreground/50 hover:text-white"
-                }`}
+                className={`w-full rounded p-2 text-left text-sm ${tenant.key === selectedKey ? "bg-muted-foreground text-white" : "hover:bg-muted-foreground/50 hover:text-white"}`}
                 key={tenant.key}
-                onClick={() => {
-                  if (tenant.key !== selectedKey) {
-                    setSelectedKey(tenant.key);
-                    setListed(null);
-                    setListError("");
-                    setPassword(null);
-                    setMutationMessage("");
-                  }
-                }}
+                onClick={() => selectTenant(tenant.key)}
                 type="button"
               >
                 <span className="block font-medium">{tenant.displayName}</span>
-                <span
-                  className={`${
-                    tenant.key === selectedKey
-                      ? "bg-muted-foreground text-white/60"
-                      : ""
-                  }`}
-                >
-                  {tenant.environment}
-                  {tenant.enabled ? "" : " · ปิดใช้งาน"}
+                <span className={tenant.key === selectedKey ? "text-white/60" : ""}>
+                  {tenant.environment}{tenant.enabled ? "" : " · ปิดใช้งาน"}
                 </span>
               </button>
             ))}
           </div>
         </aside>
-        <section className="min-w-0 rounded-md border p-3">
-          <h2 className="mb-3 font-medium">ผู้ใช้ทั้งหมด</h2>
-          {listPending && !listed ? (
-            <div
-              aria-label="กำลังโหลดรายชื่อผู้ใช้"
-              className="space-y-3"
-              role="status"
-            >
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div
-                  className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_2.5rem] items-center gap-3"
-                  key={index}
-                >
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-8 w-8 justify-self-end" />
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {listError ? (
-            <p className="text-sm text-destructive" role="alert">
-              {listError}
-            </p>
-          ) : null}
-          {listed?.users && listed.pagination ? (
-            <>
-              <div aria-busy={listPending}>
-                {listed.users.length ? (
-                  <UserTable
-                    onAction={(actionName, rowEmail) => {
-                      const { action, label } = rowActions[actionName];
-                      setEmail(rowEmail);
-                      setDialogAction({ action, label, email: rowEmail });
-                    }}
-                    users={listed.users}
-                  />
-                ) : (
-                  <p className="py-2 text-sm text-muted-foreground">
-                    ไม่พบผู้ใช้
-                  </p>
-                )}
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="text-sm text-muted-foreground">
-                  หน้า {listed.pagination.page} ·{" "}
-                  {listed.pagination.hasMore ? "มีหน้าถัดไป" : "หน้าสุดท้าย"}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    disabled={listPending || listed.pagination.page === 1}
-                    onClick={() =>
-                      loadUsers(selectedKey, listed.pagination!.page - 1)
-                    }
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    ก่อนหน้า
-                  </Button>
-                  <Button
-                    disabled={listPending || !listed.pagination.hasMore}
-                    onClick={() =>
-                      loadUsers(selectedKey, listed.pagination!.page + 1)
-                    }
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    ถัดไป
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : null}
-        </section>
+        <section className="min-w-0 rounded-md border p-3">{userListPanel}</section>
         <aside>
           <div className="rounded-md border p-3">
             <p>กำลังเลือก</p>
-            <h2 className="font-medium">
-              {selected?.displayName ?? "ยังไม่ได้เลือก Tenant"}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {selected?.environment}
-            </p>
+            <h2 className="font-medium">{selected?.displayName ?? "ยังไม่ได้เลือก Tenant"}</h2>
+            <p className="text-sm text-muted-foreground">{selected?.environment}</p>
           </div>
         </aside>
       </div>

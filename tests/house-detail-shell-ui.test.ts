@@ -87,12 +87,12 @@ describe("house detail shell UI", () => {
     const scrollSource = readFileSync(activeScrollUrl, "utf8");
 
     assert.match(source, /"use client"/);
-    assert.match(source, /import \{ BanknoteIcon, HouseIcon, SparklesIcon \} from "lucide-react";/);
+    assert.match(source, /import \{ BadgeDollarSign, HouseIcon, SparklesIcon \} from "lucide-react";/);
     assert.match(source, /import \{ scrollActiveItemToStart \} from "\.\.\/\.\.\/\.\.\/lib\/scroll-active-item";/);
     assert.match(source, /import \{ HouseWorkspaceNavItem \} from "\.\/house-workspace-nav-item";/);
     assert.match(source, /const sectionIconByKey: Record<string, LucideIcon>/);
     assert.match(source, /details: HouseIcon/);
-    assert.match(source, /prices: BanknoteIcon/);
+    assert.match(source, /prices: BadgeDollarSign/);
     assert.match(source, /facilities: SparklesIcon/);
     assert.match(source, /readonly badge\?: string;/);
     assert.match(source, /const activeSectionRef = useRef<HTMLAnchorElement>\(null\);/);
@@ -200,12 +200,18 @@ describe("house detail shell UI", () => {
     const source = readFileSync(pageUrl, "utf8");
 
     assert.match(source, /saveHousePricesAction/);
-    assert.match(source, /saveHousePricesAction\.bind\(null, propertyId\)/);
+    assert.match(source, /selectedSection === "prices" && !canViewPrices/);
+    assert.match(source, /selectedSection !== "prices" && !canManageAccommodation/);
+    assert.match(source, /canViewPrices && !canManagePrices/);
+    assert.match(source, /canManageHousePrices\(adminUser\)/);
+    assert.match(source, /const canManagePrices = canManageHousePrices\(adminUser\)/);
+    assert.match(source, /const canViewPrices = canViewHousePrices\(adminUser\)/);
+    assert.match(source, /const canManageAccommodation = canUseAccommodation\(adminUser\)/);
     assert.match(source, /getListingPricesByListingId\(supabase, house\.id\)/);
     assert.match(source, /LISTING_PRICE_DAYS\.map/);
     assert.match(source, /\{day\.label\}/);
     assert.match(source, /<HouseWorkspaceShell/);
-    assert.match(source, /<form action=\{pricesAction\} className="flex flex-col gap-4 lg:min-h-full"/);
+    assert.match(source, /<form action=\{saveHousePricesAction\.bind\(null, propertyId\)\} className="flex flex-col gap-4 lg:min-h-full"/);
     assert.match(source, /className="grid gap-3 md:grid-cols-2"/);
     assert.match(source, /className="flex justify-end border-t pt-4 lg:mt-auto"/);
     assert.doesNotMatch(source, /<p[^>]*>day_of_week =/);
@@ -216,6 +222,20 @@ describe("house detail shell UI", () => {
     assert.match(source, /name=\{`agency_price_\$\{day\.dayOfWeek\}`\}/);
     assert.match(source, /activeSection\.key === "prices"/);
     assert.match(source, /HOUSE_PRICES_FORM_ID/);
+  });
+
+  it("renders Agency-only prices without editable Deville fields for allow_cost", () => {
+    const source = readFileSync(pageUrl, "utf8");
+    const agencyOnlyBranch = source.match(
+      /canViewPrices && !canManagePrices \? \(([\s\S]*?)\) : \(\s*<form action=\{saveHousePricesAction\.bind/,
+    );
+
+    assert.ok(agencyOnlyBranch, "Agency-only price branch must precede the editable form");
+    assert.match(agencyOnlyBranch[1], /ราคาขาย Agency/);
+    assert.doesNotMatch(agencyOnlyBranch[1], /Deville/);
+    assert.doesNotMatch(agencyOnlyBranch[1], /saveHousePricesAction/);
+    assert.doesNotMatch(agencyOnlyBranch[1], /type="hidden"/);
+    assert.doesNotMatch(agencyOnlyBranch[1], /type="submit"/);
   });
 
   it("renders the listing facilities form in the facilities section", () => {

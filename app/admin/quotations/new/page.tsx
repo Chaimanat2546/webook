@@ -4,15 +4,14 @@ import { QuotationEditor } from "../../../../components/admin/quotations/quotati
 import { Button } from "../../../../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../../../../components/ui/empty";
 import { getQuotationPublicOrigin } from "../../../../lib/env";
-import { canUseQuotation, requireAdmin } from "../../../../server/auth/admin";
+import { requireQuotationAdmin } from "../../../../server/auth/admin";
 import { companyProfileToCertification, companyProfileToDocumentDisplay, companyProfileToSeller, companyProfileToTemplate, getQuotationCompanyProfile, listCompanyPaymentMethods, listQuotationBanks, listQuotationDocumentTemplateSnapshots, listQuotationItemNames } from "../../../../server/repositories/quotations";
 import { emptyQuotationPayload } from "../../../../server/services/quotations";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewQuotationPage() {
-  const { adminUser, supabase, user } = await requireAdmin();
-  if (!canUseQuotation(adminUser)) return <Empty><EmptyHeader><EmptyTitle>ไม่มีสิทธิ์เข้าถึงหมวดใบเสนอราคา</EmptyTitle></EmptyHeader></Empty>;
+  const { supabase, user } = await requireQuotationAdmin();
 
   const [profile, banks, paymentMethods, itemNames] = await Promise.all([
     getQuotationCompanyProfile(supabase, user.id),

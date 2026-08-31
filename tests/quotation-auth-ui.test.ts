@@ -34,7 +34,7 @@ describe("quotation authorization and navigation", () => {
     const page = new URL("../app/admin/quotations/page.tsx", import.meta.url);
     assert.equal(existsSync(page), true);
     const source = readFileSync(page, "utf8");
-    assert.match(source, /canUseQuotation\(adminUser\)/);
-    assert.match(source, /ไม่มีสิทธิ์เข้าถึงหมวดใบเสนอราคา/);
+    assert.match(source, /requireQuotationAdmin/);
+    assert.match(source, /const \{ supabase \} = await requireQuotationAdmin\(\)/);
   });
 });

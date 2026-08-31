@@ -7,8 +7,7 @@ const source = (path: string) => readFileSync(new URL(path, import.meta.url), "u
 describe("quotation customer UI", () => {
   it("protects and renders the approved customer page", () => {
     const page = source("../app/admin/quotations/customers/page.tsx");
-    assert.match(page, /requireAdmin\(\)/);
-    assert.match(page, /canUseQuotation\(adminUser\)/);
+    assert.match(page, /requireQuotationAdmin\(\)/);
     assert.match(page, /listQuotationCustomers/);
     assert.equal(page.match(/pageSize: 8/g)?.length, 2);
     assert.match(page, /ข้อมูลลูกค้า/);
@@ -20,6 +19,16 @@ describe("quotation customer UI", () => {
     assert.match(list, /hidden[^\"]*md:block/);
     assert.match(list, /<Table/);
     assert.match(list, /setQuotationCustomerActiveAction/);
+  });
+
+  it("uses a bottom-sheet management menu for mobile customer cards", () => {
+    const list = source("../components/admin/quotations/customers/customer-list.tsx");
+
+    assert.match(list, /function CustomerMobileActions/);
+    assert.match(list, /<SheetContent side="bottom" className="rounded-t-xl p-0">/);
+    assert.match(list, /<SheetTitle>จัดการลูกค้า<\/SheetTitle>/);
+    assert.match(list, /<PencilLineIcon aria-hidden \/>\s*จัดการ/);
+    assert.match(list, /<CustomerMobileActions[\s\S]*?onToggle=\{\(\) => setToggleCustomer\(customer\)\}/);
   });
 
   it("uses the Thai customer-data label throughout customer UI", () => {

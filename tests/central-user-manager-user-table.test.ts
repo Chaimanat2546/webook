@@ -8,6 +8,11 @@ const source = readFileSync(new URL("../components/admin/user-manager/user-table
 it("renders responsive houses-style table/cards", () => {
   assert.match(source, /md:hidden/);
   assert.match(source, /hidden p-0 md:block/);
+  assert.match(source, /function UserMobileActionsMenu/);
+  assert.match(source, /<SheetContent side="bottom" className="rounded-t-xl p-0">/);
+  assert.match(source, /<SheetTitle>จัดการผู้ใช้<\/SheetTitle>/);
+  assert.match(source, /<PencilLineIcon aria-hidden \/>\s*จัดการ/);
+  assert.match(source, /<UserMobileActionsMenu/);
   assert.match(source, /<TableHead[^>]*>อีเมล/);
   assert.match(source, /<TableHead[^>]*>สถานะ/);
   assert.match(source, /<TableHead[^>]*>การจัดการ/);

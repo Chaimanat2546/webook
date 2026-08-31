@@ -30,11 +30,38 @@ describe("house list table UI", () => {
   it("passes the current list URL to image management links", () => {
     assert.match(source, /function imageHref\(propertyId: string, returnTo: string\)/);
     assert.match(source, /params\.set\("returnTo", returnTo\)/);
-    assert.match(source, /export function HouseList\(\{ houses, returnTo \}/);
+    assert.match(source, /export function HouseList\(\{/);
     assert.match(source, /href=\{imageHref\(propertyId, returnTo\)\}/);
   });
 
-  it("uses a single overflow menu for house row actions", () => {
+  it("shows only the permitted house actions with clear Thai labels", () => {
+    assert.match(source, /canManageAccommodation: boolean/);
+    assert.match(source, /canManagePrices: boolean/);
+    assert.match(source, /canViewPrices: boolean/);
+    assert.match(source, /section", "facilities"/);
+    assert.match(source, /section", "prices"/);
+    assert.match(source, /params\.set\("returnTo", returnTo\)/);
+    assert.match(source, /\{canManageAccommodation \? \(/);
+    assert.match(source, /\{canViewPrices \? \(/);
+    assert.match(source, /canManagePrices \? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"/);
+    assert.match(source, /BadgeDollarSign/);
+    assert.match(source, /BanknoteIcon/);
+    assert.match(source, /SparklesIcon/);
+    assert.match(source, /<SparklesIcon aria-hidden \/>/);
+    assert.match(source, /canManagePrices \? <BadgeDollarSign aria-hidden \/> : <BanknoteIcon aria-hidden \/>/);
+    assert.doesNotMatch(source, /CircleDollarSign/);
+    assert.doesNotMatch(source, /Wrench/);
+    assert.match(source, /สิ่งอำนวยความสะดวก/);
+    assert.doesNotMatch(source, /cover-select/);
+    assert.doesNotMatch(source, /เลือกรูปหน้าปก/);
+    assert.match(source, /<HouseActionsMenu[\s\S]*canManageAccommodation=\{canManageAccommodation\}[\s\S]*canViewPrices=\{canViewPrices\}/);
+    assert.match(pageSource, /requireHouseListAdmin/);
+    assert.match(pageSource, /canManageAccommodation=\{canUseAccommodation\(adminUser\)\}/);
+    assert.match(pageSource, /canManagePrices=\{canManageHousePrices\(adminUser\)\}/);
+    assert.match(pageSource, /canViewPrices=\{canViewHousePrices\(adminUser\)\}/);
+  });
+
+  it("uses an overflow menu on desktop and a bottom sheet on mobile", () => {
     assert.match(source, /EllipsisVerticalIcon/);
     assert.match(source, /function houseHref\(propertyId: string, returnTo: string\)/);
     assert.match(source, /function HouseActionsMenu/);
@@ -51,32 +78,29 @@ describe("house list table UI", () => {
     assert.match(source, /href=\{imageHref\(propertyId, returnTo\)\}/);
     assert.doesNotMatch(source, /<details/);
     assert.doesNotMatch(source, /<summary/);
-    assert.doesNotMatch(source, /<Button asChild className="w-full">/);
+    assert.match(source, /import \{[\s\S]*Sheet[\s\S]*SheetContent[\s\S]*SheetHeader[\s\S]*SheetTitle[\s\S]*SheetTrigger[\s\S]*\} from "\.\.\/\.\.\/ui\/sheet";/);
+    assert.match(source, /function HouseMobileActionsMenu/);
+    assert.match(source, /<SheetContent side="bottom"/);
+    assert.match(source, /<SheetTitle>จัดการบ้านพัก<\/SheetTitle>/);
+    assert.match(source, /<SheetTrigger asChild>/);
+    assert.match(source, /<Button className="w-full"/);
   });
 
-  it("places the mobile overflow menu after the zone instead of the status", () => {
+  it("places a full-width mobile management button below the house details", () => {
     const mobileHeaderSource = mobileListSource.slice(
       mobileListSource.indexOf("<CardHeader"),
       mobileListSource.indexOf("</CardHeader>"),
     );
-    const mobileZoneIconIndex = mobileListSource.indexOf("<MapPinHouse");
-    const mobileZoneSource = mobileListSource.slice(
-      mobileListSource.lastIndexOf("<dd", mobileZoneIconIndex),
-      mobileListSource.indexOf("</dl>"),
-    );
 
     assert.match(
       mobileListSource,
-      /<div className="grid grid-cols-\[1fr_1fr_minmax\(0,1fr\)_auto\] gap-2 text-xs text-muted-foreground">/,
+      /<div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">/,
     );
     assert.match(mobileListSource, /<dl className="contents">/);
     assert.match(mobileHeaderSource, /<StatusBadge active=\{house\.is_active\} \/>/);
     assert.doesNotMatch(mobileHeaderSource, /HouseActionsMenu/);
-    assert.doesNotMatch(mobileZoneSource, /HouseActionsMenu/);
-    assert.match(
-      mobileListSource,
-      /<\/dl>\s*<div className="flex items-end justify-end self-end">\s*<HouseActionsMenu propertyId=\{house\.property_id\} returnTo=\{returnTo\} \/>/,
-    );
+    assert.doesNotMatch(mobileListSource, /<HouseActionsMenu/);
+    assert.match(mobileListSource, /<HouseMobileActionsMenu[\s\S]*propertyId=\{house\.property_id\}[\s\S]*returnTo=\{returnTo\}/);
   });
 
   it("uses Thai display helpers for zone and status values", () => {

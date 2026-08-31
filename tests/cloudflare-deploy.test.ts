@@ -8,16 +8,15 @@ describe("Cloudflare deployment boundary", () => {
     const openNextConfigPath = new URL("../open-next.config.ts", import.meta.url);
     const nextConfigPath = new URL("../next.config.ts", import.meta.url);
     const baseUiArrowShimPath = new URL("../lib/base-ui-arrow-middleware.ts", import.meta.url);
-    const workflowPath = new URL("../.github/workflows/deploy-admin.yml", import.meta.url);
 
     assert.ok(existsSync(configPath));
     assert.ok(existsSync(openNextConfigPath));
     assert.ok(existsSync(nextConfigPath));
     assert.ok(existsSync(baseUiArrowShimPath));
-    assert.equal(existsSync(workflowPath), false);
 
     const config = JSON.parse(readFileSync(configPath, "utf8"));
     assert.equal(config.name, "webook-admin");
+    assert.equal(config.account_id, "7c1d945e149fc6fad2124176124d8f33");
     assert.equal(config.main, ".open-next/worker.js");
     assert.deepEqual(config.assets, {
       directory: ".open-next/assets",
@@ -99,6 +98,38 @@ describe("Cloudflare deployment boundary", () => {
     );
     assert.equal(packageJson.scripts?.["preview:cf"], "opennextjs-cloudflare build && opennextjs-cloudflare preview");
     assert.equal(packageJson.scripts?.["deploy:cf"], "opennextjs-cloudflare build && opennextjs-cloudflare deploy");
+  });
+
+  it("validates pull requests to main without credentials and deploys main only through production approval", () => {
+    const pullRequestWorkflowPath = new URL("../.github/workflows/pull-request-main.yml", import.meta.url);
+    const productionWorkflowPath = new URL("../.github/workflows/deploy-production.yml", import.meta.url);
+
+    assert.ok(existsSync(pullRequestWorkflowPath));
+    assert.ok(existsSync(productionWorkflowPath));
+
+    const pullRequestWorkflow = readFileSync(pullRequestWorkflowPath, "utf8");
+    assert.match(pullRequestWorkflow, /pull_request:\s*\n\s*branches:\s*\n\s*- main/);
+    assert.match(pullRequestWorkflow, /npm run verify/);
+    assert.match(pullRequestWorkflow, /npm run build/);
+    assert.match(pullRequestWorkflow, /wrangler deploy --dry-run/);
+    assert.doesNotMatch(pullRequestWorkflow, /CLOUDFLARE_API_TOKEN/);
+    assert.match(pullRequestWorkflow, /NEXT_PUBLIC_SUPABASE_URL: https:\/\/ci-placeholder\.supabase\.co/);
+    assert.match(pullRequestWorkflow, /NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key/);
+    assert.match(pullRequestWorkflow, /actions\/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd/);
+    assert.match(pullRequestWorkflow, /actions\/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38/);
+
+    const productionWorkflow = readFileSync(productionWorkflowPath, "utf8");
+    assert.match(productionWorkflow, /push:\s*\n\s*branches:\s*\n\s*- main/);
+    assert.match(productionWorkflow, /needs: validate/);
+    assert.match(productionWorkflow, /environment:\s*\n\s*name: production/);
+    assert.match(productionWorkflow, /CLOUDFLARE_API_TOKEN:\s*\$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/);
+    assert.match(productionWorkflow, /npx opennextjs-cloudflare build/);
+    assert.match(productionWorkflow, /wrangler deploy --dry-run/);
+    assert.match(productionWorkflow, /NEXT_PUBLIC_SUPABASE_URL: https:\/\/ci-placeholder\.supabase\.co/);
+    assert.match(productionWorkflow, /NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key/);
+    assert.match(productionWorkflow, /actions\/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd/);
+    assert.match(productionWorkflow, /actions\/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38/);
+    assert.match(productionWorkflow, /npm run deploy:cf/);
   });
 
   it("keeps the image media Worker deploy config separate", () => {

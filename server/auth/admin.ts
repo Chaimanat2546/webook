@@ -2,6 +2,9 @@ import { cache } from "react";
 
 export interface AdminAllowTools {
   allow_accommodation?: boolean;
+  allow_cost?: boolean;
+  allow_members?: boolean;
+  allow_price?: boolean;
   allow_quotation?: boolean;
 }
 
@@ -20,6 +23,16 @@ export function canUseAccommodation(user: Pick<AdminUserForAuth, "allow_tools"> 
   return user?.allow_tools?.allow_accommodation === true;
 }
 
+export function canAccessHouses(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_accommodation === true
+    || user?.allow_tools?.allow_price === true
+    || user?.allow_tools?.allow_cost === true;
+}
+
+export function canViewHousePrices(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_price === true || user?.allow_tools?.allow_cost === true;
+}
+
 export function canUseQuotation(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
   return user?.allow_tools?.allow_quotation === true;
 }
@@ -28,16 +41,20 @@ export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | n
   return user?.role_id === 1;
 }
 
+export function canManageHousePrices(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_price === true;
+}
+
 export function canManageCentralUsers(
-  user: Pick<AdminUserForAuth, "role_id"> | null,
+  user: Pick<AdminUserForAuth, "allow_tools"> | null,
 ): boolean {
-  return user?.role_id === 1;
+  return user?.allow_tools?.allow_members === true;
 }
 
 export function canManageWebookUsers(
-  user: Pick<AdminUserForAuth, "role_id"> | null,
+  user: Pick<AdminUserForAuth, "allow_tools"> | null,
 ): boolean {
-  return user?.role_id === 1;
+  return user?.allow_tools?.allow_members === true;
 }
 
 export function pickAdminUser({
@@ -86,6 +103,26 @@ export const requireAdmin = cache(async () => {
 export async function requireAccommodationAdmin() {
   const session = await requireAdmin();
   if (!canUseAccommodation(session.adminUser)) {
+    const { notFound } = await import("next/navigation");
+    notFound();
+  }
+
+  return session;
+}
+
+export async function requireQuotationAdmin() {
+  const session = await requireAdmin();
+  if (!canUseQuotation(session.adminUser)) {
+    const { notFound } = await import("next/navigation");
+    notFound();
+  }
+
+  return session;
+}
+
+export async function requireHouseListAdmin() {
+  const session = await requireAdmin();
+  if (!canAccessHouses(session.adminUser)) {
     const { notFound } = await import("next/navigation");
     notFound();
   }

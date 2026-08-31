@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { BedDouble, EllipsisVerticalIcon, ImageIcon, MapPinHouse, PencilLineIcon, Toilet } from "lucide-react";
+import {
+  BedDouble,
+  BadgeDollarSign,
+  BanknoteIcon,
+  EllipsisVerticalIcon,
+  ImageIcon,
+  MapPinHouse,
+  PencilLineIcon,
+  SparklesIcon,
+  Toilet,
+} from "lucide-react";
 
 import {
   formatHouseActiveStatus,
@@ -16,6 +26,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../../ui/sheet";
 import {
   Table,
   TableBody,
@@ -41,7 +58,33 @@ function imageHref(propertyId: string, returnTo: string) {
   return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
 }
 
-function HouseActionsMenu({ propertyId, returnTo }: { propertyId: string; returnTo: string }) {
+function facilitiesHref(propertyId: string, returnTo: string) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnTo);
+  params.set("section", "facilities");
+  return `/admin/houses/${encodeURIComponent(propertyId)}?${params}`;
+}
+
+function pricesHref(propertyId: string, returnTo: string) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnTo);
+  params.set("section", "prices");
+  return `/admin/houses/${encodeURIComponent(propertyId)}?${params}`;
+}
+
+function HouseActionsMenu({
+  canManageAccommodation,
+  canManagePrices,
+  canViewPrices,
+  propertyId,
+  returnTo,
+}: {
+  canManageAccommodation: boolean;
+  canManagePrices: boolean;
+  canViewPrices: boolean;
+  propertyId: string;
+  returnTo: string;
+}) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -51,25 +94,117 @@ function HouseActionsMenu({ propertyId, returnTo }: { propertyId: string; return
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href={houseHref(propertyId, returnTo)}>
-              <PencilLineIcon aria-hidden />
-              จัดการข้อมูล
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={imageHref(propertyId, returnTo)}>
-              <ImageIcon aria-hidden />
-              จัดการรูป
-            </Link>
-          </DropdownMenuItem>
+          {canManageAccommodation ? (
+            <>
+              <DropdownMenuItem asChild>
+                <Link href={houseHref(propertyId, returnTo)}>
+                  <PencilLineIcon aria-hidden />
+                  จัดการข้อมูล
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={facilitiesHref(propertyId, returnTo)}>
+                  <SparklesIcon aria-hidden />
+                  สิ่งอำนวยความสะดวก
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={imageHref(propertyId, returnTo)}>
+                  <ImageIcon aria-hidden />
+                  จัดการรูป
+                </Link>
+              </DropdownMenuItem>
+            </>
+          ) : null}
+          {canViewPrices ? (
+            <DropdownMenuItem asChild>
+              <Link href={pricesHref(propertyId, returnTo)}>
+                {canManagePrices ? <BadgeDollarSign aria-hidden /> : <BanknoteIcon aria-hidden />}
+                {canManagePrices ? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"}
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; returnTo: string }) {
+function HouseMobileActionsMenu({
+  canManageAccommodation,
+  canManagePrices,
+  canViewPrices,
+  propertyId,
+  returnTo,
+}: {
+  canManageAccommodation: boolean;
+  canManagePrices: boolean;
+  canViewPrices: boolean;
+  propertyId: string;
+  returnTo: string;
+}) {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button className="w-full" type="button" variant="outline">
+          <PencilLineIcon aria-hidden />
+          จัดการ
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="rounded-t-xl p-0">
+        <SheetHeader>
+          <SheetTitle>จัดการบ้านพัก</SheetTitle>
+        </SheetHeader>
+        <div className="grid gap-2 px-4 pb-4">
+          {canManageAccommodation ? (
+            <>
+              <Button asChild className="justify-start" variant="outline">
+                <Link href={houseHref(propertyId, returnTo)}>
+                  <PencilLineIcon aria-hidden />
+                  จัดการข้อมูล
+                </Link>
+              </Button>
+              <Button asChild className="justify-start" variant="outline">
+                <Link href={facilitiesHref(propertyId, returnTo)}>
+                  <SparklesIcon aria-hidden />
+                  สิ่งอำนวยความสะดวก
+                </Link>
+              </Button>
+              <Button asChild className="justify-start" variant="outline">
+                <Link href={imageHref(propertyId, returnTo)}>
+                  <ImageIcon aria-hidden />
+                  จัดการรูป
+                </Link>
+              </Button>
+            </>
+          ) : null}
+          {canViewPrices ? (
+            <Button asChild className="justify-start" variant="outline">
+              <Link href={pricesHref(propertyId, returnTo)}>
+                {canManagePrices ? <BadgeDollarSign aria-hidden /> : <BanknoteIcon aria-hidden />}
+                {canManagePrices ? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"}
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function HouseList({
+  canManageAccommodation,
+  canManagePrices,
+  canViewPrices,
+  houses,
+  returnTo,
+}: {
+  canManageAccommodation: boolean;
+  canManagePrices: boolean;
+  canViewPrices: boolean;
+  houses: HouseListItem[];
+  returnTo: string;
+}) {
   return (
     <>
       <div className="flex flex-col gap-3 md:hidden">
@@ -85,7 +220,7 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <div className="grid grid-cols-[1fr_1fr_minmax(0,1fr)_auto] gap-2 text-xs text-muted-foreground">
+              <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                 <dl className="contents">
                 <div>
                   <dt>ห้องนอน</dt>
@@ -102,10 +237,14 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                   </dd>
                 </div>
                 </dl>
-                <div className="flex items-end justify-end self-end">
-                  <HouseActionsMenu propertyId={house.property_id} returnTo={returnTo} />
-                </div>
               </div>
+              <HouseMobileActionsMenu
+                canManageAccommodation={canManageAccommodation}
+                canManagePrices={canManagePrices}
+                canViewPrices={canViewPrices}
+                propertyId={house.property_id}
+                returnTo={returnTo}
+              />
             </CardContent>
           </Card>
         ))}
@@ -140,7 +279,13 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                   <StatusBadge active={house.is_active} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <HouseActionsMenu propertyId={house.property_id} returnTo={returnTo} />
+                  <HouseActionsMenu
+                    canManageAccommodation={canManageAccommodation}
+                    canManagePrices={canManagePrices}
+                    canViewPrices={canViewPrices}
+                    propertyId={house.property_id}
+                    returnTo={returnTo}
+                  />
                 </TableCell>
               </TableRow>
             ))}

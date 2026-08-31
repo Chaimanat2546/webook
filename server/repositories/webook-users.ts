@@ -1,9 +1,15 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { WebookManagedRole, WebookManagedUser } from "../../lib/webook-users";
+import {
+  WEBOOK_ALLOW_TOOL_OPTIONS,
+  type WebookAllowTools,
+  type WebookManagedRole,
+  type WebookManagedUser,
+} from "../../lib/webook-users.ts";
 
 export interface WebookUserUpdateFields {
+  allowTools?: WebookAllowTools;
   dvId?: string | null;
   name: string;
   roleId: number;
@@ -62,6 +68,13 @@ function readDvId(value: unknown): string | null {
   return typeof value === "number" && Number.isSafeInteger(value) ? String(value) : null;
 }
 
+function readAllowTools(value: unknown): WebookAllowTools {
+  const record = asRecord(value);
+  return Object.fromEntries(
+    WEBOOK_ALLOW_TOOL_OPTIONS.map(({ key }) => [key, record?.[key] === true]),
+  ) as WebookAllowTools;
+}
+
 function readRoleName(value: unknown, roleId: number): string {
   const directName = readText(value);
   if (directName) return directName;
@@ -97,6 +110,7 @@ function mapUser(value: unknown): WebookManagedUser {
   if (!id) throw new Error("Invalid user row");
 
   return {
+    allowTools: readAllowTools(record?.allow_tools),
     dvId: readDvId(record?.dv_id),
     email: readText(record?.email),
     id,
@@ -119,7 +133,7 @@ function userSearchFilter(search: string): string {
 async function getUserById(supabase: SupabaseClient, id: string): Promise<WebookManagedUser | null> {
   const { data, error } = await supabase
     .from("webook_user_management_list")
-    .select("id, name, username, email, role_id, dv_id")
+    .select("id, name, username, email, role_id, dv_id, allow_tools")
     .eq("id", id)
     .maybeSingle();
 
@@ -144,7 +158,7 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
       const to = from + pageSize - 1;
       const query = supabase
         .from("webook_user_management_list")
-        .select("id, name, username, email, role_id, dv_id, dv_sort_id, role_name", { count: "exact" });
+        .select("id, name, username, email, role_id, dv_id, allow_tools, dv_sort_id, role_name", { count: "exact" });
       const searchFilteredQuery = search ? query.or(userSearchFilter(search)) : query;
       const filteredQuery = roleIds.length > 0
         ? searchFilteredQuery.in("role_id", roleIds)
@@ -192,11 +206,12 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
     },
 
     async updateUser(id, fields) {
-      const updateFields: { dv_id?: string | null; name: string; role_id: number } = {
+      const updateFields: { allow_tools?: WebookAllowTools; dv_id?: string | null; name: string; role_id: number } = {
         name: fields.name,
         role_id: fields.roleId,
       };
       if (fields.dvId !== undefined) updateFields.dv_id = fields.dvId;
+      if (fields.allowTools !== undefined) updateFields.allow_tools = fields.allowTools;
       const { data, error } = await supabase
         .from("users")
         .update(updateFields)

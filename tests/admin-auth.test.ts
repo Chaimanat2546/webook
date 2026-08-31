@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { canManageHouseRating, canUseAccommodation, pickAdminUser } from "../server/auth/admin.ts";
+import {
+  canAccessHouses,
+  canManageHousePrices,
+  canManageHouseRating,
+  canUseAccommodation,
+  canViewHousePrices,
+  pickAdminUser,
+} from "../server/auth/admin.ts";
 import { findSignInEmailByUsername } from "../server/repositories/admin-users.ts";
 
 interface FakeQueryResult {
@@ -51,6 +58,14 @@ describe("admin authorization", () => {
     assert.equal(canUseAccommodation({ allow_tools: {} }), false);
     assert.equal(canUseAccommodation({ allow_tools: null }), false);
     assert.equal(canUseAccommodation(null), false);
+  });
+
+  it("derives house access and price visibility from the permitted tools", () => {
+    assert.equal(canAccessHouses({ allow_tools: { allow_cost: true } }), true);
+    assert.equal(canAccessHouses({ allow_tools: { allow_price: true } }), true);
+    assert.equal(canAccessHouses({ allow_tools: {} }), false);
+    assert.equal(canViewHousePrices({ allow_tools: { allow_cost: true } }), true);
+    assert.equal(canManageHousePrices({ allow_tools: { allow_cost: true } }), false);
   });
 
   it("reserves house rating management for role 1", () => {
@@ -128,35 +143,56 @@ describe("admin authorization", () => {
     assert.doesNotMatch(layoutSource, /isAuthorized/);
     assert.match(layoutSource, /canUseAccommodation/);
     assert.match(layoutSource, /canUseAccommodation=\{canUseAccommodation\(adminUser\)\}/);
+    assert.match(layoutSource, /canAccessHouses=\{canAccessHouses\(adminUser\)\}/);
   });
 
-  it("hides accommodation navigation and returns 404 for protected routes", () => {
+  it("requires allow_price to manage house base prices", () => {
+    assert.equal(canManageHousePrices({ allow_tools: { allow_price: true } }), true);
+    assert.equal(canManageHousePrices({ allow_tools: { allow_price: false } }), false);
+    assert.equal(canManageHousePrices({ allow_tools: {} }), false);
+    assert.equal(canManageHousePrices({ allow_tools: null }), false);
+    assert.equal(canManageHousePrices(null), false);
+  });
+
+  it("separates Houses navigation from Advertisements access", () => {
     const authSource = readFileSync(new URL("../server/auth/admin.ts", import.meta.url), "utf8");
     const sidebarSource = readFileSync(
       new URL("../components/layout/admin-desktop-sidebar.tsx", import.meta.url),
       "utf8",
     );
     const shellSource = readFileSync(new URL("../components/layout/admin-shell.tsx", import.meta.url), "utf8");
-    const routeSources = [
-      "../app/admin/houses/page.tsx",
-      "../app/admin/houses/[propertyId]/page.tsx",
+    const accommodationRouteSources = [
       "../app/admin/houses/[propertyId]/images/page.tsx",
       "../app/admin/advertisements/page.tsx",
       "../app/admin/advertisements/new/page.tsx",
       "../app/admin/advertisements/[id]/page.tsx",
     ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
+    const houseDetailSource = readFileSync(
+      new URL("../app/admin/houses/[propertyId]/page.tsx", import.meta.url),
+      "utf8",
+    );
+    const houseListSource = readFileSync(new URL("../app/admin/houses/page.tsx", import.meta.url), "utf8");
 
     assert.match(authSource, /export async function requireAccommodationAdmin\(\)/);
     assert.match(authSource, /notFound\(\)/);
     assert.match(shellSource, /canUseAccommodation: boolean;/);
     assert.match(shellSource, /canUseAccommodation=\{canUseAccommodation\}/);
+    assert.match(shellSource, /canAccessHouses: boolean;/);
+    assert.match(shellSource, /canAccessHouses=\{canAccessHouses\}/);
     assert.match(sidebarSource, /canUseAccommodation: boolean;/);
+    assert.match(sidebarSource, /canAccessHouses: boolean;/);
+    assert.match(sidebarSource, /\{canAccessHouses \? \(/);
     assert.match(sidebarSource, /\{canUseAccommodation \? \(/);
 
-    for (const source of routeSources) {
+    for (const source of accommodationRouteSources) {
       assert.match(source, /requireAccommodationAdmin/);
       assert.doesNotMatch(source, /if \(!canUseAccommodation\(adminUser\)\)/);
       assert.doesNotMatch(source, /allow_accommodation/);
     }
+
+    assert.match(houseDetailSource, /await requireAdmin\(\)/);
+    assert.match(houseDetailSource, /canUseAccommodation\(adminUser\)/);
+    assert.match(houseDetailSource, /canViewHousePrices\(adminUser\)/);
+    assert.match(houseListSource, /requireHouseListAdmin/);
   });
 });

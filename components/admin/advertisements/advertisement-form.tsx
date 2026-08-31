@@ -1142,7 +1142,7 @@ export function AdvertisementForm({
                 </p>
               </div>
             </div>
-            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
               {isBulkDeleteMode ? (
                 <>
                   <label className="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-xs font-medium">

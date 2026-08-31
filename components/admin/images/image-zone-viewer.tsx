@@ -5,6 +5,7 @@
 import {
   AlertTriangleIcon,
   ArmchairIcon,
+  ArrowDownUp,
   BathIcon,
   BedDoubleIcon,
   CarFrontIcon,
@@ -784,7 +785,7 @@ export function ImageZoneViewer({
         <>
           <Button asChild disabled={isBusy} size="sm" type="button" variant="outline">
             <Link href={coverSelectHref(propertyId, returnTo)}>
-              <ImageIcon data-icon="inline-start" />
+              <ArrowDownUp data-icon="inline-start" />
               จัดลำดับรูปแสดง
             </Link>
           </Button>

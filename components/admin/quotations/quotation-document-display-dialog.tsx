@@ -50,21 +50,27 @@ const labels = new Map(
 
 export function QuotationDocumentDisplayDialog({
   disabled,
+  onOpenChange,
   onApply,
+  open,
   payload,
 }: {
   disabled: boolean;
+  onOpenChange?: (open: boolean) => void;
   onApply: (value: QuotationDocumentDisplay, saveAsDefault: boolean) => Promise<boolean>;
+  open?: boolean;
   payload: QuotationPayload;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [draft, setDraft] = useState(payload.documentDisplay);
   const [pendingScope, setPendingScope] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const impact = quotationDocumentDisplayClearImpact(payload, draft);
+  const isOpen = open ?? internalOpen;
 
   function changeOpen(next: boolean) {
-    setOpen(next);
+    if (open === undefined) setInternalOpen(next);
+    onOpenChange?.(next);
     setPendingScope(null);
     if (next) setDraft({ ...payload.documentDisplay });
   }
@@ -81,13 +87,15 @@ export function QuotationDocumentDisplayDialog({
   }
 
   return (
-    <Dialog onOpenChange={changeOpen} open={open}>
-      <DialogTrigger asChild>
-        <Button disabled={disabled} size="sm" type="button" variant="outline">
-          <SlidersHorizontal aria-hidden="true" className="size-4" />
-          ตั้งค่ารูปแบบเอกสาร
-        </Button>
-      </DialogTrigger>
+    <Dialog onOpenChange={changeOpen} open={isOpen}>
+      {open === undefined ? (
+        <DialogTrigger asChild>
+          <Button disabled={disabled} size="sm" type="button" variant="outline">
+            <SlidersHorizontal aria-hidden="true" className="size-4" />
+            ตั้งค่ารูปแบบเอกสาร
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>ตั้งค่ารูปแบบเอกสาร</DialogTitle>

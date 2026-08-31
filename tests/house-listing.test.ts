@@ -20,6 +20,10 @@ import {
   toListingSearchFilter,
   toListingSearchPattern,
 } from "../server/services/houses.ts";
+import {
+  formatListingFacilityTitle,
+  getListingFacilityIconKey,
+} from "../lib/listing-facilities.ts";
 
 const facilityLabelsUrl = new URL("../lib/listing-facilities.ts", import.meta.url);
 
@@ -295,6 +299,37 @@ describe("house listing rules", () => {
     assert.match(source, /PRIVATE_POOL_TYPE_OPTIONS/);
     assert.match(source, /value: "salt"/);
     assert.match(source, /value: "chlorine"/);
+  });
+
+  it("maps each supported facility to its designated icon", () => {
+    const expected = [
+      ["wifi", "Wifi"],
+      ["barbecue", "Barbecue"],
+      ["pets", "PawPrint"],
+      ["snooker", "CircleDotDashed"],
+      ["disco", "Disc3"],
+      ["fancy_float", "LifeBuoy"],
+      ["table_tennis", "TableTennis"],
+      ["slide", "KidSlide"],
+      ["pool_table", "PoolTriangle"],
+      ["kids_pool", "Waves"],
+      ["karaoke", "MicVocal"],
+      ["air_hockey", "Hockey"],
+      ["jacuzzi", "HotTub"],
+      ["bathtub", "Bath"],
+      ["private_pool", "WavesLadder"],
+      ["extra_bed", "BedDouble"],
+    ] as const;
+
+    for (const [name, icon] of expected) {
+      assert.equal(getListingFacilityIconKey({ name, title: null }), icon);
+    }
+
+    assert.equal(getListingFacilityIconKey({ name: "slider", title: null }), "KidSlide");
+    assert.equal(getListingFacilityIconKey({ name: null, title: "สไลด์เดอร์" }), "KidSlide");
+    assert.equal(formatListingFacilityTitle({ name: "slider", title: "สไลด์เดอร์" }), "สไลเดอร์");
+    assert.equal(getListingFacilityIconKey({ name: null, title: "ห่วงยางแฟนซี" }), "LifeBuoy");
+    assert.equal(getListingFacilityIconKey({ name: "unmapped", title: "ไม่ทราบ" }), null);
   });
 
   it("collapses long pagination with ellipsis around the current page", () => {

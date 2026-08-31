@@ -1,4 +1,12 @@
-import { ArrowDownIcon, ArrowUpIcon, ArrowUpDownIcon, PencilIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ArrowUpDownIcon,
+  EllipsisVerticalIcon,
+  PencilLineIcon,
+  ShieldCheckIcon,
+  UserRoundIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 import type {
@@ -8,6 +16,19 @@ import type {
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../../ui/sheet";
 import {
   Table,
   TableBody,
@@ -58,18 +79,78 @@ function SortButton({
   );
 }
 
-function EditButton({ userId }: { userId: string }) {
+function UserSettingsMenu({ returnTo, userId }: { returnTo: string; userId: string }) {
+  const detailsParams = new URLSearchParams();
+  detailsParams.set("returnTo", returnTo);
+  const permissionParams = new URLSearchParams();
+  permissionParams.set("returnTo", returnTo);
+  permissionParams.set("section", "permissions");
+
   return (
-    <Button asChild size="sm" variant="outline">
-      <Link href={`/admin/users/${encodeURIComponent(userId)}`}>
-        <PencilIcon aria-hidden data-icon="inline-start" />
-        แก้ไข
-      </Link>
-    </Button>
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button aria-label="เปิดเมนูตั้งค่าผู้ใช้" size="icon" type="button" variant="outline">
+          <EllipsisVerticalIcon aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/users/${encodeURIComponent(userId)}?${detailsParams.toString()}`}>
+            <UserRoundIcon aria-hidden />
+            ข้อมูลผู้ใช้
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/users/${encodeURIComponent(userId)}?${permissionParams.toString()}`}>
+            <ShieldCheckIcon aria-hidden />
+            สิทธิ์และการใช้งาน
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function UserMobileSettingsMenu({ returnTo, userId }: { returnTo: string; userId: string }) {
+  const detailsParams = new URLSearchParams();
+  detailsParams.set("returnTo", returnTo);
+  const permissionParams = new URLSearchParams();
+  permissionParams.set("returnTo", returnTo);
+  permissionParams.set("section", "permissions");
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button className="w-full" type="button" variant="outline">
+          <PencilLineIcon aria-hidden />
+          จัดการ
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="rounded-t-xl p-0">
+        <SheetHeader>
+          <SheetTitle>จัดการผู้ใช้</SheetTitle>
+        </SheetHeader>
+        <div className="grid gap-2 px-4 pb-4">
+          <Button asChild className="justify-start" variant="outline">
+            <Link href={`/admin/users/${encodeURIComponent(userId)}?${detailsParams.toString()}`}>
+              <UserRoundIcon aria-hidden />
+              ข้อมูลผู้ใช้
+            </Link>
+          </Button>
+          <Button asChild className="justify-start" variant="outline">
+            <Link href={`/admin/users/${encodeURIComponent(userId)}?${permissionParams.toString()}`}>
+              <ShieldCheckIcon aria-hidden />
+              สิทธิ์และการใช้งาน
+            </Link>
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
 export function UserTable({
+  page,
   roles,
   roleIds,
   search,
@@ -77,6 +158,7 @@ export function UserTable({
   sortDirection,
   users,
 }: {
+  page: number;
   roles: WebookManagedRole[];
   roleIds: number[];
   search: string;
@@ -84,6 +166,14 @@ export function UserTable({
   sortDirection: "asc" | "desc";
   users: WebookManagedUser[];
 }) {
+  const returnToParams = new URLSearchParams();
+  returnToParams.set("page", String(page));
+  returnToParams.set("sort", sortBy);
+  returnToParams.set("dir", sortDirection);
+  if (search) returnToParams.set("q", search);
+  if (roleIds.length > 0) returnToParams.set("roles", roleIds.join(","));
+  const returnTo = `/admin/users?${returnToParams.toString()}`;
+
   return (
     <>
       {users.length === 0 ? (
@@ -116,7 +206,7 @@ export function UserTable({
                   <dd>{displayText(user.username)}</dd>
                 </div>
               </dl>
-              <EditButton userId={user.id} />
+              <UserMobileSettingsMenu returnTo={returnTo} userId={user.id} />
             </CardContent>
           </Card>
         ))}
@@ -145,7 +235,7 @@ export function UserTable({
                   <Badge variant="secondary">{roleName(roles, user.roleId)}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <EditButton userId={user.id} />
+                  <UserSettingsMenu returnTo={returnTo} userId={user.id} />
                 </TableCell>
               </TableRow>
             ))}

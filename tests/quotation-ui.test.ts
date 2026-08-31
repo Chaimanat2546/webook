@@ -9,6 +9,34 @@ function source(path: string) {
 }
 
 describe("quotation UI", () => {
+  it("uses the shared 404 quotation guard on every quotation page", () => {
+    const auth = source("../server/auth/admin.ts");
+    const pages = [
+      "../app/admin/quotations/page.tsx",
+      "../app/admin/quotations/new/page.tsx",
+      "../app/admin/quotations/[id]/page.tsx",
+      "../app/admin/quotations/customers/page.tsx",
+      "../app/admin/quotations/settings/company/page.tsx",
+    ].map(source);
+
+    assert.match(auth, /export async function requireQuotationAdmin\(\)/);
+    for (const page of pages) {
+      assert.match(page, /requireQuotationAdmin\(\)/);
+      assert.doesNotMatch(page, /canUseQuotation\(adminUser\)/);
+      assert.doesNotMatch(page, /ไม่มีสิทธิ์เข้าถึงหมวดใบเสนอราคา/);
+    }
+  });
+
+  it("uses a bottom-sheet management menu for mobile quotation cards", () => {
+    const list = source("../components/admin/quotations/quotation-list.tsx");
+
+    assert.match(list, /function QuotationMobileActionsMenu/);
+    assert.match(list, /<SheetContent side="bottom" className="rounded-t-xl p-0">/);
+    assert.match(list, /<SheetTitle>จัดการใบเสนอราคา<\/SheetTitle>/);
+    assert.match(list, /<PencilLineIcon aria-hidden \/>\s*จัดการ/);
+    assert.match(list, /<QuotationMobileActionsMenu[\s\S]*?onDelete=\{\(\) => selectForDelete\(quotation\)\}/);
+  });
+
   it("renders every template from one complete shared fixture", () => {
     const output = execFileSync(process.execPath, [
       "--loader", "./tests/tsx-loader.mjs",
@@ -246,7 +274,7 @@ describe("quotation UI", () => {
 
   it("protects and renders the single seller profile page", () => {
     const page = source("../app/admin/quotations/settings/company/page.tsx");
-    assert.match(page, /canUseQuotation\(adminUser\)/);
+    assert.match(page, /requireQuotationAdmin\(\)/);
     assert.match(page, /getQuotationCompanyProfile\(supabase, user\.id\)/);
     assert.match(page, /CompanyProfileForm/);
   });
@@ -881,8 +909,8 @@ describe("quotation UI", () => {
     assert.match(createPage, /emptyQuotationPayload/);
     assert.match(editPage, /getQuotationById\(supabase, id\)/);
     assert.match(editPage, /notFound\(\)/);
-    assert.match(createPage, /canUseQuotation\(adminUser\)/);
-    assert.match(editPage, /canUseQuotation\(adminUser\)/);
+    assert.match(createPage, /requireQuotationAdmin\(\)/);
+    assert.match(editPage, /requireQuotationAdmin\(\)/);
     assert.match(createPage, /const publicOrigin = getQuotationPublicOrigin\(\)/);
     assert.match(editPage, /const publicOrigin = getQuotationPublicOrigin\(\)/);
     assert.match(createPage, /publicOrigin=\{publicOrigin\}/);
@@ -987,7 +1015,7 @@ describe("quotation UI", () => {
     assert.match(editor, /<Dialog[\s\S]*calculation=\{calculation\}[\s\S]*payload=\{payload\}[\s\S]*<Dialog/);
     assert.match(editor, /const \{ createQuotationPdfBlob \} = await import\("\.\/quotation-pdf"\)/);
     assert.match(editor, /calculation:\s*savedCalculation,[\s\S]*payload:\s*lastSavedPayload,/);
-    assert.match(editor, /title=\{documentNumber && isDirty \? "บันทึกการเปลี่ยนแปลงก่อน" : undefined\}/);
+    assert.match(editor, /<DropdownMenuItem[\s\S]*?disabled=\{!canPrint \|\| isPrinting\}[\s\S]*?onSelect=\{\(\) => void printSaved\(\)\}/);
   });
 
   it("downloads only the saved clean quotation and blocks repeated activation", () => {
@@ -997,9 +1025,8 @@ describe("quotation UI", () => {
     assert.match(editor, /if \(!canUseSavedDocument \|\| !lastSavedPayload \|\| !savedCalculation \|\| !documentNumber \|\| isDownloading\) return/);
     assert.match(editor, /payload: lastSavedPayload/);
     assert.match(editor, /calculation: savedCalculation/);
-    assert.match(editor, /disabled=\{!canUseSavedDocument \|\| isDownloading\}/);
-    assert.match(editor, /onClick=\{downloadSaved\}/);
-    assert.match(editor, /isDownloading \? "กำลังสร้าง PDF…" : "ดาวน์โหลด"/);
+    assert.match(editor, /<DropdownMenuItem[\s\S]*?disabled=\{!canUseSavedDocument \|\| isDownloading\}[\s\S]*?onSelect=\{\(\) => void downloadSaved\(\)\}/);
+    assert.match(editor, /ดาวน์โหลด PDF/);
     assert.match(editor, /toast\.error\("ไม่สามารถสร้าง PDF ได้ กรุณาลองอีกครั้ง"\)/);
   });
 
@@ -1193,7 +1220,7 @@ describe("quotation UI", () => {
 
   it("always exposes item discount and fixed VAT choices", () => {
     const editor = source("../components/admin/quotations/quotation-editor.tsx");
-    assert.doesNotMatch(editor, /DropdownMenuCheckboxItem|ตั้งค่าเอกสาร|showItemDiscount|showItemVat/);
+    assert.doesNotMatch(editor, /DropdownMenuCheckboxItem|showItemDiscount|showItemVat/);
     assert.match(editor, /<ItemDiscountControls/);
     assert.match(editor, /<ItemVatControls/);
     assert.match(editor, /<option value="7">7%<\/option>/);
@@ -1246,12 +1273,18 @@ describe("quotation UI", () => {
     assert.match(commandBar, /onClick=\{closeEditor\}[\s\S]*?>[\s\S]*?กลับ/);
     assert.match(commandBar, /onClick=\{\(\) => setPreviewOpen\(true\)\}[\s\S]*?>[\s\S]*?ดูตัวอย่าง/);
     assert.match(commandBar, /disabled=\{saveDisabled\}[\s\S]*?onClick=\{\(\) => save\(\)\}/);
-    assert.match(sellerStrip, /data-document-actions[\s\S]*<Share2[\s\S]*<Printer[\s\S]*<Download[\s\S]*ลบใบเสนอราคา/);
+    assert.match(sellerStrip, /DropdownMenuTrigger[\s\S]*ตั้งค่าเอกสาร/);
+    assert.match(sellerStrip, /DropdownMenuTrigger[\s\S]*เผยแพร่/);
+    assert.match(sellerStrip, /DropdownMenuTrigger[\s\S]*ส่งออก/);
+    assert.equal((sellerStrip.match(/<ChevronDown aria-hidden="true" className="size-4" \/>/g) ?? []).length, 3);
+    assert.match(sellerStrip, /<LayoutTemplate aria-hidden="true" \/>[\s\S]*?เลือกเทมเพลต/);
+    assert.match(sellerStrip, /<SlidersHorizontal aria-hidden="true" \/>[\s\S]*?ตั้งค่ารูปแบบเอกสาร/);
+    assert.match(sellerStrip, /<DropdownMenuItem[\s\S]*?แชร์[\s\S]*?<DropdownMenuItem[\s\S]*?รีเซ็ตลิงก์/);
+    assert.match(sellerStrip, /แชร์[\s\S]*?<DropdownMenuSeparator \/>[\s\S]*?รีเซ็ตลิงก์/);
+    assert.match(sellerStrip, /<DropdownMenuItem[\s\S]*?พิมพ์[\s\S]*?<DropdownMenuItem[\s\S]*?ดาวน์โหลด PDF/);
     assert.match(sellerStrip, /\{payload\.id \? \([\s\S]*onClick=\{openDeleteDialog\}[\s\S]*variant="outline"/);
-    assert.doesNotMatch(editor, /function DocumentMore/);
-    assert.doesNotMatch(editor, /เพิ่มเติม/);
-    assert.match(sellerStrip, /<Button[\s\S]*?disabled[\s\S]*?size="sm"[\s\S]*?title=/);
-    assert.doesNotMatch(sellerStrip, /<Button disabled title=.*<Share2/);
+    assert.match(editor, /<QuotationTemplateDialog[\s\S]*?onOpenChange=\{setTemplateDialogOpen\}[\s\S]*?open=\{templateDialogOpen\}/);
+    assert.match(editor, /<QuotationDocumentDisplayDialog[\s\S]*?onOpenChange=\{setDocumentDisplayDialogOpen\}[\s\S]*?open=\{documentDisplayDialogOpen\}/);
     assert.match(editor, /data-mobile-command-bar/);
     assert.match(editor, /fixed inset-x-0 bottom-0[\s\S]*?md:hidden/);
     assert.match(editor, /env\(safe-area-inset-bottom\)/);

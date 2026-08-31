@@ -53,18 +53,63 @@ describe("Webook user management UI", () => {
     assert.doesNotMatch(table, /UserRoleFilter/);
   });
 
-  it("offers only an icon-labelled edit link", () => {
+  it("offers both user settings sections from one per-user management menu", () => {
     const table = read("../components/admin/user-management/user-table.tsx");
 
-    assert.match(table, /PencilIcon/);
-    assert.match(table, /แก้ไข/);
-    assert.match(table, /href=\{`\/admin\/users\/\$\{encodeURIComponent\(userId\)\}`\}/);
-    assert.doesNotMatch(table, /BanIcon|ShieldCheckIcon|Ban|ปลด Ban/);
+    assert.match(table, /DropdownMenu/);
+    assert.match(table, /DropdownMenuTrigger/);
+    assert.match(table, /DropdownMenuItem/);
+    assert.match(table, /EllipsisVerticalIcon/);
+    assert.match(table, /ข้อมูลผู้ใช้/);
+    assert.match(table, /สิทธิ์และการใช้งาน/);
+    assert.match(table, /permissionParams\.set\("section", "permissions"\)/);
+    assert.match(table, /UserRoundIcon/);
+    assert.match(table, /ShieldCheckIcon/);
+    assert.doesNotMatch(table, /BanIcon|Ban|ปลด Ban/);
+  });
+
+  it("uses a bottom sheet for mobile user actions while keeping the desktop overflow menu", () => {
+    const table = read("../components/admin/user-management/user-table.tsx");
+    const mobileCards = table.slice(
+      table.indexOf('<div className="grid gap-3 md:hidden">'),
+      table.indexOf('<Card className="hidden overflow-hidden p-0 md:block">'),
+    );
+    const desktopTable = table.slice(table.indexOf('<Card className="hidden overflow-hidden p-0 md:block">'));
+    const mobileMenu = table.slice(
+      table.indexOf("function UserMobileSettingsMenu"),
+      table.indexOf("export function UserTable"),
+    );
+
+    assert.match(table, /import \{[\s\S]*Sheet[\s\S]*SheetContent[\s\S]*SheetHeader[\s\S]*SheetTitle[\s\S]*SheetTrigger[\s\S]*\} from "\.\.\/\.\.\/ui\/sheet";/);
+    assert.match(table, /function UserMobileSettingsMenu/);
+    assert.match(table, /<SheetContent side="bottom"/);
+    assert.match(table, /<SheetTitle>จัดการผู้ใช้<\/SheetTitle>/);
+    assert.match(table, /<Button className="w-full"/);
+    assert.match(mobileMenu, /<PencilLineIcon aria-hidden \/>\s*จัดการ/);
+    assert.match(mobileCards, /<UserMobileSettingsMenu/);
+    assert.doesNotMatch(mobileCards, /<UserSettingsMenu/);
+    assert.match(desktopTable, /<UserSettingsMenu/);
+  });
+
+  it("preserves the current user-list query when opening and navigating an edit page", () => {
+    const table = read("../components/admin/user-management/user-table.tsx");
+    const page = read("../app/admin/users/[id]/page.tsx");
+    const sectionNav = read("../components/admin/user-management/user-workspace-section-nav.tsx");
+
+    assert.match(table, /returnTo/);
+    assert.match(table, /returnToParams\.set\("page", String\(page\)\)/);
+    assert.match(table, /detailsParams\.set\("returnTo", returnTo\)/);
+    assert.match(table, /permissionParams\.set\("returnTo", returnTo\)/);
+    assert.match(page, /function normalizeReturnTo/);
+    assert.match(page, /backHref=\{returnTo\}/);
+    assert.match(page, /<UserWorkspaceSectionNav/);
+    assert.match(sectionNav, /params\.set\("returnTo", returnTo\)/);
   });
 
   it("separates user details from permissions and usage", () => {
     const page = read("../app/admin/users/[id]/page.tsx");
     const form = read("../components/admin/user-management/user-edit-form.tsx");
+    const users = read("../lib/webook-users.ts");
 
     assert.match(page, /label: "ข้อมูลผู้ใช้"/);
     assert.match(page, /label: "สิทธิ์และการใช้งาน"/);
@@ -95,6 +140,19 @@ describe("Webook user management UI", () => {
     assert.match(form, /disabled=\{user\.roleId === null \|\| isPending\}/);
     assert.match(form, /กรุณากำหนดสิทธิ์ผู้ใช้ก่อนแก้ไขข้อมูลผู้ใช้/);
     assert.match(form, /roles\.map\(/);
+    assert.match(form, /ALLOW_TOOL_OPTIONS\.map\(/);
+    assert.match(form, /<Switch/);
+    assert.match(users, /allow_booking/);
+    assert.match(users, /allow_accommodation/);
+    assert.match(form, /สิทธิ์การใช้งานระบบ/);
+    assert.match(form, /className="grid grid-cols-1 gap-3 lg:grid-cols-5"/);
+    assert.match(form, /className="flex min-h-16 items-start gap-3 rounded-md border p-3 text-sm"/);
+    assert.match(form, /text-xs text-muted-foreground">\{option\.description\}<\/span>/);
+    assert.match(form, /บันทึกสิทธิ์การใช้งาน/);
+    const detailActions = form.slice(form.indexOf("function FormActions"));
+    assert.match(detailActions, /<SaveIcon data-icon="inline-start" \/>/);
+    assert.match(detailActions, /บันทึกข้อมูลผู้ใช้\s*<\/Button>/);
+    assert.doesNotMatch(detailActions, /ยกเลิก|<Link/);
     assert.doesNotMatch(form, /name="(?:email|username|tel)"/);
     assert.doesNotMatch(page, /Ban|ปลด Ban/);
   });
@@ -140,6 +198,11 @@ describe("Webook user management UI", () => {
     assert.match(page, /<Suspense fallback=\{<UserListSkeleton \/>\}>/);
     assert.match(shell, /placeholder="ค้นหาชื่อ, Username หรืออีเมล\.\.\."/);
     assert.match(skeleton, /Array\.from\(\{ length: 8 \}\)/);
+    assert.match(skeleton, /<TableHead className="w-\[13%\]">DV ID<\/TableHead>/);
+    assert.match(skeleton, /<TableCell><Skeleton className="h-4 w-2\/3" \/><\/TableCell>/);
+    assert.match(skeleton, /<CardContent className="space-y-4">/);
+    assert.match(skeleton, /<dl className="grid gap-3 text-sm">/);
+    assert.match(skeleton, /<Skeleton className="h-7 w-16" \/>/);
     assert.match(skeleton, /md:hidden/);
     assert.match(skeleton, /md:block/);
   });
@@ -158,11 +221,17 @@ describe("Webook user management UI", () => {
     const header = read("../components/admin/user-management/user-task-header.tsx");
     const shell = read("../components/admin/user-management/user-workspace-shell.tsx");
     const nav = read("../components/admin/user-management/user-workspace-nav-item.tsx");
+    const sectionNav = read("../components/admin/user-management/user-workspace-section-nav.tsx");
+    const page = read("../app/admin/users/[id]/page.tsx");
 
     assert.match(header, /กลับไปรายการผู้ใช้/);
     assert.match(header, /DV-/);
     assert.match(shell, /lg:grid-cols-\[16rem_minmax\(0,1fr\)\]/);
     assert.match(nav, /aria-current/);
     assert.match(nav, /lg:min-w-0/);
+    assert.match(sectionNav, /scrollActiveItemToStart/);
+    assert.match(sectionNav, /window\.matchMedia\("\(max-width: 1023px\)"\)/);
+    assert.match(sectionNav, /scrollActiveItemToStart\(activeSection\)/);
+    assert.match(page, /<UserWorkspaceSectionNav/);
   });
 });
