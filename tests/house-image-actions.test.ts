@@ -53,6 +53,22 @@ describe("house image actions", () => {
       2,
     );
     assert.match(actionsSource, /canUseAccommodation\(adminUser\)/);
+    for (const actionName of [
+      "uploadHouseImagesAction",
+      "deleteHouseImageAction",
+      "deleteHouseImagesAction",
+      "saveHouseCoverSelectAction",
+    ]) {
+      const start = actionsSource.indexOf(`export async function ${actionName}`);
+      const nextAction = actionsSource.indexOf("export async function ", start + 1);
+      const actionSource = actionsSource.slice(start, nextAction === -1 ? undefined : nextAction);
+
+      assert.match(
+        actionSource,
+        /assertCanUseAccommodation\(adminUser\)/,
+        `${actionName} requires accommodation permission`,
+      );
+    }
     assert.match(actionsSource, /Admin profile is incomplete/);
     assert.match(actionsSource, /create_by: adminCreateBy/);
     assert.doesNotMatch(actionsSource, /ADMIN_ROLE_ID/);

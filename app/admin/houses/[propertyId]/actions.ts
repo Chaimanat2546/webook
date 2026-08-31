@@ -86,7 +86,6 @@ export async function saveHouseFacilitiesAction(propertyId: string, formData: Fo
 
 export async function saveHousePricesAction(propertyId: string, formData: FormData): Promise<never> {
   const { adminUser, supabase } = await requireAdmin();
-  assertCanUseAccommodation(canUseAccommodation(adminUser));
   assertCanManageHousePrices(canManageHousePrices(adminUser));
 
   const house = await getListingByPropertyId(supabase, propertyId);

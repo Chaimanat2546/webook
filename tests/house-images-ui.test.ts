@@ -39,6 +39,10 @@ const navItemPath = new URL(
 );
 
 describe("house image mobile UI", () => {
+  it("requires accommodation permission for the image page", () => {
+    assert.match(pageSource, /requireAccommodationAdmin\(\)/);
+  });
+
   it("bounds the mobile zones scroller and keeps image cards compact", () => {
     assert.equal(existsSync(workspaceShellPath), true);
     assert.equal(existsSync(navItemPath), true);

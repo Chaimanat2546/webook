@@ -6,6 +6,12 @@ const actionsUrl = new URL("../app/admin/houses/[propertyId]/actions.ts", import
 const repositoryUrl = new URL("../server/repositories/listings.ts", import.meta.url);
 
 describe("house detail actions", () => {
+  function actionSource(actionsSource: string, actionName: string): string {
+    const start = actionsSource.indexOf(`export async function ${actionName}`);
+    const nextAction = actionsSource.indexOf("export async function ", start + 1);
+    return actionsSource.slice(start, nextAction === -1 ? undefined : nextAction);
+  }
+
   it("updates listing details through an authenticated accommodation server action", () => {
     assert.equal(existsSync(actionsUrl), true);
 
@@ -36,15 +42,16 @@ describe("house detail actions", () => {
     assert.doesNotMatch(repositorySource, /sort_order,/);
   });
 
-  it("updates weekly listing prices through an authenticated accommodation server action", () => {
+  it("updates weekly listing prices through an authenticated price-only server action", () => {
     const actionsSource = readFileSync(actionsUrl, "utf8");
     const repositorySource = readFileSync(repositoryUrl, "utf8");
 
     assert.match(actionsSource, /export async function saveHousePricesAction/);
     assert.match(actionsSource, /requireAdmin\(\)/);
-    assert.match(actionsSource, /canUseAccommodation\(adminUser\)/);
-    assert.match(actionsSource, /canManageHousePrices\(adminUser\)/);
-    assert.match(actionsSource, /assertCanManageHousePrices\(canManageHousePrices\(adminUser\)\)/);
+    const priceActionSource = actionSource(actionsSource, "saveHousePricesAction");
+
+    assert.match(priceActionSource, /assertCanManageHousePrices\(canManageHousePrices\(adminUser\)\)/);
+    assert.doesNotMatch(priceActionSource, /assertCanUseAccommodation\(canUseAccommodation\(adminUser\)\)/);
     assert.match(actionsSource, /getListingByPropertyId\(supabase, propertyId\)/);
     assert.match(actionsSource, /normalizeListingPriceFormValues/);
     assert.match(actionsSource, /updateListingPricesByListingId\(supabase, house\.id, values\)/);
@@ -64,10 +71,11 @@ describe("house detail actions", () => {
   it("updates listing facilities without managing the facilities master", () => {
     const actionsSource = readFileSync(actionsUrl, "utf8");
     const repositorySource = readFileSync(repositoryUrl, "utf8");
+    const facilitiesActionSource = actionSource(actionsSource, "saveHouseFacilitiesAction");
 
     assert.match(actionsSource, /export async function saveHouseFacilitiesAction/);
     assert.match(actionsSource, /requireAdmin\(\)/);
-    assert.match(actionsSource, /canUseAccommodation\(adminUser\)/);
+    assert.match(facilitiesActionSource, /assertCanUseAccommodation\(canUseAccommodation\(adminUser\)\)/);
     assert.match(actionsSource, /getListingByPropertyId\(supabase, propertyId\)/);
     assert.match(actionsSource, /getFacilities\(supabase\)/);
     assert.match(actionsSource, /normalizeListingFacilityFormValues\(formData, facilities\)/);
@@ -85,5 +93,12 @@ describe("house detail actions", () => {
     assert.match(repositorySource, /\.from\("listing_facilities"\)\.insert\(inserts\)/);
     assert.doesNotMatch(repositorySource, /\.from\("facilities"\)\s*\.\s*(insert|update|delete)\(/);
     assert.doesNotMatch(repositorySource, /\.from\("listing_facilities"\)[\s\S]{0,160}\.delete\(/);
+  });
+
+  it("keeps accommodation permission on details updates", () => {
+    const actionsSource = readFileSync(actionsUrl, "utf8");
+    const detailsActionSource = actionSource(actionsSource, "saveHouseDetailsAction");
+
+    assert.match(detailsActionSource, /assertCanUseAccommodation\(canUseAccommodation\(adminUser\)\)/);
   });
 });
