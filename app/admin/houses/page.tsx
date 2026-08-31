@@ -10,7 +10,11 @@ import {
   EmptyTitle,
 } from "../../../components/ui/empty";
 import { Input } from "../../../components/ui/input";
-import { requireAccommodationAdmin } from "../../../server/auth/admin";
+import {
+  canUseAccommodation,
+  canViewHousePrices,
+  requireHouseListAdmin,
+} from "../../../server/auth/admin";
 import { getPaginatedListings } from "../../../server/repositories/listings";
 import {
   HOUSE_PAGE_SIZE,
@@ -26,7 +30,7 @@ export default async function HousesPage({
   const params = await searchParams;
   const page = normalizePage(params.page);
   const search = normalizeHouseSearch(params.q);
-  const { supabase } = await requireAccommodationAdmin();
+  const { adminUser, supabase } = await requireHouseListAdmin();
 
   const { count, houses } = await getPaginatedListings(supabase, { page, search });
   const totalPages = Math.max(1, Math.ceil(count / HOUSE_PAGE_SIZE));
@@ -65,7 +69,12 @@ export default async function HousesPage({
         </Empty>
       ) : (
         <>
-          <HouseList houses={houses} returnTo={returnTo} />
+          <HouseList
+            canManageAccommodation={canUseAccommodation(adminUser)}
+            canViewPrices={canViewHousePrices(adminUser)}
+            houses={houses}
+            returnTo={returnTo}
+          />
           <Pagination currentPage={page} search={search} totalPages={totalPages} />
         </>
       )}

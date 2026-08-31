@@ -41,7 +41,38 @@ function imageHref(propertyId: string, returnTo: string) {
   return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
 }
 
-function HouseActionsMenu({ propertyId, returnTo }: { propertyId: string; returnTo: string }) {
+function facilitiesHref(propertyId: string, returnTo: string) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnTo);
+  params.set("section", "facilities");
+  return `/admin/houses/${encodeURIComponent(propertyId)}?${params}`;
+}
+
+function pricesHref(propertyId: string, returnTo: string) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnTo);
+  params.set("section", "prices");
+  return `/admin/houses/${encodeURIComponent(propertyId)}?${params}`;
+}
+
+function coverSelectHref(propertyId: string, returnTo: string) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnTo);
+  params.set("mode", "cover-select");
+  return `/admin/houses/${encodeURIComponent(propertyId)}/images?${params}`;
+}
+
+function HouseActionsMenu({
+  canManageAccommodation,
+  canViewPrices,
+  propertyId,
+  returnTo,
+}: {
+  canManageAccommodation: boolean;
+  canViewPrices: boolean;
+  propertyId: string;
+  returnTo: string;
+}) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -51,25 +82,50 @@ function HouseActionsMenu({ propertyId, returnTo }: { propertyId: string; return
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href={houseHref(propertyId, returnTo)}>
-              <PencilLineIcon aria-hidden />
-              จัดการข้อมูล
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={imageHref(propertyId, returnTo)}>
-              <ImageIcon aria-hidden />
-              จัดการรูป
-            </Link>
-          </DropdownMenuItem>
+          {canManageAccommodation ? (
+            <>
+              <DropdownMenuItem asChild>
+                <Link href={houseHref(propertyId, returnTo)}>
+                  <PencilLineIcon aria-hidden />
+                  จัดการข้อมูล
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={facilitiesHref(propertyId, returnTo)}>จัดการสิ่งอำนวยความสะดวก</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={imageHref(propertyId, returnTo)}>
+                  <ImageIcon aria-hidden />
+                  จัดการรูป
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={coverSelectHref(propertyId, returnTo)}>เลือกรูปหน้าปก</Link>
+              </DropdownMenuItem>
+            </>
+          ) : null}
+          {canViewPrices ? (
+            <DropdownMenuItem asChild>
+              <Link href={pricesHref(propertyId, returnTo)}>จัดการราคา</Link>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; returnTo: string }) {
+export function HouseList({
+  canManageAccommodation,
+  canViewPrices,
+  houses,
+  returnTo,
+}: {
+  canManageAccommodation: boolean;
+  canViewPrices: boolean;
+  houses: HouseListItem[];
+  returnTo: string;
+}) {
   return (
     <>
       <div className="flex flex-col gap-3 md:hidden">
@@ -103,7 +159,12 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                 </div>
                 </dl>
                 <div className="flex items-end justify-end self-end">
-                  <HouseActionsMenu propertyId={house.property_id} returnTo={returnTo} />
+                  <HouseActionsMenu
+                    canManageAccommodation={canManageAccommodation}
+                    canViewPrices={canViewPrices}
+                    propertyId={house.property_id}
+                    returnTo={returnTo}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -140,7 +201,12 @@ export function HouseList({ houses, returnTo }: { houses: HouseListItem[]; retur
                   <StatusBadge active={house.is_active} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <HouseActionsMenu propertyId={house.property_id} returnTo={returnTo} />
+                  <HouseActionsMenu
+                    canManageAccommodation={canManageAccommodation}
+                    canViewPrices={canViewPrices}
+                    propertyId={house.property_id}
+                    returnTo={returnTo}
+                  />
                 </TableCell>
               </TableRow>
             ))}

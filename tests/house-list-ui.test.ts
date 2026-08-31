@@ -30,8 +30,23 @@ describe("house list table UI", () => {
   it("passes the current list URL to image management links", () => {
     assert.match(source, /function imageHref\(propertyId: string, returnTo: string\)/);
     assert.match(source, /params\.set\("returnTo", returnTo\)/);
-    assert.match(source, /export function HouseList\(\{ houses, returnTo \}/);
+    assert.match(source, /export function HouseList\(\{/);
     assert.match(source, /href=\{imageHref\(propertyId, returnTo\)\}/);
+  });
+
+  it("filters per-house actions by accommodation and price capabilities", () => {
+    assert.match(source, /canManageAccommodation: boolean/);
+    assert.match(source, /canViewPrices: boolean/);
+    assert.match(source, /section", "facilities"/);
+    assert.match(source, /section", "prices"/);
+    assert.match(source, /mode", "cover-select"/);
+    assert.match(source, /params\.set\("returnTo", returnTo\)/);
+    assert.match(source, /\{canManageAccommodation \? \(/);
+    assert.match(source, /\{canViewPrices \? \(/);
+    assert.match(source, /<HouseActionsMenu[\s\S]*canManageAccommodation=\{canManageAccommodation\}[\s\S]*canViewPrices=\{canViewPrices\}/);
+    assert.match(pageSource, /requireHouseListAdmin/);
+    assert.match(pageSource, /canManageAccommodation=\{canUseAccommodation\(adminUser\)\}/);
+    assert.match(pageSource, /canViewPrices=\{canViewHousePrices\(adminUser\)\}/);
   });
 
   it("uses a single overflow menu for house row actions", () => {
@@ -75,7 +90,7 @@ describe("house list table UI", () => {
     assert.doesNotMatch(mobileZoneSource, /HouseActionsMenu/);
     assert.match(
       mobileListSource,
-      /<\/dl>\s*<div className="flex items-end justify-end self-end">\s*<HouseActionsMenu propertyId=\{house\.property_id\} returnTo=\{returnTo\} \/>/,
+      /<\/dl>\s*<div className="flex items-end justify-end self-end">\s*<HouseActionsMenu[\s\S]*propertyId=\{house\.property_id\}[\s\S]*returnTo=\{returnTo\}/,
     );
   });
 
