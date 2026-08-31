@@ -1,6 +1,6 @@
 "use client";
 
-import { BanknoteIcon, HouseIcon, SparklesIcon } from "lucide-react";
+import { BadgeDollarSign, HouseIcon, SparklesIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
@@ -23,7 +23,7 @@ interface HouseDetailSectionNavProps {
 
 const sectionIconByKey: Record<string, LucideIcon> = {
   details: HouseIcon,
-  prices: BanknoteIcon,
+  prices: BadgeDollarSign,
   facilities: SparklesIcon,
 };
 

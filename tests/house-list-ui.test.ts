@@ -44,10 +44,11 @@ describe("house list table UI", () => {
     assert.match(source, /\{canManageAccommodation \? \(/);
     assert.match(source, /\{canViewPrices \? \(/);
     assert.match(source, /canManagePrices \? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"/);
+    assert.match(source, /BadgeDollarSign/);
     assert.match(source, /BanknoteIcon/);
     assert.match(source, /SparklesIcon/);
     assert.match(source, /<SparklesIcon aria-hidden \/>/);
-    assert.match(source, /<BanknoteIcon aria-hidden \/>/);
+    assert.match(source, /canManagePrices \? <BadgeDollarSign aria-hidden \/> : <BanknoteIcon aria-hidden \/>/);
     assert.doesNotMatch(source, /CircleDollarSign/);
     assert.doesNotMatch(source, /Wrench/);
     assert.match(source, /สิ่งอำนวยความสะดวก/);

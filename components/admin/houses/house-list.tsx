@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   BedDouble,
+  BadgeDollarSign,
   BanknoteIcon,
   EllipsisVerticalIcon,
   ImageIcon,
@@ -118,7 +119,7 @@ function HouseActionsMenu({
           {canViewPrices ? (
             <DropdownMenuItem asChild>
               <Link href={pricesHref(propertyId, returnTo)}>
-                <BanknoteIcon aria-hidden />
+                {canManagePrices ? <BadgeDollarSign aria-hidden /> : <BanknoteIcon aria-hidden />}
                 {canManagePrices ? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"}
               </Link>
             </DropdownMenuItem>
@@ -180,7 +181,7 @@ function HouseMobileActionsMenu({
           {canViewPrices ? (
             <Button asChild className="justify-start" variant="outline">
               <Link href={pricesHref(propertyId, returnTo)}>
-                <BanknoteIcon aria-hidden />
+                {canManagePrices ? <BadgeDollarSign aria-hidden /> : <BanknoteIcon aria-hidden />}
                 {canManagePrices ? "จัดการราคา" : "ดูราคาส่งเอเจนซี่"}
               </Link>
             </Button>

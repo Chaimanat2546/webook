@@ -1,8 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { SaveIcon } from "lucide-react";
+import { BadgeDollarSign, BanknoteIcon, FileText, House, SaveIcon, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { FaFileInvoiceDollar } from "react-icons/fa6";
+import { MdAssessment, MdEventAvailable, MdReceipt, MdReceiptLong } from "react-icons/md";
+import { TbReceiptTax } from "react-icons/tb";
 
 import { updateWebookUserFormAction } from "../../../app/admin/users/actions";
 import { WEBOOK_ALLOW_TOOL_OPTIONS, type WebookManagedRole, type WebookManagedUser } from "../../../lib/webook-users";
@@ -17,6 +20,20 @@ interface UserEditFormProps {
   section: "details" | "permissions";
   user: WebookManagedUser;
 }
+
+const permissionIconByName = {
+  BadgeDollarSign,
+  BanknoteIcon,
+  FaFileInvoiceDollar,
+  FileText,
+  House,
+  MdAssessment,
+  MdEventAvailable,
+  MdReceipt,
+  MdReceiptLong,
+  TbReceiptTax,
+  Users,
+} as const;
 
 export function UserEditForm({ roles, section, user }: UserEditFormProps) {
   const router = useRouter();
@@ -66,23 +83,30 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
           <div className="grid gap-3">
             <h3 className="text-sm font-medium">สิทธิ์การใช้งานระบบ</h3>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-            {WEBOOK_ALLOW_TOOL_OPTIONS.map((option) => (
-              <label
-                className="flex min-h-16 items-start gap-3 rounded-md border p-3 text-sm"
-                htmlFor={`webook-user-${option.key}`}
-                key={option.key}
-              >
-                <Switch
-                  defaultChecked={user.allowTools?.[option.key] === true}
-                  id={`webook-user-${option.key}`}
-                  name={option.key}
-                />
-                <span className="grid gap-1">
-                  <span className="font-medium leading-5">{option.label}</span>
-                  <span className="text-xs text-muted-foreground">{option.description}</span>
-                </span>
-              </label>
-            ))}
+            {WEBOOK_ALLOW_TOOL_OPTIONS.map((option) => {
+              const PermissionIcon = permissionIconByName[option.icon];
+
+              return (
+                <label
+                  className="flex min-h-16 items-start gap-3 rounded-md border p-3 text-sm"
+                  htmlFor={`webook-user-${option.key}`}
+                  key={option.key}
+                >
+                  <Switch
+                    defaultChecked={user.allowTools?.[option.key] === true}
+                    id={`webook-user-${option.key}`}
+                    name={option.key}
+                  />
+                  <span className="flex min-w-0 gap-2">
+                    <PermissionIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span className="grid gap-1">
+                      <span className="font-medium leading-5">{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
             </div>
           </div>
         </div>

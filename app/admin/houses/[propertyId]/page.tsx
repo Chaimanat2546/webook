@@ -1,4 +1,4 @@
-import { BanknoteIcon, HouseIcon, SaveIcon, SparklesIcon } from "lucide-react";
+import { BadgeDollarSign, HouseIcon, SaveIcon, SparklesIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -73,7 +73,7 @@ type HouseDetailSectionKey = (typeof HOUSE_DETAIL_SECTIONS)[number]["key"];
 
 const sectionIconByKey: Record<HouseDetailSectionKey, LucideIcon> = {
   details: HouseIcon,
-  prices: BanknoteIcon,
+  prices: BadgeDollarSign,
   facilities: SparklesIcon,
 };
 
