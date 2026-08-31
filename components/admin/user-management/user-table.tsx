@@ -1,4 +1,4 @@
-import { ArrowDownIcon, ArrowUpIcon, ArrowUpDownIcon, PencilIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, ArrowUpDownIcon, EllipsisVerticalIcon } from "lucide-react";
 import Link from "next/link";
 
 import type {
@@ -8,6 +8,12 @@ import type {
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -58,17 +64,29 @@ function SortButton({
   );
 }
 
-function EditButton({ returnTo, userId }: { returnTo: string; userId: string }) {
-  const params = new URLSearchParams();
-  params.set("returnTo", returnTo);
+function UserSettingsMenu({ returnTo, userId }: { returnTo: string; userId: string }) {
+  const detailsParams = new URLSearchParams();
+  detailsParams.set("returnTo", returnTo);
+  const permissionParams = new URLSearchParams();
+  permissionParams.set("returnTo", returnTo);
+  permissionParams.set("section", "permissions");
 
   return (
-    <Button asChild size="sm" variant="outline">
-      <Link href={`/admin/users/${encodeURIComponent(userId)}?${params.toString()}`}>
-        <PencilIcon aria-hidden data-icon="inline-start" />
-        แก้ไข
-      </Link>
-    </Button>
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button aria-label="เปิดเมนูตั้งค่าผู้ใช้" size="icon" type="button" variant="outline">
+          <EllipsisVerticalIcon aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/users/${encodeURIComponent(userId)}?${detailsParams.toString()}`}>ข้อมูลผู้ใช้</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/users/${encodeURIComponent(userId)}?${permissionParams.toString()}`}>สิทธิ์และการใช้งาน</Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -129,7 +147,7 @@ export function UserTable({
                   <dd>{displayText(user.username)}</dd>
                 </div>
               </dl>
-              <EditButton returnTo={returnTo} userId={user.id} />
+              <UserSettingsMenu returnTo={returnTo} userId={user.id} />
             </CardContent>
           </Card>
         ))}
@@ -158,7 +176,7 @@ export function UserTable({
                   <Badge variant="secondary">{roleName(roles, user.roleId)}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <EditButton returnTo={returnTo} userId={user.id} />
+                  <UserSettingsMenu returnTo={returnTo} userId={user.id} />
                 </TableCell>
               </TableRow>
             ))}

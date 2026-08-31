@@ -53,12 +53,16 @@ describe("Webook user management UI", () => {
     assert.doesNotMatch(table, /UserRoleFilter/);
   });
 
-  it("offers only an icon-labelled edit link", () => {
+  it("offers both user settings sections from one per-user management menu", () => {
     const table = read("../components/admin/user-management/user-table.tsx");
 
-    assert.match(table, /PencilIcon/);
-    assert.match(table, /แก้ไข/);
-    assert.match(table, /href=\{`\/admin\/users\/\$\{encodeURIComponent\(userId\)\}\?\$\{params\.toString\(\)\}`\}/);
+    assert.match(table, /DropdownMenu/);
+    assert.match(table, /DropdownMenuTrigger/);
+    assert.match(table, /DropdownMenuItem/);
+    assert.match(table, /EllipsisVerticalIcon/);
+    assert.match(table, /ข้อมูลผู้ใช้/);
+    assert.match(table, /สิทธิ์และการใช้งาน/);
+    assert.match(table, /permissionParams\.set\("section", "permissions"\)/);
     assert.doesNotMatch(table, /BanIcon|ShieldCheckIcon|Ban|ปลด Ban/);
   });
 
@@ -68,7 +72,8 @@ describe("Webook user management UI", () => {
 
     assert.match(table, /returnTo/);
     assert.match(table, /returnToParams\.set\("page", String\(page\)\)/);
-    assert.match(table, /params\.set\("returnTo", returnTo\)/);
+    assert.match(table, /detailsParams\.set\("returnTo", returnTo\)/);
+    assert.match(table, /permissionParams\.set\("returnTo", returnTo\)/);
     assert.match(page, /function normalizeReturnTo/);
     assert.match(page, /backHref=\{returnTo\}/);
     assert.match(page, /params\.set\("returnTo", returnTo\)/);
