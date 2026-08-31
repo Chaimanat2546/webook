@@ -499,7 +499,7 @@ Runtime Next.js scripts (`dev` and `start`) run through `node --use-system-ca` s
 
 GitHub Actions keeps `main` as the Production branch:
 
-- A pull request targeting `main` runs `verify`, a Next.js build, an OpenNext build, and `wrangler deploy --dry-run`. It has no Cloudflare credentials and cannot deploy.
+- A pull request targeting `main` runs `verify`, a Next.js build, an OpenNext build, and `wrangler deploy --dry-run`. It uses non-secret placeholder Supabase public values only, has no Cloudflare credentials, and cannot deploy.
 - A push to `main` runs the same checks, including the OpenNext and Wrangler dry-run validation. The Production deploy job starts only after those checks pass and the GitHub Environment named `production` permits it.
 
 Before enabling the workflows, create the GitHub Environment `production`, limit it to the `main` branch, and configure required reviewers when the repository plan supports them. Add these environment secrets there:

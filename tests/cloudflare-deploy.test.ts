@@ -113,6 +113,8 @@ describe("Cloudflare deployment boundary", () => {
     assert.match(pullRequestWorkflow, /npm run build/);
     assert.match(pullRequestWorkflow, /wrangler deploy --dry-run/);
     assert.doesNotMatch(pullRequestWorkflow, /CLOUDFLARE_API_TOKEN/);
+    assert.match(pullRequestWorkflow, /NEXT_PUBLIC_SUPABASE_URL: https:\/\/ci-placeholder\.supabase\.co/);
+    assert.match(pullRequestWorkflow, /NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key/);
     assert.match(pullRequestWorkflow, /actions\/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd/);
     assert.match(pullRequestWorkflow, /actions\/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38/);
 
@@ -123,6 +125,8 @@ describe("Cloudflare deployment boundary", () => {
     assert.match(productionWorkflow, /CLOUDFLARE_API_TOKEN:\s*\$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/);
     assert.match(productionWorkflow, /npx opennextjs-cloudflare build/);
     assert.match(productionWorkflow, /wrangler deploy --dry-run/);
+    assert.match(productionWorkflow, /NEXT_PUBLIC_SUPABASE_URL: https:\/\/ci-placeholder\.supabase\.co/);
+    assert.match(productionWorkflow, /NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key/);
     assert.match(productionWorkflow, /actions\/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd/);
     assert.match(productionWorkflow, /actions\/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38/);
     assert.match(productionWorkflow, /npm run deploy:cf/);
