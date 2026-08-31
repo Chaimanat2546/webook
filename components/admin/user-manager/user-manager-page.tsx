@@ -10,6 +10,7 @@ import {
   suspendCentralUserAction,
 } from "../../../app/admin/user-manager/actions";
 import { Button } from "../../ui/button";
+import { Card, CardContent, CardHeader } from "../../ui/card";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,14 @@ import {
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Skeleton } from "../../ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../ui/table";
 import { createCentralUserListFormData } from "./user-list-request";
 import { UserTable, type UserTableAction } from "./user-table";
 
@@ -46,6 +55,49 @@ const rowActions: Record<UserTableAction, { action: Action; label: string }> = {
     label: "เปิดใช้ผู้ใช้",
   },
 };
+
+const skeletonRows = Array.from({ length: 5 });
+
+function CentralUserListSkeleton() {
+  return (
+    <div aria-label="กำลังโหลดรายชื่อผู้ใช้" className="space-y-3" role="status">
+      <div className="flex flex-col gap-3 md:hidden">
+        {skeletonRows.map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <Skeleton className="h-4 w-3/5" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </CardHeader>
+            <CardContent className="flex justify-end">
+              <Skeleton className="h-8 w-8" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="hidden overflow-hidden p-0 md:block">
+        <Table className="table-fixed">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[60%]">อีเมล</TableHead>
+              <TableHead className="w-[24%]">สถานะ</TableHead>
+              <TableHead className="w-[16%] text-right">การจัดการ</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {skeletonRows.map((_, index) => (
+              <TableRow key={index}>
+                <TableCell><Skeleton className="h-4 w-3/5" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                <TableCell><Skeleton className="ml-auto h-8 w-8" /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+}
 
 function statusMessage(
   status: Extract<SafeResult, { ok: true }>["operation"]["status"]
@@ -187,22 +239,7 @@ export function UserManagerPage({ tenants }: { tenants: Tenant[] }) {
         <section className="min-w-0 rounded-md border p-3">
           <h2 className="mb-3 font-medium">ผู้ใช้ทั้งหมด</h2>
           {listPending && !listed ? (
-            <div
-              aria-label="กำลังโหลดรายชื่อผู้ใช้"
-              className="space-y-3"
-              role="status"
-            >
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div
-                  className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_2.5rem] items-center gap-3"
-                  key={index}
-                >
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-8 w-8 justify-self-end" />
-                </div>
-              ))}
-            </div>
+            <CentralUserListSkeleton />
           ) : null}
           {listError ? (
             <p className="text-sm text-destructive" role="alert">

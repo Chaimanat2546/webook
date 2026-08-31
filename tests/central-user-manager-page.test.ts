@@ -32,6 +32,10 @@ describe("central user manager page", () => {
     assert.match(source, /listPending && !listed/);
     assert.match(source, /aria-label="กำลังโหลดรายชื่อผู้ใช้"/);
     assert.match(source, /Array\.from\(\{ length: 5 \}\)/);
+    assert.match(source, /<TableHead className="w-\[60%\]">อีเมล<\/TableHead>/);
+    assert.match(source, /<TableHead className="w-\[24%\]">สถานะ<\/TableHead>/);
+    assert.match(source, /<TableHead className="w-\[16%\] text-right">การจัดการ<\/TableHead>/);
+    assert.match(source, /<Skeleton className="h-8 w-8" \/>/);
   });
   it("loads page one automatically with ten users when the selected Tenant changes", () => {
     assert.match(source, /useEffect\(\(\) => \{/);

@@ -65,6 +65,7 @@ describe("Webook user management UI", () => {
   it("separates user details from permissions and usage", () => {
     const page = read("../app/admin/users/[id]/page.tsx");
     const form = read("../components/admin/user-management/user-edit-form.tsx");
+    const users = read("../lib/webook-users.ts");
 
     assert.match(page, /label: "ข้อมูลผู้ใช้"/);
     assert.match(page, /label: "สิทธิ์และการใช้งาน"/);
@@ -95,6 +96,15 @@ describe("Webook user management UI", () => {
     assert.match(form, /disabled=\{user\.roleId === null \|\| isPending\}/);
     assert.match(form, /กรุณากำหนดสิทธิ์ผู้ใช้ก่อนแก้ไขข้อมูลผู้ใช้/);
     assert.match(form, /roles\.map\(/);
+    assert.match(form, /ALLOW_TOOL_OPTIONS\.map\(/);
+    assert.match(form, /<Switch/);
+    assert.match(users, /allow_booking/);
+    assert.match(users, /allow_accommodation/);
+    assert.match(form, /สิทธิ์การใช้งานระบบ/);
+    assert.match(form, /className="grid grid-cols-2 gap-3 lg:grid-cols-5"/);
+    assert.match(form, /className="flex min-h-16 items-start gap-3 rounded-md border p-3 text-sm"/);
+    assert.match(form, /text-xs text-muted-foreground">\{option\.description\}<\/span>/);
+    assert.match(form, /บันทึกสิทธิ์การใช้งาน/);
     assert.doesNotMatch(form, /name="(?:email|username|tel)"/);
     assert.doesNotMatch(page, /Ban|ปลด Ban/);
   });
@@ -140,6 +150,11 @@ describe("Webook user management UI", () => {
     assert.match(page, /<Suspense fallback=\{<UserListSkeleton \/>\}>/);
     assert.match(shell, /placeholder="ค้นหาชื่อ, Username หรืออีเมล\.\.\."/);
     assert.match(skeleton, /Array\.from\(\{ length: 8 \}\)/);
+    assert.match(skeleton, /<TableHead className="w-\[13%\]">DV ID<\/TableHead>/);
+    assert.match(skeleton, /<TableCell><Skeleton className="h-4 w-2\/3" \/><\/TableCell>/);
+    assert.match(skeleton, /<CardContent className="space-y-4">/);
+    assert.match(skeleton, /<dl className="grid gap-3 text-sm">/);
+    assert.match(skeleton, /<Skeleton className="h-7 w-16" \/>/);
     assert.match(skeleton, /md:hidden/);
     assert.match(skeleton, /md:block/);
   });

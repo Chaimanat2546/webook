@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { WEBOOK_ALLOW_TOOL_OPTIONS, type WebookAllowTools } from "../../../lib/webook-users";
 import { requireWebookUserManagerAdmin } from "../../../server/auth/admin";
 import {
   updateWebookUser,
@@ -27,6 +28,12 @@ function assertFormSize(formData: FormData): void {
   if (size > MAX_FORM_BYTES) throw new Error("Invalid request");
 }
 
+function readAllowTools(formData: FormData): WebookAllowTools {
+  return Object.fromEntries(
+    WEBOOK_ALLOW_TOOL_OPTIONS.map(({ key }) => [key, formData.has(key)]),
+  ) as WebookAllowTools;
+}
+
 export async function updateWebookUserAction(
   formData: FormData,
 ): Promise<UpdateWebookUserResult> {
@@ -34,12 +41,14 @@ export async function updateWebookUserAction(
     assertFormSize(formData);
     await requireWebookUserManagerAdmin();
 
+    const section = readString(formData, "section");
     const result = await updateWebookUser({
+      allowTools: section === "permissions" ? readAllowTools(formData) : undefined,
       dvId: readString(formData, "dvId"),
       id: readString(formData, "id"),
       name: readString(formData, "name"),
       roleId: readString(formData, "roleId"),
-      updateDvId: readString(formData, "section") !== "permissions",
+      updateDvId: section !== "permissions",
     });
 
     if (result.ok) revalidatePath("/admin/users");

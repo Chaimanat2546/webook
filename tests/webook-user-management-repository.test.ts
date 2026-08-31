@@ -50,7 +50,7 @@ describe("Webook users repository", () => {
         if (table === "webook_user_management_list") {
           return {
             select(columns: string) {
-              assert.equal(columns, "id, name, username, email, role_id, dv_id");
+                assert.equal(columns, "id, name, username, email, role_id, dv_id, allow_tools");
               return {
                 eq(column: string, value: string) {
                   assert.equal(column, "id");
@@ -63,6 +63,7 @@ describe("Webook users repository", () => {
                           name: "สมชาย",
                           username: "user",
                           email: "user@example.com",
+                          allow_tools: { allow_booking: true },
                           role_id: 2,
                         },
                         error: null,
@@ -105,13 +106,60 @@ describe("Webook users repository", () => {
 
     const user = await createWebookUsersRepository(client).updateUser(
       "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
-      { dvId: "42", name: "สมชาย", roleId: 2 },
+      {
+        allowTools: {
+          allow_accommodation: false,
+          allow_billing: false,
+          allow_booking: true,
+          allow_cost: false,
+          allow_invoice: false,
+          allow_members: false,
+          allow_price: false,
+          allow_quotation: false,
+          allow_receipt: false,
+          allow_report: false,
+          allow_tax_invoice: false,
+        },
+        dvId: "42",
+        name: "สมชาย",
+        roleId: 2,
+      },
     );
 
-    assert.deepEqual(updatePayload, { dv_id: "42", name: "สมชาย", role_id: 2 });
+    assert.deepEqual(updatePayload, {
+      allow_tools: {
+        allow_accommodation: false,
+        allow_billing: false,
+        allow_booking: true,
+        allow_cost: false,
+        allow_invoice: false,
+        allow_members: false,
+        allow_price: false,
+        allow_quotation: false,
+        allow_receipt: false,
+        allow_report: false,
+        allow_tax_invoice: false,
+      },
+      dv_id: "42",
+      name: "สมชาย",
+      role_id: 2,
+    });
     assert.deepEqual(user, {
       email: "user@example.com",
       dvId: "9007199254740993",
+      allowTools: {
+        allow_accommodation: false,
+        allow_billing: false,
+        allow_booking: true,
+        allow_cost: false,
+        allow_invoice: false,
+        allow_members: false,
+        allow_price: false,
+        allow_quotation: false,
+        allow_receipt: false,
+        allow_report: false,
+        allow_tax_invoice: false,
+      },
       id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
       name: "สมชาย",
       roleId: 2,
@@ -147,5 +195,14 @@ describe("Webook users repository", () => {
     const repository = readFileSync(new URL("../server/repositories/webook-users.ts", import.meta.url), "utf8");
 
     assert.match(repository, /nullsFirst: ascending/);
+  });
+
+  it("appends allow_tools to the management view without changing existing column order", () => {
+    const migration = readFileSync(
+      new URL("../supabase/migrations/20260831090000_webook_user_management_allow_tools.sql", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(migration, /\) as role_name,\s*\n\s*u\.allow_tools\s*\nfrom public\.users u/);
   });
 });

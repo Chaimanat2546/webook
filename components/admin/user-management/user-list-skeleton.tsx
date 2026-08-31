@@ -17,13 +17,24 @@ export function UserListSkeleton() {
       <div className="grid gap-3 md:hidden">
         {skeletonRows.map((_, index) => (
           <Card key={index}>
-            <CardHeader className="space-y-2">
-              <Skeleton className="h-4 w-2/5" />
-              <Skeleton className="h-3 w-3/5" />
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <div className="min-w-0 space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Skeleton className="h-3 w-1/2" />
-              <Skeleton className="h-3 w-4/5" />
+            <CardContent className="space-y-4">
+              <dl className="grid gap-3 text-sm">
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-10" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </dl>
               <Skeleton className="h-7 w-16" />
             </CardContent>
           </Card>
@@ -34,11 +45,12 @@ export function UserListSkeleton() {
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[28%]">ชื่อ</TableHead>
-              <TableHead className="w-[20%]">Username</TableHead>
-              <TableHead className="w-[28%]">อีเมล</TableHead>
-              <TableHead className="w-[14%]">สิทธิ์ผู้ใช้</TableHead>
-              <TableHead className="w-[10%] text-right">การจัดการ</TableHead>
+              <TableHead className="w-[20%]">ชื่อ</TableHead>
+              <TableHead className="w-[15%]">Username</TableHead>
+              <TableHead className="w-[22%]">อีเมล</TableHead>
+              <TableHead className="w-[13%]">DV ID</TableHead>
+              <TableHead className="w-[18%]">สิทธิ์ผู้ใช้</TableHead>
+              <TableHead className="w-[12%] text-right">การจัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -47,6 +59,7 @@ export function UserListSkeleton() {
                 <TableCell><Skeleton className="h-4 w-4/5" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-3/4" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-5/6" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-2/3" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
                 <TableCell><Skeleton className="ml-auto h-7 w-16" /></TableCell>
               </TableRow>

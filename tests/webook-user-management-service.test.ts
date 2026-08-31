@@ -27,7 +27,7 @@ function createRepository({
   users?: WebookManagedUser[];
   roles?: WebookManagedRole[];
 } = {}) {
-  const updates: Array<{ dvId?: string | null; id: string; name: string; roleId: number }> = [];
+  const updates: Array<{ allowTools?: Record<string, boolean>; dvId?: string | null; id: string; name: string; roleId: number }> = [];
   const listCalls: Array<{
     page: number;
     pageSize: number;
@@ -282,6 +282,40 @@ describe("Webook user management service", () => {
 
     assert.equal(result.ok, true);
     assert.deepEqual(updates, [{ id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3", name: "สมชาย", roleId: 2 }]);
+  });
+
+  it("updates every allowlisted tool permission when changing user permissions", async () => {
+    const service = await loadService();
+    assert.ok(service, "Webook user management service must exist");
+    const { repository, updates } = createRepository();
+    const allowTools = {
+      allow_accommodation: true,
+      allow_billing: false,
+      allow_booking: true,
+      allow_cost: false,
+      allow_invoice: false,
+      allow_members: true,
+      allow_price: false,
+      allow_quotation: true,
+      allow_receipt: false,
+      allow_report: true,
+      allow_tax_invoice: false,
+    };
+
+    const result = await service.updateWebookUser(
+      {
+        allowTools,
+        dvId: "",
+        id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
+        name: "สมชาย",
+        roleId: "2",
+        updateDvId: false,
+      },
+      { repository },
+    );
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(updates, [{ allowTools, id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3", name: "สมชาย", roleId: 2 }]);
   });
 
   it("returns a duplicate message when the database rejects a racing DV ID update", async () => {
