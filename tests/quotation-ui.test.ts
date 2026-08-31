@@ -1283,6 +1283,13 @@ describe("quotation UI", () => {
     assert.match(sellerStrip, /แชร์[\s\S]*?<DropdownMenuSeparator \/>[\s\S]*?รีเซ็ตลิงก์/);
     assert.match(sellerStrip, /<DropdownMenuItem[\s\S]*?พิมพ์[\s\S]*?<DropdownMenuItem[\s\S]*?ดาวน์โหลด PDF/);
     assert.match(sellerStrip, /\{payload\.id \? \([\s\S]*onClick=\{openDeleteDialog\}[\s\S]*variant="outline"/);
+    assert.match(sellerStrip, /data-document-action-notices/);
+    assert.match(sellerStrip, /data-document-actions[\s\S]*?\{payload\.id \? \([\s\S]*?<\/div>\s*<div[\s\S]*?data-document-action-notices/);
+    const documentActions = sellerStrip.slice(
+      sellerStrip.indexOf("data-document-actions"),
+      sellerStrip.indexOf("data-document-action-notices"),
+    );
+    assert.doesNotMatch(documentActions, /<p[^>]*id="quotation-export-unavailable"/);
     assert.match(editor, /<QuotationTemplateDialog[\s\S]*?onOpenChange=\{setTemplateDialogOpen\}[\s\S]*?open=\{templateDialogOpen\}/);
     assert.match(editor, /<QuotationDocumentDisplayDialog[\s\S]*?onOpenChange=\{setDocumentDisplayDialogOpen\}[\s\S]*?open=\{documentDisplayDialogOpen\}/);
     assert.match(editor, /data-mobile-command-bar/);

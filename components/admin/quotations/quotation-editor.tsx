@@ -1329,10 +1329,11 @@ export function QuotationEditor({
             แก้ไขเฉพาะใบ
           </Button>
         </div>
-        <div
-          className="flex flex-wrap items-center gap-2"
-          data-document-actions
-        >
+        <div className="flex flex-col items-start gap-1">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            data-document-actions
+          >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" type="button" variant="outline">
@@ -1434,16 +1435,6 @@ export function QuotationEditor({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {exportUnavailableMessage ? (
-            <p className="basis-full text-xs text-destructive" id="quotation-export-unavailable">
-              {exportUnavailableMessage}
-            </p>
-          ) : null}
-          {shareUnavailableMessage ? (
-            <p className="basis-full text-xs text-destructive" id="quotation-share-unavailable">
-              {shareUnavailableMessage}
-            </p>
-          ) : null}
           {payload.id ? (
             <Button
               className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -1456,6 +1447,19 @@ export function QuotationEditor({
               ลบใบเสนอราคา
             </Button>
           ) : null}
+          </div>
+          <div className="grid gap-1 text-xs text-destructive" data-document-action-notices>
+            {exportUnavailableMessage ? (
+              <p id="quotation-export-unavailable">
+                {exportUnavailableMessage}
+              </p>
+            ) : null}
+            {shareUnavailableMessage ? (
+              <p id="quotation-share-unavailable">
+                {shareUnavailableMessage}
+              </p>
+            ) : null}
+          </div>
         </div>
       </section>
       {sellerExpanded ? (
