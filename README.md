@@ -495,6 +495,22 @@ Runtime Next.js scripts (`dev` and `start`) run through `node --use-system-ca` s
 - `npm test`
 - `npm run build`
 
+## CI/CD
+
+GitHub Actions keeps `main` as the Production branch:
+
+- A pull request targeting `main` runs `verify`, a Next.js build, an OpenNext build, and `wrangler deploy --dry-run`. It has no Cloudflare credentials and cannot deploy.
+- A push to `main` runs the same checks, including the OpenNext and Wrangler dry-run validation. The Production deploy job starts only after those checks pass and the GitHub Environment named `production` permits it.
+
+Before enabling the workflows, create the GitHub Environment `production`, limit it to the `main` branch, and configure required reviewers when the repository plan supports them. Add these environment secrets there:
+
+- `CLOUDFLARE_API_TOKEN` — token scoped only to the Production Cloudflare account and Worker deployment permissions.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+The Production Worker target is pinned in `wrangler.jsonc` to account `7c1d945e149fc6fad2124176124d8f33` and Worker `webook-admin`. Runtime secrets remain managed in Cloudflare; `npm run deploy:cf` must not be used to put secrets into the repository.
+The third-party GitHub Actions are pinned to reviewed commit SHAs; update them intentionally (for example with Dependabot), not by changing a mutable major-version tag.
+
 ## References
 
 - Supabase CLI: https://supabase.com/docs/reference/cli
