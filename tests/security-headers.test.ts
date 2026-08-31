@@ -8,4 +8,8 @@ describe("content security policy", () => {
     assert.match(getContentSecurityPolicy("development"), /script-src[^;]*'unsafe-eval'/);
     assert.doesNotMatch(getContentSecurityPolicy("production"), /script-src[^;]*'unsafe-eval'/);
   });
+
+  it("allows the local data URL Wasm used by the quotation PDF renderer", () => {
+    assert.match(getContentSecurityPolicy("production"), /connect-src[^;]* data:/);
+  });
 });
