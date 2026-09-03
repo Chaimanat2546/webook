@@ -1,0 +1,15 @@
+[
+  {
+    "client_info": "supabase-js-node/2.98.0",
+    "ip": "18.212.23.39",
+    "request_url": "https://rqizfiayvcbozlzuvbok.supabase.co/rest/v1/listings?select=id%2Ch_id%2Ctitle%2Cmax_people%2Cbedrooms%2Ctoilets&h_status=eq.actived&max_people=gt.18&order=h_id.asc&limit=32",
+    "timestamp": "2026-09-03T02:57:47.277000",
+    "ua": "node"
+  },
+  {
+    "method": "GET",
+    "request_url": "https://rqizfiayvcbozlzuvbok.supabase.co/rest/v1/listings?select=id%2Ch_id%2Ctitle%2Cmax_people%2Cbedrooms%2Ctoilets&h_status=eq.actived&max_people=gt.12&max_people=lte.18&order=h_id.asc&limit=32",
+    "status": "400",
+    "timestamp": "2026-09-03T02:57:47.262000"
+  }
+]
