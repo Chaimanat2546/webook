@@ -126,6 +126,28 @@ local -> staging -> production
 
 Never test new SQL directly on production first.
 
+## Data API Read Logging
+
+Migration `20260903100000_data_api_read_request_logging.sql` registers a
+PostgREST pre-request hook. Every `GET` request to the Supabase Data API writes
+an entry to Supabase Postgres Logs before the API processes the query. Migration
+`20260903110000_data_api_read_log_message_format.sql` formats it for scanning:
+`UA: … | IP: … | Host: … | X-Client: … | Path: … | Referer: …`.
+For Supabase calls made by the web server, migration
+`20260903120000_data_api_read_forwarded_client_metadata.sql` uses the original
+browser IP and user agent forwarded by `lib/supabase/server.ts`; otherwise the
+log accurately reports the server runtime as the caller.
+
+This also records requests that fail during query processing, including a
+legacy `listings.h_id` request. PostgREST exposes only the API path and headers
+to the database hook; use Supabase `edge_logs` to inspect the full request URL
+and determine whether the caller referenced `h_id` as a column or as a filter.
+
+The migration stops rather than silently replacing an existing
+`pgrst.db_pre_request` hook. Compose the existing hook with
+`private.log_data_api_read_request()` before applying it if that safeguard is
+triggered.
+
 ## PowerShell Setup
 
 Run commands from the repo root.
