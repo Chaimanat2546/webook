@@ -55,10 +55,8 @@ begin
     request_referer;
 end;
 $$;
-
 revoke all on function private.log_data_api_read_request() from public;
 grant execute on function private.log_data_api_read_request() to anon, authenticated, service_role;
-
 do $$
 declare
   configured_hook text;
@@ -79,8 +77,6 @@ begin
   end if;
 end;
 $$;
-
 alter role authenticator
   set pgrst.db_pre_request = 'private.log_data_api_read_request';
-
 notify pgrst, 'reload config';
