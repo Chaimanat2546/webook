@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#171717">
+    <meta name="robots" content="noindex">
+    <title>ออฟไลน์ · Webook</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: #fafafa; color: #171717; font-family: system-ui, Tahoma, sans-serif; }
+      main { width: 100%; max-width: 420px; padding: 32px 24px; border: 1px solid #e5e5e5; border-radius: 16px; background: #fff; text-align: center; }
+      img { border-radius: 14px; }
+      .brand { margin: 12px 0 24px; font-weight: 600; }
+      h1 { font-size: 24px; line-height: 1.5; margin: 0 0 12px; }
+      p { color: #525252; line-height: 1.8; margin: 0 0 24px; }
+      button { width: 100%; padding: 12px 20px; border: 0; border-radius: 8px; background: #171717; color: #fff; font: inherit; cursor: pointer; }
+      button:hover { background: #404040; }
+      button:focus-visible { outline: 3px solid #737373; outline-offset: 4px; }
+    </style>
+    <script src="/pwa/offline.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <img src="/pwa/icon-192.png" width="64" height="64" alt="">
+      <div class="brand">Webook</div>
+      <h1>ขณะนี้คุณออฟไลน์</h1>
+      <p>กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่อดูข้อมูลและบันทึกงาน แล้วลองเปิดหน้านี้อีกครั้ง</p>
+      <button type="button" id="retry">ลองใหม่</button>
+    </main>
+  </body>
+</html>

@@ -2,6 +2,7 @@
 
 import { Contact, Files, FileText, House, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 import {
@@ -21,6 +22,7 @@ import {
   useSidebar,
 } from "../ui/sidebar";
 import { TooltipProvider } from "../ui/tooltip";
+import { InstallAppMenuItem } from "../pwa/install-app-menu-item";
 
 export function AdminDesktopSidebar({
   canAccessHouses,
@@ -54,16 +56,16 @@ export function AdminDesktopSidebar({
                 <SidebarMenuButton
                   asChild
                   size="lg"
-                  className="hover:bg-transparent hover:text-inherit active:bg-transparent active:text-inherit"
+                  className="h-auto justify-center hover:bg-transparent hover:text-inherit active:bg-transparent active:text-inherit"
                 >
                   <div>
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                      <h1>WE</h1>
-                    </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Webook</span>
-                      <span className="truncate text-xs">ระบบจัดการบ้านพัก</span>
-                    </div>
+                    <Image
+                      src="/brand/webooks-logo.png"
+                      alt="WeBooks ระบบจัดการบ้านพัก"
+                      width={1254}
+                      height={1254}
+                      className="size-32 rounded-md object-contain group-data-[collapsible=icon]:size-8"
+                    />
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -171,6 +173,7 @@ export function AdminDesktopSidebar({
 
         <SidebarFooter>
           <SidebarMenu>
+            <InstallAppMenuItem />
             <SidebarMenuItem>
               <form action={signOutAction}>
                 <SidebarMenuButton asChild tooltip="ออกจากระบบ">
