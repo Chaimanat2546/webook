@@ -3,7 +3,7 @@
 Webook can be installed from a supporting browser and opened as a standalone app.
 The app keeps the existing authentication and feature permissions. PWA icons use
 the user-supplied WeBooks app artwork. The login page and sidebar use the separate
-user-supplied website logo with its original white background.
+user-supplied transparent website logo.
 
 ## Installation
 
@@ -48,8 +48,9 @@ handling. The fallback handles full page navigation/launch, not failed RSC reque
   backing colors. No maskable variant is advertised: the approved artwork is
   not designed for arbitrary cropping. Device launchers may still apply their
   own background or presentation; physical-device appearance must be verified.
-- `public/brand/webooks-logo.png`: original website logo, including its white
-  background and taglines, used on the login page and admin sidebar.
+- `public/brand/webooks-logo-transparent.png`: user-supplied transparent website
+  logo and taglines, used on the login page and admin sidebar. Its distinct URL
+  avoids reusing the previous opaque logo from an image cache.
 - `public/sw.js`: public offline cache, network-only navigation fallback, and
   cleanup restricted to caches beginning `webook-offline-`.
 - `next.config.ts`: worker JavaScript MIME type, root scope, and `no-store`

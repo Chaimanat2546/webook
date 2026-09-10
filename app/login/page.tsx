@@ -44,10 +44,10 @@ export default async function LoginPage({
       <Card className="w-full max-w-sm">
         <CardHeader>
           <Image
-            src="/brand/webooks-logo.png"
+            src="/brand/webooks-logo-transparent.png"
             alt="WeBooks ระบบจัดการบ้านพัก"
-            width={1254}
-            height={1254}
+            width={500}
+            height={500}
             className="mx-auto size-48 object-contain"
             priority
           />
