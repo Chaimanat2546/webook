@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -42,7 +43,14 @@ export default async function LoginPage({
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <p className="text-sm font-medium text-muted-foreground">Webook</p>
+          <Image
+            src="/brand/webooks-logo.png"
+            alt="WeBooks ระบบจัดการบ้านพัก"
+            width={1254}
+            height={1254}
+            className="mx-auto size-48 object-contain"
+            priority
+          />
           <CardTitle>{isForgotMode ? "รีเซ็ตรหัสผ่านผู้ดูแล" : "เข้าสู่ระบบผู้ดูแล"}</CardTitle>
         </CardHeader>
         <CardContent>

@@ -16,6 +16,10 @@ Without it, the house and advertisement sidebar entries are hidden and every
 `/admin/houses` and `/admin/advertisements` route returns 404; their Server
 Actions independently enforce the same permission.
 
+Webook supports installation as a PWA through the sidebar's **ติดตั้งแอป** menu.
+Viewing data and saving work require internet access; offline launch shows a retry
+page without caching business data. See [PWA installation and verification](docs/pwa.md).
+
 ## Central User Manager
 
 `/admin/user-manager` is available only to an exact `role_id = 1` administrator.
