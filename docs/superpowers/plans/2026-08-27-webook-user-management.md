@@ -1,6 +1,6 @@
-# Webook User Management Implementation Plan
+# WeBooks User Management Implementation Plan
 
-**Goal:** Add a Role 1-only Webook user manager which lists local users and
+**Goal:** Add a Role 1-only WeBooks user manager which lists local users and
 edits only their name and Role.
 
 **Spec:** `docs/superpowers/specs/2026-08-27-webook-user-management-design.md`
@@ -19,7 +19,7 @@ edits only their name and Role.
 
 - [x] Add `canManageWebookUsers` and `requireWebookUserManagerAdmin`.
 - [x] Pass the dedicated permission through the admin layout and add a separate
-  `จัดการผู้ใช้ Webook` menu entry.
+  `จัดการผู้ใช้ WeBooks` menu entry.
 - [x] Add a server-only repository for listing `users`, listing `roles`,
   checking Role existence, and updating the two allowlisted columns.
 - [x] Add a validation service for UUID, trimmed name, and smallint Role ID.

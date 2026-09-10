@@ -39,13 +39,13 @@ export function InstallAppMenuItem() {
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>ติดตั้ง Webook</DialogTitle>
+            <DialogTitle>ติดตั้ง WeBooks</DialogTitle>
             <DialogDescription>เปิดระบบจากหน้าจอหลักได้สะดวกขึ้น การดูข้อมูลและบันทึกงานต้องใช้อินเทอร์เน็ต</DialogDescription>
           </DialogHeader>
           {canPrompt || busy ? (
             <Button type="button" disabled={busy} onClick={handleInstall}>
               <Download aria-hidden />
-              {busy ? "กำลังเปิดหน้าติดตั้ง..." : "ติดตั้งแอป Webook"}
+              {busy ? "กำลังเปิดหน้าติดตั้ง..." : "ติดตั้งแอป WeBooks"}
             </Button>
           ) : (
             <p className="text-sm text-muted-foreground">หากเบราว์เซอร์รองรับ ให้เปิดเมนูของเบราว์เซอร์ แล้วเลือก “ติดตั้งแอป” หรือ “เพิ่มลงในหน้าจอหลัก”</p>

@@ -1,8 +1,8 @@
-# Webook User Manuals Implementation Plan
+# WeBooks User Manuals Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Project override: `webook_explorer` and `webook_reviewer` are read-only; only the main agent may edit files.
 
-**Goal:** จัดทำคู่มือภาษาไทยพร้อมภาพหน้าจอใส่หมายเลขสำหรับ User Flow หลักทั้ง 5 Flow ของ Webook
+**Goal:** จัดทำคู่มือภาษาไทยพร้อมภาพหน้าจอใส่หมายเลขสำหรับ User Flow หลักทั้ง 5 Flow ของ WeBooks
 
 **Architecture:** คู่มือแต่ละ Flow เป็น bundle อิสระหนึ่งโฟลเดอร์ ประกอบด้วย `README.md`, ภาพต้นฉบับ และภาพใส่หมายเลข สร้างคู่มือใหม่ 4 bundle และปรับปรุง bundle ใบเสนอราคาที่มีอยู่ โดยรวม Public Link ไว้ใน Flow ใบเสนอราคา
 
@@ -437,7 +437,7 @@ Expected: ทุกคำสั่ง exit code 0 หาก project check ล้
 
 ```powershell
 git add -- docs/manuals
-git commit -m "docs: finalize Webook user manuals"
+git commit -m "docs: finalize WeBooks user manuals"
 ```
 
 ข้าม commit นี้หาก reviewer ไม่พบสิ่งที่ต้องแก้และ working tree ว่าง

@@ -69,10 +69,10 @@ function createRepository({
   return { listCalls, repository, updates };
 }
 
-describe("Webook user management service", () => {
+describe("WeBooks user management service", () => {
   it("loads roles independently for the search controls", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const roles: WebookManagedRole[] = [{ id: 1, name: "ผู้ดูแลระบบ" }];
     const { repository } = createRepository({ roles });
 
@@ -83,7 +83,7 @@ describe("Webook user management service", () => {
 
   it("lists the requested page of users and every role supplied by the roles table repository", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
 
     const users: WebookManagedUser[] = [{
       id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
@@ -121,7 +121,7 @@ describe("Webook user management service", () => {
 
   it("uses the final available page when a requested page is out of range", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { listCalls, repository } = createRepository({ totalUsers: 17 });
 
     const result = await service.listWebookUserManagementData({ page: 99, repository });
@@ -135,7 +135,7 @@ describe("Webook user management service", () => {
 
   it("forwards multiple role filters and the requested sort to the repository", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { listCalls, repository } = createRepository();
 
     await service.listWebookUserManagementData({
@@ -158,7 +158,7 @@ describe("Webook user management service", () => {
 
   it("trims the name and updates only name and role ID when the selected role exists", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository, updates } = createRepository();
 
     const result = await service.updateWebookUser(
@@ -182,7 +182,7 @@ describe("Webook user management service", () => {
 
   it("normalizes a numeric DV ID and permits clearing it", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository, updates } = createRepository();
 
     const assigned = await service.updateWebookUser(
@@ -214,7 +214,7 @@ describe("Webook user management service", () => {
 
   it("rejects DV IDs that are not valid bigint values before updating", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository, updates } = createRepository();
 
     for (const dvId of ["4.2", "-1", "abc", "9223372036854775808"]) {
@@ -239,7 +239,7 @@ describe("Webook user management service", () => {
 
   it("rejects a DV ID already assigned to another user", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository, updates } = createRepository();
     const repositoryWithDuplicateCheck = repository as WebookUsersRepository & {
       dvIdExists(dvId: string, excludedUserId: string): Promise<boolean>;
@@ -266,7 +266,7 @@ describe("Webook user management service", () => {
 
   it("does not overwrite DV ID while updating only the user's role", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository, updates } = createRepository();
 
     const result = await service.updateWebookUser(
@@ -286,7 +286,7 @@ describe("Webook user management service", () => {
 
   it("updates every allowlisted tool permission when changing user permissions", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository, updates } = createRepository();
     const allowTools = {
       allow_accommodation: true,
@@ -320,7 +320,7 @@ describe("Webook user management service", () => {
 
   it("returns a duplicate message when the database rejects a racing DV ID update", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository } = createRepository();
     repository.updateUser = async () => {
       throw new DuplicateWebookUserDvIdError();
@@ -341,7 +341,7 @@ describe("Webook user management service", () => {
 
   it("rejects invalid IDs, blank or oversized names, and invalid role IDs before updating", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository, updates } = createRepository();
 
     const cases = [
@@ -361,7 +361,7 @@ describe("Webook user management service", () => {
 
   it("rejects a role ID that is absent from the roles table", async () => {
     const service = await loadService();
-    assert.ok(service, "Webook user management service must exist");
+    assert.ok(service, "WeBooks user management service must exist");
     const { repository, updates } = createRepository({ roleExists: false });
 
     const result = await service.updateWebookUser(

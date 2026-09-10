@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-describe("webook Staging Cloudflare boundary", () => {
+describe("WeBooks Staging Cloudflare boundary", () => {
   it("pins the only allowed account, Worker, and cache without retired service bindings", () => {
     const config = JSON.parse(readFileSync(new URL("../wrangler.staging.jsonc", import.meta.url), "utf8"));
     assert.equal(config.account_id, "0df55f166fa309dcc904e992c43f86db");

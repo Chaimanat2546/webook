@@ -13,7 +13,7 @@ task, not an admin UI action.
 - Support any number of enabled or disabled Tenants in the existing User
   Manager UI.
 - Require an explicit Service Binding per Tenant.
-- Keep Webook's Supabase database independent from each Tenant database.
+- Keep WeBooks's Supabase database independent from each Tenant database.
 
 This change does not add a Tenant-management screen, dynamic Worker URLs,
 HTTP/Bearer fallbacks, or a Tenant registry table.
@@ -24,7 +24,7 @@ HTTP/Bearer fallbacks, or a Tenant registry table.
 compile-time registry. Every entry has a stable browser-safe `key`, canonical
 Tenant UUID, display name, environment label, and `enabled` flag.
 
-The browser submits only `tenantKey`. Webook resolves it server-side and
+The browser submits only `tenantKey`. WeBooks resolves it server-side and
 rejects unknown or disabled entries before it creates an RPC request. The
 Cloudflare binding adapter selects the target through explicit branches such
 as `tenant.key === "baanparty"`; it never indexes `env` with input-derived
@@ -50,7 +50,7 @@ For every new Tenant, the operator must:
 6. Verify `list_users` and the five supported user operations with a
    disposable staging user before enabling real use.
 
-Adding a new Tenant necessarily requires a Webook deploy, because Cloudflare
+Adding a new Tenant necessarily requires a WeBooks deploy, because Cloudflare
 Service Bindings are static deployment configuration.
 
 ## Error Handling and Security

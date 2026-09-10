@@ -49,7 +49,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
         await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
       } catch {
         // Installation remains progressive: normal online use is still available.
-        console.warn("Webook offline support could not be initialized.");
+        console.warn("WeBooks offline support could not be initialized.");
       }
     }
     void registerWorker();

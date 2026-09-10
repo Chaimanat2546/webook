@@ -92,7 +92,7 @@ async function resolveRepository(
     await import("../../lib/supabase/admin.ts")
   ).createSupabaseAdminClient;
   const adminClient = createAdminClient();
-  if (!adminClient) throw new Error("Webook user management is not configured");
+  if (!adminClient) throw new Error("WeBooks user management is not configured");
 
   return createWebookUsersRepository(adminClient);
 }

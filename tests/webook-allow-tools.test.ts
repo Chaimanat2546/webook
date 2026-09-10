@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { WEBOOK_ALLOW_TOOL_OPTIONS } from "../lib/webook-users.ts";
 
-describe("Webook allow tools", () => {
+describe("WeBooks allow tools", () => {
   it("uses the approved Thai labels, descriptions, and icons", () => {
     assert.deepEqual(WEBOOK_ALLOW_TOOL_OPTIONS, [
       { key: "allow_cost", label: "ตรวจสอบราคาส่ง", description: "ดูราคาส่งของเอเจนซี่", icon: "BanknoteIcon" },

@@ -42,7 +42,7 @@ export function AdminShell({
           <SidebarTrigger aria-label="เปิด/ปิดเมนู" />
           <Separator className="h-4" orientation="vertical" />
           <div className="flex flex-col">
-            <p className="text-sm font-medium">Webook</p>
+            <p className="text-sm font-medium">WeBooks</p>
             <p className="text-xs text-muted-foreground">ระบบจัดการบ้านพัก</p>
           </div>
         </header>

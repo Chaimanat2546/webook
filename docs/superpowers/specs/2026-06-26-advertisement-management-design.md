@@ -2,10 +2,10 @@
 
 ## Goal
 
-Build an admin-only advertisement media manager in `webook`.
+Build an admin-only advertisement media manager in `webooks`.
 The app stores advertisement metadata in Supabase, stores files in Cloudflare R2 through a Worker, and exposes only active advertisement metadata to other systems through the Supabase API.
 
-`webook` does not provide a public/customer advertisement page.
+`webooks` does not provide a public/customer advertisement page.
 
 ## Approved Decisions
 
@@ -178,7 +178,7 @@ Minimum tests:
 
 ## Non-goals
 
-- Public advertisement page in `webook`
+- Public advertisement page in `webooks`
 - Manual image ordering
 - More than two images
 - Rich text, description, CTA link, schedule, targeting, analytics

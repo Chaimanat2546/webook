@@ -1,4 +1,4 @@
-# Webook Design
+# WeBooks Design
 
 Design guidelines for the admin-only pool villa image management app.
 
@@ -11,7 +11,7 @@ Design guidelines for the admin-only pool villa image management app.
 
 ## Design Direction
 
-Webook is a light, compact admin interface inspired by Linear, Airtable, and Supabase.
+WeBooks is a light, compact admin interface inspired by Linear, Airtable, and Supabase.
 
 - Linear: calm SaaS polish, restrained hierarchy, compact controls
 - Airtable: dense tables, list scanning, multi-column data readability

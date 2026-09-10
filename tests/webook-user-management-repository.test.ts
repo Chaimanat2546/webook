@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createWebookUsersRepository } from "../server/repositories/webook-users.ts";
 
-describe("Webook users repository", () => {
+describe("WeBooks users repository", () => {
   it("maps JSON and string role names with a readable fallback", async () => {
     const client = {
       from(table: string) {

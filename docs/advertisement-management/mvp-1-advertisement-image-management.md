@@ -28,7 +28,7 @@ This MVP lets admins create, edit, activate/deactivate, assign a house-listing z
 
 ## Out of Scope
 
-- หน้า public/customer ใน `webook`
+- หน้า public/customer ใน `webooks`
 - Manual image ordering
 - โฆษณาที่มีมากกว่า 2 รูป
 - Rich text description

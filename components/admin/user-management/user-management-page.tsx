@@ -24,9 +24,9 @@ export function UserManagementPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">จัดการผู้ใช้ Webook</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">จัดการผู้ใช้ WeBooks</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          แก้ไขชื่อและสิทธิ์ผู้ใช้ในระบบ Webook
+          แก้ไขชื่อและสิทธิ์ผู้ใช้ในระบบ WeBooks
         </p>
       </header>
 

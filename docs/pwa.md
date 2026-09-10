@@ -1,14 +1,20 @@
-# Webook PWA
+# WeBooks PWA
 
-Webook can be installed from a supporting browser and opened as a standalone app.
+The display brand is **WeBooks** and the npm package is `webooks`. Existing
+`webook-*` infrastructure names, storage keys, source-module paths, and internal
+identifiers remain unchanged for compatibility; this is a display-name update,
+not a deployment or database migration. The offline cache version is bumped so
+new installations receive the updated offline-page name.
+
+WeBooks can be installed from a supporting browser and opened as a standalone app.
 The app keeps the existing authentication and feature permissions. PWA icons use
 the user-supplied WeBooks app artwork. The login page and sidebar use the separate
 user-supplied transparent website logo.
 
 ## Installation
 
-- Android Chrome / desktop Chrome or Edge: open Webook over HTTPS, sign in,
-  choose **ติดตั้งแอป** at the bottom of the sidebar, then **ติดตั้งแอป Webook**.
+- Android Chrome / desktop Chrome or Edge: open WeBooks over HTTPS, sign in,
+  choose **ติดตั้งแอป** at the bottom of the sidebar, then **ติดตั้งแอป WeBooks**.
   The install button appears when the browser provides an installation prompt.
   Browser menu installation is also supported when offered by the browser.
 - iPhone / iPad: open the site in Safari, use Share → Add to Home Screen,
@@ -87,7 +93,7 @@ In a browser at localhost:3137 (or an HTTPS deployment):
 1. Verify `/manifest.webmanifest` and its icons load without authentication.
 2. Open `/login` online and inspect Application → Service Workers; `/sw.js`
    should activate with root scope. Its response must have `Cache-Control: no-store`.
-3. Inspect Cache Storage: the Webook offline cache contains public PWA assets only.
+3. Inspect Cache Storage: the WeBooks offline cache contains public PWA assets only.
 4. Set the browser context offline and reload a page: the offline message and
    retry button should render. Restore networking and retry the same page.
 5. With an authorized session, open the install dialog on desktop and in the

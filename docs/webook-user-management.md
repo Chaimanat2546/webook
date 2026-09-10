@@ -1,6 +1,6 @@
-# Webook User Management
+# WeBooks User Management
 
-`/admin/users` manages users stored in Webook's own `public.users` table. It is
+`/admin/users` manages users stored in WeBooks's own `public.users` table. It is
 independent from `/admin/user-manager`, which manages users in external tenant
 systems.
 
