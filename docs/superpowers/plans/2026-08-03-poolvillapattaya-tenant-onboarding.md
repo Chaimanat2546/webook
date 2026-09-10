@@ -4,7 +4,7 @@
 
 **Goal:** Add `Poolvillapattaya` as a second production Central User Manager Tenant, backed only by the `baan-pool-villa02` Worker named RPC Service Binding.
 
-**Architecture:** Webook keeps a compile-time allowlist of Tenant metadata and selects a Cloudflare Service Binding through explicit code branches. `baan-pool-villa02` is enabled in its first correctly configured deployment; Webook never sends credentials or a dynamic Worker destination from the browser.
+**Architecture:** WeBooks keeps a compile-time allowlist of Tenant metadata and selects a Cloudflare Service Binding through explicit code branches. `baan-pool-villa02` is enabled in its first correctly configured deployment; WeBooks never sends credentials or a dynamic Worker destination from the browser.
 
 **Tech Stack:** Next.js 16, TypeScript, Node test runner, Cloudflare Workers Service Bindings, Wrangler, OpenNext, Supabase.
 
@@ -15,10 +15,10 @@
 - Tenant UUID: `9fd7c645-563a-4cce-85ac-20ffb8f3bfc0`.
 - Target Worker name: `baan-pool-villa02`.
 - Target named entrypoint: `CentralUserManagerEntrypoint`.
-- Webook and the Tenant Worker must use the same Cloudflare account.
+- WeBooks and the Tenant Worker must use the same Cloudflare account.
 - The browser sends only `tenantKey`; it must never send a Worker name, binding name, URL, Tenant UUID, project ref, or secret.
 - Keep the public Central User Manager HTTP paths closed with empty `404`; do not add a Bearer or HTTP fallback.
-- Do not add dependencies, alter Webook's staging target, run database migrations, deploy, or commit without separate explicit approval.
+- Do not add dependencies, alter WeBooks's staging target, run database migrations, deploy, or commit without separate explicit approval.
 
 ---
 
@@ -79,7 +79,7 @@ Run: `npm.cmd test -- worker-central-user-manager.test.ts; npx.cmd tsc -p tsconf
 
 Expected: PASS.
 
-### Task 2: Add the explicit production Webook binding and registry entry
+### Task 2: Add the explicit production WeBooks binding and registry entry
 
 **Files:**
 - Modify: `C:\Projects\webook\server\central-user-manager\tenant-bindings.ts`
@@ -201,7 +201,7 @@ Expected: PASS.
 Confirm the `baan02` Worker has `NEXT_PUBLIC_HOME_CONFIG_SUPABASE_URL` and
 `SUPABASE_SECRET_KEY` in Cloudflare secrets, and locally confirm the first
 URL resolves to the project ref configured in Task 1. Do not use an anon key
-or Webook's staging database credentials for this Tenant.
+or WeBooks's staging database credentials for this Tenant.
 
 - [ ] **Step 2: Deploy the enabled target Worker**
 
@@ -210,7 +210,7 @@ Run: `npm.cmd run build:cf; npx.cmd wrangler deploy --env baan02`
 Expected: successful deployment of `baan-pool-villa02` with its named RPC
 entrypoint; the public Central User Manager paths remain empty `404`.
 
-- [ ] **Step 3: Deploy the Webook binding revision**
+- [ ] **Step 3: Deploy the WeBooks binding revision**
 
 Run from `C:\Projects\webook`: `npm.cmd run deploy:cf`
 
@@ -219,9 +219,9 @@ bindings; do not use the `deploy:cf:staging` script.
 
 - [ ] **Step 4: Test binding-only readiness**
 
-Sign in as a role-1 Webook administrator, select `Poolvillapattaya`, and
+Sign in as a role-1 WeBooks administrator, select `Poolvillapattaya`, and
 invoke `list_users`. Confirm the request returns the safe normal list result
-through Webook logs and that no public Central User Manager endpoint is used.
+through WeBooks logs and that no public Central User Manager endpoint is used.
 
 - [ ] **Step 5: Run production-safe acceptance checks**
 

@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Webook",
-    short_name: "Webook",
+    name: "WeBooks",
+    short_name: "WeBooks",
     description: "ระบบจัดการบ้านพักและใบเสนอราคา",
     lang: "th",
     start_url: "/",

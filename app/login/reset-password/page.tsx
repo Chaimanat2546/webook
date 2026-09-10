@@ -142,7 +142,7 @@ export default function ResetPasswordPage() {
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <p className="text-sm font-medium text-muted-foreground">Webook</p>
+          <p className="text-sm font-medium text-muted-foreground">WeBooks</p>
           <CardTitle>ตั้งรหัสผ่านใหม่</CardTitle>
         </CardHeader>
         <CardContent>

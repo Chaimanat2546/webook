@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the Webook user edit route into a responsive, extensible workspace whose first category is `ข้อมูลผู้ใช้`.
+**Goal:** Turn the WeBooks user edit route into a responsive, extensible workspace whose first category is `ข้อมูลผู้ใช้`.
 
 **Architecture:** Add User Management-specific workspace presentation components instead of reusing the house-specific shell. The edit route owns a section configuration and supplies the active `ข้อมูลผู้ใช้` content, while the existing service and Server Action keep their current authorization and update boundaries.
 
@@ -128,7 +128,7 @@ const USER_EDIT_SECTIONS = [
     backHref="/admin/users"
     dvId={user.dvId}
     subtitle="จัดการข้อมูลผู้ใช้"
-    title={user.name || user.username || user.email || "ผู้ใช้ Webook"}
+    title={user.name || user.username || user.email || "ผู้ใช้ WeBooks"}
   />
   <UserWorkspaceShell
     contentIcon={<UserRoundIcon aria-hidden />}

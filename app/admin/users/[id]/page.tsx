@@ -17,7 +17,7 @@ const USER_EDIT_SECTIONS = [
 ] as const;
 
 function displayUserTitle(...values: string[]): string {
-  return values.find((value) => value && value.toLowerCase() !== "null") ?? "ผู้ใช้ Webook";
+  return values.find((value) => value && value.toLowerCase() !== "null") ?? "ผู้ใช้ WeBooks";
 }
 
 function normalizeReturnTo(value: string | undefined): string {

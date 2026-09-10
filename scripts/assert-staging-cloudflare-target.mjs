@@ -9,7 +9,7 @@ if (
   config.workers_dev !== true ||
   Object.hasOwn(config, "services")
 ) {
-  throw new Error("Invalid webook Staging Cloudflare target configuration.");
+  throw new Error("Invalid WeBooks Staging Cloudflare target configuration.");
 }
 
 if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_ACCOUNT_ID !== expectedAccountId) {

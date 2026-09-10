@@ -6,9 +6,9 @@
 - Airtable: https://github.com/VoltAgent/awesome-design-md/tree/main/design-md/airtable
 - Supabase: https://github.com/VoltAgent/awesome-design-md/tree/main/design-md/supabase
 
-## Webook Style Translation
+## WeBooks Style Translation
 
-Webook translates those references into a light, practical admin UI for pool villa image management.
+WeBooks translates those references into a light, practical admin UI for pool villa image management.
 
 Use Linear for:
 

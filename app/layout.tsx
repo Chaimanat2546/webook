@@ -21,10 +21,10 @@ const notoSansThai = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Webook",
+  title: "WeBooks",
   description: "ระบบจัดการบ้านพักและใบเสนอราคา",
-  applicationName: "Webook",
-  appleWebApp: { capable: true, title: "Webook", statusBarStyle: "default" },
+  applicationName: "WeBooks",
+  appleWebApp: { capable: true, title: "WeBooks", statusBarStyle: "default" },
   icons: { apple: "/pwa/apple-touch-icon.png" },
 };
 

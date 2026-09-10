@@ -124,7 +124,7 @@ test("offline assets are available without network access", async () => {
   }
 });
 
-test("updates remove only old Webook offline caches and never force activation", async () => {
+test("updates remove only old WeBooks offline caches and never force activation", async () => {
   const runtime = worker();
   runtime.stores.set("webook-offline-v0", new Map());
   runtime.stores.set("other-app-cache", new Map());

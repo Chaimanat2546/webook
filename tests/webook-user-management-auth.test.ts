@@ -9,7 +9,7 @@ interface UserManagementAuthModule {
   canManageWebookUsers?: (user: { allow_tools: { allow_members?: boolean } | null } | null) => boolean;
 }
 
-describe("Webook user management authorization", () => {
+describe("WeBooks user management authorization", () => {
   it("allows both user management areas only when allow_members is enabled", () => {
     const { canManageCentralUsers, canManageWebookUsers } = adminAuth as UserManagementAuthModule;
 
@@ -22,7 +22,7 @@ describe("Webook user management authorization", () => {
     assert.equal(canManageWebookUsers?.(null), false);
   });
 
-  it("wires the dedicated permission into a separate Webook users menu", () => {
+  it("wires the dedicated permission into a separate WeBooks users menu", () => {
     const layout = readFileSync(new URL("../app/admin/layout.tsx", import.meta.url), "utf8");
     const shell = readFileSync(new URL("../components/layout/admin-shell.tsx", import.meta.url), "utf8");
     const sidebar = readFileSync(new URL("../components/layout/admin-desktop-sidebar.tsx", import.meta.url), "utf8");
@@ -31,7 +31,7 @@ describe("Webook user management authorization", () => {
     assert.match(shell, /canManageWebookUsers: boolean/);
     assert.match(sidebar, /\{canManageWebookUsers \? \(/);
     assert.match(sidebar, /href="\/admin\/users"/);
-    assert.match(sidebar, />ผู้ใช้ WeBook</);
+    assert.match(sidebar, />ผู้ใช้ WeBooks</);
     assert.match(sidebar, /href="\/admin\/user-manager"/);
   });
 });

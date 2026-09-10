@@ -2,7 +2,7 @@
 
 ## Goal
 
-เพิ่มโมดูลใบเสนอราคาใน Webook Admin สำหรับผู้ดูแลระบบ โดยส่งมอบเป็น 3 MVP ที่ใช้งานได้จริงตามลำดับ:
+เพิ่มโมดูลใบเสนอราคาใน WeBooks Admin สำหรับผู้ดูแลระบบ โดยส่งมอบเป็น 3 MVP ที่ใช้งานได้จริงตามลำดับ:
 
 1. สร้าง ดู แก้ไข ลบ Preview และพิมพ์ใบเสนอราคาหลัก
 2. เพิ่มค่าใช้จ่าย ช่องทางชำระเงิน ภาษีหัก ณ ที่จ่าย เงินมัดจำ ลายเซ็น และตราประทับ
@@ -12,7 +12,7 @@
 
 ## Approved Product Decisions
 
-- ใช้ Webook Admin, Supabase Auth, Supabase PostgreSQL และ Cloudflare Media Worker/R2 ที่มีอยู่
+- ใช้ WeBooks Admin, Supabase Auth, Supabase PostgreSQL และ Cloudflare Media Worker/R2 ที่มีอยู่
 - เพิ่มสิทธิ์ `public.users.allow_tools.allow_quotation`; ห้ามใช้ `allow_accommodation` แทน
 - ใช้ Admin Shell ปกติ ไม่ใช้ House Workspace Shell เพราะใบเสนอราคาไม่ใช่ task workspace ของบ้านหนึ่งหลัง
 - หน้าสร้างและแก้ไขเป็น Full-width Responsive Editor ไม่จำลองขนาดกระดาษ A4

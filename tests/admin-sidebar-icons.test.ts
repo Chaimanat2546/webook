@@ -13,6 +13,6 @@ describe("admin sidebar icons", () => {
     assert.match(source, /<Files aria-hidden\/>[\s\S]*?<span>รายการใบเสนอราคา<\/span>/);
     assert.match(source, /<Contact aria-hidden \/>[\s\S]*?<span>ข้อมูลลูกค้า<\/span>/);
     assert.match(source, /<Users data-icon="inline-start" \/>[\s\S]*?<span>ผู้ใช้เว็บไซต์<\/span>/);
-    assert.match(source, /<ShieldUser data-icon="inline-start" \/>[\s\S]*?<span>ผู้ใช้ WeBook<\/span>/);
+    assert.match(source, /<ShieldUser data-icon="inline-start" \/>[\s\S]*?<span>ผู้ใช้ WeBooks<\/span>/);
   });
 });

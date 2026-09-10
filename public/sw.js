@@ -1,5 +1,5 @@
 /* Public offline assets only. Bump this version whenever these assets change. */
-const CACHE_NAME = "webook-offline-v3";
+const CACHE_NAME = "webook-offline-v4";
 const CACHE_PREFIX = "webook-offline-";
 const OFFLINE_URL = "/pwa/offline.html";
 const OFFLINE_ASSETS = [

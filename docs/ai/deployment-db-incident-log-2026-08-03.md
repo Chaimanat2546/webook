@@ -1,11 +1,11 @@
 # Deployment และ Database Incident Log — 3 สิงหาคม 2026
 
-เอกสารนี้บันทึกปัญหาและมาตรฐานการดูแล Webook ซึ่งเป็นศูนย์กลาง
+เอกสารนี้บันทึกปัญหาและมาตรฐานการดูแล WeBooks ซึ่งเป็นศูนย์กลาง
 Central User Manager (CUM) โดยไม่เก็บ secret หรือค่า environment จริง
 
 ## ขอบเขต
 
-Webook deploy เป็น Cloudflare Worker ชื่อ `webook-admin` และติดต่อ tenant
+WeBooks deploy เป็น Cloudflare Worker ชื่อ `webook-admin` และติดต่อ tenant
 ผ่าน Cloudflare Service Binding แบบ explicit เท่านั้น
 
 | Tenant | Service Binding | Worker |
@@ -18,7 +18,7 @@ Webook deploy เป็น Cloudflare Worker ชื่อ `webook-admin` แล�
 
 ## ปัญหาที่พบ
 
-### Webook สร้าง bundle จาก DB ผิด environment
+### WeBooks สร้าง bundle จาก DB ผิด environment
 
 `NEXT_PUBLIC_SUPABASE_URL` และ `NEXT_PUBLIC_SUPABASE_ANON_KEY` ถูกฝังใน
 browser bundle ตั้งแต่ build ดังนั้น Cloudflare secret ที่เปลี่ยนภายหลังไม่
@@ -33,14 +33,14 @@ browser bundle ตั้งแต่ build ดังนั้น Cloudflare secr
 ### Service Binding อ้าง Worker ผิดหรือยังไม่ deploy
 
 Wrangler จะปฏิเสธ deploy หากชื่อ Worker ปลายทางไม่อยู่ใน Cloudflare account
-เดียวกัน หรือ Webook อาจเรียก CUM เวอร์ชันเก่าหาก tenant deploy ไม่สำเร็จ
+เดียวกัน หรือ WeBooks อาจเรียก CUM เวอร์ชันเก่าหาก tenant deploy ไม่สำเร็จ
 
 **มาตรฐาน:** ใช้ tenant registry และ bindings แบบ explicit; ห้ามเพิ่ม public
 HTTP/Bearer fallback
 
-### Webook Production ขาด audit schema
+### WeBooks Production ขาด audit schema
 
-Webook Production เคยขาดตาราง `public.central_user_audit_events` ซึ่งทำให้
+WeBooks Production เคยขาดตาราง `public.central_user_audit_events` ซึ่งทำให้
 CUM audit ใช้งานไม่ได้
 
 **การแก้ที่ทำแล้ว:** ลง
@@ -50,7 +50,7 @@ CUM audit ใช้งานไม่ได้
 
 ### ความเสี่ยงปัจจุบัน
 
-Webook Production มี schema โฆษณาเก่า 3 ส่วนอยู่จริง แต่ history ไม่บันทึก:
+WeBooks Production มี schema โฆษณาเก่า 3 ส่วนอยู่จริง แต่ history ไม่บันทึก:
 
 - `20260702041630_advertisement_image_path.sql`
 - `20260702080833_advertisement_zone.sql`
@@ -92,6 +92,6 @@ migration เก่าซ้ำ
 
 - ยืนยันว่า `webook-admin` เวอร์ชัน Production ถูก deploy หลัง build จาก
   `.env.production.local`
-- repair migration history ของ Webook Staging และ Production เป็นงานแยก
+- repair migration history ของ WeBooks Staging และ Production เป็นงานแยก
   หลังตรวจ schema ครบ
 - สร้าง script deploy/preflight เพื่อไม่ต้องโหลด env และตรวจ secrets ด้วยมือ

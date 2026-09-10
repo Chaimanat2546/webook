@@ -1,4 +1,4 @@
-# Webook
+# WeBooks
 
 Admin-only web app for managing pool villa images, house data MVPs, and advertisement images.
 
@@ -8,7 +8,7 @@ Current focus:
 - House data management MVP
 - Advertisement management MVP
 - Quotation management MVP 1
-- Webook user management
+- WeBooks user management
 
 Authenticated system users can sign in. Feature access is controlled by `public.users.allow_tools`.
 House/accommodation menu access currently requires `allow_tools.allow_accommodation = true`.
@@ -16,7 +16,7 @@ Without it, the house and advertisement sidebar entries are hidden and every
 `/admin/houses` and `/admin/advertisements` route returns 404; their Server
 Actions independently enforce the same permission.
 
-Webook supports installation as a PWA through the sidebar's **ติดตั้งแอป** menu.
+WeBooks supports installation as a PWA through the sidebar's **ติดตั้งแอป** menu.
 Viewing data and saving work require internet access; offline launch shows a retry
 page without caching business data. See [PWA installation and verification](docs/pwa.md).
 
@@ -39,13 +39,13 @@ password-reissue request for a suspended user returns a safe rejection and refre
 All Tenant Workers must be in the same Cloudflare account as `webook-admin`. Do not
 replace a Service Binding with a Worker URL, `fetch`, or Bearer credential.
 
-## Webook User Management
+## WeBooks User Management
 
 `/admin/users` is a separate local-user feature available only to an exact
-`role_id = 1` administrator. It lists Webook users and Roles, and edits only
+`role_id = 1` administrator. It lists WeBooks users and Roles, and edits only
 `public.users.name` and `public.users.role_id`. Role choices are loaded from
 `public.roles`. It does not Ban users or change username, email, telephone, or
-Supabase Auth data. See [Webook user management](docs/webook-user-management.md)
+Supabase Auth data. See [WeBooks user management](docs/webook-user-management.md)
 for the server boundary and verification details.
 
 ## Quotation management MVP 1

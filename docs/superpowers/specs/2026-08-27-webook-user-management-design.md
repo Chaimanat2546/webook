@@ -1,4 +1,4 @@
-# Webook User Management
+# WeBooks User Management
 
 ## Goal
 
@@ -12,7 +12,7 @@ the route and mutation each enforce the same server-side guard.
 
 ## Scope
 
-The page lists records from Webook's `public.users` table. It may display the
+The page lists records from WeBooks's `public.users` table. It may display the
 user's name, username, email, and current Role, but this release edits only:
 
 - `public.users.name`

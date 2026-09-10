@@ -7,7 +7,7 @@ function read(relativePath: string) {
   return existsSync(url) ? readFileSync(url, "utf8") : "";
 }
 
-describe("Webook user management UI", () => {
+describe("WeBooks user management UI", () => {
   it("shows a responsive list with DV ID and sortable user fields", () => {
     const table = read("../components/admin/user-management/user-table.tsx");
 

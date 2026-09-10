@@ -7,7 +7,7 @@ function read(relativePath: string) {
   return existsSync(url) ? readFileSync(url, "utf8") : "";
 }
 
-describe("Webook user management server boundary", () => {
+describe("WeBooks user management server boundary", () => {
   it("guards the route before rendering the server-loaded user list", () => {
     const page = read("../app/admin/users/page.tsx");
 
