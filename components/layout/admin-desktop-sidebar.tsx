@@ -60,10 +60,10 @@ export function AdminDesktopSidebar({
                 >
                   <div>
                     <Image
-                      src="/brand/webooks-logo.png"
+                      src="/brand/webooks-logo-transparent.png"
                       alt="WeBooks ระบบจัดการบ้านพัก"
-                      width={1254}
-                      height={1254}
+                      width={500}
+                      height={500}
                       className="size-32 rounded-md object-contain group-data-[collapsible=icon]:size-8"
                     />
                   </div>
