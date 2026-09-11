@@ -331,21 +331,21 @@ function CoverSelectViewerContent({
 
   const contentActions = (
     <>
-      <Button asChild size="sm" type="button" variant="outline">
+      <Button className="min-h-12 text-base md:min-h-0 md:text-sm" asChild size="sm" type="button" variant="outline">
         <Link
           aria-disabled={isPending}
           className={cn(isPending && "pointer-events-none opacity-50")}
           href={normalImageHref(propertyId, returnTo)}
         >
-          <XIcon data-icon="inline-start" />
-          ยกเลิก
+          <ArrowLeftIcon aria-hidden data-icon="inline-start" />
+          กลับไปจัดการรูป
         </Link>
       </Button>
-      <Button disabled={!canSort} onClick={openSortDialog} size="sm" type="button" variant="outline">
+      <Button className="min-h-12 text-base md:min-h-0 md:text-sm" disabled={!canSort} onClick={openSortDialog} size="sm" type="button" variant="outline">
         <ArrowLeftRightIcon data-icon="inline-start" />
         เรียงรูป
       </Button>
-      <Button disabled={!canSave} onClick={saveSelection} size="sm" type="button">
+      <Button className="min-h-12 text-base md:min-h-0 md:text-sm" disabled={!canSave} onClick={saveSelection} size="sm" type="button">
         {isPending ? (
           <Loader2Icon className="animate-spin" data-icon="inline-start" />
         ) : (
@@ -455,9 +455,10 @@ function CoverSelectViewerContent({
             type="button"
             variant="outline"
           >
-            ยกเลิก
+            <ArrowLeftIcon aria-hidden data-icon="inline-start" />
+            กลับไปเลือกรูป
           </Button>
-          <Button disabled={!canSave} onClick={confirmSaveSelection} type="button">
+          <Button className="min-h-12 text-base md:min-h-0 md:text-sm" disabled={!canSave} onClick={confirmSaveSelection} type="button">
             {isPending ? (
               <Loader2Icon className="animate-spin" data-icon="inline-start" />
             ) : (

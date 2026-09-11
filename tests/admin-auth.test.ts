@@ -182,7 +182,7 @@ describe("admin authorization", () => {
     assert.match(sidebarSource, /canUseAccommodation: boolean;/);
     assert.match(sidebarSource, /canAccessHouses: boolean;/);
     assert.match(sidebarSource, /\{canAccessHouses && !isMobile \? \(/);
-    assert.match(sidebarSource, /\{canUseAccommodation \? \(/);
+    assert.match(sidebarSource, /\{canUseAccommodation && !isMobile \? \(/);
 
     for (const source of accommodationRouteSources) {
       assert.match(source, /requireAccommodationAdmin/);

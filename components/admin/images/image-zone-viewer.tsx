@@ -778,7 +778,8 @@ export function ImageZoneViewer({
             ลบที่เลือก ({selectedBulkDeleteImages.length})
           </Button>
           <Button disabled={isBusy} onClick={clearBulkDeleteSelection} size="sm" type="button" variant="outline">
-            ยกเลิก
+            <XIcon aria-hidden data-icon="inline-start" />
+            เลิกเลือก
           </Button>
         </>
       ) : (
@@ -973,6 +974,7 @@ export function ImageZoneViewer({
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
+                <XIcon aria-hidden data-icon="inline-start" />
                 ยกเลิก
               </Button>
             </DialogClose>
@@ -1060,6 +1062,7 @@ export function ImageZoneViewer({
           <DialogFooter>
             <DialogClose asChild>
               <Button disabled={isBulkDeleting} type="button" variant="outline">
+                <XIcon aria-hidden data-icon="inline-start" />
                 ยกเลิก
               </Button>
             </DialogClose>

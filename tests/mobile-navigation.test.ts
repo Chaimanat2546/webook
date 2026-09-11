@@ -21,14 +21,19 @@ test("list memory preserves queries across external navigation and ignores detai
   assert.equal(notifications, 2);
 });
 
+const noTools = { canAccessHouses: false, canUseQuotation: false, canUseAccommodation: false, canManageCentralUsers: false, canManageWebookUsers: false };
 test("mobile destinations follow permissions without duplicate quotation/customer active states", () => {
-  assert.deepEqual(mobileDestinations({ canAccessHouses: false, canUseQuotation: false }), []);
-  assert.deepEqual(mobileDestinations({ canAccessHouses: true, canUseQuotation: false }).map(x => x.id), ["houses"]);
-  assert.deepEqual(mobileDestinations({ canAccessHouses: false, canUseQuotation: true }).map(x => x.id), ["quotations", "customers"]);
-  assert.equal(mobileSection("/admin/quotations/customers"), "customers");
+  assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: false, canUseQuotation: false }), []);
+  assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: true, canUseQuotation: false }).map(x => x.id), ["houses"]);
+  assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: false, canUseQuotation: true }).map(x => x.id), ["quotations"]);
+  assert.equal(mobileSection("/admin/quotations/customers"), "quotations");
   assert.equal(mobileSection("/admin/quotations/abc"), "quotations");
   assert.equal(mobileSection("/admin/quotations-old"), "more");
-  assert.equal(mobileSection("/admin/users"), "more");
+  assert.equal(mobileSection("/admin/users"), "users");
+  assert.deepEqual(mobileDestinations({ ...noTools, canUseAccommodation: true, canManageCentralUsers: true }).map(x => x.id), ["advertisements", "users"]);
+  assert.deepEqual(mobileDestinations({ ...noTools, canManageWebookUsers: true }).map(x => x.id), ["users"]);
+  assert.equal(mobileSection("/admin/user-manager"), "users");
+  assert.equal(mobileSection("/admin/advertisements"), "advertisements");
 });
 
 test("editing workspaces keep their own back/save controls without a competing bottom bar", () => {

@@ -410,7 +410,7 @@ export function QuotationCustomerForm({
         ) : null}
         {formError ? <p className="text-sm text-destructive" role="alert">{formError}</p> : null}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button disabled={isPending} onClick={onCancel} type="button" variant="outline">ยกเลิก</Button>
+          <Button disabled={isPending} onClick={onCancel} type="button" variant="outline">ปิด</Button>
           <Button disabled={isPending} type="submit">{pendingOperation === "save" ? "กำลังบันทึก…" : "บันทึก"}</Button>
         </div>
       </form>

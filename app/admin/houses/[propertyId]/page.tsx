@@ -398,7 +398,7 @@ export default async function HouseDetailPage({
                       <span className="text-muted-foreground">ปิดไว้เมื่อต้องการซ่อนจากระบบขาย</span>
                     </span>
                   </label>
-                  <Button className="w-full sm:w-fit" type="submit">
+                  <Button className="min-h-12 w-full text-base md:min-h-0 md:text-sm sm:w-fit" type="submit">
                     <SaveIcon data-icon="inline-start" />
                     บันทึกข้อมูลบ้าน
                   </Button>
@@ -467,7 +467,7 @@ export default async function HouseDetailPage({
                   </div>
 
                   <div className="flex justify-end border-t pt-4 lg:mt-auto">
-                    <Button className="w-full sm:w-fit" type="submit">
+                    <Button className="min-h-12 w-full text-base md:min-h-0 md:text-sm sm:w-fit" type="submit">
                       <SaveIcon data-icon="inline-start" />
                       บันทึกราคาพื้นฐาน
                     </Button>
@@ -578,7 +578,7 @@ export default async function HouseDetailPage({
                 </div>
 
                 <div className="flex justify-end border-t pt-4 lg:mt-auto">
-                  <Button className="w-full sm:w-fit" type="submit">
+                  <Button className="min-h-12 w-full text-base md:min-h-0 md:text-sm sm:w-fit" type="submit">
                     <SaveIcon data-icon="inline-start" />
                     บันทึกสิ่งอำนวยความสะดวก
                   </Button>

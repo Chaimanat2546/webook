@@ -26,14 +26,14 @@ export const HouseWorkspaceNavItem = forwardRef<HTMLAnchorElement, HouseWorkspac
         {...props}
         aria-current={active ? "page" : props["aria-current"]}
         className={cn(
-          "flex min-w-44 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted lg:min-w-0",
+          "flex min-h-12 min-w-44 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-base lg:min-h-0 lg:text-sm transition-colors hover:bg-muted lg:min-w-0",
           active && "bg-primary text-primary-foreground hover:bg-primary",
           className,
         )}
         ref={ref}
       >
         <span className="flex min-w-0 items-center gap-2">
-          <span className="flex size-5 shrink-0 items-center justify-center [&>svg]:size-4">
+          <span className="flex size-5 shrink-0 items-center justify-center [&>svg]:size-5 lg:[&>svg]:size-4">
             {icon}
           </span>
           <span className="block min-w-0 truncate font-medium">{label}</span>

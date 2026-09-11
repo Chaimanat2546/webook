@@ -89,7 +89,7 @@ export default async function AdvertisementDetailPage({
   return (
     <div className="flex flex-col gap-4">
       <header className="flex flex-col gap-3 border-b pb-4">
-        <Button asChild className="w-fit px-0" size="sm" variant="ghost">
+        <Button asChild className="min-h-12 w-fit px-3 text-base md:min-h-0 md:px-0 md:text-sm" size="sm" variant="ghost">
           <Link href="/admin/advertisements">
             <ArrowLeftIcon data-icon="inline-start" />
             กลับไปโฆษณา

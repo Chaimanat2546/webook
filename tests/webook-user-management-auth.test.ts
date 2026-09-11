@@ -29,7 +29,7 @@ describe("WeBooks user management authorization", () => {
 
     assert.match(layout, /canManageWebookUsers=\{canManageWebookUsers\(adminUser\)\}/);
     assert.match(shell, /canManageWebookUsers: boolean/);
-    assert.match(sidebar, /\{canManageWebookUsers \? \(/);
+    assert.match(sidebar, /\{canManageWebookUsers && !isMobile \? \(/);
     assert.match(sidebar, /href="\/admin\/users"/);
     assert.match(sidebar, />ผู้ใช้ WeBooks</);
     assert.match(sidebar, /href="\/admin\/user-manager"/);

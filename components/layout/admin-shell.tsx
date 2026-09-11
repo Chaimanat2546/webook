@@ -55,7 +55,7 @@ export function AdminShell({
           {children}
         </AdminMobileContent>
       </SidebarInset>
-      <AdminMobileNavigation canAccessHouses={canAccessHouses} canUseQuotation={canUseQuotation} />
+      <AdminMobileNavigation canAccessHouses={canAccessHouses} canUseQuotation={canUseQuotation} canUseAccommodation={canUseAccommodation} canManageCentralUsers={canManageCentralUsers} canManageWebookUsers={canManageWebookUsers} />
       <Toaster />
     </SidebarProvider>
   );

@@ -1091,19 +1091,19 @@ export function AdvertisementForm({
             />
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 bg-muted/20">
-            <div className="flex gap-2 lg:w-auto">
+            <div className="flex w-full gap-2 lg:w-auto">
               <Button
-                className="flex-1 lg:flex-none"
+                className="min-h-12 flex-1 text-base md:min-h-0 md:text-sm lg:flex-none"
                 disabled={!isDirty || isBusy}
                 onClick={resetDraft}
                 type="button"
                 variant="outline"
               >
-                <XIcon data-icon="inline-start" />
-                ยกเลิก
+                <RotateCcwIcon aria-hidden data-icon="inline-start" />
+                คืนค่าเดิม
               </Button>
               <Button
-                className="flex-1 lg:flex-none"
+                className="min-h-12 flex-1 text-base md:min-h-0 md:text-sm lg:flex-none"
                 disabled={!isDirty || isBusy}
                 type="submit"
               >
@@ -1175,7 +1175,7 @@ export function AdvertisementForm({
                     type="button"
                     variant="outline"
                   >
-                    ยกเลิก
+                    เลิกเลือก
                   </Button>
                 </>
               ) : (
