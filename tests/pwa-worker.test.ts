@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 
 interface WorkerEvent {
   type: string;
+  data?: { type: string };
   request?: Request;
   waitUntil: (work: Promise<unknown>) => void;
   respondWith: (response: Promise<Response>) => void;
@@ -66,11 +67,12 @@ function worker() {
       return new Response("server response", { status });
     },
   });
-  async function dispatch(type: string, request?: WorkerEvent["request"]) {
+  async function dispatch(type: string, request?: WorkerEvent["request"], data?: WorkerEvent["data"]) {
     const work: Promise<unknown>[] = [];
     let response: Promise<Response> | undefined;
     const event: WorkerEvent = {
       type,
+      data,
       request,
       waitUntil: (promise) => { work.push(promise); },
       respondWith: (promise) => { response = promise; },
@@ -173,6 +175,16 @@ test("a failed precache install rejects and leaves legacy caches in place", asyn
   await assert.rejects(runtime.dispatch("install"));
   assert.equal(runtime.stores.has("webook-offline-v4"), true);
   assert.equal(runtime.skippedWaiting(), false);
+});
+
+test("worker activates only after the application's explicit update message", async () => {
+  const runtime = worker();
+  await runtime.dispatch("install");
+  assert.equal(runtime.skippedWaiting(), false);
+  await runtime.dispatch("message", undefined, { type: "UNRELATED_MESSAGE" });
+  assert.equal(runtime.skippedWaiting(), false);
+  await runtime.dispatch("message", undefined, { type: "WEBOOK_ACTIVATE_UPDATE" });
+  assert.equal(runtime.skippedWaiting(), true);
 });
 
 test("activation removes obsolete revisions from only the owned Workbox cache", async () => {
