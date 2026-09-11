@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LoginInstallPrompt } from "../../components/pwa/login-install-prompt";
 import Image from "next/image";
 
 import { Button } from "../../components/ui/button";
@@ -40,7 +41,8 @@ export default async function LoginPage({
   const forgotErrorMessage = getForgotErrorMessage(forgotError);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 py-10">
+      {!isForgotMode && <LoginInstallPrompt />}
       <Card className="w-full max-w-sm">
         <CardHeader>
           <Image
