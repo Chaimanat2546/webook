@@ -181,7 +181,7 @@ describe("admin authorization", () => {
     assert.match(shellSource, /canAccessHouses=\{canAccessHouses\}/);
     assert.match(sidebarSource, /canUseAccommodation: boolean;/);
     assert.match(sidebarSource, /canAccessHouses: boolean;/);
-    assert.match(sidebarSource, /\{canAccessHouses \? \(/);
+    assert.match(sidebarSource, /\{canAccessHouses && !isMobile \? \(/);
     assert.match(sidebarSource, /\{canUseAccommodation \? \(/);
 
     for (const source of accommodationRouteSources) {

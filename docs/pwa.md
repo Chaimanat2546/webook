@@ -51,8 +51,11 @@ and saving work require an internet connection. There is no offline mutation que
 or automatic retry of saves; in-app navigation and forms keep their existing error
 handling. The fallback handles full page navigation/launch, not failed RSC requests.
 
-The admin shell now shows an accessible offline notice when the browser reports
-loss of connectivity. Returning online removes the notice without refreshing the
+The admin shell shows an accessible black toast with light text at the top when
+the browser reports loss of connectivity. It uses a stable toast ID, has no timeout,
+and cannot be dismissed by a close button or swipe. Shared admin toasts use the
+dark appearance regardless of the page theme and expand rather than overlap.
+Returning online removes only the offline toast without refreshing the
 page or replaying writes; that signal does not prove the server is reachable.
 Shared App Router error boundaries offer a read retry without exposing raw error
 details, and an admin loading fallback provides feedback while routes load.
@@ -114,7 +117,10 @@ worker or one installed while the page is open. **อัปเดตตอนน
 asking the user to save work first. Confirmation activates the waiting worker and
 reloads only that window; existing beforeunload guards can still cancel the reload.
 Other windows show **โหลดเวอร์ชันใหม่** and never reload automatically. **ภายหลัง**
-collapses the notice to a small button so it can be reopened.
+collapses the notice to a small button so it can be reopened. The notice sits at
+the top of the screen with safe-area spacing on mobile. Its user-facing copy is
+**มีเวอร์ชันใหม่พร้อมใช้งาน / กรุณาบันทึกงานที่กำลังทำก่อนอัปเดต**, with
+**อัปเดตตอนนี้ / ไว้ทีหลัง** buttons and touch targets at least 44px high.
 
 Worker identity includes a deterministic hash of application source and dependency
 manifests, in addition to public asset revisions, so app-code releases also trigger

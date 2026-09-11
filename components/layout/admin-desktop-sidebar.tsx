@@ -1,6 +1,6 @@
 "use client";
 
-import { Contact, Files, FileText, House, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
+import { Contact, Files, FileText, House, LogOutIcon, Megaphone, Settings, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -75,10 +75,10 @@ export function AdminDesktopSidebar({
 
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>
+            <SidebarGroupLabel>{isMobile ? "เพิ่มเติม" : "เมนูหลัก"}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {canAccessHouses ? (
+                {canAccessHouses && !isMobile ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
@@ -106,7 +106,7 @@ export function AdminDesktopSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) : null}
-                {canUseQuotation ? (
+                {canUseQuotation && !isMobile ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
@@ -148,6 +148,16 @@ export function AdminDesktopSidebar({
                       <Link href="/admin/user-manager" onClick={closeMobileSidebar}>
                         <Users data-icon="inline-start" />
                         <span>ผู้ใช้เว็บไซต์</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) : null}
+                {isMobile && canUseQuotation ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/quotations/settings")}>
+                      <Link href="/admin/quotations/settings/company" onClick={closeMobileSidebar}>
+                        <Settings aria-hidden />
+                        <span>ตั้งค่าใบเสนอราคา</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
