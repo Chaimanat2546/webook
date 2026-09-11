@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { UpdateNotice } from "./update-notice";
 
 interface InstallPromptEvent extends Event {
@@ -29,6 +29,7 @@ function isStandalone() {
 
 export function PwaProvider({ children }: { children: ReactNode }) {
   const [prompt, setPrompt] = useState<InstallPromptEvent | null>(null);
+  const pendingInstall = useRef<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const standalone = useSyncExternalStore(subscribeStandalone, isStandalone, () => false);
@@ -40,10 +41,13 @@ export function PwaProvider({ children }: { children: ReactNode }) {
       if (navigator.onLine && currentRegistration) void currentRegistration.update().catch(() => {});
     };
     function beforeInstall(event: Event) {
+      if (!("prompt" in event) || typeof event.prompt !== "function" || !("userChoice" in event)) return;
       event.preventDefault();
+      pendingInstall.current = event as InstallPromptEvent;
       setPrompt(event as InstallPromptEvent);
     }
     function appInstalled() {
+      pendingInstall.current = null;
       setPrompt(null);
       setInstalled(true);
     }
@@ -66,6 +70,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     window.addEventListener("focus", checkUpdate);
     window.addEventListener("online", checkUpdate);
     return () => {
+      pendingInstall.current = null;
       disposed = true;
       window.removeEventListener("focus", checkUpdate);
       window.removeEventListener("online", checkUpdate);
@@ -75,9 +80,10 @@ export function PwaProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function install(): Promise<"accepted" | "dismissed" | "unavailable"> {
-    if (!prompt) return "unavailable";
+    const event = pendingInstall.current;
+    if (!event) return "unavailable";
     // A browser install event is single-use, including when the user dismisses it.
-    const event = prompt;
+    pendingInstall.current = null;
     setPrompt(null);
     await event.prompt();
     const choice = await event.userChoice;

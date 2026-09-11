@@ -20,9 +20,11 @@ export function InstallAppMenuItem() {
     setBusy(true);
     setError("");
     try {
-      if (await install() === "accepted") setOpen(false);
+      const result = await install();
+      setOpen(result === "unavailable");
     } catch {
       setError("ยังติดตั้งไม่ได้ กรุณาลองใช้เมนูติดตั้งของเบราว์เซอร์");
+      setOpen(true);
     } finally {
       setBusy(false);
     }
@@ -32,7 +34,12 @@ export function InstallAppMenuItem() {
     <SidebarMenuItem>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <SidebarMenuButton tooltip="ติดตั้งแอป">
+          <SidebarMenuButton disabled={busy} tooltip="ติดตั้งแอป" onClick={event => {
+            if (canPrompt) {
+              event.preventDefault();
+              void handleInstall();
+            }
+          }}>
             <Download aria-hidden />
             <span>ติดตั้งแอป</span>
           </SidebarMenuButton>

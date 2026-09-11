@@ -84,6 +84,15 @@ The local browser fixture verifies initial visibility, the unavailable-to-ready
 transition, and exactly one prompt call on click with the invitation then hidden.
 This uses a simulated browser install event, not an actual OS installation.
 
+The sidebar installation button also calls the browser prompt directly when a
+pending beforeinstallprompt event is available, without first opening the help
+dialog. All browsers providing this capability use the same path; there is no
+browser-name allowlist. An event is consumed synchronously before prompting so
+rapid repeated clicks cannot reuse it. A fresh event can enable installation
+again later. Missing capability falls back to instructions, and prompt errors
+show help without claiming installation succeeded. This does not guarantee that
+every installable browser will dispatch the event on every visit.
+
 ## Sharing saved quotations
 
 The existing share action uses the device share sheet when supported, preserving
