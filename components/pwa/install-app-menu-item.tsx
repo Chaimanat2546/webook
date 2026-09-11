@@ -50,6 +50,16 @@ export function InstallAppMenuItem() {
           ) : (
             <p className="text-sm text-muted-foreground">หากเบราว์เซอร์รองรับ ให้เปิดเมนูของเบราว์เซอร์ แล้วเลือก “ติดตั้งแอป” หรือ “เพิ่มลงในหน้าจอหลัก”</p>
           )}
+          <InstallAppInstructions />
+          {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+        </DialogContent>
+      </Dialog>
+    </SidebarMenuItem>
+  );
+}
+
+export function InstallAppInstructions() {
+  return <><p className="text-sm text-muted-foreground">เปิดเมนูเบราว์เซอร์ แล้วเลือก “ติดตั้งแอป” หรือ “เพิ่มลงในหน้าจอหลัก” หากมีตัวเลือก</p>
           <div className="space-y-2 text-sm">
             <p className="font-medium">สำหรับ iPhone / iPad</p>
             <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
@@ -67,9 +77,5 @@ export function InstallAppMenuItem() {
             <p className="font-medium">สำหรับ Firefox บน Windows</p>
             <p className="text-muted-foreground">ใช้ปุ่มเว็บแอปในแถบที่อยู่ของ Firefox รุ่น 143 ขึ้นไป หรือรุ่น 150 ขึ้นไปหากติดตั้งจาก Microsoft Store</p>
           </div>
-          {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-        </DialogContent>
-      </Dialog>
-    </SidebarMenuItem>
-  );
+  </>;
 }

@@ -66,6 +66,24 @@ The editor retains its current state and tells the user to check the list before
 sending the operation again. This handling is limited to those editor paths;
 it is not a guarantee that every form across the system retains state on failure.
 
+## Login install invitation
+
+The normal login screen automatically displays a dismissible dark install banner
+above the form after hydration. Password-reset mode does not show it. Standalone
+mode and the browser's appinstalled signal suppress it. “ไว้ทีหลัง” dismisses it
+for the current mounted login screen; it does not block signing in or save account
+information in browser storage.
+
+When beforeinstallprompt is available, one click calls the existing installation
+handler directly. Browser confirmation is still required. Otherwise the button
+opens shared manual installation instructions. Acceptance or dismissal of the
+native prompt hides this invitation; failures offer the instructions. Browsers
+may not report an installation made previously in a separate browser tab.
+
+The local browser fixture verifies initial visibility, the unavailable-to-ready
+transition, and exactly one prompt call on click with the invitation then hidden.
+This uses a simulated browser install event, not an actual OS installation.
+
 ## Sharing saved quotations
 
 The existing share action uses the device share sheet when supported, preserving
