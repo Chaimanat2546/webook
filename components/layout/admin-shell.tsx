@@ -10,6 +10,7 @@ import {
 import { Separator } from "../ui/separator";
 import { Toaster } from "../ui/sonner";
 import { ConnectionStatus } from "../pwa/connection-status";
+import { AdminMobileContent, AdminMobileHeader, AdminMobileNavigation } from "./admin-mobile-navigation";
 
 export function AdminShell({
   canAccessHouses,
@@ -39,7 +40,7 @@ export function AdminShell({
         signOutAction={signOut}
       />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+        <header className="hidden h-16 shrink-0 items-center gap-2 border-b bg-background px-4 md:flex">
           <SidebarTrigger aria-label="เปิด/ปิดเมนู" />
           <Separator className="h-4" orientation="vertical" />
           <div className="flex flex-col">
@@ -47,12 +48,14 @@ export function AdminShell({
             <p className="text-xs text-muted-foreground">ระบบจัดการบ้านพัก</p>
           </div>
         </header>
+        <AdminMobileHeader />
 
-        <div className="min-w-0 flex-1 px-4 py-5 md:px-6">
+        <AdminMobileContent>
           <ConnectionStatus />
           {children}
-        </div>
+        </AdminMobileContent>
       </SidebarInset>
+      <AdminMobileNavigation canAccessHouses={canAccessHouses} canUseQuotation={canUseQuotation} />
       <Toaster />
     </SidebarProvider>
   );

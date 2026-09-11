@@ -161,6 +161,7 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const mobileOpener = React.useRef<HTMLElement | null>(null);
 
   if (collapsible === "none") {
     return (
@@ -187,6 +188,15 @@ function Sidebar({
           data-mobile="true"
           className="w-screen max-w-none bg-sidebar p-0 text-sidebar-foreground data-[side=left]:w-screen data-[side=right]:w-screen data-[side=left]:sm:max-w-none data-[side=right]:sm:max-w-none"
           side={side}
+          onOpenAutoFocus={() => {
+            mobileOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          }}
+          onCloseAutoFocus={event => {
+            if (mobileOpener.current?.isConnected) {
+              event.preventDefault();
+              mobileOpener.current.focus();
+            }
+          }}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>
