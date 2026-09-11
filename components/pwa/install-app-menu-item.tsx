@@ -37,7 +37,7 @@ export function InstallAppMenuItem() {
             <span>ติดตั้งแอป</span>
           </SidebarMenuButton>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>ติดตั้ง WeBooks</DialogTitle>
             <DialogDescription>เปิดระบบจากหน้าจอหลักได้สะดวกขึ้น การดูข้อมูลและบันทึกงานต้องใช้อินเทอร์เน็ต</DialogDescription>
@@ -53,10 +53,19 @@ export function InstallAppMenuItem() {
           <div className="space-y-2 text-sm">
             <p className="font-medium">สำหรับ iPhone / iPad</p>
             <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
-              <li>เปิดเว็บไซต์นี้ใน Safari</li>
+              <li>แนะนำให้เปิดเว็บไซต์นี้ใน Safari</li>
               <li>แตะเมนูแชร์ แล้วเลือก “เพิ่มไปยังหน้าจอโฮม”</li>
               <li>เปิด “เปิดเป็นเว็บแอป” หากมีตัวเลือก แล้วแตะ “เพิ่ม”</li>
             </ol>
+            <p className="text-muted-foreground">iOS/iPadOS 16.4 ขึ้นไปอาจเพิ่มผ่านเมนูแชร์ของเบราว์เซอร์อื่นที่รองรับได้เช่นกัน</p>
+          </div>
+          <div className="space-y-2 text-sm">
+            <p className="font-medium">สำหรับ Safari บน Mac</p>
+            <p className="text-muted-foreground">บน macOS Sonoma 14 ขึ้นไป เลือกเมนูไฟล์หรือแชร์ แล้วเลือก “เพิ่มไปยัง Dock”</p>
+          </div>
+          <div className="space-y-2 text-sm">
+            <p className="font-medium">สำหรับ Firefox บน Windows</p>
+            <p className="text-muted-foreground">ใช้ปุ่มเว็บแอปในแถบที่อยู่ของ Firefox รุ่น 143 ขึ้นไป หรือรุ่น 150 ขึ้นไปหากติดตั้งจาก Microsoft Store</p>
           </div>
           {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
         </DialogContent>

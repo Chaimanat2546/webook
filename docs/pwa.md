@@ -1,10 +1,14 @@
 # WeBooks PWA
 
+For the video-guided acceptance checklist and updated browser support matrix,
+see [PWA checklist](pwa-checklist.md). It tracks planned work and verification;
+the behavior documented below describes the current implementation.
+
 The display brand is **WeBooks** and the npm package is `webooks`. Existing
 `webook-*` infrastructure names, storage keys, source-module paths, and internal
 identifiers remain unchanged for compatibility; this is a display-name update,
-not a deployment or database migration. The offline cache version is bumped so
-new installations receive the updated offline-page name.
+not a deployment or database migration. Workbox revisions change automatically
+when the public offline assets change.
 
 WeBooks can be installed from a supporting browser and opened as a standalone app.
 The app keeps the existing authentication and feature permissions. PWA icons use
@@ -20,13 +24,19 @@ user-supplied transparent website logo.
 - iPhone / iPad: open the site in Safari, use Share → Add to Home Screen,
   enable Open as Web App if offered, then Add. The sidebar dialog includes Thai
   instructions; Safari does not expose the Chromium installation prompt.
+- Other supporting browsers on iOS/iPadOS 16.4+ can also expose Home Screen
+  installation through their Share menu; Safari is the recommended route, not
+  the only possible browser.
+- Safari on macOS Sonoma 14+: use File/Share → Add to Dock.
+- Firefox on Windows: use its address-bar web apps button (143+, or 150+ for
+  Microsoft Store installations). This is a browser-specific installation flow.
 - The installation entry is hidden in standalone mode and after the current
   page receives an `appinstalled` event. A dismissed prompt is consumed; the
   dialog falls back to browser menu instructions until a fresh event is offered.
 
 ## Offline behavior and privacy
 
-The service worker precaches only the public assets listed in `public/sw.js`:
+The Workbox service worker precaches only the public assets allowlisted in `scripts/build-pwa.mjs`:
 the standalone offline HTML, its retry script, and app icons. These assets need
 to have been downloaded during an earlier online visit before offline launch works.
 
@@ -40,6 +50,26 @@ worker's cache. Existing authentication remains authoritative. Viewing live data
 and saving work require an internet connection. There is no offline mutation queue
 or automatic retry of saves; in-app navigation and forms keep their existing error
 handling. The fallback handles full page navigation/launch, not failed RSC requests.
+
+The admin shell now shows an accessible offline notice when the browser reports
+loss of connectivity. Returning online removes the notice without refreshing the
+page or replaying writes; that signal does not prove the server is reachable.
+Shared App Router error boundaries offer a read retry without exposing raw error
+details, and an admin loading fallback provides feedback while routes load.
+
+Quotation save/delete requests catch missing responses locally. A missing response
+is treated as an unknown outcome: the server may have committed the operation.
+The editor retains its current state and tells the user to check the list before
+sending the operation again. This handling is limited to those editor paths;
+it is not a guarantee that every form across the system retains state on failure.
+
+## Sharing saved quotations
+
+The existing share action uses the device share sheet when supported, preserving
+the existing saved-document and public-link checks. Cancelling that sheet ends
+the action. Unsupported or failed native sharing falls back to clipboard; if
+clipboard is unavailable or denied, a dialog displays the selectable existing
+URL. Sharing does not create or rotate a public token.
 
 ## Files and lifecycle
 
@@ -57,8 +87,14 @@ handling. The fallback handles full page navigation/launch, not failed RSC reque
 - `public/brand/webooks-logo-transparent.png`: user-supplied transparent website
   logo and taglines, used on the login page and admin sidebar. Its distinct URL
   avoids reusing the previous opaque logo from an image cache.
-- `public/sw.js`: public offline cache, network-only navigation fallback, and
-  cleanup restricted to caches beginning `webook-offline-`.
+- `worker/pwa-sw.js`: Workbox precache and NetworkOnly routes. Only exact public
+  asset URLs without query parameters match the asset route.
+- `scripts/build-pwa.mjs`: esbuild bundles the runtime; Workbox `injectManifest`
+  injects content revisions for exactly five files. `npm run build` runs this
+  before Next.js; OpenNext invokes that build script too.
+- `public/sw.js`: committed generated artifact, with no external runtime imports.
+  Workbox cleans obsolete revisions inside `webook-pwa-precache-v1`; activation
+  also removes legacy caches beginning `webook-offline-`, preserving unrelated caches.
 - `next.config.ts`: worker JavaScript MIME type, root scope, and `no-store`
   headers; public PWA assets revalidate over the network.
 
@@ -67,17 +103,22 @@ localhost). `npm run dev` does not register the worker. Test development on a
 different port/profile from a previously installed production build, or remove
 that localhost worker in browser DevTools before development.
 
-Bump `CACHE_NAME` in `public/sw.js` whenever any precached asset changes. An update
+Run `npm run build:pwa` after changing worker source or precached files; do not edit
+the generated worker manually. Workbox 7.4.1 and esbuild 0.28.1 are approved build
+dependencies, bundled locally without a CDN. An update
 waits until the previous worker no longer controls any open tabs/windows, including
 the installed app. It does not call `skipWaiting` or force a page reload, so it
 does not interrupt editing. Reopen the app after closing all its windows to use
-an available update. No new dependencies or database changes are required.
+an available update. No database changes are required. Push Notification and Store
+distribution are deferred by the user and are outside this release's acceptance scope.
 
 ## Verification
 
 Automated worker tests execute the shipped script inside a VM with simulated
 browser Cache/Fetch APIs. They check offline fallback, privacy boundaries,
-network pass-through, HTTP errors, offline assets, and conservative updates.
+network pass-through, HTTP errors, revision lookup, failed installation, obsolete
+revision cleanup, offline assets, and conservative updates. A build test verifies
+the committed worker is reproducible and public-file edits change the artifact.
 
 ```sh
 node --test tests/pwa-worker.test.ts

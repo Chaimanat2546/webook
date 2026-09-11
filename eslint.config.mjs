@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
   ".superpowers/**",
   "out/**",
   "build/**",
+  "public/sw.js",
   "next-env.d.ts",
 ]),
 ]);

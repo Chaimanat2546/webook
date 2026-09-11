@@ -94,7 +94,7 @@ describe("Cloudflare deployment boundary", () => {
     assert.equal(Object.hasOwn(packageJson.scripts ?? {}, "deploy"), false);
     assert.equal(
       packageJson.scripts?.build,
-      "node --use-system-ca ./node_modules/next/dist/bin/next build --webpack",
+      "npm run build:pwa && node --use-system-ca ./node_modules/next/dist/bin/next build --webpack",
     );
     assert.equal(packageJson.scripts?.["preview:cf"], "opennextjs-cloudflare build && opennextjs-cloudflare preview");
     assert.equal(packageJson.scripts?.["deploy:cf"], "opennextjs-cloudflare build && opennextjs-cloudflare deploy");

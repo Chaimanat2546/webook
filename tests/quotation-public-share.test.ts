@@ -27,7 +27,8 @@ describe("quotation public share", () => {
     const editPage = source("../app/admin/quotations/[id]/page.tsx");
     assert.match(editor, /publicToken/);
     assert.match(editor, /publicOrigin: string \| null/);
-    assert.match(editor, /navigator\.clipboard\.writeText/);
+    // Native share and clipboard/manual fallbacks are exercised behaviorally
+    // in pwa-share.test.ts; this test retains the public-link access gates.
     assert.match(editor, /buildQuotationPublicUrl\(publicOrigin, publicToken\)/);
     assert.doesNotMatch(editor, /window\.location\.origin/);
     assert.match(editor, /documentNumber &&[\s\S]*lastSavedPayload &&[\s\S]*publicOrigin &&[\s\S]*publicToken &&[\s\S]*!isDirty/);
