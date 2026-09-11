@@ -6,6 +6,7 @@ import {
   ArrowRight,
   ArrowUp,
   History,
+  Upload,
   Redo2,
   RotateCcw,
   Undo2,
@@ -932,13 +933,15 @@ export function QuotationLayoutEditor({
             type="button"
             variant="outline"
           >
-            ยกเลิกการแก้ไข
+            คืนค่าเดิม
           </Button>
           <Button
             disabled={isPending || !changed}
+            className="min-h-12 text-base md:min-h-0 md:text-sm"
             onClick={() => publish(draft)}
             type="button"
           >
+            <Upload aria-hidden data-icon="inline-start" />
             {isPending ? "กำลังเผยแพร่…" : "เผยแพร่เลเอาท์"}
           </Button>
         </div>

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, Settings } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 
 import { QuotationEditor } from "../../../../components/admin/quotations/quotation-editor";
@@ -19,7 +20,7 @@ export default async function EditQuotationPage({ params, searchParams }: { para
   if (!UUID.test(id)) notFound();
   const [quotation, profile, banks, itemNames, templateSnapshots] = await Promise.all([getQuotationById(supabase, id), getQuotationCompanyProfile(supabase, user.id), listQuotationBanks(supabase), listQuotationItemNames(supabase), listQuotationDocumentTemplateSnapshots(supabase, user.id)]);
   if (!quotation) notFound();
-  if (!profile) return <Empty><EmptyHeader><EmptyTitle>ตั้งค่าข้อมูลผู้ขายหลักก่อนแก้ไขใบเสนอราคา</EmptyTitle></EmptyHeader><Button asChild><Link href="/admin/quotations/settings/company">ตั้งค่าข้อมูลผู้ขาย</Link></Button><Button asChild variant="outline"><Link href="/admin/quotations">กลับหน้าใบเสนอราคา</Link></Button></Empty>;
+  if (!profile) return <Empty><EmptyHeader><EmptyTitle>ตั้งค่าข้อมูลผู้ขายหลักก่อนแก้ไขใบเสนอราคา</EmptyTitle></EmptyHeader><Button className="min-h-12 md:min-h-0" asChild><Link href="/admin/quotations/settings/company"><Settings aria-hidden data-icon="inline-start" />ตั้งค่าข้อมูลผู้ขาย</Link></Button><Button className="min-h-12 md:min-h-0" asChild variant="outline"><Link href="/admin/quotations"><ArrowLeft aria-hidden data-icon="inline-start" />กลับหน้าใบเสนอราคา</Link></Button></Empty>;
   const initialPayload = { ...quotation.payload, paymentMethods: hydratePaymentMethodBanks(quotation.payload.paymentMethods, banks) };
   const publicOrigin = getQuotationPublicOrigin();
   return <QuotationEditor banks={banks} documentNumber={quotation.documentNumber} initialPayload={initialPayload} initialTemplateDefault={companyProfileToTemplate(profile)} itemNames={itemNames} printOnLoad={print === "1"} publicOrigin={publicOrigin} publicToken={quotation.publicToken} templateSnapshots={templateSnapshots} />;

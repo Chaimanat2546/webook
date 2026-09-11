@@ -235,7 +235,7 @@ describe("house image mobile UI", () => {
     assert.match(coverSelectSource, /function openSortDialog\(\) \{\s*setIsConfirmDialogOpen\(true\);\s*\}/);
     assert.match(
       coverSelectSource,
-      /<Button disabled=\{!canSort\} onClick=\{openSortDialog\} size="sm" type="button" variant="outline">[\s\S]*<ArrowLeftRightIcon data-icon="inline-start" \/>[\s\S]*เรียงรูป[\s\S]*<\/Button>/,
+      /<Button className="min-h-12 text-base md:min-h-0 md:text-sm" disabled=\{!canSort\} onClick=\{openSortDialog\} size="sm" type="button" variant="outline">[\s\S]*<ArrowLeftRightIcon data-icon="inline-start" \/>[\s\S]*เรียงรูป[\s\S]*<\/Button>/,
     );
     assert.match(coverSelectSource, /isConfirmDialogOpen/);
     assert.match(coverSelectSource, /setIsConfirmDialogOpen\(true\)/);

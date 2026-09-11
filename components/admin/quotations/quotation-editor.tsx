@@ -16,11 +16,13 @@ import {
   ArrowLeft,
   ChevronDown,
   Download,
+  Eye,
   GripVertical,
   LayoutTemplate,
   Printer,
   RotateCcw,
   Share2,
+  Save,
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
@@ -1252,7 +1254,7 @@ export function QuotationEditor({
 
   return (
     <div
-      className="space-y-4 pb-24 md:pb-0"
+      className="space-y-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0"
       data-dirty={isDirty}
       data-quotation-editor
     >
@@ -1262,7 +1264,7 @@ export function QuotationEditor({
       >
         <div className="flex flex-col gap-2">
           <Button
-            className="w-fit px-0"
+            className="min-h-12 w-fit px-3 text-base md:min-h-0 md:px-0 md:text-sm"
             onClick={closeEditor}
             size="sm"
             type="button"
@@ -1291,9 +1293,11 @@ export function QuotationEditor({
             type="button"
             variant="outline"
           >
+            <Eye aria-hidden data-icon="inline-start" />
             ดูตัวอย่าง
           </Button>
           <Button disabled={saveDisabled} onClick={() => save()} type="button">
+            <Save aria-hidden data-icon="inline-start" />
             {isPending ? "กำลังบันทึก…" : "บันทึก"}
           </Button>
         </div>
@@ -1962,10 +1966,11 @@ export function QuotationEditor({
         </section>
       </div>
       <div
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 gap-2 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden print:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 gap-2 [&_button]:min-h-16 [&_button]:flex-col [&_button]:gap-1 [&_button]:whitespace-normal [&_button]:text-sm border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden print:hidden"
         data-mobile-command-bar
       >
         <Button onClick={closeEditor} type="button" variant="outline">
+          <ArrowLeft aria-hidden className="size-5" />
           กลับ
         </Button>
         <Button
@@ -1974,9 +1979,11 @@ export function QuotationEditor({
           type="button"
           variant="outline"
         >
+          <Eye aria-hidden className="size-5" />
           ดูตัวอย่าง
         </Button>
         <Button disabled={saveDisabled} onClick={() => save()} type="button">
+          <Save aria-hidden className="size-5" />
           {isPending ? "กำลังบันทึก…" : "บันทึก"}
         </Button>
       </div>

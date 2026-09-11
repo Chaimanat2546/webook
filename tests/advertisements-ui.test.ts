@@ -186,7 +186,7 @@ describe("advertisement admin UI", () => {
     assert.match(formSource, /disabled=\{!isDirty \|\| isBusy\}/);
     assert.match(
       formSource,
-      /<Button\s+className="flex-1 lg:flex-none"\s+disabled=\{!isDirty \|\| isBusy\}\s+type="submit"\s*>/,
+      /<Button\s+className="min-h-12 flex-1 text-base md:min-h-0 md:text-sm lg:flex-none"\s+disabled=\{!isDirty \|\| isBusy\}\s+type="submit"\s*>/,
     );
     assert.match(formSource, /Trash2Icon/);
     assert.match(formSource, /CheckIcon/);

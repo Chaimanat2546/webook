@@ -1,6 +1,6 @@
 "use client";
 
-import { Contact, Files, FileText, House, LogOutIcon, Megaphone, Settings, ShieldUser, Users } from "lucide-react";
+import { Contact, Files, FileText, House, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -92,7 +92,7 @@ export function AdminDesktopSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) : null}
-                {canUseAccommodation ? (
+                {canUseAccommodation && !isMobile ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
@@ -138,7 +138,7 @@ export function AdminDesktopSidebar({
                     </SidebarMenuSub>
                   </SidebarMenuItem>
                 ) : null}
-                {canManageCentralUsers ? (
+                {canManageCentralUsers && !isMobile ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
@@ -152,17 +152,7 @@ export function AdminDesktopSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) : null}
-                {isMobile && canUseQuotation ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/quotations/settings")}>
-                      <Link href="/admin/quotations/settings/company" onClick={closeMobileSidebar}>
-                        <Settings aria-hidden />
-                        <span>ตั้งค่าใบเสนอราคา</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ) : null}
-                {canManageWebookUsers ? (
+                {canManageWebookUsers && !isMobile ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild

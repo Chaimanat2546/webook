@@ -1295,7 +1295,7 @@ describe("quotation UI", () => {
     assert.match(editor, /data-mobile-command-bar/);
     assert.match(editor, /fixed inset-x-0 bottom-0[\s\S]*?md:hidden/);
     assert.match(editor, /env\(safe-area-inset-bottom\)/);
-    assert.match(editor, /pb-24 md:pb-0/);
+    assert.match(editor, /pb-\[calc\(6rem\+env\(safe-area-inset-bottom\)\)\] md:pb-0/);
     assert.match(editor, /const saveDisabled = isPending \|\| uploadingFields\.size > 0/);
   });
 

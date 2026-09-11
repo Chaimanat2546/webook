@@ -45,8 +45,8 @@ export default async function CompanyProfilePage({ searchParams }: { searchParam
     ? await listQuotationDocumentTemplateRevisions(supabase, templateSnapshots[selectedTemplate].sourceId, selectedTemplate)
     : [];
   return <QuotationSettingsDirtyProvider><div className="mx-auto grid w-full max-w-[1440px] gap-5">
-    <header className="flex items-start gap-3 border-b pb-4">
-      <Button asChild size="icon-sm" variant="ghost"><QuotationSettingsNavLink aria-label="กลับไปหน้ารายการใบเสนอราคา" href="/admin/quotations"><ArrowLeft aria-hidden="true" /></QuotationSettingsNavLink></Button>
+    <header className="flex flex-col items-start gap-3 border-b pb-4 md:flex-row">
+      <Button asChild className="min-h-12 text-base md:min-h-0 md:text-sm" variant="ghost"><QuotationSettingsNavLink aria-label="กลับไปหน้ารายการใบเสนอราคา" href="/admin/quotations"><ArrowLeft aria-hidden="true" /><span>กลับใบเสนอราคา</span></QuotationSettingsNavLink></Button>
       <div><h1 className="text-xl font-semibold">ตั้งค่าข้อมูลใบเสนอราคา</h1><p className="text-sm text-muted-foreground">จัดการข้อมูลผู้ขาย ช่องทางรับชำระเงิน และข้อมูลรับรองของบัญชีนี้</p></div>
     </header>
     <div className="grid overflow-hidden rounded-lg border lg:grid-cols-[14rem_minmax(0,1fr)]">
@@ -55,7 +55,7 @@ export default async function CompanyProfilePage({ searchParams }: { searchParam
         <nav aria-label="ตั้งค่าข้อมูลใบเสนอราคา" className="flex gap-1 overflow-x-auto p-2 lg:grid lg:overflow-visible">
           {sections.map((item) => {
             const Icon = item.icon;
-            return <QuotationSettingsNavLink className={cn("flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 text-sm", selectedSection === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} current={selectedSection === item.id} href={item.href} key={item.id}><Icon aria-hidden="true" className="size-4" />{item.label}</QuotationSettingsNavLink>;
+            return <QuotationSettingsNavLink className={cn("flex min-h-12 shrink-0 items-center gap-2 rounded-md px-3 text-base lg:min-h-10 lg:text-sm", selectedSection === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")} current={selectedSection === item.id} href={item.href} key={item.id}><Icon aria-hidden="true" className="size-5 lg:size-4" />{item.label}</QuotationSettingsNavLink>;
           })}
         </nav>
       </aside>

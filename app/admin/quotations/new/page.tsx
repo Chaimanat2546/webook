@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft, Settings } from "lucide-react";
 
 import { QuotationEditor } from "../../../../components/admin/quotations/quotation-editor";
 import { Button } from "../../../../components/ui/button";
@@ -19,7 +20,7 @@ export default async function NewQuotationPage() {
     listCompanyPaymentMethods(supabase, user.id),
     listQuotationItemNames(supabase),
   ]);
-  if (!profile) return <Empty><EmptyHeader><EmptyTitle>ตั้งค่าข้อมูลผู้ขายหลักก่อนสร้างใบเสนอราคา</EmptyTitle><EmptyDescription>ข้อมูลผู้ขายจะถูกคัดลอกลงในใบเสนอราคา</EmptyDescription></EmptyHeader><Button asChild><Link href="/admin/quotations/settings/company">ตั้งค่าข้อมูลผู้ขายหลัก</Link></Button></Empty>;
+  if (!profile) return <Empty><EmptyHeader><EmptyTitle>ตั้งค่าข้อมูลผู้ขายหลักก่อนสร้างใบเสนอราคา</EmptyTitle><EmptyDescription>ข้อมูลผู้ขายจะถูกคัดลอกลงในใบเสนอราคา</EmptyDescription></EmptyHeader><Button asChild className="min-h-12 md:min-h-0"><Link href="/admin/quotations/settings/company"><Settings aria-hidden data-icon="inline-start" />ตั้งค่าข้อมูลผู้ขายหลัก</Link></Button><Button asChild className="min-h-12 md:min-h-0" variant="outline"><Link href="/admin/quotations"><ArrowLeft aria-hidden data-icon="inline-start" />กลับหน้าใบเสนอราคา</Link></Button></Empty>;
   const templateSnapshots = await listQuotationDocumentTemplateSnapshots(supabase, user.id);
 
   const initialPayload = emptyQuotationPayload(

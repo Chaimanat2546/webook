@@ -112,7 +112,7 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
         </div>
 
         <div className="flex justify-end border-t pt-4 lg:mt-auto">
-          <Button className="w-full sm:w-fit" disabled={roles.length === 0 || isPending} type="submit">
+          <Button className="min-h-12 w-full text-base md:min-h-0 md:text-sm sm:w-fit" disabled={roles.length === 0 || isPending} type="submit">
             <SaveIcon data-icon="inline-start" />
             บันทึกสิทธิ์การใช้งาน
           </Button>
@@ -184,7 +184,7 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
 function FormActions({ disabled }: { disabled: boolean }) {
   return (
     <div className="flex justify-end">
-      <Button disabled={disabled} type="submit">
+      <Button className="min-h-12 w-full text-base md:min-h-0 md:w-auto md:text-sm" disabled={disabled} type="submit">
         <SaveIcon data-icon="inline-start" />
         บันทึกข้อมูลผู้ใช้
       </Button>

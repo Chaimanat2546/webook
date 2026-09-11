@@ -1,10 +1,13 @@
 export interface MobileNavigationPermissions {
   canAccessHouses: boolean;
   canUseQuotation: boolean;
+  canUseAccommodation: boolean;
+  canManageCentralUsers: boolean;
+  canManageWebookUsers: boolean;
 }
 
 export interface MobileDestination {
-  id: "houses" | "quotations" | "customers";
+  id: "houses" | "advertisements" | "quotations" | "users";
   label: string;
   href: string;
 }
@@ -21,7 +24,7 @@ export function createMobileNavigationMemory() {
       return () => { listeners.delete(listener); };
     },
     remember(pathname: string, search: string) {
-      if (!["/admin/houses", "/admin/quotations", "/admin/quotations/customers"].includes(pathname)) return;
+      if (!["/admin/houses", "/admin/advertisements", "/admin/quotations", "/admin/quotations/customers", "/admin/users", "/admin/user-manager"].includes(pathname)) return;
       const href = `${pathname}${search ? `?${search}` : ""}`;
       if (snapshot[pathname] === href) return;
       snapshot = { ...snapshot, [pathname]: href };
@@ -33,15 +36,17 @@ export function createMobileNavigationMemory() {
 export function mobileDestinations(permissions: MobileNavigationPermissions): MobileDestination[] {
   const items: MobileDestination[] = [];
   if (permissions.canAccessHouses) items.push({ id: "houses", label: "บ้านพัก", href: "/admin/houses" });
+  if (permissions.canUseAccommodation) items.push({ id: "advertisements", label: "โฆษณา", href: "/admin/advertisements" });
   if (permissions.canUseQuotation) items.push(
     { id: "quotations", label: "ใบเสนอราคา", href: "/admin/quotations" },
-    { id: "customers", label: "ลูกค้า", href: "/admin/quotations/customers" },
   );
+  if (permissions.canManageCentralUsers || permissions.canManageWebookUsers) items.push({ id: "users", label: "ผู้ใช้", href: permissions.canManageCentralUsers ? "/admin/user-manager" : "/admin/users" });
   return items;
 }
 
 export function mobileSection(pathname: string): MobileDestination["id"] | "more" {
-  if (pathname === "/admin/quotations/customers") return "customers";
+  if (pathname === "/admin/advertisements" || pathname.startsWith("/admin/advertisements/")) return "advertisements";
+  if (["/admin/users", "/admin/user-manager"].some(path => pathname === path || pathname.startsWith(`${path}/`))) return "users";
   if (pathname === "/admin/houses" || pathname.startsWith("/admin/houses/")) return "houses";
   if (pathname === "/admin/quotations" || pathname.startsWith("/admin/quotations/")) return "quotations";
   return "more";

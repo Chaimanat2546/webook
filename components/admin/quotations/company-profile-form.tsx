@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition, type Dispatch, type SetStateAction } from "react";
 import { toast } from "sonner";
+import { Save } from "lucide-react";
 
 import { saveCompanyCertificationAction, saveCompanyPaymentMethodsAction, saveCompanyProfileAction } from "../../../app/admin/quotations/actions";
 import { validateQuotationAssetFile } from "../../../lib/quotation-assets";
@@ -204,7 +205,7 @@ export function CompanyProfileForm({ initialSeller }: { initialSeller: SellerSna
         </div>
       </SettingsGroup>
     </div>
-    <SettingsActionFooter error={Boolean(error || logoError)} message={error || message}><Button className="w-full sm:w-auto" disabled={disabled} type="submit">{disabled ? "กำลังบันทึก..." : "บันทึกข้อมูลผู้ขาย"}</Button></SettingsActionFooter>
+    <SettingsActionFooter error={Boolean(error || logoError)} message={error || message}><Button className="min-h-12 w-full text-base md:min-h-0 md:text-sm sm:w-auto" disabled={disabled} type="submit"><Save aria-hidden data-icon="inline-start" />{disabled ? "กำลังบันทึก..." : "บันทึกข้อมูลผู้ขาย"}</Button></SettingsActionFooter>
   </form>;
 }
 
@@ -254,7 +255,7 @@ export function PaymentMethodsSettings({ banks, initialMethods }: { banks: BankO
   const hasError = Object.keys(errors).length > 0;
   return <div className="overflow-hidden rounded-xl border bg-card">
     <div className="grid gap-4 p-4 sm:p-6"><div><h2 className="font-semibold">ช่องทางชำระเงิน</h2><p className="text-sm text-muted-foreground">เลือกช่องทางที่ต้องการใช้เป็นค่าเริ่มต้นในใบเสนอราคาใหม่</p></div><PaymentMethodList banks={banks} errors={errors} methods={methods} mode="master" onChange={updateMethods} onUploadStateChange={updateUploadState} /></div>
-    <SettingsActionFooter error={hasError} message={message}><Button className="w-full sm:w-auto" disabled={disabled} onClick={save} type="button">{disabled ? "กำลังบันทึก..." : "บันทึกช่องทางชำระเงิน"}</Button></SettingsActionFooter>
+    <SettingsActionFooter error={hasError} message={message}><Button className="min-h-12 w-full text-base md:min-h-0 md:text-sm sm:w-auto" disabled={disabled} onClick={save} type="button"><Save aria-hidden data-icon="inline-start" />{disabled ? "กำลังบันทึก..." : "บันทึกช่องทางชำระเงิน"}</Button></SettingsActionFooter>
   </div>;
 }
 
@@ -303,7 +304,7 @@ export function CertificationSettings({ initialCertification }: { initialCertifi
   const disabled = pending || uploadingFields.size > 0;
   return <div className="overflow-hidden rounded-xl border bg-card">
     <div className="grid gap-4 p-4 sm:p-6"><div><h2 className="font-semibold">ข้อมูลรับรองหลัก</h2><p className="text-sm text-muted-foreground">ข้อมูลนี้จะใช้เป็นค่าเริ่มต้นสำหรับใบเสนอราคาใหม่</p></div><CertificationFields disabled={disabled} errors={errors} onChange={updateCertification} onUploadStateChange={updateUploadState} value={certification} /></div>
-    <SettingsActionFooter error={Object.keys(errors).length > 0} message={message}><Button className="w-full sm:w-auto" disabled={disabled} onClick={save} type="button">{disabled ? "กำลังบันทึก..." : "บันทึกข้อมูลรับรอง"}</Button></SettingsActionFooter>
+    <SettingsActionFooter error={Object.keys(errors).length > 0} message={message}><Button className="min-h-12 w-full text-base md:min-h-0 md:text-sm sm:w-auto" disabled={disabled} onClick={save} type="button"><Save aria-hidden data-icon="inline-start" />{disabled ? "กำลังบันทึก..." : "บันทึกข้อมูลรับรอง"}</Button></SettingsActionFooter>
   </div>;
 }
 

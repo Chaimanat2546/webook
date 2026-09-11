@@ -26,7 +26,7 @@ describe("quotation authorization and navigation", () => {
     assert.match(layout, /canUseQuotation\(adminUser\)/);
     assert.match(shell, /canUseQuotation: boolean/);
     assert.match(sidebar, /canUseQuotation: boolean/);
-    assert.match(sidebar, /canUseQuotation \? \(/);
+    assert.match(sidebar, /canUseQuotation && !isMobile \? \(/);
     assert.match(sidebar, /href="\/admin\/quotations"/);
   });
 
