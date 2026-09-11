@@ -12,6 +12,11 @@ to website users and WeBooks users. Customers and quotation settings are reached
 from the existing quotation list toolbar. More reuses the existing mobile
 Sidebar/Sheet for install and logout. Desktop retains the existing sidebar.
 
+Install/logout now sit immediately after the menu links inside SidebarContent,
+instead of a bottom-pinned footer. Mobile omits the redundant “เพิ่มเติม” heading;
+the More button opens the actual available actions even when installation is no
+longer applicable.
+
 Detail/edit/task routes hide the global mobile header and tabs so existing local
 back/save controls remain available without overlapping controls. House task
 pages retain the House Workspace Shell. Error/not-found screens include a link
@@ -84,3 +89,13 @@ controls name their actual behavior: “กลับไปจัดการร�
 “คืนค่าเดิม” for resetting edits, “เลิกเลือก” for leaving selection mode, and “ปิด”
 for closing a customer form. The cover-order review dialog returns with
 “กลับไปเลือกรูป”; it is an editing/review dialog rather than a yes/no question.
+
+## Quotation preview
+
+The editor preview starts fitted to both available width and height. The A4
+document renderer remains unchanged; a preview-only transform scales its measured
+dimensions. ResizeObserver accounts for viewport changes and document content
+growth. Plus/minus controls zoom from the fitted size, and Full Page resets zoom
+and scroll. Closing/reopening starts fitted again. At 360px, the A4 fixture fits
+without scroll overflow; zooming makes the document scrollable. Native pinch
+behavior has not been tested on a physical device. No changes affect PDF output.

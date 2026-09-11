@@ -8,7 +8,6 @@ import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -75,7 +74,7 @@ export function AdminDesktopSidebar({
 
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>{isMobile ? "เพิ่มเติม" : "เมนูหลัก"}</SidebarGroupLabel>
+            {!isMobile && <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {canAccessHouses && !isMobile ? (
@@ -166,13 +165,6 @@ export function AdminDesktopSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) : null}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-
-        <SidebarFooter>
-          <SidebarMenu>
             <InstallAppMenuItem />
             <SidebarMenuItem>
               <form action={signOutAction}>
@@ -184,8 +176,12 @@ export function AdminDesktopSidebar({
                 </SidebarMenuButton>
               </form>
             </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+
       </Sidebar>
     </TooltipProvider>
   );

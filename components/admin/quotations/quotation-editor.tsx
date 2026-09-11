@@ -10,6 +10,7 @@ import {
   useTransition,
 } from "react";
 import { move } from "@dnd-kit/helpers";
+import { DocumentPreview } from "./document-preview";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
@@ -1989,10 +1990,11 @@ export function QuotationEditor({
       </div>
       <Dialog onOpenChange={setPreviewOpen} open={previewOpen}>
         <DialogContent
-          className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-auto p-0 sm:max-w-[calc(100vw-4rem)]"
+          className="flex h-[90dvh] max-h-[90dvh] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-4rem)]"
           showCloseButton
         >
-          {calculation ? (
+          <DialogHeader className="shrink-0 border-b p-4 pr-12"><DialogTitle>ตัวอย่างใบเสนอราคา</DialogTitle><DialogDescription>เริ่มจากเต็มหน้า กดขยายเพื่ออ่านรายละเอียด</DialogDescription></DialogHeader>
+          <DocumentPreview>{calculation ? (
             <QuotationDocument
               calculation={calculation}
               documentNumber={documentNumber}
@@ -2001,7 +2003,7 @@ export function QuotationEditor({
             />
           ) : (
             <p className="p-4">กรุณาแก้ไขข้อมูลก่อนดูตัวอย่าง</p>
-          )}
+          )}</DocumentPreview>
         </DialogContent>
       </Dialog>
       <Dialog
