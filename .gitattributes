@@ -1,0 +1,4 @@
+# Keep Workbox content revisions and its generated artifact stable across OSes.
+/public/pwa/offline.html text eol=lf
+/public/pwa/offline.js text eol=lf
+/public/sw.js text eol=lf

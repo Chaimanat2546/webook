@@ -4,57 +4,80 @@ import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 
 interface WorkerEvent {
-  request?: { url: string; method: string; mode: string; headers: Headers };
+  type: string;
+  request?: Request;
   waitUntil: (work: Promise<unknown>) => void;
   respondWith: (response: Promise<Response>) => void;
 }
 
 // The VM executes the shipped worker. Only browser-provided APIs are simulated.
 function worker() {
-  const listeners = new Map<string, (event: WorkerEvent) => void>();
+  const listeners = new Map<string, Array<(event: WorkerEvent) => void>>();
   const stores = new Map<string, Map<string, Response>>();
   const requests: string[] = [];
   let online = true;
   let status = 200;
   let skippedWaiting = false;
   const source = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
-  runInNewContext(source, {
-    URL, Response,
-    self: {
-      location: { origin: "https://webook.test" },
-      clients: { claim: async () => {} },
-      skipWaiting: async () => { skippedWaiting = true; },
-      addEventListener: (type: string, callback: (event: WorkerEvent) => void) => listeners.set(type, callback),
-    },
-    caches: {
+  const keyUrl = (key: Request | string) => new URL(typeof key === "string" ? key : key.url, "https://webook.test").href;
+  const cacheStorage = {
+      match: async (key: Request | string, options?: { cacheName?: string }) => {
+        for (const [name, store] of stores) {
+          if (options?.cacheName && name !== options.cacheName) continue;
+          const response = store.get(keyUrl(key));
+          if (response) return response.clone();
+        }
+        return undefined;
+      },
       keys: async () => [...stores.keys()],
       delete: async (key: string) => stores.delete(key),
       open: async (name: string) => {
         if (!stores.has(name)) stores.set(name, new Map());
         const store = stores.get(name)!;
         return {
-          addAll: async (urls: string[]) => {
-            for (const url of urls) store.set(url, new Response(`asset:${url}`));
-          },
-          match: async (key: string) => store.get(key)?.clone(),
+          put: async (key: Request | string, response: Response) => { store.set(keyUrl(key), response.clone()); },
+          match: async (key: Request | string) => store.get(keyUrl(key))?.clone(),
+          delete: async (key: Request | string) => store.delete(keyUrl(key)),
+          keys: async () => [...store.keys()].map((key) => new Request(key)),
         };
       },
+    };
+  const location = new URL("https://webook.test/sw.js");
+  runInNewContext(source, {
+    URL, Response, Request, Headers, setTimeout, clearTimeout, location,
+    FetchEvent: class FetchEvent {},
+    self: {
+      location,
+      registration: { scope: "https://webook.test/" },
+      caches: cacheStorage,
+      clients: { claim: async () => {} },
+      skipWaiting: async () => { skippedWaiting = true; },
+      addEventListener: (type: string, callback: (event: WorkerEvent) => void) => {
+        listeners.set(type, [...(listeners.get(type) ?? []), callback]);
+      },
     },
-    fetch: async (request: { url: string } | string) => {
-      requests.push(typeof request === "string" ? request : request.url);
+    caches: cacheStorage,
+    fetch: async (request: Request | string) => {
+      const url = keyUrl(request);
+      requests.push(url);
       if (!online) throw new TypeError("Network unavailable");
+      if (new URL(url).pathname.startsWith("/pwa/")) return new Response(`asset:${new URL(url).pathname}`, { status });
+      assert.equal(typeof request !== "string" && request.cache, "no-store");
       return new Response("server response", { status });
     },
   });
   async function dispatch(type: string, request?: WorkerEvent["request"]) {
     const work: Promise<unknown>[] = [];
     let response: Promise<Response> | undefined;
-    listeners.get(type)?.({
+    const event: WorkerEvent = {
+      type,
       request,
       waitUntil: (promise) => { work.push(promise); },
       respondWith: (promise) => { response = promise; },
-    });
-    await Promise.all(work);
+    };
+    for (const listener of listeners.get(type) ?? []) listener(event);
+    // Workbox may add waitUntil promises during asynchronous plugin callbacks.
+    for (let i = 0; i < work.length; i++) await work[i];
     return response;
   }
   return {
@@ -66,7 +89,10 @@ function worker() {
 }
 
 function request(path: string, mode = "navigate", method = "GET") {
-  return { url: new URL(path, "https://webook.test").href, mode, method, headers: new Headers() };
+  const value = new Request(new URL(path, "https://webook.test"), { method });
+  // Node cannot construct navigation requests; browsers supply them to the worker.
+  Object.defineProperty(value, "mode", { value: mode });
+  return value;
 }
 
 test("offline navigation returns a public fallback, never previously visited private HTML", async () => {
@@ -81,13 +107,17 @@ test("offline navigation returns a public fallback, never previously visited pri
   }
   for (const store of runtime.stores.values()) {
     assert.ok(store.size > 0);
-    for (const key of store.keys()) assert.ok(key.startsWith("/pwa/"), `Unexpected cached URL: ${key}`);
+    for (const key of store.keys()) {
+      assert.ok(new URL(key).pathname.startsWith("/pwa/"), `Unexpected cached URL: ${key}`);
+      assert.match(new URL(key).searchParams.get("__WB_REVISION__") ?? "", /^[a-f0-9]{32}$/);
+    }
   }
 });
 
 test("API, RSC, scripts, external requests, and mutations bypass the offline handler", async () => {
   const runtime = worker();
   await runtime.dispatch("install");
+  runtime.requests.length = 0;
   runtime.setOffline();
   for (const req of [
     request("/api/admin/customers", "cors"),
@@ -133,5 +163,25 @@ test("updates remove only old WeBooks offline caches and never force activation"
   assert.equal(runtime.stores.has("webook-offline-v0"), false);
   assert.equal(runtime.stores.has("other-app-cache"), true);
   assert.equal(runtime.skippedWaiting(), false);
-  assert.ok([...runtime.stores.values()].some((store) => store.has("/pwa/offline.html")));
+  assert.ok([...runtime.stores.values()].some((store) => [...store.keys()].some((key) => new URL(key).pathname === "/pwa/offline.html")));
+});
+
+test("a failed precache install rejects and leaves legacy caches in place", async () => {
+  const runtime = worker();
+  runtime.stores.set("webook-offline-v4", new Map());
+  runtime.setStatus(500);
+  await assert.rejects(runtime.dispatch("install"));
+  assert.equal(runtime.stores.has("webook-offline-v4"), true);
+  assert.equal(runtime.skippedWaiting(), false);
+});
+
+test("activation removes obsolete revisions from only the owned Workbox cache", async () => {
+  const runtime = worker();
+  await runtime.dispatch("install");
+  const cache = runtime.stores.get("webook-pwa-precache-v1")!;
+  const obsolete = "https://webook.test/pwa/offline.html?__WB_REVISION__=obsolete";
+  cache.set(obsolete, new Response("old"));
+  await runtime.dispatch("activate");
+  assert.equal(cache.has(obsolete), false);
+  assert.equal(cache.size, 5);
 });

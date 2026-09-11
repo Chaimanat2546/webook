@@ -9,6 +9,7 @@ import {
 } from "../ui/sidebar";
 import { Separator } from "../ui/separator";
 import { Toaster } from "../ui/sonner";
+import { ConnectionStatus } from "../pwa/connection-status";
 
 export function AdminShell({
   canAccessHouses,
@@ -47,7 +48,10 @@ export function AdminShell({
           </div>
         </header>
 
-        <div className="min-w-0 flex-1 px-4 py-5 md:px-6">{children}</div>
+        <div className="min-w-0 flex-1 px-4 py-5 md:px-6">
+          <ConnectionStatus />
+          {children}
+        </div>
       </SidebarInset>
       <Toaster />
     </SidebarProvider>

@@ -69,6 +69,8 @@ import type { QuotationTemplate } from "../../../lib/quotation-template";
 import type { QuotationDocumentTemplateSnapshot } from "../../../server/repositories/quotations";
 import { normalizeQuotationVatChoices } from "../../../lib/quotation-vat";
 import { cn } from "../../../lib/utils";
+import { shareLink } from "../../../lib/pwa/share";
+import { attemptMutation } from "../../../lib/pwa/mutation";
 import { Alert, AlertDescription } from "../../ui/alert";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -701,6 +703,7 @@ export function QuotationEditor({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [deleteError, setDeleteError] = useState("");
   const [isDirty, setIsDirty] = useState(false);
+  const [manualShareUrl, setManualShareUrl] = useState("");
   const [activeCompletionTab, setActiveCompletionTab] = useState<
     "certification" | "payments"
   >("payments");
@@ -996,7 +999,12 @@ export function QuotationEditor({
   function save(close = false) {
     if (uploadingFields.size) return;
     startTransition(async () => {
-      const result = await saveQuotationAction(payload);
+      const attempt = await attemptMutation(() => saveQuotationAction(payload));
+      if (!attempt.received) {
+        toast.error("ยังยืนยันผลการบันทึกไม่ได้ ข้อมูลที่กรอกยังอยู่ในหน้านี้ กรุณาตรวจรายการใบเสนอราคาก่อนบันทึกซ้ำ");
+        return;
+      }
+      const result = attempt.result;
       if (!result.ok) {
         const errorFields = Object.keys(result.fieldErrors);
         const firstField = errorFields[0];
@@ -1153,12 +1161,14 @@ export function QuotationEditor({
   }
   async function shareSaved() {
     if (!canUseSavedDocument || !publicOrigin || !publicToken) return;
-    try {
-      await navigator.clipboard.writeText(buildQuotationPublicUrl(publicOrigin, publicToken));
-      toast.success("คัดลอกลิงก์สาธารณะแล้ว");
-    } catch {
-      toast.error("ไม่สามารถคัดลอกลิงก์ได้");
-    }
+    const url = buildQuotationPublicUrl(publicOrigin, publicToken);
+    const outcome = await shareLink({ title: documentNumber ?? "ใบเสนอราคา WeBooks", url }, {
+      share: navigator.share?.bind(navigator),
+      canShare: navigator.canShare?.bind(navigator),
+      copy: navigator.clipboard?.writeText.bind(navigator.clipboard),
+    });
+    if (outcome === "copied") toast.success("คัดลอกลิงก์สาธารณะแล้ว");
+    if (outcome === "manual") setManualShareUrl(url);
   }
   async function rotatePublicLink() {
     if (!payload.id || !canUseSavedDocument) return;
@@ -1203,7 +1213,12 @@ export function QuotationEditor({
     if (!payload.id) return;
     setDeleteError("");
     startTransition(async () => {
-      const result = await deleteQuotationAction(payload.id!);
+      const attempt = await attemptMutation(() => deleteQuotationAction(payload.id!));
+      if (!attempt.received) {
+        setDeleteError("ยังยืนยันผลการลบไม่ได้ กรุณาตรวจรายการใบเสนอราคาก่อนลองใหม่");
+        return;
+      }
+      const result = attempt.result;
       if (!result.ok) {
         setDeleteError(result.formError);
         toast.error(result.formError);
@@ -2007,6 +2022,15 @@ export function QuotationEditor({
               {confirmationCopy.confirm}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(manualShareUrl)} onOpenChange={(open) => { if (!open) setManualShareUrl(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>คัดลอกลิงก์ใบเสนอราคา</DialogTitle>
+            <DialogDescription>เลือกข้อความแล้วคัดลอกลิงก์เพื่อส่งให้ผู้รับ</DialogDescription>
+          </DialogHeader>
+          <Input aria-label="ลิงก์สาธารณะของใบเสนอราคา" readOnly value={manualShareUrl} onFocus={(event) => event.currentTarget.select()} />
         </DialogContent>
       </Dialog>
       <Dialog onOpenChange={setDeleteOpen} open={deleteOpen}>
