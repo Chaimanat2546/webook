@@ -107,9 +107,27 @@ Run `npm run build:pwa` after changing worker source or precached files; do not 
 the generated worker manually. Workbox 7.4.1 and esbuild 0.28.1 are approved build
 dependencies, bundled locally without a CDN. An update
 waits until the previous worker no longer controls any open tabs/windows, including
-the installed app. It does not call `skipWaiting` or force a page reload, so it
+the installed app. It does not automatically call `skipWaiting` or force a page reload, so it
 does not interrupt editing. Reopen the app after closing all its windows to use
-an available update. No database changes are required. Push Notification and Store
+an available update. The app now also shows an update notice for an already waiting
+worker or one installed while the page is open. **อัปเดตตอนนี้** opens a confirmation
+asking the user to save work first. Confirmation activates the waiting worker and
+reloads only that window; existing beforeunload guards can still cancel the reload.
+Other windows show **โหลดเวอร์ชันใหม่** and never reload automatically. **ภายหลัง**
+collapses the notice to a small button so it can be reopened.
+
+Worker identity includes a deterministic hash of application source and dependency
+manifests, in addition to public asset revisions, so app-code releases also trigger
+the notice. Environment files and credentials are excluded. An environment-only
+change does not itself change this source fingerprint. Checks run on focus and
+returning online; no notification permission or Push service is involved.
+
+Older workers that do not support the activation message time out with instructions
+to save work and close all WeBooks windows, rather than reloading unexpectedly.
+The new UI itself must first be loaded from a deployment; a page already running
+older JavaScript cannot retroactively acquire this UI without reopening/reloading.
+
+No database changes are required. Push Notification and Store
 distribution are deferred by the user and are outside this release's acceptance scope.
 
 ## Verification

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { UpdateNotice } from "./update-notice";
 
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<unknown>;
@@ -29,9 +30,15 @@ function isStandalone() {
 export function PwaProvider({ children }: { children: ReactNode }) {
   const [prompt, setPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const standalone = useSyncExternalStore(subscribeStandalone, isStandalone, () => false);
 
   useEffect(() => {
+    let disposed = false;
+    let currentRegistration: ServiceWorkerRegistration | undefined;
+    const checkUpdate = () => {
+      if (navigator.onLine && currentRegistration) void currentRegistration.update().catch(() => {});
+    };
     function beforeInstall(event: Event) {
       event.preventDefault();
       setPrompt(event as InstallPromptEvent);
@@ -46,14 +53,22 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     async function registerWorker() {
       if (process.env.NODE_ENV !== "production" || !window.isSecureContext || !("serviceWorker" in navigator)) return;
       try {
-        await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+        const registered = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+        if (disposed) return;
+        currentRegistration = registered;
+        setRegistration(registered);
       } catch {
         // Installation remains progressive: normal online use is still available.
         console.warn("WeBooks offline support could not be initialized.");
       }
     }
     void registerWorker();
+    window.addEventListener("focus", checkUpdate);
+    window.addEventListener("online", checkUpdate);
     return () => {
+      disposed = true;
+      window.removeEventListener("focus", checkUpdate);
+      window.removeEventListener("online", checkUpdate);
       window.removeEventListener("beforeinstallprompt", beforeInstall);
       window.removeEventListener("appinstalled", appInstalled);
     };
@@ -72,6 +87,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
   return (
     <PwaContext.Provider value={{ installed: installed || standalone, canPrompt: prompt !== null, install }}>
       {children}
+      <UpdateNotice registration={registration} />
     </PwaContext.Provider>
   );
 }

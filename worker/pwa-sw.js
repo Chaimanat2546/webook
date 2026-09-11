@@ -42,4 +42,9 @@ self.addEventListener("activate", (event) => {
     await self.clients.claim();
   })());
 });
-// No skipWaiting, push, background replay, or caching of authenticated responses.
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "WEBOOK_ACTIVATE_UPDATE") {
+    event.waitUntil(self.skipWaiting());
+  }
+});
+// Activation only on explicit confirmation. No automatic reload, push or replay.

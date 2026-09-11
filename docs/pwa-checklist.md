@@ -63,6 +63,29 @@
 
 ## Browser support ที่ใช้แทนข้อมูลปี 2023
 
+### Update UX implementation และผลทดสอบ local — 11 กันยายน 2026
+
+- เพิ่มข้อความมีเวอร์ชันใหม่ → อัปเดตตอนนี้/ภายหลัง → ยืนยันบันทึกงานก่อนโหลดใหม่; ใช้ Alert/Button/Dialog เดิมที่ root provider ครอบคลุมหน้า login และ admin
+- เฉพาะหน้าต่างที่ยืนยันเท่านั้นที่สั่ง activation และ reload; หน้าต่างอื่นแจ้งโหลดรุ่นใหม่โดยไม่ reload อัตโนมัติ ทุกครั้งต้องยืนยันแม้ฟอร์มนั้นไม่มี dirty-state integration; beforeunload เดิมยังคงทำงาน
+- รุ่นแอปเปลี่ยนจาก source/dependency fingerprint แบบ deterministic; ไม่อ่าน env/secrets และไม่ใช้เวลา build เป็น revision
+- Worker เก่าที่ไม่รู้จัก activation message มี timeout และคำแนะนำให้บันทึกแล้วปิดทุกหน้าต่าง; UI ใหม่นี้ต้อง deploy และโหลดเข้าแท็บก่อนจึงใช้ได้กับการอัปเดตในอนาคต
+- typecheck/lint/build ผ่าน, tests **626/626** ผ่าน รวม existing waiting worker, later install, first install, explicit activation, timeout และ release fingerprint
+- Browser จริงใน Codex, localhost production build, สองแท็บ: กดภายหลังแล้วย้อนเปิดข้อความได้; ยืนยันอัปเดตแท็บแรกแล้ว reload สำเร็จ; อีกแท็บเก็บข้อความทดสอบที่กรอกไว้และแสดงโหลดเวอร์ชันใหม่ ไม่ reload
+- หลัง activation หยุด local server แล้วกดลิงก์ `/login` → `/login?forgot=1`: Next.js แจ้ง RSC fetch ล้มเหลวและเปลี่ยนเป็น full navigation จากนั้น Workbox แสดงหน้าออฟไลน์ที่ URL ปลายทางได้ ไม่พบ browser error page ในกรณีนี้
+- ผลนี้ไม่แทนการตรวจ Edge installed app ของผู้ใช้หรือ authenticated editor; ยังไม่ deploy ในงานนี้
+
+### ตรวจเว็บที่ผู้ใช้ติดตั้งผ่าน Edge บน Windows — 11 กันยายน 2026
+
+- ผู้ใช้ยืนยันว่าติดตั้งจาก `https://webook-admin.poolvilla.workers.dev/login` ผ่าน Edge; นี่เป็นหลักฐานการติดตั้งจากผู้ใช้ ยังไม่ใช่ผลตรวจ installed window โดย agent
+- HTTPS `/login`, manifest, worker และ public offline assets ตอบ 200; manifest มี `display: standalone`, `id/start_url/scope: /` และไอคอน 192/512
+- `/sw.js` บน origin นี้ตรงกับ generated worker ใน workspace รวม revision 5 รายการ ดังนั้นข้อสันนิษฐานก่อนหน้าว่าเว็บอาจยังใช้ worker เก่าไม่ตรงกับผลตรวจล่าสุด; การตรงกันของ worker ไม่ยืนยันเวอร์ชัน Next.js ที่ deploy
+- Browser ที่เครื่องมือควบคุมได้เปิด login และนำทางไป forgot-password ได้ ไม่พบ console warn/error ใน flow นี้ และไม่ได้ส่งแบบฟอร์มหรือข้อมูลล็อกอิน
+- HTTP probe `/admin/houses` โดยไม่มี session เปลี่ยนไป `/login` สำเร็จ
+- พบ deployment configuration gap: `/sw.js` เสิร์ฟ `Cache-Control: public, must-revalidate, max-age=0` แทน `no-store, max-age=0` ใน Next config; `/pwa/*` เช่นกัน ไม่พบ `Service-Worker-Allowed` แต่ worker อยู่ที่ root จึงยังใช้ root scope ได้ตามตำแหน่งไฟล์ และ `text/javascript` เป็น JavaScript MIME ที่ใช้ได้
+- ควรตั้ง header ของ static assets ผ่าน [Cloudflare `_headers`](https://developers.cloudflare.com/workers/static-assets/headers/) แล้วตรวจ response หลัง deploy; cache ที่ต้อง revalidate ปัจจุบันไม่ใช่หลักฐานว่าแอปติดตั้งหรือ offline ไม่ได้
+- เครื่องมือไม่มี Edge/native-app surface จึงยังไม่ตรวจการเปิดจากไอคอน, standalone, offline/retry, multi-window และ authenticated flows ของแอปที่ผู้ใช้ติดตั้ง ไม่ได้ deploy หรือเปลี่ยนเว็บออนไลน์ระหว่างการตรวจนี้
+- ผลจากผู้ใช้หลังลอง offline ใน Edge installed app: พบ **“Hmmm… can't reach this page”** แทนหน้า offline ของ WeBooks จัดเป็น failed สำหรับการทดสอบนี้ ยังไม่ทราบสถานะ worker/controller/cache หรือวิธี reload จึงยังไม่สรุปสาเหตุ และไม่ถือว่า header ที่ต่างเป็นสาเหตุโดยไม่มีหลักฐาน
+
 ตารางนี้เป็นข้อมูลจากเอกสาร ไม่ใช่ผลทดสอบ WeBooks และไม่กำหนด minimum OS ของผลิตภัณฑ์โดยอัตโนมัติ ต้องบันทึกรุ่นที่ทดสอบจริงก่อน release
 
 | Browser/OS | วิธีติดตั้งหรือเปิดเป็นแอป | แนวทาง UI ของ WeBooks |
