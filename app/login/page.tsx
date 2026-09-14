@@ -42,7 +42,6 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 py-10">
-      {!isForgotMode && <LoginInstallPrompt />}
       <Card className="w-full max-w-sm">
         <CardHeader>
           <Image
@@ -106,6 +105,7 @@ export default async function LoginPage({
           )}
         </CardContent>
       </Card>
+      {!isForgotMode && <LoginInstallPrompt />}
     </main>
   );
 }
