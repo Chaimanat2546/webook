@@ -24,4 +24,14 @@ describe("auth UI", () => {
     assert.match(resetPasswordPage, /name="newAdminCredential"/);
     assert.match(resetPasswordPage, /name="confirmAdminCredential"/);
   });
+
+  it("renders the install prompt after the login card", () => {
+    const loginPage = readFileSync(new URL("../app/login/page.tsx", import.meta.url), "utf8");
+    const promptPosition = loginPage.indexOf("<LoginInstallPrompt />");
+    const cardPosition = loginPage.indexOf("</Card>");
+
+    assert.notEqual(promptPosition, -1);
+    assert.notEqual(cardPosition, -1);
+    assert.ok(promptPosition > cardPosition);
+  });
 });
