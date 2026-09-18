@@ -12,6 +12,14 @@
 
 Admin UI -> Server Component / Server Action -> Server Service -> Repository / Storage Adapter -> Supabase / External API
 
+## House bookings
+
+The per-house FullCalendar workspace uses server-side `allow_booking` checks,
+then the server-only admin client and a service-role-only update RPC. Existing
+RLS, overlap constraints and audit triggers remain unchanged. See
+[house-bookings.md](house-bookings.md) for the workflow, approved all-house access,
+legacy Staging schema prerequisite and verification.
+
 ## Quotation data flow
 
 ```text

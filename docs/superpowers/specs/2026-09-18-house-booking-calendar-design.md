@@ -2,6 +2,10 @@
 
 ## Approved behavior
 
+The approved interactive mockup is authoritative for the first editor: red means
+confirmed (จองแล้ว), green means waiting (รอยืนยัน), gray means cancelled. Status
+is selected by staff, never inferred from payment amounts.
+
 Enter bookings from each house's actions in the house list. Open
 `/admin/houses/[propertyId]/bookings` as a monthly calendar for that house.
 Click a booking bar to edit the booking in a side sheet, full width on mobile.
@@ -20,11 +24,16 @@ sidebar, horizontal mobile navigation, and content-owned scroll. Add การ�
 the house actions on desktop and mobile and to the relevant house navigation.
 Preserve the house-list return URL and its filters through validated local links.
 
-Reuse Button, Sheet, Input, Label, Textarea, Alert and Combobox. No installed
-calendar component or event-calendar library was found. Recommended: a focused
-CSS Grid calendar with pure date and interval helpers. A date-picker alone would
-not implement multi-day booking bars; adding an event-calendar dependency is an
-alternative requiring separate dependency approval.
+Reuse Button, Sheet, Input, Label, Textarea, Alert and Combobox. The user approved
+adding a calendar dependency. Use @fullcalendar/react 7.1.0 and temporal-polyfill
+with the bundled @fullcalendar/react/daygrid plugin. This MIT-licensed package
+supports React 17–19. Do not mix its v7 API with the separate v6 daygrid package.
+Follow the v7 theme and stylesheet imports and adapt colors to existing app tokens.
+Reference: https://fullcalendar.io/docs/react
+
+FullCalendar owns month layout, clipping and lanes. Map each booking to one all-day
+event with its stable ID, start=check_in and exclusive end=check_out. eventClick
+opens the editor; drag/resize remains disabled. No premium scheduler is needed.
 
 The toolbar provides previous/next month and today, plus a visible month label.
 Use date-only arithmetic and Bangkok's current date, avoiding timezone shifts.
@@ -44,19 +53,18 @@ Display the booking code, selected house, stay, number of nights, linked custome
 status, booking type, quantity, amounts, details and note. Keep system identifiers,
 creation metadata and house linkage out of editable inputs.
 
-Editable booking fields are check_in, check_out, status, booking_type, quantity,
-price_sell, price_max, deposit_amount, extra_charge, details and note. Preserve
+Editable booking fields are check_in, check_out, status, quantity,
+price_max, price_sell, extra_charge and note. Preserve
 their stored semantics: do not infer a balance or per-night price from column names.
-Use price_sell as the displayed sale total with explicit wording. Do not multiply
+Use price_max as the full house price and price_sell as the required deposit. Do not multiply
 amounts by nights or quantity. Allowed status/type changes must follow verified
 database constraints and existing business rules, not sample values alone.
 
-Support missing customer links. A separate customer section permits selecting a
-customer or creating one and linking it, and clearly distinguishes editing a shared
-customer record from replacing this booking's customer. Shared edits affect every
-booking referencing that customer; show this consequence before saving changes.
-The initial form covers name and contact fields; preserve other customer fields
-without overwriting them. Broader identity/tax/profile editing is separate scope.
+Support missing customer links. As approved in the mockup, a separate customer
+section permits selecting an existing customer or clearing the link. Do not edit
+or create shared customer records in this first editor. Preserve booking_type,
+deposit_amount, details and all customer-master fields without overwriting them.
+Broader customer profile editing is separate scope.
 Do not reuse quotation_customers repositories: it is a different customer master.
 
 Validate real dates, checkout after checkin, integer quantity, supported field
@@ -69,17 +77,26 @@ and selected detail only after a successful save.
 ## Architecture and authorization
 
 Routes and Server Actions live under the bookings route. Components live under
-components/admin/houses/bookings. Framework-light contracts, date segmentation
+components/admin/houses/bookings. Framework-light contracts, calendar event mapping
 and validation live in lib; orchestration in server/services; queries and RPC
 calls in server/repositories. No privileged clients in browser components.
 
-The managed-user tool catalog already defines allow_booking; admin auth does not
-yet expose its guard. Add a booking-specific guard once the identity and tenant
-mapping below is verified. Do not equate price or house-edit permission with booking
-permission. Check authorization and house/customer scope in every read and write,
-including direct requests with substituted booking or customer IDs.
+The user requires application-side authorization with no RLS changes. Do not
+create, alter or disable RLS policies for this feature. Add a booking-specific
+server guard that verifies the session and loads permissions from trusted server
+data, requiring allow_tools.allow_booking === true before every calendar, booking
+detail, customer read or mutation. Hiding menus is not sufficient. Never accept
+permission flags from the client or substitute price/house-edit permission.
 
-Save booking/customer mutations atomically when both change. Use a verified
+After authorization, repositories use the existing server-only Supabase admin
+client so the flow does not depend on authenticated-role RLS grants. Credentials
+never reach the browser. Enforce house/customer scope in application code, including
+direct requests with substituted IDs. The user approved all-house access for
+authenticated operators with allow_booking; no seller restriction or additional
+scope environment variable is required. Preserve database integrity
+constraints and audit behavior; only access authorization belongs to the web layer.
+
+Save booking fields and its customer link atomically. Use a verified
 database transaction/RPC, an expected revision check to reject stale edits, and
 consistent audit attribution to the authenticated user. Check existing audit
 triggers before adding any new logging to prevent duplicate booking_logs entries.
@@ -93,14 +110,15 @@ The repository baseline is also old. Production contains 7 bookings, 4 without a
 customer link, and 14 INSERT/UPDATE booking logs at inspection time.
 
 Before writing a migration or enabling mutations, obtain authoritative metadata
-for current foreign keys, checks, indexes, RLS, grants, triggers and RPCs. REST
-OpenAPI alone cannot establish those rules. Verify the relationship of users to
-seller/customer scope (agent_id, dv_id and mid); do not assume these are equivalent.
+for current foreign keys, checks, indexes, triggers and RPCs. RLS stays unchanged. REST
+OpenAPI alone cannot establish those rules. The approved access scope covers all
+houses; agent_id, dv_id and mid are not used as seller restrictions.
 Verify booking overlap/capacity rules and cancellation behavior before enforcing
 new restrictions. Existing bookings may overlap; the calendar must still render
 them. Verify whether price_max and quantity impose additional validation rules.
 
-Capture schema differences in a new migration, never edit historical migrations.
+Capture structural schema differences in a new migration, never edit historical
+migrations or include RLS changes.
 Do not destructively cast legacy UUID booking IDs to bigint. Reconciliation must
 preserve existing staging data and dependent records, using an explicit mapping
 or reviewed migration strategy after inspecting that data. Test with synthetic
@@ -111,10 +129,11 @@ deployment must use the documented staging command and verified target.
 
 ## Verification and completion
 
-Test interval segmentation across weeks/months/leap days, exclusive checkout,
+Test event mapping and rendered spans across weeks/months/leap days, exclusive checkout,
 overlapping lanes, bookings spanning the entire visible month, and one stable
 booking identity across bars. Test preserved totals after date changes, stale
-revision rejection, tenant/house/customer substitution denial, null customers,
+revision rejection, unauthenticated or missing/false allow_booking denial,
+tenant/house/customer substitution denial, null customers,
 transaction rollback and audit attribution in a suitable database test setup.
 Verify desktop/mobile entry points, Sheet keyboard behavior, pending/error states
 and the visible pricing reminder. Run typecheck, lint, relevant Node tests and

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   BedDouble,
+  CalendarDays,
   BadgeDollarSign,
   BanknoteIcon,
   EllipsisVerticalIcon,
@@ -73,12 +74,14 @@ function pricesHref(propertyId: string, returnTo: string) {
 }
 
 function HouseActionsMenu({
+  canManageBookings = false,
   canManageAccommodation,
   canManagePrices,
   canViewPrices,
   propertyId,
   returnTo,
 }: {
+  canManageBookings?: boolean;
   canManageAccommodation: boolean;
   canManagePrices: boolean;
   canViewPrices: boolean;
@@ -94,6 +97,7 @@ function HouseActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuGroup>
+          {canManageBookings ? <DropdownMenuItem asChild><Link href={`/admin/houses/${encodeURIComponent(propertyId)}/bookings?${new URLSearchParams({ returnTo })}`}><CalendarDays aria-hidden />การจอง</Link></DropdownMenuItem> : null}
           {canManageAccommodation ? (
             <>
               <DropdownMenuItem asChild>
@@ -131,12 +135,14 @@ function HouseActionsMenu({
 }
 
 function HouseMobileActionsMenu({
+  canManageBookings = false,
   canManageAccommodation,
   canManagePrices,
   canViewPrices,
   propertyId,
   returnTo,
 }: {
+  canManageBookings?: boolean;
   canManageAccommodation: boolean;
   canManagePrices: boolean;
   canViewPrices: boolean;
@@ -156,6 +162,7 @@ function HouseMobileActionsMenu({
           <SheetTitle>จัดการบ้านพัก</SheetTitle>
         </SheetHeader>
         <div className="grid gap-2 px-4 pb-4">
+          {canManageBookings ? <Button asChild className="justify-start" variant="outline"><Link href={`/admin/houses/${encodeURIComponent(propertyId)}/bookings?${new URLSearchParams({ returnTo })}`}><CalendarDays aria-hidden />การจอง</Link></Button> : null}
           {canManageAccommodation ? (
             <>
               <Button asChild className="justify-start" variant="outline">
@@ -193,12 +200,14 @@ function HouseMobileActionsMenu({
 }
 
 export function HouseList({
+  canManageBookings = false,
   canManageAccommodation,
   canManagePrices,
   canViewPrices,
   houses,
   returnTo,
 }: {
+  canManageBookings?: boolean;
   canManageAccommodation: boolean;
   canManagePrices: boolean;
   canViewPrices: boolean;
@@ -239,6 +248,7 @@ export function HouseList({
                 </dl>
               </div>
               <HouseMobileActionsMenu
+                canManageBookings={canManageBookings}
                 canManageAccommodation={canManageAccommodation}
                 canManagePrices={canManagePrices}
                 canViewPrices={canViewPrices}
@@ -280,7 +290,8 @@ export function HouseList({
                 </TableCell>
                 <TableCell className="text-right">
                   <HouseActionsMenu
-                    canManageAccommodation={canManageAccommodation}
+                    canManageBookings={canManageBookings}
+                canManageAccommodation={canManageAccommodation}
                     canManagePrices={canManagePrices}
                     canViewPrices={canViewPrices}
                     propertyId={house.property_id}

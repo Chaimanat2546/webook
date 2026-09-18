@@ -1,0 +1,9 @@
+.house-booking-calendar .booking-confirmed { --fc-classic-event: #b91c1c; --fc-classic-event-contrast: #fff; }
+.house-booking-calendar .booking-waiting { --fc-classic-event: #15803d; --fc-classic-event-contrast: #fff; }
+.house-booking-calendar .booking-cancelled { --fc-classic-event: #6b7280; --fc-classic-event-contrast: #fff; text-decoration: line-through; }
+.house-booking-calendar .booking-unknown { --fc-classic-event: #475569; --fc-classic-event-contrast: #fff; }
+.house-booking-calendar :is(.booking-confirmed,.booking-waiting,.booking-cancelled,.booking-unknown) { cursor: pointer; }
+.house-booking-calendar :is(.booking-confirmed,.booking-waiting,.booking-cancelled,.booking-unknown):focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+.house-booking-calendar { --fc-classic-border: var(--border); --fc-classic-foreground: var(--foreground); --fc-classic-background: var(--background); }
+.house-booking-calendar .house-booking-toolbar { flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; }
+.house-booking-calendar .house-booking-month { font-size: 1.125rem; }

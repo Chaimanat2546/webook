@@ -1,0 +1,81 @@
+export interface BookingCustomer {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  phone: string;
+}
+export interface BookingUpdate {
+  id: string;
+  updated_at: string;
+  check_in: string;
+  check_out: string;
+  customer_id: string | null;
+  status: string;
+  quantity: number;
+  price_sell: number;
+  price_max: number | null;
+  extra_charge: number;
+  note: string | null;
+}
+export interface Booking extends BookingUpdate {
+  booking_code: string;
+  listing_id: string;
+  houseid: string;
+  agent_id: string | null;
+  booking_type: string | null;
+  deposit_amount: number;
+  details: string | null;
+  customer: BookingCustomer | null;
+}
+export type BookingResult<T> = { ok: true; data: T } | { ok: false; message: string };
+export const BOOKING_STATUSES = [
+  { value: "confirmed", label: "จองแล้ว" },
+  { value: "waiting", label: "รอยืนยัน" },
+  { value: "cancelled", label: "ยกเลิก" },
+] as const;
+
+export function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("ข้อมูลไม่ถูกต้อง");
+  return value as Record<string, unknown>;
+}
+export function bookingId(value: unknown): string {
+  const id = typeof value === "number" && Number.isSafeInteger(value) ? String(value) : value;
+  if (typeof id !== "string" || !/^[1-9]\d{0,18}$/.test(id) || BigInt(id) > BigInt("9223372036854775807")) throw new Error("รหัสข้อมูลไม่ถูกต้อง");
+  return id;
+}
+export function bookingDate(value: unknown): string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("วันที่ไม่ถูกต้อง");
+  const time = Date.parse(`${value}T00:00:00Z`);
+  if (!Number.isFinite(time) || new Date(time).toISOString().slice(0, 10) !== value) throw new Error("วันที่ไม่ถูกต้อง");
+  return value;
+}
+export function nightsBetween(start: string, end: string): number {
+  return (Date.parse(`${bookingDate(end)}T00:00:00Z`) - Date.parse(`${bookingDate(start)}T00:00:00Z`)) / 86_400_000;
+}
+export function parseBookingRange(start: unknown, end: unknown) {
+  const range = { start: bookingDate(start), end: bookingDate(end) };
+  const days = nightsBetween(range.start, range.end);
+  if (days <= 0 || days > 62) throw new Error("ช่วงปฏิทินไม่ถูกต้อง");
+  return range;
+}
+function amount(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 999999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.0001) throw new Error("ยอดเงินต้องเป็นจำนวนบวกหรือศูนย์ และมีทศนิยมไม่เกิน 2 ตำแหน่ง");
+  return value;
+}
+export function parseBookingUpdate(value: unknown): BookingUpdate {
+  const v = record(value);
+  const check_in = bookingDate(v.check_in), check_out = bookingDate(v.check_out);
+  const quantity = nightsBetween(check_in, check_out);
+  if (quantity <= 0) throw new Error("วันเช็กเอาต์ต้องอยู่หลังวันเช็กอิน");
+  if (typeof v.status !== "string" || !BOOKING_STATUSES.some(s => s.value === v.status)) throw new Error("สถานะไม่ถูกต้อง");
+  if (typeof v.updated_at !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(v.updated_at) || !Number.isFinite(Date.parse(v.updated_at))) throw new Error("ไม่พบรุ่นข้อมูล กรุณาโหลดการจองใหม่");
+  if (v.note !== null && (typeof v.note !== "string" || v.note.length > 10000)) throw new Error("หมายเหตุยาวเกินไป");
+  return { id: bookingId(v.id), updated_at: v.updated_at, check_in, check_out, status: v.status, customer_id: v.customer_id === null ? null : bookingId(v.customer_id), quantity, price_sell: amount(v.price_sell), price_max: v.price_max === null ? null : amount(v.price_max), extra_charge: amount(v.extra_charge), note: v.note as string | null };
+}
+export function bookingCustomerName(customer: BookingCustomer | null): string {
+  return customer ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") : "ยังไม่ได้ผูกลูกค้า";
+}
+export function bookingEvent(booking: Booking) {
+  const status = BOOKING_STATUSES.find(s => s.value === booking.status);
+  return { id: booking.id, title: `${booking.booking_code} · ${bookingCustomerName(booking.customer)} · ${status?.label ?? booking.status}`, start: booking.check_in, end: booking.check_out, allDay: true, className: `booking-${status?.value ?? "unknown"}` };
+}

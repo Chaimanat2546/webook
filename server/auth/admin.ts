@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 export interface AdminAllowTools {
+  allow_booking?: boolean;
   allow_accommodation?: boolean;
   allow_cost?: boolean;
   allow_members?: boolean;
@@ -24,9 +25,13 @@ export function canUseAccommodation(user: Pick<AdminUserForAuth, "allow_tools"> 
 }
 
 export function canAccessHouses(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
-  return user?.allow_tools?.allow_accommodation === true
+  return canUseBooking(user) || user?.allow_tools?.allow_accommodation === true
     || user?.allow_tools?.allow_price === true
     || user?.allow_tools?.allow_cost === true;
+}
+
+export function canUseBooking(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
+  return user?.allow_tools?.allow_booking === true;
 }
 
 export function canViewHousePrices(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
