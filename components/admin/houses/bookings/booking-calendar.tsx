@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FullCalendar, { type DatesSetInfo } from "@fullcalendar/react";
+import interactionPlugin from "@fullcalendar/react/interaction";
+import { Plus } from "lucide-react";
 import dayGridPlugin from "@fullcalendar/react/daygrid";
 import classicThemePlugin from "@fullcalendar/react/themes/classic";
 import thLocale from "@fullcalendar/react/locales/th";
@@ -14,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { bookingEvent, type Booking } from "@/lib/house-bookings";
 import { listHouseBookingsAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
 import { BookingEditor } from "./booking-editor";
+import { BookingCalendarSkeleton } from "./booking-skeletons";
 
 export function HouseBookingCalendar({ propertyId }: { propertyId: string }) {
   return <BookingCalendarWorkspace key={propertyId} propertyId={propertyId} />;
@@ -21,9 +24,10 @@ export function HouseBookingCalendar({ propertyId }: { propertyId: string }) {
 
 function BookingCalendarWorkspace({ propertyId }: { propertyId: string }) {
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [createDate, setCreateDate] = useState<string | null>(null);
   const range = useRef<{ start: string; end: string } | null>(null);
   const request = useRef(0);
   const trigger = useRef<HTMLElement | null>(null);
@@ -48,23 +52,31 @@ function BookingCalendarWorkspace({ propertyId }: { propertyId: string }) {
   }, [load]);
   function refresh() { if (range.current) void load(range.current.start, range.current.end); }
   return <div className="house-booking-calendar flex h-full min-h-0 flex-col gap-2">
-    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground" aria-label="สีสถานะการจอง">
-      <span><i className="mr-1 inline-block size-2 rounded-full bg-red-600" />จองแล้ว</span>
-      <span><i className="mr-1 inline-block size-2 rounded-full bg-green-700" />รอยืนยัน</span>
-      <span><i className="mr-1 inline-block size-2 rounded-full bg-gray-500" />ยกเลิก</span>
+    <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground" aria-label="สีสถานะการจอง">
+      <span><i className="mr-1 inline-block size-2 rounded-full bg-red-600" />โอนแล้ว</span>
+      <span><i className="mr-1 inline-block size-2 rounded-full bg-green-700" />รอโอน</span>
+      <span><i className="mr-1 inline-block size-2 rounded-full bg-gray-500" />ปิดซ่อม/ปรับปรุง</span>
+      <Button size="sm" className="ml-auto" onClick={event => { trigger.current = event.currentTarget; setCreateDate(bangkokToday); }}><Plus aria-hidden className="size-4" />สร้างการจอง</Button>
     </div>
     {error && <div role="alert" className="flex items-center gap-3 text-sm text-destructive">{error}<Button variant="outline" onClick={refresh}>ลองอีกครั้ง</Button></div>}
-    <div className="min-h-0 flex-1" aria-busy={loading}>
-      <FullCalendar key={propertyId} plugins={[dayGridPlugin, classicThemePlugin]} initialView="dayGridMonth" locale={thLocale} now={bangkokToday} initialDate={bangkokToday}
+    <div className="relative min-h-0 flex-1" aria-busy={loading}>
+      <div className={`h-full ${loading ? "invisible" : ""}`} inert={loading}>
+      <FullCalendar key={propertyId} plugins={[dayGridPlugin, classicThemePlugin, interactionPlugin]} initialView="dayGridMonth" locale={thLocale} now={bangkokToday} initialDate={bangkokToday}
         firstDay={1} height="100%" headerToolbar={{ start: "title", end: "prev,today,next" }}
         toolbarClass="house-booking-toolbar" toolbarTitleClass="house-booking-month"
         events={bookings.map(bookingEvent)} datesSet={datesSet}
         editable={false} eventInteractive dayMaxEvents={1} displayEventTime={false}
+        dateClick={info => { if (!loading && !error && !bookings.some(booking => booking.check_in <= info.dateStr && booking.check_out > info.dateStr)) { trigger.current = info.dayEl; setCreateDate(info.dateStr); } }}
         eventClick={info => { trigger.current = info.el; setSelected(info.event.id); }} />
+      </div>
+      {loading && <div className="absolute inset-0"><BookingCalendarSkeleton /></div>}
     </div>
     <p role="status" className="sr-only">{loading ? "กำลังโหลดการจอง…" : !error && bookings.length === 0 ? "ไม่มีการจองในช่วงนี้" : "แถบครอบคลุมคืนที่เข้าพัก · วันเช็กเอาต์เริ่มรับการจองถัดไปได้"}</p>
+    {createDate && <BookingEditor key={`new-${createDate}`} propertyId={propertyId} initialDate={createDate}
+      onClose={() => { setCreateDate(null); requestAnimationFrame(() => trigger.current?.focus()); }}
+      onSaved={() => { toast.success("สร้างรายการแล้ว"); refresh(); }} />}
     {selected && <BookingEditor key={selected} propertyId={propertyId} bookingId={selected}
       onClose={() => { setSelected(null); requestAnimationFrame(() => trigger.current?.focus()); }}
-      onSaved={() => { toast.success("บันทึกการจองแล้ว"); refresh(); }} />}
+      onSaved={booking => { toast.success(booking.status === "cancelled" ? "ยกเลิกการจองแล้ว" : "บันทึกรายการแล้ว"); refresh(); }} />}
   </div>;
 }

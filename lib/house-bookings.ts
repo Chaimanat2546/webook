@@ -29,8 +29,9 @@ export interface Booking extends BookingUpdate {
 }
 export type BookingResult<T> = { ok: true; data: T } | { ok: false; message: string };
 export const BOOKING_STATUSES = [
-  { value: "confirmed", label: "จองแล้ว" },
-  { value: "waiting", label: "รอยืนยัน" },
+  { value: "confirmed", label: "โอนแล้ว" },
+  { value: "waiting", label: "รอโอน" },
+  { value: "repair", label: "ปิดซ่อม/ปรับปรุง" },
   { value: "cancelled", label: "ยกเลิก" },
 ] as const;
 
@@ -63,7 +64,8 @@ function amount(value: unknown): number {
   return value;
 }
 export function parseBookingUpdate(value: unknown): BookingUpdate {
-  const v = record(value);
+  const raw = record(value);
+  const v = raw.status === "repair" ? { ...raw, customer_id: null, price_max: 0, price_sell: 0, extra_charge: 0 } : raw;
   const check_in = bookingDate(v.check_in), check_out = bookingDate(v.check_out);
   const quantity = nightsBetween(check_in, check_out);
   if (quantity <= 0) throw new Error("วันเช็กเอาต์ต้องอยู่หลังวันเช็กอิน");
@@ -77,5 +79,20 @@ export function bookingCustomerName(customer: BookingCustomer | null): string {
 }
 export function bookingEvent(booking: Booking) {
   const status = BOOKING_STATUSES.find(s => s.value === booking.status);
-  return { id: booking.id, title: `${booking.booking_code} · ${bookingCustomerName(booking.customer)} · ${status?.label ?? booking.status}`, start: booking.check_in, end: booking.check_out, allDay: true, className: `booking-${status?.value ?? "unknown"}` };
+  return { id: booking.id, title: booking.status === "repair" ? "ปิดซ่อม/ปรับปรุง" : `${booking.booking_code} · ${bookingCustomerName(booking.customer)} · ${status?.label ?? booking.status}`, start: booking.check_in, end: booking.check_out, allDay: true, className: `booking-${status?.value ?? "unknown"}` };
+}
+
+export interface BookingCreate extends Omit<BookingUpdate, "id" | "updated_at" | "customer_id" | "price_max"> {
+  request_id: string;
+  customer_id: string | null;
+  price_max: number;
+}
+export function parseBookingCreate(value: unknown): BookingCreate {
+  const v = record(value);
+  if (typeof v.request_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.request_id)) throw new Error("รหัสคำขอไม่ถูกต้อง กรุณาเปิดฟอร์มใหม่");
+  const customer_id = v.status === "repair" ? null : bookingId(v.customer_id);
+  const price_max = v.status === "repair" ? 0 : amount(v.price_max);
+  const parsed = parseBookingUpdate({ ...v, id: "1", updated_at: "2000-01-01T00:00:00Z" });
+  if (parsed.status !== "waiting" && parsed.status !== "confirmed" && parsed.status !== "repair") throw new Error("สถานะการจองใหม่ไม่ถูกต้อง");
+  return { request_id: v.request_id, customer_id, price_max, check_in: parsed.check_in, check_out: parsed.check_out, quantity: parsed.quantity, status: parsed.status, price_sell: parsed.price_sell, extra_charge: parsed.extra_charge, note: parsed.note };
 }

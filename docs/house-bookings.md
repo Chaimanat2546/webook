@@ -3,7 +3,7 @@
 Open **การจอง** from the desktop or mobile actions for a house. The route is
 `/admin/houses/[propertyId]/bookings`. It uses the existing House Workspace Shell.
 
-- Confirmed is red (จองแล้ว), waiting is green (รอยืนยัน), cancelled is gray.
+- Confirmed is red (จองแล้ว), waiting is green (รอยืนยัน). Cancelled bookings are excluded from the calendar response and legend; records remain in the database. Cancelling through the editor removes the event after save and refresh.
 - Status is the saved `bookings.status`; deposits do not change status automatically.
 - One bar represents one booking. Checkout is exclusive. Cross-week/month stays
   keep the same record and total.

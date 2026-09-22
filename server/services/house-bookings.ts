@@ -1,5 +1,6 @@
 import "server-only";
-import { bookingId, parseBookingRange, parseBookingUpdate, type BookingResult } from "../../lib/house-bookings.ts";
+import { assertBookingNotPast, bookingToday } from "../../lib/booking-availability.ts";
+import { bookingId, parseBookingCreate, parseBookingRange, parseBookingUpdate, type BookingResult } from "../../lib/house-bookings.ts";
 import type { HouseBookingsRepository } from "../repositories/house-bookings.ts";
 
 export async function requireBookingHouse(repository: HouseBookingsRepository, propertyId: unknown) {
@@ -10,7 +11,8 @@ export async function requireBookingHouse(repository: HouseBookingsRepository, p
 export async function listHouseBookings(repository: HouseBookingsRepository, propertyId: unknown, start: unknown, end: unknown) {
   const range = parseBookingRange(start, end);
   const house = await requireBookingHouse(repository, propertyId);
-  return repository.list(house, range.start, range.end);
+  const bookings = await repository.list(house, range.start, range.end);
+  return bookings.filter(booking => booking.status !== "cancelled");
 }
 export async function getHouseBooking(repository: HouseBookingsRepository, propertyId: unknown, id: unknown) {
   const house = await requireBookingHouse(repository, propertyId);
@@ -25,6 +27,9 @@ export async function saveHouseBooking(repository: HouseBookingsRepository, acto
   const current = await repository.get(house, input.id);
   if (!current) throw new Error("booking_not_found");
   if (current.updated_at !== input.updated_at) throw new Error("booking_stale");
+  if (input.status !== "cancelled") assertBookingNotPast(input.check_in, input.check_out, bookingToday(), current);
+  if (current.status === "repair" && input.status !== "repair" && input.status !== "cancelled" && !input.customer_id) throw new Error("กรุณาเลือกลูกค้าสำหรับการจอง");
+  if (input.customer_id && !await repository.ownsCustomer(house, input.customer_id)) throw new Error("กรุณาเลือกลูกค้าของบ้านนี้");
   return repository.update(house, actorId, input);
 }
 export function bookingError(error: unknown): string {
@@ -43,4 +48,20 @@ export function bookingError(error: unknown): string {
 export async function bookingResult<T>(work: () => Promise<T>): Promise<BookingResult<T>> {
   try { return { ok: true, data: await work() }; }
   catch (error) { return { ok: false, message: bookingError(error) }; }
+}
+
+export async function createHouseBooking(repository: HouseBookingsRepository, actorId: string, propertyId: unknown, raw: unknown) {
+  const input = parseBookingCreate(raw);
+  assertBookingNotPast(input.check_in, input.check_out, bookingToday());
+  const house = await requireBookingHouse(repository, propertyId);
+  if (input.customer_id && !await repository.ownsCustomer(house, input.customer_id)) throw new Error("กรุณาเลือกลูกค้าของบ้านนี้");
+  return repository.create(house, actorId, input);
+}
+
+export async function cancelHouseBooking(repository: HouseBookingsRepository, actorId: string, propertyId: unknown, id: unknown, expectedRevision: unknown) {
+  const house = await requireBookingHouse(repository, propertyId);
+  const current = await repository.get(house, bookingId(id));
+  if (!current) throw new Error("booking_not_found");
+  if (current.updated_at !== expectedRevision) throw new Error("booking_stale");
+  return repository.update(house, actorId, parseBookingUpdate({ ...current, status: "cancelled" }));
 }
