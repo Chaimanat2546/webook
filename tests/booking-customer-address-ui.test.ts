@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { createThaiAddressRequestVersions } from "../components/admin/houses/bookings/thai-contact-address-request-versions.ts";
+import { createThaiContactAddressInitializationController } from "../components/admin/houses/bookings/thai-contact-address-initialization.ts";
 
 const componentUrl = new URL("../components/admin/houses/bookings/thai-contact-address-fields.tsx", import.meta.url);
 const formUrl = new URL("../components/admin/houses/bookings/booking-customer-form.tsx", import.meta.url);
@@ -33,6 +34,27 @@ test("a user postal selection invalidates a late initialization result", () => {
   assert.equal(versions.isInitializationCurrent(initialization), false);
 });
 
+test("late initialization cannot overwrite a postal-selected address", async () => {
+  let resolveNames: ((value: { ok: true; data: { provinceCode: number; districtCode: number; subdistrictCode: number } }) => void) | undefined;
+  const versions = createThaiAddressRequestVersions();
+  const controller = createThaiContactAddressInitializationController(versions);
+  const selected = { provinceCode: 88, districtCode: 8801, subdistrictCode: 880101 };
+  const initialization = controller.start({
+    applyProvinces: () => undefined,
+    applyResolved: (value) => Object.assign(selected, value),
+    isActive: () => true,
+    listProvinces: async () => ({ ok: true as const, data: [] }),
+    resolveNames: () => new Promise((resolve) => { resolveNames = resolve; }),
+  });
+
+  await Promise.resolve();
+  controller.userChanged();
+  resolveNames?.({ ok: true, data: { provinceCode: 20, districtCode: 2007, subdistrictCode: 200701 } });
+  await initialization;
+
+  assert.deepEqual(selected, { provinceCode: 88, districtCode: 8801, subdistrictCode: 880101 });
+});
+
 test("contact address puts manual detail and country before postal geography", () => {
   const source = readFileSync(componentUrl, "utf8");
 
@@ -55,12 +77,11 @@ test("contact address supports searchable cascading manual choices without locki
   assert.match(source, /setDistrictCode\(null\)[\s\S]*setSubdistrictCode\(null\)[\s\S]*district: null, sub_district: null/);
   assert.match(source, /createThaiAddressRequestVersions/);
   assert.doesNotMatch(source, /requestToken/);
-  assert.match(source, /nextInitialization\(\)/);
-  assert.match(source, /isInitializationCurrent\(version\)/);
-  assert.match(source, /function chooseProvince[\s\S]*invalidateUserAddressChange/);
-  assert.match(source, /function chooseDistrict[\s\S]*invalidateUserAddressChange/);
-  assert.match(source, /function chooseSubdistrict[\s\S]*invalidateUserAddressChange/);
-  assert.match(source, /function updatePostalCode[\s\S]*invalidateUserAddressChange[\s\S]*postalCode\.length !== 5/);
+  assert.match(source, /createThaiContactAddressInitializationController/);
+  assert.match(source, /function chooseProvince[\s\S]*initialization\.userChanged/);
+  assert.match(source, /function chooseDistrict[\s\S]*initialization\.userChanged/);
+  assert.match(source, /function chooseSubdistrict[\s\S]*initialization\.userChanged/);
+  assert.match(source, /function updatePostalCode[\s\S]*initialization\.userChanged[\s\S]*postalCode\.length !== 5/);
 });
 
 test("a uniquely narrowed postal lookup can suggest its district without forcing ambiguous choices", () => {

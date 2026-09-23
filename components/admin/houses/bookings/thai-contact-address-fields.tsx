@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ThaiAddressCandidate, ThaiAddressOption } from "@/server/geography/thai-address-types";
+import { createThaiContactAddressInitializationController } from "./thai-contact-address-initialization";
 import { createThaiAddressRequestVersions } from "./thai-contact-address-request-versions";
 
 export interface BookingContactAddressValue {
@@ -81,48 +82,47 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
   const [postalCandidates, setPostalCandidates] = useState<ThaiAddressCandidate[]>([]);
   const [postalMessage, setPostalMessage] = useState("");
   const initialValue = useRef(value);
-  const requestVersions = useRef(createThaiAddressRequestVersions());
+  const [requestChannels] = useState(() => {
+    const versions = createThaiAddressRequestVersions();
+    return { initialization: createThaiContactAddressInitializationController(versions), versions };
+  });
 
   useEffect(() => {
     let active = true;
-    const version = requestVersions.current.nextInitialization();
-    void (async () => {
-      const [provinces, resolved] = await Promise.all([
-        listThaiProvincesAction(propertyId, ""),
-        resolveThaiAddressNamesAction(propertyId, { province: initialValue.current.province, district: initialValue.current.district, subdistrict: initialValue.current.sub_district }),
-      ]);
-      if (!active) return;
-      if (provinces.ok) setProvinceOptions(provinces.data);
-      if (!requestVersions.current.isInitializationCurrent(version)) return;
-      if (resolved.ok) {
-        setProvinceCode(resolved.data.provinceCode);
-        setDistrictCode(resolved.data.districtCode);
-        setSubdistrictCode(resolved.data.subdistrictCode);
-      }
-    })();
+    void requestChannels.initialization.start({
+      applyProvinces: setProvinceOptions,
+      applyResolved: (selection) => {
+        setProvinceCode(selection.provinceCode);
+        setDistrictCode(selection.districtCode);
+        setSubdistrictCode(selection.subdistrictCode);
+      },
+      isActive: () => active,
+      listProvinces: () => listThaiProvincesAction(propertyId, ""),
+      resolveNames: () => resolveThaiAddressNamesAction(propertyId, { province: initialValue.current.province, district: initialValue.current.district, subdistrict: initialValue.current.sub_district }),
+    });
     return () => { active = false; };
-  }, [propertyId]);
+  }, [propertyId, requestChannels.initialization]);
 
   useEffect(() => {
     if (provinceCode === null) return;
-    const version = requestVersions.current.nextDistricts();
+    const version = requestChannels.versions.nextDistricts();
     void (async () => {
       const result = await listThaiDistrictsAction(propertyId, provinceCode, value.postal_code ?? "");
-      if (requestVersions.current.isDistrictsCurrent(version) && result.ok) setDistrictOptions(result.data);
+      if (requestChannels.versions.isDistrictsCurrent(version) && result.ok) setDistrictOptions(result.data);
     })();
-  }, [propertyId, provinceCode, value.postal_code]);
+  }, [propertyId, provinceCode, requestChannels.versions, value.postal_code]);
 
   useEffect(() => {
     if (districtCode === null) return;
-    const version = requestVersions.current.nextSubdistricts();
+    const version = requestChannels.versions.nextSubdistricts();
     void (async () => {
       const result = await listThaiSubdistrictsAction(propertyId, districtCode, value.postal_code ?? "");
-      if (requestVersions.current.isSubdistrictsCurrent(version) && result.ok) setSubdistrictOptions(result.data);
+      if (requestChannels.versions.isSubdistrictsCurrent(version) && result.ok) setSubdistrictOptions(result.data);
     })();
-  }, [districtCode, propertyId, value.postal_code]);
+  }, [districtCode, propertyId, requestChannels.versions, value.postal_code]);
 
   function chooseProvince(option: ThaiAddressOption | null) {
-    requestVersions.current.invalidateUserAddressChange();
+    requestChannels.initialization.userChanged();
     setProvinceCode(option?.code ?? null);
     setDistrictCode(null);
     setSubdistrictCode(null);
@@ -132,7 +132,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
   }
 
   function chooseDistrict(option: ThaiAddressOption | null) {
-    requestVersions.current.invalidateUserAddressChange();
+    requestChannels.initialization.userChanged();
     setDistrictCode(option?.code ?? null);
     setSubdistrictCode(null);
     setSubdistrictOptions([]);
@@ -140,7 +140,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
   }
 
   function chooseSubdistrict(option: ThaiAddressOption | null) {
-    requestVersions.current.invalidateUserAddressChange();
+    requestChannels.initialization.userChanged();
     setSubdistrictCode(option?.code ?? null);
     if (!option) { onChange({ sub_district: null }); return; }
     const postalCodes = [...new Set(postalCandidates.filter((candidate) => candidate.subdistrict.code === option.code).map((candidate) => candidate.postalCode))];
@@ -152,12 +152,12 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
     onChange({ postal_code: postalCode || null });
     setPostalCandidates([]);
     setPostalMessage("");
-    requestVersions.current.invalidateUserAddressChange();
+    requestChannels.initialization.userChanged();
     if (postalCode.length !== 5) return;
-    const version = requestVersions.current.nextPostal();
+    const version = requestChannels.versions.nextPostal();
     void (async () => {
       const result = await lookupThaiPostalCodeAction(propertyId, postalCode);
-      if (!requestVersions.current.isPostalCurrent(version) || !result.ok) return;
+      if (!requestChannels.versions.isPostalCurrent(version) || !result.ok) return;
       setPostalCandidates(result.data.candidates);
       if (result.data.candidates.length === 0) {
         setPostalMessage("ไม่พบพื้นที่สำหรับรหัสไปรษณีย์นี้ กรุณาเลือกจังหวัด อำเภอ และตำบลด้วยตนเอง");
@@ -166,7 +166,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
       const provinces = [...new Map(result.data.candidates.map((candidate) => [candidate.province.code, candidate.province])).values()];
       if (provinces.length === 1) {
         const districtResult = await listThaiDistrictsAction(propertyId, provinces[0].code, postalCode);
-        if (!requestVersions.current.isPostalCurrent(version)) return;
+        if (!requestChannels.versions.isPostalCurrent(version)) return;
         chooseProvince(provinces[0]);
         if (districtResult.ok && districtResult.data.length === 1) chooseDistrict(districtResult.data[0]);
       }
