@@ -1,5 +1,6 @@
 import { CUSTOMER_FIELDS, type BookingCustomerInput } from "@/lib/booking-customers";
-import { Building2, ClipboardCheck, Contact, MapPin, NotebookPen, UserRound } from "lucide-react";
+import { Building2, Contact, MapPin, NotebookPen, UserRound } from "lucide-react";
+import { formatThaiBirthDate } from "@/lib/thai-birth-date";
 
 const sections = [
   { key: "general", label: "ข้อมูลทั่วไป", icon: UserRound },
@@ -11,7 +12,6 @@ const sections = [
 
 export function BookingCustomerSummary({ value }: { value: BookingCustomerInput }) {
   return <div className="space-y-5">
-    <h3 className="flex items-center gap-2 font-medium"><ClipboardCheck aria-hidden className="size-5 shrink-0" />ตรวจสอบข้อมูลก่อนบันทึก</h3>
     {sections.map(section => {
       const rows: { label: string; value: string | null | undefined }[] = [];
       if (section.key === "general") rows.push(
@@ -22,7 +22,7 @@ export function BookingCustomerSummary({ value }: { value: BookingCustomerInput 
       if (section.key === "contact") rows.push({ label: "เบอร์โทร", value: value.phone });
       if (section.key === "tax") rows.push({ label: "สำนักงาน", value: value.tax_head_office == null ? null : value.tax_head_office ? "สำนักงานใหญ่" : "สาขา" });
       for (const field of CUSTOMER_FIELDS.filter(field => field.group === section.key)) {
-        const text = value[field.key];
+        const text = field.key === "date_of_birth" ? formatThaiBirthDate(value[field.key]) : value[field.key];
         rows.push({ label: field.label, value: field.key === "preferred_language" ? text === "th" ? "ภาษาไทย" : text === "en" ? "อังกฤษ" : text : text });
       }
       if (section.key === "extra") rows.push({ label: "สถานะ VIP", value: value.vip_status == null ? null : value.vip_status ? "VIP" : "ทั่วไป" });

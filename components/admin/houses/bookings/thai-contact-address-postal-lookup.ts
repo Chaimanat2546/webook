@@ -37,10 +37,11 @@ export function createThaiContactAddressPostalLookupController(versions: ThaiAdd
       }
       const provinces = [...new Map(result.data.candidates.map((candidate) => [candidate.province.code, candidate.province])).values()];
       if (provinces.length !== 1) return;
+      const districts = [...new Map(result.data.candidates.map((candidate) => [candidate.district.code, candidate.district])).values()];
       const districtResult = await request.listDistricts(provinces[0].code, postalCode);
       if (!versions.isPostalCurrent(version)) return;
       request.chooseProvince(provinces[0]);
-      if (districtResult.ok && districtResult.data.length === 1) request.chooseDistrict(districtResult.data[0]);
+      if (districtResult.ok && districts.length === 1) request.chooseDistrict(districts[0]);
     },
   };
 }

@@ -8,7 +8,9 @@ import { createThaiContactAddressPostalLookupController } from "../components/ad
 import { createThaiContactAddressSelectionController } from "../components/admin/houses/bookings/thai-contact-address-selection.ts";
 
 const componentUrl = new URL("../components/admin/houses/bookings/thai-contact-address-fields.tsx", import.meta.url);
+const comboboxUrl = new URL("../components/ui/combobox.tsx", import.meta.url);
 const formUrl = new URL("../components/admin/houses/bookings/booking-customer-form.tsx", import.meta.url);
+const customerPickerUrl = new URL("../components/admin/houses/bookings/booking-customer-picker.tsx", import.meta.url);
 const postalControllerUrl = new URL("../components/admin/houses/bookings/thai-contact-address-postal-lookup.ts", import.meta.url);
 
 test("postal and hierarchy lookup versions invalidate independently", () => {
@@ -87,6 +89,28 @@ test("postal lookup auto-selection survives a late initialization response", asy
   assert.deepEqual(selected, { provinceCode: 20, districtCode: 2007, subdistrictCode: null });
 });
 
+test("postal lookup selects its unique district even when the province list contains other districts", async () => {
+  const versions = createThaiAddressRequestVersions();
+  const initialization = createThaiContactAddressInitializationController(versions);
+  const postalLookup = createThaiContactAddressPostalLookupController(versions, initialization);
+  const selected = { provinceCode: null as number | null, districtCode: null as number | null };
+
+  await postalLookup.updatePostalCode("20110", {
+    chooseDistrict: (option) => { selected.districtCode = option.code; },
+    chooseProvince: (option) => { selected.provinceCode = option.code; },
+    listDistricts: async () => ({ ok: true as const, data: [{ code: 2007, nameTh: "ศรีราชา" }, { code: 2004, nameTh: "บางละมุง" }] }),
+    lookupPostalCode: async () => ({ ok: true as const, data: { candidates: [
+      { province: { code: 20, nameTh: "ชลบุรี" }, district: { code: 2007, nameTh: "ศรีราชา" }, subdistrict: { code: 200701, nameTh: "ศรีราชา" }, postalCode: "20110" },
+      { province: { code: 20, nameTh: "ชลบุรี" }, district: { code: 2007, nameTh: "ศรีราชา" }, subdistrict: { code: 200702, nameTh: "สุรศักดิ์" }, postalCode: "20110" },
+    ] } }),
+    onPostalCode: () => undefined,
+    setCandidates: () => undefined,
+    setMessage: () => undefined,
+  });
+
+  assert.deepEqual(selected, { provinceCode: 20, districtCode: 2007 });
+});
+
 test("manual province, district, and uniquely-postcoded subdistrict selection synchronizes the postal code", () => {
   const selected = { provinceCode: null as number | null, districtCode: null as number | null, subdistrictCode: null as number | null };
   const patches: Array<Record<string, string | null>> = [];
@@ -122,9 +146,11 @@ test("contact address puts manual detail and country before postal geography", (
 test("contact address supports searchable cascading manual choices without locking postcode", () => {
   const source = readFileSync(componentUrl, "utf8");
 
+  assert.match(source, /itemToStringLabel=\{\(option: ThaiAddressOption\) => option\.nameTh\}/);
   assert.match(source, /ComboboxInput[\s\S]*placeholder="ค้นหาจังหวัด/);
   assert.match(source, /ComboboxInput[\s\S]*placeholder="ค้นหาอำเภอ/);
-  assert.match(source, /ComboboxInput[\s\S]*placeholder="ค้นหาตำบล/);
+  assert.match(source, /ComboboxInput[\s\S]*placeholder="เลือกหรือค้นหาตำบล/);
+  assert.match(source, /ComboboxContent container=\{portalContainer\}/);
   assert.match(source, /disabled=\{disabled \|\| provinceCode === null\}/);
   assert.match(source, /disabled=\{disabled \|\| districtCode === null\}/);
   assert.match(source, /type="tel" inputMode="numeric" maxLength=\{5\}/);
@@ -138,17 +164,28 @@ test("contact address supports searchable cascading manual choices without locki
   assert.match(source, /function updatePostalCode[\s\S]*postalLookup\.updatePostalCode/);
 });
 
-test("a uniquely narrowed postal lookup can suggest its district without forcing ambiguous choices", () => {
+test("customer picker places its popup within the modal sheet", () => {
+  const source = readFileSync(comboboxUrl, "utf8");
+  const customerPicker = readFileSync(customerPickerUrl, "utf8");
+
+  assert.match(source, /Pick<ComboboxPrimitive\.Portal\.Props, "container">/);
+  assert.match(source, /<ComboboxPrimitive\.Portal container=\{container\}>/);
+  assert.match(customerPicker, /<ComboboxContent container=\{portalContainer\}>/);
+});
+
+test("a postal lookup derives its district choice from the returned candidates", () => {
   const source = readFileSync(postalControllerUrl, "utf8");
 
   assert.match(source, /request\.listDistricts\(provinces\[0\]\.code, postalCode\)/);
-  assert.match(source, /districtResult\.data\.length === 1/);
+  assert.match(source, /candidate\.district\.code/);
+  assert.match(source, /districts\.length === 1/);
 });
 
 test("booking form mounts the address component only for contact address fields", () => {
   const form = readFileSync(formUrl, "utf8");
   const component = readFileSync(componentUrl, "utf8");
 
+  assert.doesNotMatch(form, /\[&_input\]:bg-background/);
   assert.match(form, /group\.key === "address"[\s\S]*<ThaiContactAddressFields/);
   assert.match(form, /CUSTOMER_FIELDS\.filter\(field => field\.group === group\.key[\s\S]*field\.key !== "address"[\s\S]*field\.key !== "sub_district"/);
   assert.match(form, /tax_address/);

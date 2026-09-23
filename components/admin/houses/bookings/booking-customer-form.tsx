@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 import { BookingCustomerSummary } from "./booking-customer-summary";
 import { ThaiContactAddressFields } from "./thai-contact-address-fields";
+import { formatThaiBirthDate, parseThaiBirthDate } from "@/lib/thai-birth-date";
+import { bookingToday } from "@/lib/booking-availability";
 
 interface Props { propertyId: string; customerId?: string; onClose: () => void; onSelect: (customer: BookingCustomer) => void }
 const titleOptions = ["นาย", "นาง", "นางสาว", "เด็กชาย", "เด็กหญิง", "Mr.", "Mrs.", "Ms."];
@@ -54,9 +56,11 @@ export function BookingCustomerForm(props: Props) {
 
 function CustomerFields({ propertyId, customer, onClose, onSelect }: Props & { customer: BookingCustomerDetail | null }) {
   const [initial] = useState<BookingCustomerInput>(() => customer ? { ...customer } : {
-    first_name: "", last_name: null, phone: "", customer_type: "individual", nationality: "Thai", country: "Thailand", preferred_language: "th", tax_head_office: true, tax_branch_code: "00000", vip_status: false,
+    first_name: "", last_name: null, phone: "", customer_type: "individual", nationality: null, country: null, preferred_language: "th", tax_head_office: true, tax_branch_code: "00000", vip_status: false,
   });
   const [value, setValue] = useState(initial);
+  const [birthDateText, setBirthDateText] = useState(() => formatThaiBirthDate(initial.date_of_birth));
+  const [birthDateError, setBirthDateError] = useState("");
   const [step, setStep] = useState(0);
   const [reached, setReached] = useState(0);
   const [review, setReview] = useState(false);
@@ -70,7 +74,7 @@ function CustomerFields({ propertyId, customer, onClose, onSelect }: Props & { c
   const [existing, setExisting] = useState<BookingCustomer[]>([]);
   const lock = useRef(false);
   const keepEditingRef = useRef<HTMLButtonElement>(null);
-  const dirty = JSON.stringify(initial) !== JSON.stringify(value);
+  const dirty = JSON.stringify(initial) !== JSON.stringify(value) || birthDateText !== formatThaiBirthDate(initial.date_of_birth);
   function update<K extends keyof BookingCustomerInput>(key: K, next: BookingCustomerInput[K]) {
     setValue(previous => ({ ...previous, [key]: next })); setExisting([]);
     if (key === "tax_id" || key === "customer_type") setDbd(null);
@@ -79,12 +83,19 @@ function CustomerFields({ propertyId, customer, onClose, onSelect }: Props & { c
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); event.stopPropagation();
     if (lock.current) return;
+    let dateOfBirth: string | null;
+    try { dateOfBirth = parseThaiBirthDate(birthDateText, bookingToday()); }
+    catch (error) {
+      setBirthDateError(error instanceof Error ? error.message : "วันเกิดไม่ถูกต้อง");
+      setReview(false); go(0); return;
+    }
     if (!review) {
       if (step < groups.length - 1) { go(step + 1); return; }
+      setValue(current => ({ ...current, date_of_birth: dateOfBirth }));
       setReview(true); scrollRef.current?.scrollTo({ top: 0 }); return;
     }
     let input;
-    try { input = parseBookingCustomer(value); }
+    try { input = parseBookingCustomer({ ...value, date_of_birth: dateOfBirth }); }
     catch (error) { toast.error(error instanceof Error ? error.message : "ข้อมูลไม่ถูกต้อง"); setReview(false); return; }
     lock.current = true; setSaving(true); setOperation("save"); setExisting([]);
     try {
@@ -124,7 +135,7 @@ function CustomerFields({ propertyId, customer, onClose, onSelect }: Props & { c
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-5">{review ? <BookingCustomerSummary value={value} /> : <fieldset disabled={saving} className="min-w-0 space-y-3">
             {groups.filter((_, index) => index === step).map(group => <section key={group.key}>
               <h3 className="text-lg font-semibold"><span className="inline-flex items-center gap-2"><group.icon aria-hidden className="size-4" />{group.label}</span></h3>
-              <div className="mt-5 grid gap-x-4 gap-y-5 sm:grid-cols-2 [&_input]:border-input [&_input]:bg-background [&_label]:text-sm [&_label]:font-medium [&_textarea]:bg-background">
+              <div className="mt-5 grid gap-x-4 gap-y-5 sm:grid-cols-2 [&_[data-slot=input]]:bg-background [&_label]:text-sm [&_label]:font-medium [&_textarea]:bg-background">
                 {group.key === "general" && <>
                   <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:col-span-2">ประเภทลูกค้า<select className="block h-8 w-fit max-w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.customer_type ?? ""} onChange={event => update("customer_type", event.target.value || null)}><option value="">ไม่ระบุ</option><option value="individual">บุคคลธรรมดา</option><option value="juristic">นิติบุคคล</option></select></label>
                   <div className={`grid min-w-0 gap-3 sm:col-span-2 ${juristic ? "sm:grid-cols-2" : "sm:grid-cols-[7rem_minmax(0,1fr)_minmax(0,1fr)]"}`}>
@@ -135,9 +146,9 @@ function CustomerFields({ propertyId, customer, onClose, onSelect }: Props & { c
                 </>}
                 {group.key === "address" && juristic && <div className="sm:col-span-2"><Button type="button" variant="outline" disabled={!value.tax_address?.trim()} onClick={() => setValue(current => ({ ...current, address: current.tax_address, sub_district: null, district: null, province: null, postal_code: null, country: "Thailand" }))}>ใช้ที่อยู่เดียวกับข้อมูลภาษี</Button></div>}
                 {group.key === "address" && <ThaiContactAddressFields disabled={saving} propertyId={propertyId} value={{ address: value.address ?? null, country: value.country ?? null, postal_code: value.postal_code ?? null, province: value.province ?? null, district: value.district ?? null, sub_district: value.sub_district ?? null }} onChange={patch => { setValue(current => ({ ...current, ...patch })); setExisting([]); }} />}
-                {group.key === "contact" && <label className="space-y-1">เบอร์โทร<Input required type="tel" maxLength={40} autoComplete="tel" value={value.phone} onChange={event => update("phone", event.target.value)} /></label>}
+                {group.key === "contact" && <label className="space-y-1">เบอร์โทร<Input required type="tel" inputMode="numeric" maxLength={40} autoComplete="tel" value={value.phone} onChange={event => update("phone", event.target.value)} /></label>}
                 {group.key === "tax" && <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:col-span-2">สำนักงาน<select className="block h-8 w-fit max-w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.tax_head_office == null ? "" : value.tax_head_office ? "head" : "branch"} onChange={event => update("tax_head_office", event.target.value === "" ? null : event.target.value === "head")}><option value="">ไม่ระบุ</option><option value="head">สำนักงานใหญ่</option><option value="branch">สาขา</option></select></label>}
-                {CUSTOMER_FIELDS.filter(field => field.group === group.key && field.key !== "title" && field.key !== "address" && field.key !== "country" && field.key !== "postal_code" && field.key !== "province" && field.key !== "district" && field.key !== "sub_district" && !(juristic && field.group === "general")).map(field => <label key={field.key} className={`space-y-1 ${(field.key === "tax_id" || ("type" in field && field.type === "textarea")) ? "sm:col-span-2" : ""}`}>{field.label}{field.key === "tax_id" ? <div className="flex flex-col gap-2 sm:flex-row"><Input inputMode="numeric" maxLength={13} value={value.tax_id ?? ""} onChange={event => update("tax_id", event.target.value || null)} />{value.customer_type === "juristic" && <Button type="button" variant="outline" onClick={() => void lookup()}>{operation === "dbd" ? "กำลังตรวจสอบ DBD…" : customer ? "รีเฟรชจาก DBD" : "ตรวจสอบ DBD"}</Button>}</div> : field.key === "preferred_language" ? <select className="block h-8 w-fit max-w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.preferred_language ?? ""} onChange={event => update("preferred_language", event.target.value || null)}><option value="" disabled>เลือกภาษา</option>{value.preferred_language && !["th", "en"].includes(value.preferred_language) && <option value={value.preferred_language} disabled>{value.preferred_language} (ค่าเดิม)</option>}<option value="th">ภาษาไทย</option><option value="en">อังกฤษ</option></select> : "type" in field && field.type === "textarea" ? <Textarea rows={3} maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} /> : <Input type={"type" in field ? field.type : "text"} maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} />}</label>)}
+                {CUSTOMER_FIELDS.filter(field => field.group === group.key && field.key !== "title" && field.key !== "address" && field.key !== "country" && field.key !== "postal_code" && field.key !== "province" && field.key !== "district" && field.key !== "sub_district" && !(juristic && field.group === "general")).map(field => <label key={field.key} className={`space-y-1 ${(field.key === "tax_id" || ("type" in field && field.type === "textarea")) ? "sm:col-span-2" : ""}`}>{field.label}{field.key === "tax_id" ? <div className="flex flex-col gap-2 sm:flex-row"><Input inputMode="numeric" maxLength={13} value={value.tax_id ?? ""} onChange={event => update("tax_id", event.target.value || null)} />{value.customer_type === "juristic" && <Button type="button" variant="outline" onClick={() => void lookup()}>{operation === "dbd" ? "กำลังตรวจสอบ DBD…" : customer ? "รีเฟรชจาก DBD" : "ตรวจสอบ DBD"}</Button>}</div> : field.key === "preferred_language" ? <select className="block h-8 w-fit max-w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.preferred_language ?? ""} onChange={event => update("preferred_language", event.target.value || null)}><option value="" disabled>เลือกภาษา</option>{value.preferred_language && !["th", "en"].includes(value.preferred_language) && <option value={value.preferred_language} disabled>{value.preferred_language} (ค่าเดิม)</option>}<option value="th">ภาษาไทย</option><option value="en">อังกฤษ</option></select> : "type" in field && field.type === "textarea" ? <Textarea rows={3} maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} /> : field.key === "date_of_birth" ? <><Input type="text" inputMode="text" maxLength={10} placeholder="วว/ดด/ปปปป (พ.ศ.)" aria-label="วันเกิด (พ.ศ.)" aria-invalid={!!birthDateError} aria-describedby={birthDateError ? "birth-date-error" : "birth-date-hint"} value={birthDateText} onChange={event => { setBirthDateText(event.target.value); setBirthDateError(""); setExisting([]); }} /><span id="birth-date-hint" className="block text-xs text-muted-foreground">วัน/เดือน/ปี พ.ศ. เช่น 23/09/2535</span>{birthDateError && <span id="birth-date-error" role="alert" className="block text-xs text-destructive">{birthDateError}</span>}</> : field.key === "secondary_phone" ? <Input type="tel" inputMode="numeric" maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} /> : <Input type={"type" in field ? field.type : "text"} maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} />}</label>)}
                 {group.key === "tax" && value.customer_type === "juristic" && <div className="space-y-3 sm:col-span-2">
                   {operation === "dbd" && <div role="status" aria-label="กำลังตรวจสอบ DBD" className="space-y-2"><Skeleton className="h-4 w-2/3 motion-reduce:animate-none" /><Skeleton className="h-12 w-full motion-reduce:animate-none" /><span className="sr-only">กำลังตรวจสอบ DBD…</span></div>}
                   {dbd && <div className="space-y-2 rounded-lg bg-muted/40 p-3 text-sm">

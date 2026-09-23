@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   listThaiDistrictsAction,
   listThaiProvincesAction,
@@ -56,22 +56,26 @@ function AddressCombobox({ disabled, label, onChange, options, placeholder, valu
   placeholder: string;
   value: ThaiAddressOption | null;
 }) {
-  return <label className="min-w-0 space-y-1">{label}
+  const id = useId();
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+  return <div ref={setPortalContainer} className="min-w-0 space-y-1">
+    <label htmlFor={id}>{label}</label>
     <Combobox
+      itemToStringLabel={(option: ThaiAddressOption) => option.nameTh}
       itemToStringValue={(option: ThaiAddressOption) => option.nameTh}
       items={options}
       onValueChange={(option) => onChange(option && option.code > 0 ? option : null)}
       value={value}
     >
-      <ComboboxInput className="w-full" disabled={disabled} placeholder={placeholder} />
-      <ComboboxContent>
+      <ComboboxInput id={id} className="w-full" disabled={disabled} placeholder={placeholder} />
+      <ComboboxContent container={portalContainer}>
         <ComboboxEmpty>ไม่พบข้อมูล</ComboboxEmpty>
         <ComboboxList>
           {(option: ThaiAddressOption) => <ComboboxItem key={option.code} value={option}>{option.nameTh}</ComboboxItem>}
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
-  </label>;
+  </div>;
 }
 
 export function ThaiContactAddressFields({ disabled, onChange, propertyId, value }: Props) {
@@ -164,11 +168,11 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
   const selectedSubdistrict = selectedOrLegacy(subdistrictOptions, subdistrictCode, value.sub_district);
 
   return <div className="contents">
-    <label aria-label="ที่อยู่" className="space-y-1 sm:col-span-2">ที่อยู่<Textarea rows={3} maxLength={10000} disabled={disabled} value={value.address ?? ""} onChange={(event) => onChange({ address: event.target.value || null })} /></label>
+    <label aria-label="ที่อยู่" className="space-y-1 sm:col-span-2">รายละเอียดที่อยู่<Textarea placeholder="บ้านเลขที่ หมู่ ซอย ถนน" rows={3} maxLength={10000} disabled={disabled} value={value.address ?? ""} onChange={(event) => onChange({ address: event.target.value || null })} /></label>
     <label aria-label="ประเทศ" className="space-y-1">ประเทศ<Input maxLength={100} disabled={disabled} value={value.country ?? ""} onChange={(event) => onChange({ country: event.target.value || null })} /></label>
     <label aria-label="รหัสไปรษณีย์" className="space-y-1">รหัสไปรษณีย์<Input type="tel" inputMode="numeric" maxLength={5} disabled={disabled} value={value.postal_code ?? ""} onChange={(event) => updatePostalCode(event.target.value)} />{postalMessage && <p className="text-sm text-muted-foreground">{postalMessage}</p>}</label>
     <AddressCombobox label="จังหวัด" disabled={disabled} options={provinceOptions} placeholder="ค้นหาจังหวัด" value={selectedProvince} onChange={chooseProvince} />
     <AddressCombobox label="อำเภอ / เขต" disabled={disabled || provinceCode === null} options={districtOptions} placeholder="ค้นหาอำเภอ" value={selectedDistrict} onChange={chooseDistrict} />
-    <AddressCombobox label="ตำบล / แขวง" disabled={disabled || districtCode === null} options={subdistrictOptions} placeholder="ค้นหาตำบล" value={selectedSubdistrict} onChange={chooseSubdistrict} />
+    <AddressCombobox label="ตำบล / แขวง" disabled={disabled || districtCode === null} options={subdistrictOptions} placeholder="เลือกหรือค้นหาตำบล" value={selectedSubdistrict} onChange={chooseSubdistrict} />
   </div>;
 }
