@@ -22,7 +22,7 @@ function repositoryFixture(): ThaiAddressRepository {
     },
     provinces(postalCode) { return postalCode ? [{ code: 20, nameTh: "ชลบุรี" }] : [{ code: 10, nameTh: "กรุงเทพมหานคร" }]; },
     districts(provinceCode, postalCode) { return [{ code: provinceCode * 100 + 7, nameTh: postalCode === "20110" ? "ศรีราชา" : "เมืองชลบุรี" }]; },
-    subdistricts(districtCode, postalCode) { return [{ code: districtCode * 100 + 1, nameTh: postalCode === "20110" ? "สุรศักดิ์" : "บางปลาสร้อย" }]; },
+    subdistricts(districtCode, postalCode) { return [{ code: districtCode * 100 + 1, nameTh: postalCode === "20110" ? "สุรศักดิ์" : "บางปลาสร้อย", postalCodes: [postalCode ?? "20110"] }]; },
     resolveNames(value) {
       return value.province === "ชลบุรี"
         ? { provinceCode: 20, districtCode: value.district === "ศรีราชา" ? 2007 : null, subdistrictCode: value.subdistrict === "สุรศักดิ์" ? 200701 : null }

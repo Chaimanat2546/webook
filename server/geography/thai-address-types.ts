@@ -21,6 +21,10 @@ export interface ThaiAddressSubdistrict extends ThaiAddressOption {
   postalCodes: string[];
 }
 
+export interface ThaiAddressSubdistrictOption extends ThaiAddressOption {
+  postalCodes: string[];
+}
+
 export interface ThaiAddressDataIndex {
   provinces: ThaiAddressOption[];
   districtsByProvince: Record<number, ThaiAddressDistrict[]>;
@@ -38,6 +42,6 @@ export interface ThaiAddressRepository {
   postalCandidates(postalCode: string): ThaiAddressCandidate[];
   provinces(postalCode?: string): ThaiAddressOption[];
   districts(provinceCode: number, postalCode?: string): ThaiAddressOption[];
-  subdistricts(districtCode: number, postalCode?: string): ThaiAddressOption[];
+  subdistricts(districtCode: number, postalCode?: string): ThaiAddressSubdistrictOption[];
   resolveNames(value: { province: string | null; district: string | null; subdistrict: string | null }): ThaiAddressSelection;
 }

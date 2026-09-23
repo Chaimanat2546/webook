@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { createThaiAddressRequestVersions } from "../components/admin/houses/bookings/thai-contact-address-request-versions.ts";
 import { createThaiContactAddressInitializationController } from "../components/admin/houses/bookings/thai-contact-address-initialization.ts";
 import { createThaiContactAddressPostalLookupController } from "../components/admin/houses/bookings/thai-contact-address-postal-lookup.ts";
+import { createThaiContactAddressSelectionController } from "../components/admin/houses/bookings/thai-contact-address-selection.ts";
 
 const componentUrl = new URL("../components/admin/houses/bookings/thai-contact-address-fields.tsx", import.meta.url);
 const formUrl = new URL("../components/admin/houses/bookings/booking-customer-form.tsx", import.meta.url);
@@ -86,6 +87,28 @@ test("postal lookup auto-selection survives a late initialization response", asy
   assert.deepEqual(selected, { provinceCode: 20, districtCode: 2007, subdistrictCode: null });
 });
 
+test("manual province, district, and uniquely-postcoded subdistrict selection synchronizes the postal code", () => {
+  const selected = { provinceCode: null as number | null, districtCode: null as number | null, subdistrictCode: null as number | null };
+  const patches: Array<Record<string, string | null>> = [];
+  const controller = createThaiContactAddressSelectionController({
+    onChange: (patch) => patches.push(patch),
+    setDistrictCode: (code) => { selected.districtCode = code; },
+    setProvinceCode: (code) => { selected.provinceCode = code; },
+    setSubdistrictCode: (code) => { selected.subdistrictCode = code; },
+  });
+
+  controller.chooseProvince({ code: 20, nameTh: "ชลบุรี" });
+  controller.chooseDistrict({ code: 2007, nameTh: "ศรีราชา" });
+  controller.chooseSubdistrict({ code: 200701, nameTh: "สุรศักดิ์", postalCodes: ["20110"] });
+
+  assert.deepEqual(selected, { provinceCode: 20, districtCode: 2007, subdistrictCode: 200701 });
+  assert.deepEqual(patches, [
+    { province: "ชลบุรี", district: null, sub_district: null },
+    { district: "ศรีราชา", sub_district: null },
+    { sub_district: "สุรศักดิ์", postal_code: "20110" },
+  ]);
+});
+
 test("contact address puts manual detail and country before postal geography", () => {
   const source = readFileSync(componentUrl, "utf8");
 
@@ -105,7 +128,7 @@ test("contact address supports searchable cascading manual choices without locki
   assert.match(source, /disabled=\{disabled \|\| provinceCode === null\}/);
   assert.match(source, /disabled=\{disabled \|\| districtCode === null\}/);
   assert.match(source, /type="tel" inputMode="numeric" maxLength=\{5\}/);
-  assert.match(source, /setDistrictCode\(null\)[\s\S]*setSubdistrictCode\(null\)[\s\S]*district: null, sub_district: null/);
+  assert.match(source, /createThaiContactAddressSelectionController/);
   assert.match(source, /createThaiAddressRequestVersions/);
   assert.doesNotMatch(source, /requestToken/);
   assert.match(source, /createThaiContactAddressInitializationController/);

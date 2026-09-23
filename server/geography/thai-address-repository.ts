@@ -6,9 +6,11 @@ import type {
   ThaiAddressDataIndex,
   ThaiAddressOption,
   ThaiAddressRepository,
+  ThaiAddressSubdistrict,
+  ThaiAddressSubdistrictOption,
 } from "./thai-address-types.ts";
 
-function orderedOptions<T extends ThaiAddressOption & { postalCodes?: string[] }>(options: readonly T[], postalCode?: string): ThaiAddressOption[] {
+function ordered<T extends ThaiAddressOption & { postalCodes?: string[] }>(options: readonly T[], postalCode?: string): T[] {
   const unique = new Map<number, T>();
   for (const option of options) unique.set(option.code, option);
 
@@ -16,8 +18,15 @@ function orderedOptions<T extends ThaiAddressOption & { postalCodes?: string[] }
     .sort((left, right) => {
       const postcodeDifference = Number(right.postalCodes?.includes(postalCode ?? "")) - Number(left.postalCodes?.includes(postalCode ?? ""));
       return postcodeDifference || left.nameTh.localeCompare(right.nameTh, "th");
-    })
-    .map(({ code, nameTh }) => ({ code, nameTh }));
+    });
+}
+
+function orderedOptions<T extends ThaiAddressOption & { postalCodes?: string[] }>(options: readonly T[], postalCode?: string): ThaiAddressOption[] {
+  return ordered(options, postalCode).map(({ code, nameTh }) => ({ code, nameTh }));
+}
+
+function orderedSubdistrictOptions(options: readonly ThaiAddressSubdistrict[], postalCode?: string): ThaiAddressSubdistrictOption[] {
+  return ordered(options, postalCode).map(({ code, nameTh, postalCodes }) => ({ code, nameTh, postalCodes }));
 }
 
 function postalMatches(index: ThaiAddressDataIndex, postalCode: string): ThaiAddressCandidate[] {
@@ -38,7 +47,7 @@ export function createThaiAddressRepository(index: ThaiAddressDataIndex): ThaiAd
       return orderedOptions(index.districtsByProvince[provinceCode] ?? [], postalCode);
     },
     subdistricts(districtCode, postalCode) {
-      return orderedOptions(index.subdistrictsByDistrict[districtCode] ?? [], postalCode);
+      return orderedSubdistrictOptions(index.subdistrictsByDistrict[districtCode] ?? [], postalCode);
     },
     resolveNames(value) {
       const province = index.provinces.find((option) => option.nameTh === value.province);

@@ -18,10 +18,11 @@ import {
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { ThaiAddressCandidate, ThaiAddressOption } from "@/server/geography/thai-address-types";
+import type { ThaiAddressOption, ThaiAddressSubdistrictOption } from "@/server/geography/thai-address-types";
 import { createThaiContactAddressInitializationController } from "./thai-contact-address-initialization";
 import { createThaiContactAddressPostalLookupController } from "./thai-contact-address-postal-lookup";
 import { createThaiAddressRequestVersions } from "./thai-contact-address-request-versions";
+import { createThaiContactAddressSelectionController } from "./thai-contact-address-selection";
 
 export interface BookingContactAddressValue {
   address: string | null;
@@ -76,17 +77,22 @@ function AddressCombobox({ disabled, label, onChange, options, placeholder, valu
 export function ThaiContactAddressFields({ disabled, onChange, propertyId, value }: Props) {
   const [provinceOptions, setProvinceOptions] = useState<ThaiAddressOption[]>([]);
   const [districtOptions, setDistrictOptions] = useState<ThaiAddressOption[]>([]);
-  const [subdistrictOptions, setSubdistrictOptions] = useState<ThaiAddressOption[]>([]);
+  const [subdistrictOptions, setSubdistrictOptions] = useState<ThaiAddressSubdistrictOption[]>([]);
   const [provinceCode, setProvinceCode] = useState<number | null>(null);
   const [districtCode, setDistrictCode] = useState<number | null>(null);
   const [subdistrictCode, setSubdistrictCode] = useState<number | null>(null);
-  const [postalCandidates, setPostalCandidates] = useState<ThaiAddressCandidate[]>([]);
   const [postalMessage, setPostalMessage] = useState("");
   const initialValue = useRef(value);
   const [requestChannels] = useState(() => {
     const versions = createThaiAddressRequestVersions();
     const initialization = createThaiContactAddressInitializationController(versions);
     return { initialization, postalLookup: createThaiContactAddressPostalLookupController(versions, initialization), versions };
+  });
+  const selection = createThaiContactAddressSelectionController({
+    onChange,
+    setDistrictCode,
+    setProvinceCode,
+    setSubdistrictCode,
   });
 
   useEffect(() => {
@@ -125,28 +131,20 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
 
   function chooseProvince(option: ThaiAddressOption | null) {
     requestChannels.initialization.userChanged();
-    setProvinceCode(option?.code ?? null);
-    setDistrictCode(null);
-    setSubdistrictCode(null);
     setDistrictOptions([]);
     setSubdistrictOptions([]);
-    onChange({ province: option?.nameTh ?? null, district: null, sub_district: null });
+    selection.chooseProvince(option);
   }
 
   function chooseDistrict(option: ThaiAddressOption | null) {
     requestChannels.initialization.userChanged();
-    setDistrictCode(option?.code ?? null);
-    setSubdistrictCode(null);
     setSubdistrictOptions([]);
-    onChange({ district: option?.nameTh ?? null, sub_district: null });
+    selection.chooseDistrict(option);
   }
 
   function chooseSubdistrict(option: ThaiAddressOption | null) {
     requestChannels.initialization.userChanged();
-    setSubdistrictCode(option?.code ?? null);
-    if (!option) { onChange({ sub_district: null }); return; }
-    const postalCodes = [...new Set(postalCandidates.filter((candidate) => candidate.subdistrict.code === option.code).map((candidate) => candidate.postalCode))];
-    onChange({ sub_district: option.nameTh, ...(postalCodes.length === 1 ? { postal_code: postalCodes[0] } : {}) });
+    selection.chooseSubdistrict((option && subdistrictOptions.find((subdistrict) => subdistrict.code === option.code)) ?? null);
   }
 
   function updatePostalCode(next: string) {
@@ -156,7 +154,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
       listDistricts: (provinceCode, postalCode) => listThaiDistrictsAction(propertyId, provinceCode, postalCode),
       lookupPostalCode: (postalCode) => lookupThaiPostalCodeAction(propertyId, postalCode),
       onPostalCode: (postalCode) => onChange({ postal_code: postalCode }),
-      setCandidates: setPostalCandidates,
+      setCandidates: () => undefined,
       setMessage: setPostalMessage,
     });
   }
