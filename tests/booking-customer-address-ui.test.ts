@@ -4,9 +4,11 @@ import { test } from "node:test";
 
 import { createThaiAddressRequestVersions } from "../components/admin/houses/bookings/thai-contact-address-request-versions.ts";
 import { createThaiContactAddressInitializationController } from "../components/admin/houses/bookings/thai-contact-address-initialization.ts";
+import { createThaiContactAddressPostalLookupController } from "../components/admin/houses/bookings/thai-contact-address-postal-lookup.ts";
 
 const componentUrl = new URL("../components/admin/houses/bookings/thai-contact-address-fields.tsx", import.meta.url);
 const formUrl = new URL("../components/admin/houses/bookings/booking-customer-form.tsx", import.meta.url);
+const postalControllerUrl = new URL("../components/admin/houses/bookings/thai-contact-address-postal-lookup.ts", import.meta.url);
 
 test("postal and hierarchy lookup versions invalidate independently", () => {
   const versions = createThaiAddressRequestVersions();
@@ -55,6 +57,35 @@ test("late initialization cannot overwrite a postal-selected address", async () 
   assert.deepEqual(selected, { provinceCode: 88, districtCode: 8801, subdistrictCode: 880101 });
 });
 
+test("postal lookup auto-selection survives a late initialization response", async () => {
+  let resolveNames: ((value: { ok: true; data: { provinceCode: number; districtCode: number; subdistrictCode: number } }) => void) | undefined;
+  const versions = createThaiAddressRequestVersions();
+  const initialization = createThaiContactAddressInitializationController(versions);
+  const postalLookup = createThaiContactAddressPostalLookupController(versions, initialization);
+  const selected = { provinceCode: null as number | null, districtCode: null as number | null, subdistrictCode: null as number | null };
+  const pendingInitialization = initialization.start({
+    applyProvinces: () => undefined,
+    applyResolved: (value) => Object.assign(selected, value),
+    isActive: () => true,
+    listProvinces: async () => ({ ok: true as const, data: [] }),
+    resolveNames: () => new Promise((resolve) => { resolveNames = resolve; }),
+  });
+
+  await postalLookup.updatePostalCode("20110", {
+    chooseDistrict: (option) => { initialization.userChanged(); selected.districtCode = option.code; selected.subdistrictCode = null; },
+    chooseProvince: (option) => { initialization.userChanged(); selected.provinceCode = option.code; selected.districtCode = null; selected.subdistrictCode = null; },
+    listDistricts: async () => ({ ok: true as const, data: [{ code: 2007, nameTh: "ศรีราชา" }] }),
+    lookupPostalCode: async () => ({ ok: true as const, data: { candidates: [{ province: { code: 20, nameTh: "ชลบุรี" }, district: { code: 2007, nameTh: "ศรีราชา" }, subdistrict: { code: 200701, nameTh: "สุรศักดิ์" }, postalCode: "20110" }] } }),
+    onPostalCode: () => undefined,
+    setCandidates: () => undefined,
+    setMessage: () => undefined,
+  });
+  resolveNames?.({ ok: true, data: { provinceCode: 88, districtCode: 8801, subdistrictCode: 880101 } });
+  await pendingInitialization;
+
+  assert.deepEqual(selected, { provinceCode: 20, districtCode: 2007, subdistrictCode: null });
+});
+
 test("contact address puts manual detail and country before postal geography", () => {
   const source = readFileSync(componentUrl, "utf8");
 
@@ -81,13 +112,13 @@ test("contact address supports searchable cascading manual choices without locki
   assert.match(source, /function chooseProvince[\s\S]*initialization\.userChanged/);
   assert.match(source, /function chooseDistrict[\s\S]*initialization\.userChanged/);
   assert.match(source, /function chooseSubdistrict[\s\S]*initialization\.userChanged/);
-  assert.match(source, /function updatePostalCode[\s\S]*initialization\.userChanged[\s\S]*postalCode\.length !== 5/);
+  assert.match(source, /function updatePostalCode[\s\S]*postalLookup\.updatePostalCode/);
 });
 
 test("a uniquely narrowed postal lookup can suggest its district without forcing ambiguous choices", () => {
-  const source = readFileSync(componentUrl, "utf8");
+  const source = readFileSync(postalControllerUrl, "utf8");
 
-  assert.match(source, /listThaiDistrictsAction\(propertyId, provinces\[0\]\.code, postalCode\)/);
+  assert.match(source, /request\.listDistricts\(provinces\[0\]\.code, postalCode\)/);
   assert.match(source, /districtResult\.data\.length === 1/);
 });
 
