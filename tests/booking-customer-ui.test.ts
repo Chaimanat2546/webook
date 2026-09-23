@@ -6,7 +6,7 @@ const form = readFileSync(new URL("../components/admin/houses/bookings/booking-c
 const summary = readFileSync(new URL("../components/admin/houses/bookings/booking-customer-summary.tsx", import.meta.url), "utf8");
 
 test("booking customer form uses telephone controls with numeric keyboards for both phone fields", () => {
-  assert.match(form, /<Input required type="tel" inputMode="numeric"[^>]*autoComplete="tel"/);
+  assert.match(form, /<Input type="tel" inputMode="numeric"[^>]*autoComplete="tel"/);
   assert.match(form, /field\.key === "secondary_phone"[\s\S]*?<Input type="tel" inputMode="numeric"/);
 });
 

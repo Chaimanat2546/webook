@@ -17,6 +17,7 @@ import { BookingCustomerSummary } from "./booking-customer-summary";
 import { ThaiContactAddressFields } from "./thai-contact-address-fields";
 import { formatThaiBirthDate, parseThaiBirthDate } from "@/lib/thai-birth-date";
 import { bookingToday } from "@/lib/booking-availability";
+import { validateCustomerSection, type CustomerErrors } from "@/lib/booking-customer-validation";
 
 interface Props { propertyId: string; customerId?: string; onClose: () => void; onSelect: (customer: BookingCustomer) => void }
 const titleOptions = ["นาย", "นาง", "นางสาว", "เด็กชาย", "เด็กหญิง", "Mr.", "Mrs.", "Ms."];
@@ -60,13 +61,18 @@ function CustomerFields({ propertyId, customer, onClose, onSelect }: Props & { c
   });
   const [value, setValue] = useState(initial);
   const [birthDateText, setBirthDateText] = useState(() => formatThaiBirthDate(initial.date_of_birth));
-  const [birthDateError, setBirthDateError] = useState("");
+  const [errors, setErrors] = useState<CustomerErrors>({});
   const [step, setStep] = useState(0);
   const [reached, setReached] = useState(0);
   const [review, setReview] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const juristic = value.customer_type === "juristic";
-  function go(next: number) { setStep(next); setReached(previous => Math.max(previous, next)); scrollRef.current?.scrollTo({ top: 0 }); }
+  function go(next: number) {
+    const nextErrors = validateCustomerSection(value, groups[step].key, birthDateText);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+    setStep(next); setReached(previous => Math.max(previous, next)); scrollRef.current?.scrollTo({ top: 0 });
+  }
   const [saving, setSaving] = useState(false);
   const [operation, setOperation] = useState<"save" | "dbd" | null>(null);
   const [dbd, setDbd] = useState<DbdCustomerDefaults | null>(null);
@@ -77,20 +83,24 @@ function CustomerFields({ propertyId, customer, onClose, onSelect }: Props & { c
   const dirty = JSON.stringify(initial) !== JSON.stringify(value) || birthDateText !== formatThaiBirthDate(initial.date_of_birth);
   function update<K extends keyof BookingCustomerInput>(key: K, next: BookingCustomerInput[K]) {
     setValue(previous => ({ ...previous, [key]: next })); setExisting([]);
+    setErrors(previous => ({ ...previous, [key]: undefined }));
     if (key === "tax_id" || key === "customer_type") setDbd(null);
   }
   function close() { if (lock.current) return; if (dirty) setDiscardOpen(true); else onClose(); }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); event.stopPropagation();
     if (lock.current) return;
-    let dateOfBirth: string | null;
-    try { dateOfBirth = parseThaiBirthDate(birthDateText, bookingToday()); }
-    catch (error) {
-      setBirthDateError(error instanceof Error ? error.message : "วันเกิดไม่ถูกต้อง");
-      setReview(false); go(0); return;
+    if (!review && step < groups.length - 1) { go(step + 1); return; }
+    for (const [index, group] of groups.entries()) {
+      const nextErrors = validateCustomerSection(value, group.key, birthDateText);
+      if (Object.keys(nextErrors).length) {
+        setErrors(nextErrors); setReview(false); setStep(index);
+        scrollRef.current?.scrollTo({ top: 0 }); return;
+      }
     }
+    setErrors({});
+    const dateOfBirth = parseThaiBirthDate(birthDateText, bookingToday());
     if (!review) {
-      if (step < groups.length - 1) { go(step + 1); return; }
       setValue(current => ({ ...current, date_of_birth: dateOfBirth }));
       setReview(true); scrollRef.current?.scrollTo({ top: 0 }); return;
     }
@@ -140,15 +150,15 @@ function CustomerFields({ propertyId, customer, onClose, onSelect }: Props & { c
                   <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:col-span-2">ประเภทลูกค้า<select className="block h-8 w-fit max-w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.customer_type ?? ""} onChange={event => update("customer_type", event.target.value || null)}><option value="">ไม่ระบุ</option><option value="individual">บุคคลธรรมดา</option><option value="juristic">นิติบุคคล</option></select></label>
                   <div className={`grid min-w-0 gap-3 sm:col-span-2 ${juristic ? "sm:grid-cols-2" : "sm:grid-cols-[7rem_minmax(0,1fr)_minmax(0,1fr)]"}`}>
                     {!juristic && <label className="min-w-0 space-y-1">คำนำหน้า<select className="block h-8 w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.title ?? ""} onChange={event => update("title", event.target.value || null)}><option value="">ไม่ระบุ</option>{value.title && !titleOptions.includes(value.title) && <option value={value.title}>{value.title}</option>}{titleOptions.map(title => <option key={title} value={title}>{title}</option>)}</select></label>}
-                    <label className="min-w-0 space-y-1">{juristic ? "ชื่อผู้ติดต่อ" : "ชื่อ"}<Input required maxLength={100} autoComplete="given-name" value={value.first_name} onChange={event => update("first_name", event.target.value)} /></label>
-                    <label className="min-w-0 space-y-1">นามสกุล<Input maxLength={100} autoComplete="family-name" value={value.last_name ?? ""} onChange={event => update("last_name", event.target.value || null)} /></label>
+                    <label className="min-w-0 space-y-1">{juristic ? "ชื่อผู้ติดต่อ" : "ชื่อ"}<Input maxLength={100} autoComplete="given-name" value={value.first_name} onChange={event => update("first_name", event.target.value)} aria-invalid={!!errors.first_name} aria-describedby={errors.first_name ? "first_name-error" : undefined} /><span id="first_name-error" role={errors.first_name ? "alert" : undefined} className="block text-xs text-destructive">{errors.first_name}</span></label>
+                    <label className="min-w-0 space-y-1">นามสกุล<Input maxLength={100} autoComplete="family-name" value={value.last_name ?? ""} onChange={event => update("last_name", event.target.value || null)} aria-invalid={!!errors.last_name} aria-describedby={errors.last_name ? "last_name-error" : undefined} /><span id="last_name-error" role={errors.last_name ? "alert" : undefined} className="block text-xs text-destructive">{errors.last_name}</span></label>
                   </div>
                 </>}
                 {group.key === "address" && juristic && <div className="sm:col-span-2"><Button type="button" variant="outline" disabled={!value.tax_address?.trim()} onClick={() => setValue(current => ({ ...current, address: current.tax_address, sub_district: null, district: null, province: null, postal_code: null, country: "Thailand" }))}>ใช้ที่อยู่เดียวกับข้อมูลภาษี</Button></div>}
-                {group.key === "address" && <ThaiContactAddressFields disabled={saving} propertyId={propertyId} value={{ address: value.address ?? null, country: value.country ?? null, postal_code: value.postal_code ?? null, province: value.province ?? null, district: value.district ?? null, sub_district: value.sub_district ?? null }} onChange={patch => { setValue(current => ({ ...current, ...patch })); setExisting([]); }} />}
-                {group.key === "contact" && <label className="space-y-1">เบอร์โทร<Input required type="tel" inputMode="numeric" maxLength={40} autoComplete="tel" value={value.phone} onChange={event => update("phone", event.target.value)} /></label>}
+                {group.key === "address" && <ThaiContactAddressFields errors={errors} disabled={saving} propertyId={propertyId} value={{ address: value.address ?? null, country: value.country ?? null, postal_code: value.postal_code ?? null, province: value.province ?? null, district: value.district ?? null, sub_district: value.sub_district ?? null }} onChange={patch => { setValue(current => ({ ...current, ...patch })); setErrors(current => { const next = { ...current }; for (const key of Object.keys(patch) as (keyof typeof patch)[]) delete next[key]; return next; }); setExisting([]); }} />}
+                {group.key === "contact" && <label className="space-y-1">เบอร์โทร<Input type="tel" inputMode="numeric" maxLength={40} autoComplete="tel" value={value.phone} onChange={event => update("phone", event.target.value)} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} /><span id="phone-error" role={errors.phone ? "alert" : undefined} className="block text-xs text-destructive">{errors.phone}</span></label>}
                 {group.key === "tax" && <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:col-span-2">สำนักงาน<select className="block h-8 w-fit max-w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.tax_head_office == null ? "" : value.tax_head_office ? "head" : "branch"} onChange={event => update("tax_head_office", event.target.value === "" ? null : event.target.value === "head")}><option value="">ไม่ระบุ</option><option value="head">สำนักงานใหญ่</option><option value="branch">สาขา</option></select></label>}
-                {CUSTOMER_FIELDS.filter(field => field.group === group.key && field.key !== "title" && field.key !== "address" && field.key !== "country" && field.key !== "postal_code" && field.key !== "province" && field.key !== "district" && field.key !== "sub_district" && !(juristic && field.group === "general")).map(field => <label key={field.key} className={`space-y-1 ${(field.key === "tax_id" || ("type" in field && field.type === "textarea")) ? "sm:col-span-2" : ""}`}>{field.label}{field.key === "tax_id" ? <div className="flex flex-col gap-2 sm:flex-row"><Input inputMode="numeric" maxLength={13} value={value.tax_id ?? ""} onChange={event => update("tax_id", event.target.value || null)} />{value.customer_type === "juristic" && <Button type="button" variant="outline" onClick={() => void lookup()}>{operation === "dbd" ? "กำลังตรวจสอบ DBD…" : customer ? "รีเฟรชจาก DBD" : "ตรวจสอบ DBD"}</Button>}</div> : field.key === "preferred_language" ? <select className="block h-8 w-fit max-w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.preferred_language ?? ""} onChange={event => update("preferred_language", event.target.value || null)}><option value="" disabled>เลือกภาษา</option>{value.preferred_language && !["th", "en"].includes(value.preferred_language) && <option value={value.preferred_language} disabled>{value.preferred_language} (ค่าเดิม)</option>}<option value="th">ภาษาไทย</option><option value="en">อังกฤษ</option></select> : "type" in field && field.type === "textarea" ? <Textarea rows={3} maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} /> : field.key === "date_of_birth" ? <><Input type="text" inputMode="text" maxLength={10} placeholder="วว/ดด/ปปปป (พ.ศ.)" aria-label="วันเกิด (พ.ศ.)" aria-invalid={!!birthDateError} aria-describedby={birthDateError ? "birth-date-error" : "birth-date-hint"} value={birthDateText} onChange={event => { setBirthDateText(event.target.value); setBirthDateError(""); setExisting([]); }} /><span id="birth-date-hint" className="block text-xs text-muted-foreground">วัน/เดือน/ปี พ.ศ. เช่น 23/09/2535</span>{birthDateError && <span id="birth-date-error" role="alert" className="block text-xs text-destructive">{birthDateError}</span>}</> : field.key === "secondary_phone" ? <Input type="tel" inputMode="numeric" maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} /> : <Input type={"type" in field ? field.type : "text"} maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} />}</label>)}
+                {CUSTOMER_FIELDS.filter(field => field.group === group.key && field.key !== "title" && field.key !== "address" && field.key !== "country" && field.key !== "postal_code" && field.key !== "province" && field.key !== "district" && field.key !== "sub_district" && !(juristic && field.group === "general")).map(field => <label key={field.key} className={`space-y-1 ${(field.key === "tax_id" || ("type" in field && field.type === "textarea")) ? "sm:col-span-2" : ""}`}>{field.label}{field.key === "tax_id" ? <div className="flex flex-col gap-2 sm:flex-row"><Input inputMode="numeric" maxLength={13} value={value.tax_id ?? ""} onChange={event => update("tax_id", event.target.value || null)} />{value.customer_type === "juristic" && <Button type="button" variant="outline" onClick={() => void lookup()}>{operation === "dbd" ? "กำลังตรวจสอบ DBD…" : customer ? "รีเฟรชจาก DBD" : "ตรวจสอบ DBD"}</Button>}</div> : field.key === "preferred_language" ? <select className="block h-8 w-fit max-w-full rounded-md border bg-background py-1 pl-2 pr-7 text-sm" value={value.preferred_language ?? ""} onChange={event => update("preferred_language", event.target.value || null)}><option value="" disabled>เลือกภาษา</option>{value.preferred_language && !["th", "en"].includes(value.preferred_language) && <option value={value.preferred_language} disabled>{value.preferred_language} (ค่าเดิม)</option>}<option value="th">ภาษาไทย</option><option value="en">อังกฤษ</option></select> : "type" in field && field.type === "textarea" ? <Textarea rows={3} maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} /> : field.key === "date_of_birth" ? <><Input type="text" inputMode="text" maxLength={10} placeholder="วว/ดด/ปปปป (พ.ศ.)" aria-label="วันเกิด (พ.ศ.)" aria-invalid={!!errors.date_of_birth} aria-describedby={errors.date_of_birth ? "birth-date-error" : "birth-date-hint"} value={birthDateText} onChange={event => { setBirthDateText(event.target.value); setErrors(previous => ({ ...previous, date_of_birth: undefined })); setExisting([]); }} /><span id="birth-date-hint" className="block text-xs text-muted-foreground">วัน/เดือน/ปี พ.ศ. เช่น 23/09/2535</span>{errors.date_of_birth && <span id="birth-date-error" role="alert" className="block text-xs text-destructive">{errors.date_of_birth}</span>}</> : field.key === "secondary_phone" ? <Input type="tel" inputMode="numeric" maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} /> : <Input aria-invalid={!!errors[field.key]} type={"type" in field ? field.type : "text"} maxLength={field.max} value={value[field.key] ?? ""} onChange={event => update(field.key, event.target.value || null)} />}{field.key !== "date_of_birth" && errors[field.key] && <span role="alert" className="block text-xs text-destructive">{errors[field.key]}</span>}</label>)}
                 {group.key === "tax" && value.customer_type === "juristic" && <div className="space-y-3 sm:col-span-2">
                   {operation === "dbd" && <div role="status" aria-label="กำลังตรวจสอบ DBD" className="space-y-2"><Skeleton className="h-4 w-2/3 motion-reduce:animate-none" /><Skeleton className="h-12 w-full motion-reduce:animate-none" /><span className="sr-only">กำลังตรวจสอบ DBD…</span></div>}
                   {dbd && <div className="space-y-2 rounded-lg bg-muted/40 p-3 text-sm">

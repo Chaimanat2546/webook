@@ -9,7 +9,7 @@ export async function createBookingCustomer(repository: CustomerRepository, prop
   const input = parseBookingCustomer(raw);
   const house = await repository.house(bookingId(propertyId));
   if (!house) throw new Error("booking_house_not_found");
-  const customers = await repository.customersByPhone(house, input.phone);
+  const customers = input.phone ? await repository.customersByPhone(house, input.phone) : [];
   if (customers.length) return { kind: "existing", customers };
   return { kind: "created", customer: await repository.createCustomer(house, input) };
 }
@@ -28,7 +28,7 @@ export async function updateBookingCustomer(repository: EditRepository, property
   const house = await repository.house(bookingId(propertyId));
   if (!house) throw new Error("booking_house_not_found");
   const input = parseBookingCustomer({ last_name: current.last_name, ...record(raw) });
-  const duplicates = (await repository.customersByPhone(house, input.phone)).filter(customer => customer.id !== current.id);
+  const duplicates = input.phone ? (await repository.customersByPhone(house, input.phone)).filter(customer => customer.id !== current.id) : [];
   if (duplicates.length && normalizeBookingPhone(current.phone) !== input.phone) return { kind: "existing", customers: duplicates };
   return { kind: "created", customer: await repository.updateCustomer(house, current.id, current.updated_at, input) };
 }

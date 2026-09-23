@@ -49,11 +49,11 @@ export function parseBookingCustomer(raw: unknown): BookingCustomerInput {
   const data = record(raw);
   const first_name = typeof data.first_name === "string" ? data.first_name.trim() : "";
   const last_name = typeof data.last_name === "string" ? data.last_name.trim() : "";
-  if (!first_name || first_name.length > 100) throw new Error("กรุณากรอกชื่อไม่เกิน 100 ตัวอักษร");
+  if (first_name.length > 100) throw new Error("กรุณากรอกชื่อไม่เกิน 100 ตัวอักษร");
   if (last_name.length > 100) throw new Error("นามสกุลต้องไม่เกิน 100 ตัวอักษร");
   const rawPhone = typeof data.phone === "string" ? data.phone.trim() : "";
   const phone = normalizeBookingPhone(rawPhone);
-  if (rawPhone.length > 40 || !/^\+?\d{8,15}$/.test(phone)) throw new Error("กรุณากรอกเบอร์โทร 8–15 หลัก");
+  if (rawPhone.length > 40 || (rawPhone && !/^\+?\d{8,15}$/.test(phone))) throw new Error("กรุณากรอกเบอร์โทร 8–15 หลัก");
   const result: BookingCustomerInput = { first_name, last_name: last_name || null, phone };
   for (const field of CUSTOMER_FIELDS) {
     if (!(field.key in data)) continue;

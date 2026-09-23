@@ -75,7 +75,7 @@ export function parseBookingUpdate(value: unknown): BookingUpdate {
   return { id: bookingId(v.id), updated_at: v.updated_at, check_in, check_out, status: v.status, customer_id: v.customer_id === null ? null : bookingId(v.customer_id), quantity, price_sell: amount(v.price_sell), price_max: v.price_max === null ? null : amount(v.price_max), extra_charge: amount(v.extra_charge), note: v.note as string | null };
 }
 export function bookingCustomerName(customer: BookingCustomer | null): string {
-  return customer ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") : "ยังไม่ได้ผูกลูกค้า";
+  return customer ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") || `ลูกค้า #${customer.id}` : "ยังไม่ได้ผูกลูกค้า";
 }
 export function bookingEvent(booking: Booking) {
   const status = BOOKING_STATUSES.find(s => s.value === booking.status);

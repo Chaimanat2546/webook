@@ -8,11 +8,24 @@ test("customer input allowlists fields and normalizes Thai phone numbers", () =>
     first_name: "สมชาย", last_name: null, phone: "0812345678",
   });
   assert.equal(normalizeBookingPhone("081 234 5678"), "0812345678");
-  for (const phone of ["", "abc0812345678", "123", "0".repeat(21)]) {
+  for (const phone of ["abc0812345678", "123", "0".repeat(21), "---"]) {
     assert.throws(() => parseBookingCustomer({ first_name: "ทดสอบ", phone }));
   }
-  assert.throws(() => parseBookingCustomer({ first_name: " ", phone: "0812345678" }));
+  assert.equal(parseBookingCustomer({ first_name: " ", phone: "0812345678" }).first_name, "");
   assert.throws(() => parseBookingCustomer({ first_name: "ก".repeat(101), phone: "0812345678" }));
+});
+
+test("blank customers can be created repeatedly without looking up empty phone numbers", async () => {
+  assert.deepEqual(parseBookingCustomer({}), { first_name: "", last_name: null, phone: "" });
+  let inserts = 0;
+  const repository = {
+    house: async () => ({ id: "listing", property_id: "1", title: "house" }),
+    customersByPhone: async () => { throw new Error("must not search blank phones"); },
+    createCustomer: async () => ({ id: String(++inserts), first_name: "", last_name: null, phone: "" }),
+  };
+  assert.equal((await createBookingCustomer(repository, "1", {})).kind, "created");
+  assert.equal((await createBookingCustomer(repository, "1", {})).kind, "created");
+  assert.equal(inserts, 2);
 });
 
 test("customer creation checks house and returns existing phone matches without inserting", async () => {

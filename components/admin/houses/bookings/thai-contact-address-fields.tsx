@@ -34,6 +34,7 @@ export interface BookingContactAddressValue {
 }
 
 interface Props {
+  errors?: Partial<Record<keyof BookingContactAddressValue, string>>;
   disabled: boolean;
   onChange: (patch: Partial<BookingContactAddressValue>) => void;
   propertyId: string;
@@ -48,8 +49,9 @@ function selectedOrLegacy(options: ThaiAddressOption[], code: number | null, leg
   return matchingOption(options, code) ?? (legacyName ? { code: -1, nameTh: legacyName } : null);
 }
 
-function AddressCombobox({ disabled, label, onChange, options, placeholder, value }: {
+function AddressCombobox({ error, disabled, label, onChange, options, placeholder, value }: {
   disabled: boolean;
+  error?: string;
   label: string;
   onChange: (option: ThaiAddressOption | null) => void;
   options: ThaiAddressOption[];
@@ -67,7 +69,7 @@ function AddressCombobox({ disabled, label, onChange, options, placeholder, valu
       onValueChange={(option) => onChange(option && option.code > 0 ? option : null)}
       value={value}
     >
-      <ComboboxInput id={id} className="w-full" disabled={disabled} placeholder={placeholder} />
+      <ComboboxInput aria-invalid={!!error} id={id} className="w-full" disabled={disabled} placeholder={placeholder} />
       <ComboboxContent container={portalContainer}>
         <ComboboxEmpty>ไม่พบข้อมูล</ComboboxEmpty>
         <ComboboxList>
@@ -75,10 +77,11 @@ function AddressCombobox({ disabled, label, onChange, options, placeholder, valu
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
+    {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
   </div>;
 }
 
-export function ThaiContactAddressFields({ disabled, onChange, propertyId, value }: Props) {
+export function ThaiContactAddressFields({ errors = {}, disabled, onChange, propertyId, value }: Props) {
   const [provinceOptions, setProvinceOptions] = useState<ThaiAddressOption[]>([]);
   const [districtOptions, setDistrictOptions] = useState<ThaiAddressOption[]>([]);
   const [subdistrictOptions, setSubdistrictOptions] = useState<ThaiAddressSubdistrictOption[]>([]);
@@ -168,11 +171,11 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
   const selectedSubdistrict = selectedOrLegacy(subdistrictOptions, subdistrictCode, value.sub_district);
 
   return <div className="contents">
-    <label aria-label="ที่อยู่" className="space-y-1 sm:col-span-2">รายละเอียดที่อยู่<Textarea placeholder="บ้านเลขที่ หมู่ ซอย ถนน" rows={3} maxLength={10000} disabled={disabled} value={value.address ?? ""} onChange={(event) => onChange({ address: event.target.value || null })} /></label>
-    <label aria-label="ประเทศ" className="space-y-1">ประเทศ<Input maxLength={100} disabled={disabled} value={value.country ?? ""} onChange={(event) => onChange({ country: event.target.value || null })} /></label>
-    <label aria-label="รหัสไปรษณีย์" className="space-y-1">รหัสไปรษณีย์<Input type="tel" inputMode="numeric" maxLength={5} disabled={disabled} value={value.postal_code ?? ""} onChange={(event) => updatePostalCode(event.target.value)} />{postalMessage && <p className="text-sm text-muted-foreground">{postalMessage}</p>}</label>
-    <AddressCombobox label="จังหวัด" disabled={disabled} options={provinceOptions} placeholder="ค้นหาจังหวัด" value={selectedProvince} onChange={chooseProvince} />
-    <AddressCombobox label="อำเภอ / เขต" disabled={disabled || provinceCode === null} options={districtOptions} placeholder="ค้นหาอำเภอ" value={selectedDistrict} onChange={chooseDistrict} />
-    <AddressCombobox label="ตำบล / แขวง" disabled={disabled || districtCode === null} options={subdistrictOptions} placeholder="เลือกหรือค้นหาตำบล" value={selectedSubdistrict} onChange={chooseSubdistrict} />
+    <label aria-label="ที่อยู่" className="space-y-1 sm:col-span-2">รายละเอียดที่อยู่<Textarea placeholder="บ้านเลขที่ หมู่ ซอย ถนน" rows={3} maxLength={10000} disabled={disabled} value={value.address ?? ""} onChange={(event) => onChange({ address: event.target.value || null })} />{errors.address && <span role="alert" className="block text-xs text-destructive">{errors.address}</span>}</label>
+    <label aria-label="ประเทศ" className="space-y-1">ประเทศ<Input maxLength={100} disabled={disabled} value={value.country ?? ""} onChange={(event) => onChange({ country: event.target.value || null })} />{errors.country && <span role="alert" className="block text-xs text-destructive">{errors.country}</span>}</label>
+    <label aria-label="รหัสไปรษณีย์" className="space-y-1">รหัสไปรษณีย์<Input type="tel" inputMode="numeric" maxLength={5} disabled={disabled} value={value.postal_code ?? ""} onChange={(event) => updatePostalCode(event.target.value)} />{errors.postal_code && <span role="alert" className="block text-xs text-destructive">{errors.postal_code}</span>}{postalMessage && <p className="text-sm text-muted-foreground">{postalMessage}</p>}</label>
+    <AddressCombobox error={errors.province} label="จังหวัด" disabled={disabled} options={provinceOptions} placeholder="ค้นหาจังหวัด" value={selectedProvince} onChange={chooseProvince} />
+    <AddressCombobox error={errors.district} label="อำเภอ / เขต" disabled={disabled || provinceCode === null} options={districtOptions} placeholder="ค้นหาอำเภอ" value={selectedDistrict} onChange={chooseDistrict} />
+    <AddressCombobox error={errors.sub_district} label="ตำบล / แขวง" disabled={disabled || districtCode === null} options={subdistrictOptions} placeholder="เลือกหรือค้นหาตำบล" value={selectedSubdistrict} onChange={chooseSubdistrict} />
   </div>;
 }

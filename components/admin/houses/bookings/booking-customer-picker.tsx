@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pencil, UserPlus } from "lucide-react";
+import { Pencil, UserPlus, UserRound } from "lucide-react";
 import { searchBookingCustomersAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
 import { bookingCustomerName, type BookingCustomer } from "@/lib/house-bookings";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,10 @@ export function BookingCustomerPicker({ propertyId, customer, onSelect, onBusy }
     else apply(next);
   }
   return <div ref={setPortalContainer} className="space-y-2">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h3 className="flex items-center gap-2 font-semibold"><UserRound aria-hidden className="size-4 shrink-0 text-muted-foreground" />ลูกค้า</h3>
+      <Button type="button" size="sm" variant="outline" onClick={() => { changeOpen(false); setCreateOpen(true); onBusy(true); }}><UserPlus aria-hidden className="size-4" />เพิ่มลูกค้าใหม่</Button>
+    </div>
     <Combobox filter={null} items={customers} inputValue={open ? query : customer ? bookingCustomerName(customer) : ""}
       itemToStringLabel={bookingCustomerName} itemToStringValue={(item: BookingCustomer) => item.id}
       open={open} onOpenChange={(next, details) => {
@@ -65,7 +69,7 @@ export function BookingCustomerPicker({ propertyId, customer, onSelect, onBusy }
         {query.trim().length === 1 && <p className="p-3 text-sm text-muted-foreground">พิมพ์อย่างน้อย 2 ตัวอักษร</p>}
         {error && <div role="alert" className="space-y-2 p-3"><p className="text-sm text-destructive">{error}</p><Button size="sm" type="button" variant="outline" onClick={() => { resetSearch(query, true); setRetry(value => value + 1); }}>ลองใหม่</Button></div>}
         {!loading && !error && loaded && <ComboboxList>{(item: BookingCustomer) => <ComboboxItem key={item.id} value={item}><span className="min-w-0"><span className="block truncate font-medium">{bookingCustomerName(item)}</span><span className="block text-xs text-muted-foreground">{item.phone}</span></span></ComboboxItem>}</ComboboxList>}
-        {!loading && !error && loaded && customers.length === 0 && <div className="space-y-2 p-3"><p className="text-sm text-muted-foreground">ไม่พบลูกค้า</p><Button type="button" size="sm" variant="outline" onClick={() => { changeOpen(false); setCreateOpen(true); onBusy(true); }}><UserPlus aria-hidden />เพิ่มลูกค้าใหม่</Button></div>}
+        {!loading && !error && loaded && customers.length === 0 && <p className="p-3 text-sm text-muted-foreground">ไม่พบลูกค้า</p>}
       </ComboboxContent>
     </Combobox>
     {customer && <div className="rounded-lg border bg-muted/30 p-3 text-sm"><p className="font-medium">{bookingCustomerName(customer)}</p><p className="text-muted-foreground">{customer.phone}</p><Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => { setEditOpen(true); onBusy(true); }}><Pencil aria-hidden className="size-4" />แก้ไขข้อมูลลูกค้า</Button></div>}

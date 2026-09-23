@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { BookingDateRange } from "./booking-date-range";
 import { BookingCustomerPicker } from "./booking-customer-picker";
 import { BookingEditorSkeleton } from "./booking-skeletons";
-import { CalendarDays, Trash2, UserRound, Wallet } from "lucide-react";
+import { CalendarDays, Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -140,7 +140,7 @@ function BookingForm({ propertyId, booking, initialDate, onDirty, onSaving, onCl
           onValid={setDatesValid} onChange={(check_in, check_out) => { setDatesValid(false); setForm(previous => ({ ...previous, check_in, check_out })); }} />
         {datesChanged && form.status !== "repair" && <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">เปลี่ยนวันแล้ว ยอดเงินยังเท่าเดิม โปรดตรวจสอบ</p>}
       </section>
-      {form.status !== "repair" && <section className="space-y-3 border-t pt-4"><h3 className="flex items-center gap-2 font-semibold"><UserRound aria-hidden className="size-4 shrink-0 text-muted-foreground" />ลูกค้า</h3>
+      {form.status !== "repair" && <section className="space-y-3 border-t pt-4">
         <BookingCustomerPicker propertyId={propertyId} customer={customer} onBusy={busy => { setCustomerBusy(busy); onSaving(busy); }} onSelect={next => { setCustomer(next); change("customer_id", next.id); }} />
       </section>}
       <div className="grid grid-cols-2 gap-3"><label className="space-y-1">สถานะ<select className="h-8 w-full rounded-lg border bg-background px-2" value={form.status} onChange={e => change("status", e.target.value)}>
