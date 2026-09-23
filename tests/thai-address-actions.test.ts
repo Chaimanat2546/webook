@@ -61,7 +61,9 @@ test("optional postcodes are either blank or exactly five digits", () => {
 
   assert.deepEqual(listThaiProvinces(repository, ""), [{ code: 10, nameTh: "กรุงเทพมหานคร" }]);
   assert.deepEqual(listThaiDistricts(repository, "20", "20110"), [{ code: 2007, nameTh: "ศรีราชา" }]);
-  assert.throws(() => listThaiProvinces(repository, "2011"), /รหัสไปรษณีย์ต้องมี 5 หลัก/);
+  for (const invalidPostalCode of ["2011", null, 20110, {}]) {
+    assert.throws(() => listThaiProvinces(repository, invalidPostalCode), /รหัสไปรษณีย์ต้องมี 5 หลัก/);
+  }
 });
 
 test("name resolution passes only nullable names to the repository", () => {
@@ -78,12 +80,24 @@ test("name resolution passes only nullable names to the repository", () => {
 test("lookup actions guard a house after authenticating and call only the geography service", () => {
   const source = readFileSync(new URL("../app/admin/houses/[propertyId]/bookings/actions.ts", import.meta.url), "utf8");
 
-  for (const action of ["lookupThaiPostalCodeAction", "listThaiProvincesAction", "listThaiDistrictsAction", "listThaiSubdistrictsAction", "resolveThaiAddressNamesAction"]) {
+  const actions = {
+    lookupThaiPostalCodeAction: "lookupThaiPostalCode",
+    listThaiProvincesAction: "listThaiProvinces",
+    listThaiDistrictsAction: "listThaiDistricts",
+    listThaiSubdistrictsAction: "listThaiSubdistricts",
+    resolveThaiAddressNamesAction: "resolveThaiAddressNames",
+  } as const;
+
+  for (const [action, service] of Object.entries(actions)) {
     const start = source.indexOf(`export async function ${action}`);
     const end = source.indexOf("\nexport async function", start + 1);
     const body = source.slice(start, end === -1 ? undefined : end);
     assert.ok(start >= 0, `${action} is exported`);
-    assert.ok(body.indexOf("requireBookingAdmin()") < body.indexOf("requireBookingHouse(repository, propertyId)"), `${action} authenticates before house lookup`);
-    assert.match(body, /thaiAddressRepository/);
+    const bookingResultPosition = body.indexOf("bookingResult(async () =>");
+    const adminPosition = body.indexOf("requireBookingAdmin()");
+    const housePosition = body.indexOf("requireBookingHouse(repository, propertyId)");
+    const servicePosition = body.indexOf(`${service}(thaiAddressRepository`);
+    assert.ok(bookingResultPosition >= 0, `${action} wraps the result safely`);
+    assert.ok(bookingResultPosition < adminPosition && adminPosition < housePosition && housePosition < servicePosition, `${action} authenticates, guards the house, then delegates to ${service}`);
   }
 });

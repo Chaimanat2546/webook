@@ -3,7 +3,8 @@ import "server-only";
 import type { ThaiAddressRepository } from "../geography/thai-address-types.ts";
 
 function optionalPostalCode(value: unknown): string | undefined {
-  const normalized = typeof value === "string" ? value.trim() : "";
+  if (typeof value !== "string") throw new Error("รหัสไปรษณีย์ต้องมี 5 หลัก");
+  const normalized = value.trim();
   if (!normalized) return undefined;
   if (!/^\d{5}$/.test(normalized)) throw new Error("รหัสไปรษณีย์ต้องมี 5 หลัก");
   return normalized;
