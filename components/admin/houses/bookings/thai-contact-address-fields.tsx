@@ -85,6 +85,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
 
   useEffect(() => {
     let active = true;
+    const version = requestVersions.current.nextInitialization();
     void (async () => {
       const [provinces, resolved] = await Promise.all([
         listThaiProvincesAction(propertyId, ""),
@@ -92,6 +93,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
       ]);
       if (!active) return;
       if (provinces.ok) setProvinceOptions(provinces.data);
+      if (!requestVersions.current.isInitializationCurrent(version)) return;
       if (resolved.ok) {
         setProvinceCode(resolved.data.provinceCode);
         setDistrictCode(resolved.data.districtCode);
@@ -120,7 +122,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
   }, [districtCode, propertyId, value.postal_code]);
 
   function chooseProvince(option: ThaiAddressOption | null) {
-    requestVersions.current.invalidatePostal();
+    requestVersions.current.invalidateUserAddressChange();
     setProvinceCode(option?.code ?? null);
     setDistrictCode(null);
     setSubdistrictCode(null);
@@ -130,7 +132,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
   }
 
   function chooseDistrict(option: ThaiAddressOption | null) {
-    requestVersions.current.invalidatePostal();
+    requestVersions.current.invalidateUserAddressChange();
     setDistrictCode(option?.code ?? null);
     setSubdistrictCode(null);
     setSubdistrictOptions([]);
@@ -138,7 +140,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
   }
 
   function chooseSubdistrict(option: ThaiAddressOption | null) {
-    requestVersions.current.invalidatePostal();
+    requestVersions.current.invalidateUserAddressChange();
     setSubdistrictCode(option?.code ?? null);
     if (!option) { onChange({ sub_district: null }); return; }
     const postalCodes = [...new Set(postalCandidates.filter((candidate) => candidate.subdistrict.code === option.code).map((candidate) => candidate.postalCode))];
@@ -150,7 +152,7 @@ export function ThaiContactAddressFields({ disabled, onChange, propertyId, value
     onChange({ postal_code: postalCode || null });
     setPostalCandidates([]);
     setPostalMessage("");
-    requestVersions.current.invalidatePostal();
+    requestVersions.current.invalidateUserAddressChange();
     if (postalCode.length !== 5) return;
     const version = requestVersions.current.nextPostal();
     void (async () => {

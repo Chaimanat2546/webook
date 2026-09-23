@@ -19,9 +19,18 @@ test("postal and hierarchy lookup versions invalidate independently", () => {
   assert.equal(versions.isPostalCurrent(postal), true);
   assert.equal(versions.isDistrictsCurrent(districts), true);
 
-  versions.invalidatePostal();
+  versions.invalidateUserAddressChange();
   assert.equal(versions.isPostalCurrent(postal), false);
   assert.equal(versions.isDistrictsCurrent(districts), true);
+});
+
+test("a user postal selection invalidates a late initialization result", () => {
+  const versions = createThaiAddressRequestVersions();
+  const initialization = versions.nextInitialization();
+
+  versions.invalidateUserAddressChange();
+
+  assert.equal(versions.isInitializationCurrent(initialization), false);
 });
 
 test("contact address puts manual detail and country before postal geography", () => {
@@ -46,10 +55,12 @@ test("contact address supports searchable cascading manual choices without locki
   assert.match(source, /setDistrictCode\(null\)[\s\S]*setSubdistrictCode\(null\)[\s\S]*district: null, sub_district: null/);
   assert.match(source, /createThaiAddressRequestVersions/);
   assert.doesNotMatch(source, /requestToken/);
-  assert.match(source, /function chooseProvince[\s\S]*invalidatePostal/);
-  assert.match(source, /function chooseDistrict[\s\S]*invalidatePostal/);
-  assert.match(source, /function chooseSubdistrict[\s\S]*invalidatePostal/);
-  assert.match(source, /function updatePostalCode[\s\S]*invalidatePostal[\s\S]*postalCode\.length !== 5/);
+  assert.match(source, /nextInitialization\(\)/);
+  assert.match(source, /isInitializationCurrent\(version\)/);
+  assert.match(source, /function chooseProvince[\s\S]*invalidateUserAddressChange/);
+  assert.match(source, /function chooseDistrict[\s\S]*invalidateUserAddressChange/);
+  assert.match(source, /function chooseSubdistrict[\s\S]*invalidateUserAddressChange/);
+  assert.match(source, /function updatePostalCode[\s\S]*invalidateUserAddressChange[\s\S]*postalCode\.length !== 5/);
 });
 
 test("a uniquely narrowed postal lookup can suggest its district without forcing ambiguous choices", () => {
