@@ -1,9 +1,11 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { requireBookingAdmin } from "../../../../../server/auth/bookings";
+import { thaiAddressRepository } from "../../../../../server/geography/thai-address-repository";
 import { createBookingCustomer, getBookingCustomer, updateBookingCustomer } from "../../../../../server/services/booking-customers";
 import { lookupDbdJuristicPerson } from "../../../../../server/services/dbd-juristic-person";
 import { bookingResult, cancelHouseBooking, createHouseBooking, getHouseBooking, listHouseBookings, requireBookingHouse, saveHouseBooking } from "../../../../../server/services/house-bookings";
+import { listThaiDistricts, listThaiProvinces, listThaiSubdistricts, lookupThaiPostalCode, resolveThaiAddressNames } from "../../../../../server/services/thai-addresses";
 
 export async function listHouseBookingsAction(propertyId: string, start: string, end: string) {
   return bookingResult(async () => {
@@ -53,6 +55,47 @@ export async function lookupBookingCustomerDbdAction(propertyId: string, taxId: 
     return result.defaults;
   });
 }
+
+export async function lookupThaiPostalCodeAction(propertyId: string, postalCode: unknown) {
+  return bookingResult(async () => {
+    const { repository } = await requireBookingAdmin();
+    await requireBookingHouse(repository, propertyId);
+    return lookupThaiPostalCode(thaiAddressRepository, postalCode);
+  });
+}
+
+export async function listThaiProvincesAction(propertyId: string, postalCode: unknown) {
+  return bookingResult(async () => {
+    const { repository } = await requireBookingAdmin();
+    await requireBookingHouse(repository, propertyId);
+    return listThaiProvinces(thaiAddressRepository, postalCode);
+  });
+}
+
+export async function listThaiDistrictsAction(propertyId: string, provinceCode: unknown, postalCode: unknown) {
+  return bookingResult(async () => {
+    const { repository } = await requireBookingAdmin();
+    await requireBookingHouse(repository, propertyId);
+    return listThaiDistricts(thaiAddressRepository, provinceCode, postalCode);
+  });
+}
+
+export async function listThaiSubdistrictsAction(propertyId: string, districtCode: unknown, postalCode: unknown) {
+  return bookingResult(async () => {
+    const { repository } = await requireBookingAdmin();
+    await requireBookingHouse(repository, propertyId);
+    return listThaiSubdistricts(thaiAddressRepository, districtCode, postalCode);
+  });
+}
+
+export async function resolveThaiAddressNamesAction(propertyId: string, value: unknown) {
+  return bookingResult(async () => {
+    const { repository } = await requireBookingAdmin();
+    await requireBookingHouse(repository, propertyId);
+    return resolveThaiAddressNames(thaiAddressRepository, value);
+  });
+}
+
 export async function saveHouseBookingAction(propertyId: string, input: unknown) {
   return bookingResult(async () => {
     const { repository, actorId } = await requireBookingAdmin();
