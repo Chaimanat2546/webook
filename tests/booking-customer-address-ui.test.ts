@@ -2,8 +2,27 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
+import { createThaiAddressRequestVersions } from "../components/admin/houses/bookings/thai-contact-address-request-versions.ts";
+
 const componentUrl = new URL("../components/admin/houses/bookings/thai-contact-address-fields.tsx", import.meta.url);
 const formUrl = new URL("../components/admin/houses/bookings/booking-customer-form.tsx", import.meta.url);
+
+test("postal and hierarchy lookup versions invalidate independently", () => {
+  const versions = createThaiAddressRequestVersions();
+  const postal = versions.nextPostal();
+  const districts = versions.nextDistricts();
+
+  assert.equal(versions.isPostalCurrent(postal), true);
+  assert.equal(versions.isDistrictsCurrent(districts), true);
+
+  versions.nextSubdistricts();
+  assert.equal(versions.isPostalCurrent(postal), true);
+  assert.equal(versions.isDistrictsCurrent(districts), true);
+
+  versions.invalidatePostal();
+  assert.equal(versions.isPostalCurrent(postal), false);
+  assert.equal(versions.isDistrictsCurrent(districts), true);
+});
 
 test("contact address puts manual detail and country before postal geography", () => {
   const source = readFileSync(componentUrl, "utf8");
@@ -25,7 +44,12 @@ test("contact address supports searchable cascading manual choices without locki
   assert.match(source, /disabled=\{disabled \|\| districtCode === null\}/);
   assert.match(source, /type="tel" inputMode="numeric" maxLength=\{5\}/);
   assert.match(source, /setDistrictCode\(null\)[\s\S]*setSubdistrictCode\(null\)[\s\S]*district: null, sub_district: null/);
-  assert.match(source, /requestToken/);
+  assert.match(source, /createThaiAddressRequestVersions/);
+  assert.doesNotMatch(source, /requestToken/);
+  assert.match(source, /function chooseProvince[\s\S]*invalidatePostal/);
+  assert.match(source, /function chooseDistrict[\s\S]*invalidatePostal/);
+  assert.match(source, /function chooseSubdistrict[\s\S]*invalidatePostal/);
+  assert.match(source, /function updatePostalCode[\s\S]*invalidatePostal[\s\S]*postalCode\.length !== 5/);
 });
 
 test("a uniquely narrowed postal lookup can suggest its district without forcing ambiguous choices", () => {
