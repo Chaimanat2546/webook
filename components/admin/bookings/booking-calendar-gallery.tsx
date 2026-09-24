@@ -6,6 +6,7 @@ import { listBookingGalleryAction } from "@/app/admin/bookings/actions";
 import { Button } from "@/components/ui/button";
 import { bookingToday } from "@/lib/booking-availability";
 import { parseBookingGalleryQuery, type BookingGalleryCard, type BookingGalleryQuery } from "@/lib/booking-gallery";
+import { adjacentBookingGalleryMonth, tryBookingGalleryQuery } from "@/lib/booking-gallery-month";
 import { BookingGalleryCard as GalleryCard } from "./booking-gallery-card";
 
 export interface GallerySelection {
@@ -16,11 +17,6 @@ export interface GallerySelection {
 
 function currentBangkokGalleryQuery(): BookingGalleryQuery {
   return parseBookingGalleryQuery({ month: bookingToday().slice(0, 7) });
-}
-
-function shiftedMonth(month: string, offset: number): string {
-  const [year, number] = month.split("-").map(Number);
-  return new Date(Date.UTC(year, number - 1 + offset, 1)).toISOString().slice(0, 7);
 }
 
 function monthLabel(month: string): string {
@@ -35,6 +31,7 @@ export function BookingCalendarGallery() {
   const [selected, setSelected] = useState<GallerySelection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [monthError, setMonthError] = useState("");
   const [retry, setRetry] = useState(0);
   const trigger = useRef<HTMLElement | null>(null);
   const today = bookingToday();
@@ -66,10 +63,14 @@ export function BookingCalendarGallery() {
   }, [load, retry]);
 
   const updateQuery = (values: Partial<Pick<BookingGalleryQuery, "month" | "zone" | "order">>) => {
-    setQuery(previous => parseBookingGalleryQuery({ month: values.month ?? previous.month, zone: values.zone === undefined ? previous.zone : values.zone, order: values.order ?? previous.order }));
+    const result = tryBookingGalleryQuery(query, values);
+    if (result.ok) { setMonthError(""); setQuery(result.query); }
+    else setMonthError(result.message);
   };
   const choose = (selection: GallerySelection, element: HTMLElement) => { trigger.current = element; setSelected(selection); };
   const creationTarget = cards.some(card => card.propertyId === createPropertyId) ? createPropertyId : cards[0]?.propertyId;
+  const previousMonth = adjacentBookingGalleryMonth(query.month, -1);
+  const nextMonth = adjacentBookingGalleryMonth(query.month, 1);
 
   return <main className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3">
@@ -84,10 +85,11 @@ export function BookingCalendarGallery() {
     </div>
     <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
       <div className="flex items-center gap-1">
-        <Button type="button" variant="outline" size="icon-sm" aria-label="เดือนก่อนหน้า" onClick={() => updateQuery({ month: shiftedMonth(query.month, -1) })}><ChevronLeft aria-hidden="true" /></Button>
+        <Button type="button" variant="outline" size="icon-sm" aria-label="เดือนก่อนหน้า" disabled={!previousMonth} onClick={() => { if (previousMonth) updateQuery({ month: previousMonth }); }}><ChevronLeft aria-hidden="true" /></Button>
         <label className="sr-only" htmlFor="booking-gallery-month">เดือนที่แสดง</label>
-        <input id="booking-gallery-month" type="month" aria-label="เดือนที่แสดง" value={query.month} onChange={event => { if (event.target.value) updateQuery({ month: event.target.value }); }} className="h-7 w-32 rounded-lg border border-input bg-background px-2 text-sm" />
-        <Button type="button" variant="outline" size="icon-sm" aria-label="เดือนถัดไป" onClick={() => updateQuery({ month: shiftedMonth(query.month, 1) })}><ChevronRight aria-hidden="true" /></Button>
+        <input id="booking-gallery-month" type="month" min="1000-01" max="9999-11" aria-label="เดือนที่แสดง" aria-invalid={!!monthError} aria-describedby={monthError ? "booking-gallery-month-error" : undefined}
+          value={query.month} onChange={event => updateQuery({ month: event.target.value })} className="h-7 w-32 rounded-lg border border-input bg-background px-2 text-sm" />
+        <Button type="button" variant="outline" size="icon-sm" aria-label="เดือนถัดไป" disabled={!nextMonth} onClick={() => { if (nextMonth) updateQuery({ month: nextMonth }); }}><ChevronRight aria-hidden="true" /></Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => updateQuery({ month: bookingToday().slice(0, 7) })}>วันนี้</Button>
       </div>
       <strong className="mr-auto text-sm font-medium">{monthLabel(query.month)}</strong>
@@ -98,6 +100,7 @@ export function BookingCalendarGallery() {
         <option value="title">เรียงตามชื่อ</option><option value="booked">คืนที่ติดจองมากสุด</option>
       </select>
     </div>
+    {monthError && <p id="booking-gallery-month-error" role="alert" className="text-sm text-destructive">{monthError}</p>}
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">{error}<Button type="button" size="sm" variant="outline" onClick={() => setRetry(value => value + 1)}>ลองอีกครั้ง</Button></div>}
     <div aria-busy={loading}>
       {loading ? <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดปฏิทินการจอง…</p>

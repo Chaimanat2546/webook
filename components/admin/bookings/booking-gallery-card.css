@@ -18,3 +18,8 @@
 .booking-gallery-dot-confirmed { background: #b91c1c; }
 .booking-gallery-dot-waiting { background: #15803d; }
 .booking-gallery-dot-repair { background: #6b7280; }
+.booking-gallery-expanded-scroll { max-width: 100%; overflow-x: auto; padding: 2px; }
+.booking-gallery-weekdays-expanded,
+.booking-gallery-days-expanded { min-width: 304px; gap: 4px; }
+.booking-gallery-weekdays-expanded { font-size: 12px; }
+.booking-gallery-days-expanded .booking-gallery-day { min-height: 40px; aspect-ratio: auto; font-size: 14px; }
