@@ -1,6 +1,6 @@
 "use client";
 
-import { Contact, Files, FileText, House, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
+import { CalendarDays, Contact, Files, FileText, House, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -28,6 +28,7 @@ export function AdminDesktopSidebar({
   canManageCentralUsers,
   canManageWebookUsers,
   canUseAccommodation,
+  canUseBooking,
   canUseQuotation,
   signOutAction,
 }: {
@@ -35,6 +36,7 @@ export function AdminDesktopSidebar({
   canManageCentralUsers: boolean;
   canManageWebookUsers: boolean;
   canUseAccommodation: boolean;
+  canUseBooking: boolean;
   canUseQuotation: boolean;
   signOutAction: () => Promise<void>;
 }) {
@@ -87,6 +89,20 @@ export function AdminDesktopSidebar({
                       <Link href="/admin/houses" onClick={closeMobileSidebar}>
                         <House data-icon="inline-start" />
                         <span>บ้านพัก</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) : null}
+                {canUseBooking && !isMobile ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith("/admin/bookings")}
+                      tooltip="การจอง"
+                    >
+                      <Link href="/admin/bookings" onClick={closeMobileSidebar}>
+                        <CalendarDays data-icon="inline-start" />
+                        <span>การจอง</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

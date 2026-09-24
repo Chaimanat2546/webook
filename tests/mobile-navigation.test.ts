@@ -21,10 +21,16 @@ test("list memory preserves queries across external navigation and ignores detai
   assert.equal(notifications, 2);
 });
 
-const noTools = { canAccessHouses: false, canUseQuotation: false, canUseAccommodation: false, canManageCentralUsers: false, canManageWebookUsers: false };
+const noTools = { canAccessHouses: false, canUseBooking: false, canUseQuotation: false, canUseAccommodation: false, canManageCentralUsers: false, canManageWebookUsers: false };
 test("mobile destinations follow permissions without duplicate quotation/customer active states", () => {
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: false, canUseQuotation: false }), []);
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: true, canUseQuotation: false }).map(x => x.id), ["houses"]);
+  assert.deepEqual(mobileDestinations({ ...noTools, canUseBooking: true }).map(x => x.id), ["bookings"]);
+  assert.equal(mobileSection("/admin/bookings"), "bookings");
+  assert.equal(mobileSection("/admin/bookings-old"), "more");
+  assert.equal(isMobileWorkspace("/admin/bookings"), false);
+  assert.equal(mobileTitle("/admin/bookings"), "การจอง");
+  assert.equal(mobileSection("/admin/houses/abc/bookings"), "houses");
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: false, canUseQuotation: true }).map(x => x.id), ["quotations"]);
   assert.equal(mobileSection("/admin/quotations/customers"), "quotations");
   assert.equal(mobileSection("/admin/quotations/abc"), "quotations");

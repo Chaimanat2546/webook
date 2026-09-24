@@ -17,6 +17,7 @@ export function AdminShell({
   canManageCentralUsers,
   canManageWebookUsers,
   canUseAccommodation,
+  canUseBooking,
   canUseQuotation,
   children,
   defaultSidebarOpen = true,
@@ -25,6 +26,7 @@ export function AdminShell({
   canManageCentralUsers: boolean;
   canManageWebookUsers: boolean;
   canUseAccommodation: boolean;
+  canUseBooking: boolean;
   canUseQuotation: boolean;
   children: ReactNode;
   defaultSidebarOpen?: boolean;
@@ -36,6 +38,7 @@ export function AdminShell({
         canManageCentralUsers={canManageCentralUsers}
         canManageWebookUsers={canManageWebookUsers}
         canUseAccommodation={canUseAccommodation}
+        canUseBooking={canUseBooking}
         canUseQuotation={canUseQuotation}
         signOutAction={signOut}
       />
@@ -55,7 +58,7 @@ export function AdminShell({
           {children}
         </AdminMobileContent>
       </SidebarInset>
-      <AdminMobileNavigation canAccessHouses={canAccessHouses} canUseQuotation={canUseQuotation} canUseAccommodation={canUseAccommodation} canManageCentralUsers={canManageCentralUsers} canManageWebookUsers={canManageWebookUsers} />
+      <AdminMobileNavigation canAccessHouses={canAccessHouses} canUseBooking={canUseBooking} canUseQuotation={canUseQuotation} canUseAccommodation={canUseAccommodation} canManageCentralUsers={canManageCentralUsers} canManageWebookUsers={canManageWebookUsers} />
       <Toaster />
     </SidebarProvider>
   );

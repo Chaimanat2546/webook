@@ -1,5 +1,6 @@
 export interface MobileNavigationPermissions {
   canAccessHouses: boolean;
+  canUseBooking: boolean;
   canUseQuotation: boolean;
   canUseAccommodation: boolean;
   canManageCentralUsers: boolean;
@@ -7,7 +8,7 @@ export interface MobileNavigationPermissions {
 }
 
 export interface MobileDestination {
-  id: "houses" | "advertisements" | "quotations" | "users";
+  id: "houses" | "bookings" | "advertisements" | "quotations" | "users";
   label: string;
   href: string;
 }
@@ -24,7 +25,7 @@ export function createMobileNavigationMemory() {
       return () => { listeners.delete(listener); };
     },
     remember(pathname: string, search: string) {
-      if (!["/admin/houses", "/admin/advertisements", "/admin/quotations", "/admin/quotations/customers", "/admin/users", "/admin/user-manager"].includes(pathname)) return;
+      if (!["/admin/houses", "/admin/bookings", "/admin/advertisements", "/admin/quotations", "/admin/quotations/customers", "/admin/users", "/admin/user-manager"].includes(pathname)) return;
       const href = `${pathname}${search ? `?${search}` : ""}`;
       if (snapshot[pathname] === href) return;
       snapshot = { ...snapshot, [pathname]: href };
@@ -36,6 +37,7 @@ export function createMobileNavigationMemory() {
 export function mobileDestinations(permissions: MobileNavigationPermissions): MobileDestination[] {
   const items: MobileDestination[] = [];
   if (permissions.canAccessHouses) items.push({ id: "houses", label: "บ้านพัก", href: "/admin/houses" });
+  if (permissions.canUseBooking) items.push({ id: "bookings", label: "การจอง", href: "/admin/bookings" });
   if (permissions.canUseAccommodation) items.push({ id: "advertisements", label: "โฆษณา", href: "/admin/advertisements" });
   if (permissions.canUseQuotation) items.push(
     { id: "quotations", label: "ใบเสนอราคา", href: "/admin/quotations" },
@@ -45,6 +47,7 @@ export function mobileDestinations(permissions: MobileNavigationPermissions): Mo
 }
 
 export function mobileSection(pathname: string): MobileDestination["id"] | "more" {
+  if (pathname === "/admin/bookings" || pathname.startsWith("/admin/bookings/")) return "bookings";
   if (pathname === "/admin/advertisements" || pathname.startsWith("/admin/advertisements/")) return "advertisements";
   if (["/admin/users", "/admin/user-manager"].some(path => pathname === path || pathname.startsWith(`${path}/`))) return "users";
   if (pathname === "/admin/houses" || pathname.startsWith("/admin/houses/")) return "houses";
@@ -60,6 +63,7 @@ export function isMobileWorkspace(pathname: string): boolean {
 export function mobileTitle(pathname: string): string {
   const titles: Record<string, string> = {
     "/admin/houses": "บ้านพัก",
+    "/admin/bookings": "การจอง",
     "/admin/quotations": "ใบเสนอราคา",
     "/admin/quotations/customers": "ลูกค้า",
     "/admin/advertisements": "โฆษณา",

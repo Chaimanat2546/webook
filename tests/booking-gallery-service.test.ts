@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { BookingGalleryHouse } from "../lib/booking-gallery.ts";
 import type { Booking } from "../lib/house-bookings.ts";
@@ -6,6 +7,13 @@ import type { HouseBookingsRepository } from "../server/repositories/house-booki
 import { listBookingGallery } from "../server/services/house-bookings.ts";
 import { createHouseBookingsRepository } from "../server/repositories/house-bookings.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+test("gallery action and route require booking authorization at their server entry points", () => {
+  const action = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../app/admin/bookings/page.tsx", import.meta.url), "utf8");
+  assert.match(action, /listBookingGalleryAction\(input: unknown\)[\s\S]*?bookingResult\(async \(\) => \{[\s\S]*?await requireBookingAdmin\(\)[\s\S]*?listBookingGallery\(repository, input\)/);
+  assert.match(page, /await requireBookingAdmin\(\)/);
+});
 
 const houseA: BookingGalleryHouse = { id: "listing-a", property_id: "101", title: "Alpha", location_zone: "พัทยา" };
 const houseB: BookingGalleryHouse = { id: "listing-b", property_id: "102", title: "Beta", location_zone: null };
