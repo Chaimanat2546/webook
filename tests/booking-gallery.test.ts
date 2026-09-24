@@ -59,6 +59,18 @@ test("paints waiting and repair but never cancelled bookings", () => {
   assert.equal(cards[0].bookedNights, 1);
 });
 
+test("legacy non-cancelled status occupies nights with an edit target while cancelled and checkout stay free", () => {
+  const cards = buildBookingGallery([houseA], [
+    { ...booking, id: "legacy-1", check_in: "2026-09-20", check_out: "2026-09-22", status: "legacy_hold" },
+    { ...booking, id: "cancelled-1", check_in: "2026-09-23", check_out: "2026-09-24", status: "cancelled" },
+  ], "2026-09");
+  assert.deepEqual(cards[0].days["2026-09-20"], { date: "2026-09-20", tone: "unknown", bookingId: "legacy-1" });
+  assert.deepEqual(cards[0].days["2026-09-21"], { date: "2026-09-21", tone: "unknown", bookingId: "legacy-1" });
+  assert.deepEqual(cards[0].days["2026-09-22"], { date: "2026-09-22", tone: "free", bookingId: null });
+  assert.deepEqual(cards[0].days["2026-09-23"], { date: "2026-09-23", tone: "free", bookingId: null });
+  assert.equal(cards[0].bookedNights, 2);
+});
+
 test("ignores bookings whose listing and property pair is not the card's house", () => {
   const cards = buildBookingGallery([houseA, houseB], [{ ...booking, houseid: "102" }], "2026-09");
   assert.equal(cards[0].bookedNights, 0);

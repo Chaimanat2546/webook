@@ -67,3 +67,25 @@ test("expanded calendar forwards occupied and free-day selections with the persi
   ]);
   assert.equal(closed, 2);
 });
+
+test("legacy occupied date has an accessible unknown-status label and opens its booking", async () => {
+  const entry = fileURLToPath(new URL("../components/admin/bookings/booking-gallery-days.tsx", import.meta.url));
+  const output = await build({ entryPoints: [entry], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", output.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
+  const Days = loaded.exports.BookingGalleryDays as (props: Record<string, unknown>) => ReactElement<ElementProps>;
+  const card: BookingGalleryCard = {
+    propertyId: "house-101", title: "บ้านริมทะเล", zone: "พัทยา", bookedNights: 1,
+    days: { "2026-09-20": { date: "2026-09-20", tone: "unknown", bookingId: "legacy-1" } },
+  };
+  const trigger = {} as HTMLElement;
+  const selected: unknown[][] = [];
+  const element = Days({ card, month: "2026-09", today: "2026-09-01", expanded: true,
+    onBookingSelect: (...values: unknown[]) => selected.push(values),
+    onCreateSelect: () => assert.fail("occupied date must not create a booking"),
+  });
+  const button = buttonsIn(element)[0];
+  assert.match(button.props["aria-label"] ?? "", /สถานะไม่ทราบ.*เปิดการจอง/);
+  button.props.onClick?.({ currentTarget: trigger });
+  assert.deepEqual(selected, [["house-101", "legacy-1", trigger]]);
+});

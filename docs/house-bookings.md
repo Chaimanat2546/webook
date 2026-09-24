@@ -41,8 +41,14 @@ and Sheet editor. The Gallery adds a second entry point and does not replace
 this workflow.
 
 Confirmed dates are red, waiting dates green, and repair dates have a separate
-state. No authoritative holiday source is connected, so the Gallery does not
-invent yellow holiday dates; unbooked dates display as free. Both routes use
+state. The user approved deferring yellow holiday dates until an authoritative
+holiday source is available; the Gallery uses actual booking statuses for now.
+An unrecognized saved status other than `cancelled`
+appears as a neutral **สถานะไม่ทราบ (ติดจอง)** date with a booking edit target,
+matching the availability rule that treats it as occupied until corrected.
+The card's booked-night count includes those dates, counts each date once, and
+excludes repair and cancelled dates. Checkout remains exclusive. Unbooked dates
+display as free. Both routes use
 the existing booking permissions, service and repository paths. This addition
 requires no database schema or RLS change.
 

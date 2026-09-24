@@ -8,6 +8,7 @@
 .booking-gallery-day-confirmed { background: #b91c1c; color: white; }
 .booking-gallery-day-waiting { background: #15803d; color: white; }
 .booking-gallery-day-repair { background: #6b7280; color: white; }
+.booking-gallery-day-unknown { background: #cbd5e1; color: #0f172a; }
 .booking-gallery-day-holiday { background: #facc15; color: #422006; }
 .booking-gallery-day-outside { opacity: .48; }
 .booking-gallery-day-today { box-shadow: inset 0 0 0 2px #2563eb; }
@@ -18,6 +19,7 @@
 .booking-gallery-dot-confirmed { background: #b91c1c; }
 .booking-gallery-dot-waiting { background: #15803d; }
 .booking-gallery-dot-repair { background: #6b7280; }
+.booking-gallery-dot-unknown { background: #cbd5e1; }
 .booking-gallery-expanded-scroll { max-width: 100%; overflow-x: auto; padding: 2px; }
 .booking-gallery-weekdays-expanded,
 .booking-gallery-days-expanded { min-width: 304px; gap: 4px; }

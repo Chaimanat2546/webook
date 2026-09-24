@@ -18,7 +18,7 @@ export interface BookingGalleryHouse {
 
 export interface BookingGalleryDay {
   date: string;
-  tone: "free" | "waiting" | "confirmed" | "repair" | "holiday";
+  tone: "free" | "waiting" | "confirmed" | "repair" | "unknown" | "holiday";
   bookingId: string | null;
 }
 
@@ -84,16 +84,17 @@ export function buildBookingGallery(houses: BookingGalleryHouse[], bookings: Boo
   });
   const cardByHouse = new Map(houses.map((house, index) => [`${house.id}:${house.property_id}`, cards[index]]));
   for (const booking of bookings) {
-    if (booking.status !== "confirmed" && booking.status !== "waiting" && booking.status !== "repair") continue;
+    if (booking.status === "cancelled") continue;
     const card = cardByHouse.get(`${booking.listing_id}:${booking.houseid}`);
     if (!card) continue;
+    const tone = booking.status === "confirmed" || booking.status === "waiting" || booking.status === "repair" ? booking.status : "unknown";
     for (let day = Math.max(firstDay, Date.parse(`${booking.check_in}T00:00:00Z`)); day < Math.min(lastDay, Date.parse(`${booking.check_out}T00:00:00Z`)); day += dayMilliseconds) {
       const date = new Date(day).toISOString().slice(0, 10);
-      card.days[date] = { date, tone: booking.status, bookingId: booking.id };
+      card.days[date] = { date, tone, bookingId: booking.id };
     }
   }
   for (const card of cards) {
-    card.bookedNights = Object.values(card.days).filter(day => day.date.startsWith(month) && (day.tone === "confirmed" || day.tone === "waiting")).length;
+    card.bookedNights = Object.values(card.days).filter(day => day.date.startsWith(month) && (day.tone === "confirmed" || day.tone === "waiting" || day.tone === "unknown")).length;
   }
   return cards;
 }

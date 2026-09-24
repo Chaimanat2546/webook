@@ -35,6 +35,7 @@ export function BookingGalleryCard({ card, month, today, onBookingSelect, onCrea
         <span><i className="booking-gallery-dot booking-gallery-dot-confirmed" />โอนแล้ว</span>
         <span><i className="booking-gallery-dot booking-gallery-dot-waiting" />รอโอน</span>
         <span><i className="booking-gallery-dot booking-gallery-dot-repair" />ปิดซ่อม</span>
+        {Object.values(card.days).some(day => day.tone === "unknown") && <span><i className="booking-gallery-dot booking-gallery-dot-unknown" />สถานะไม่ทราบ (ติดจอง)</span>}
       </div>
       <Button ref={expandButton} type="button" size="sm" variant="outline" className="w-full" aria-haspopup="dialog" aria-expanded={expanded}
         aria-label={`ขยายปฏิทิน ${card.title}`} onClick={() => { selectedFromExpanded.current = false; setExpanded(true); }}>

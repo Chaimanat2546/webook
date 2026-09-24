@@ -15,8 +15,10 @@ state across the portfolio without entering a house workspace first.
   not redirected or removed in this scope. Existing house actions and sidebar
   entry points keep opening that page.
 - Every card follows the public `baan-pool-villa` detail-calendar visual language:
-  rounded date cells, red confirmed dates, green waiting dates, yellow holidays,
-  and the existing status legend. The card also shows the house name and summary.
+  rounded date cells, red confirmed dates, green waiting dates, and a booking
+  status legend. Yellow holiday dates are deferred by user approval until an
+  authoritative holiday source is available; use actual booking statuses now.
+  The card also shows the house name and summary.
 - A shared toolbar controls the month, zone filtering, ordering, and new-booking
   action. On wide viewports show up to five cards per row; reduce progressively to
   two cards per row on mobile.

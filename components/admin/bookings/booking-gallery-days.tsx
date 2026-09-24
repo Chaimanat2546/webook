@@ -14,7 +14,7 @@ interface Props {
 }
 
 const weekdays = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
-const toneLabel = { free: "ว่าง", confirmed: "โอนแล้ว", waiting: "รอโอน", repair: "ปิดซ่อม", holiday: "วันหยุด" };
+const toneLabel = { free: "ว่าง", confirmed: "โอนแล้ว", waiting: "รอโอน", repair: "ปิดซ่อม", unknown: "สถานะไม่ทราบ (ติดจอง)", holiday: "วันหยุด" };
 
 export function BookingGalleryDays({ card, month, today, expanded = false, getTrigger, onSelected, onBookingSelect, onCreateSelect }: Props) {
   const days = Object.values(card.days).sort((a, b) => a.date.localeCompare(b.date));
