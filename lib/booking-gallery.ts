@@ -30,6 +30,18 @@ export interface BookingGalleryCard {
   days: Record<string, BookingGalleryDay>;
 }
 
+export interface BookingGallerySnapshot {
+  query: BookingGalleryQuery;
+  cards: BookingGalleryCard[];
+}
+
+export function currentBookingGallerySnapshot(requested: BookingGalleryQuery, loaded: BookingGallerySnapshot | null, error: string): BookingGallerySnapshot | null {
+  if (!loaded || error) return null;
+  const query = loaded.query;
+  return query.month === requested.month && query.start === requested.start && query.end === requested.end
+    && query.zone === requested.zone && query.order === requested.order ? loaded : null;
+}
+
 const dayMilliseconds = 86_400_000;
 
 function monthRange(month: string): { start: string; end: string } {

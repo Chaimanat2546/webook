@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { listBookingGalleryAction } from "@/app/admin/bookings/actions";
 import { Button } from "@/components/ui/button";
 import { bookingToday } from "@/lib/booking-availability";
-import { parseBookingGalleryQuery, type BookingGalleryCard, type BookingGalleryQuery } from "@/lib/booking-gallery";
+import { currentBookingGallerySnapshot, parseBookingGalleryQuery, type BookingGalleryQuery, type BookingGallerySnapshot } from "@/lib/booking-gallery";
 import { adjacentBookingGalleryMonth, tryBookingGalleryQuery } from "@/lib/booking-gallery-month";
 import { BookingGalleryCard as GalleryCard } from "./booking-gallery-card";
 import { BookingGalleryEditorDialog } from "./booking-gallery-editor-dialog";
@@ -26,7 +26,7 @@ function monthLabel(month: string): string {
 
 export function BookingCalendarGallery() {
   const [query, setQuery] = useState<BookingGalleryQuery>(() => currentBangkokGalleryQuery());
-  const [cards, setCards] = useState<BookingGalleryCard[]>([]);
+  const [loaded, setLoaded] = useState<BookingGallerySnapshot | null>(null);
   const [zones, setZones] = useState<string[]>([]);
   const [createPropertyId, setCreatePropertyId] = useState("");
   const [selected, setSelected] = useState<GallerySelection | null>(null);
@@ -47,13 +47,14 @@ export function BookingCalendarGallery() {
       const result = await listBookingGalleryAction(query);
       if (!isActive() || request !== requestSequence.current) return;
       if (result.ok) {
-        setCards(result.data);
+        setLoaded({ query, cards: result.data });
         if (query.zone === null) setZones([...new Set(result.data.map(card => card.zone).filter((zone): zone is string => !!zone))].sort((a, b) => a.localeCompare(b, "th")));
       } else {
+        setLoaded(null);
         setError(result.message);
       }
     } catch {
-      if (isActive() && request === requestSequence.current) setError("โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง");
+      if (isActive() && request === requestSequence.current) { setLoaded(null); setError("โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง"); }
     } finally {
       if (isActive() && request === requestSequence.current) setLoading(false);
     }
@@ -67,10 +68,12 @@ export function BookingCalendarGallery() {
 
   const updateQuery = (values: Partial<Pick<BookingGalleryQuery, "month" | "zone" | "order">>) => {
     const result = tryBookingGalleryQuery(query, values);
-    if (result.ok) { setMonthError(""); setQuery(result.query); }
+    if (result.ok) { requestSequence.current++; setError(""); setMonthError(""); setQuery(result.query); }
     else setMonthError(result.message);
   };
   const choose = (selection: GallerySelection, element: HTMLElement) => { trigger.current = element; setSelected(selection); };
+  const currentSnapshot = currentBookingGallerySnapshot(query, loaded, error);
+  const cards = currentSnapshot?.cards ?? [];
   const creationTarget = cards.some(card => card.propertyId === createPropertyId) ? createPropertyId : cards[0]?.propertyId;
   const previousMonth = adjacentBookingGalleryMonth(query.month, -1);
   const nextMonth = adjacentBookingGalleryMonth(query.month, 1);
@@ -110,7 +113,7 @@ export function BookingCalendarGallery() {
             {cards.map(card => <GalleryCard key={card.propertyId} card={card} month={query.month} today={today}
               onBookingSelect={(propertyId, bookingId, element) => choose({ propertyId, bookingId }, element)}
               onCreateSelect={(propertyId, initialDate, element) => choose({ propertyId, initialDate }, element)} />)}
-          </div> : loading ? <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดปฏิทินการจอง…</p>
+          </div> : loading || (!error && !currentSnapshot) ? <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดปฏิทินการจอง…</p>
         : !error && <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">ไม่พบบ้านใน{query.zone ? `โซน ${query.zone}` : "รายการ"}</p>}
     </div>
     {selected && <BookingGalleryEditorDialog key={`${selected.propertyId}:${selected.bookingId ?? "new"}:${selected.initialDate ?? ""}`}

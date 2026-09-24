@@ -1,11 +1,23 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildBookingGallery, parseBookingGalleryQuery, type BookingGalleryHouse } from "../lib/booking-gallery.ts";
+import { buildBookingGallery, currentBookingGallerySnapshot, parseBookingGalleryQuery, type BookingGalleryHouse } from "../lib/booking-gallery.ts";
 import type { Booking } from "../lib/house-bookings.ts";
 
 const houseA: BookingGalleryHouse = { id: "listing-a", property_id: "101", title: "Alpha", location_zone: "พัทยา" };
 const houseB: BookingGalleryHouse = { id: "listing-b", property_id: "102", title: "Beta", location_zone: null };
 const booking: Booking = { id: "1", booking_code: "BK1", listing_id: "listing-a", houseid: "101", agent_id: null, customer_id: null, customer: null, check_in: "2026-09-30", check_out: "2026-10-03", status: "confirmed", booking_type: null, price_sell: 0, price_max: null, deposit_amount: 0, extra_charge: 0, quantity: 3, details: null, note: null, updated_at: "2026-09-18T00:00:00Z" };
+
+test("same-query refresh retains cards while changed query and failed refresh hide them", () => {
+  const september = parseBookingGalleryQuery({ month: "2026-09" });
+  const cards = buildBookingGallery([houseA], [booking], "2026-09");
+  const snapshot = { query: september, cards };
+  assert.equal(currentBookingGallerySnapshot(september, snapshot, ""), snapshot);
+  assert.equal(currentBookingGallerySnapshot(parseBookingGalleryQuery({ month: "2026-10" }), snapshot, ""), null);
+  assert.equal(currentBookingGallerySnapshot(parseBookingGalleryQuery({ month: "2026-09", zone: "พัทยา" }), snapshot, ""), null);
+  assert.equal(currentBookingGallerySnapshot(parseBookingGalleryQuery({ month: "2026-09", order: "booked" }), snapshot, ""), null);
+  assert.equal(currentBookingGallerySnapshot(september, snapshot, "โหลดไม่สำเร็จ"), null);
+  assert.equal(currentBookingGallerySnapshot(september, null, ""), null);
+});
 
 test("query bounds September to its Monday-first six-week grid and normalises zone", () => {
   assert.deepEqual(parseBookingGalleryQuery({ month: "2026-09", zone: " พัทยา ", order: "booked", start: "2020-01-01", end: "2030-01-01" }), {
