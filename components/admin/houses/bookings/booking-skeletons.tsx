@@ -10,8 +10,8 @@ export function BookingCalendarSkeleton({ compact = false }: { compact?: boolean
   </div>;
 }
 
-export function BookingEditorSkeleton() {
-  return <div role="status" aria-label="กำลังโหลดรายละเอียดการจอง" className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+export function BookingEditorSkeleton({ presentation = "sheet" }: { presentation?: "sheet" | "dialog" }) {
+  return <div role="status" aria-label="กำลังโหลดรายละเอียดการจอง" className={`min-h-0 flex-1 overflow-y-auto p-5 ${presentation === "dialog" ? "grid gap-5 lg:grid-cols-[minmax(19rem,0.8fr)_minmax(0,1.2fr)]" : "space-y-5"}`}>
     <span className="sr-only">กำลังโหลดรายละเอียดการจอง…</span>
     <div aria-hidden="true" className="space-y-3"><Skeleton className="h-5 w-28 motion-reduce:animate-none" /><div className="grid grid-cols-2 gap-2"><Skeleton className="h-16 motion-reduce:animate-none" /><Skeleton className="h-16 motion-reduce:animate-none" /></div><Skeleton className="h-[380px] w-full motion-reduce:animate-none" /></div>
     <div aria-hidden="true" className="space-y-3 border-t pt-4"><Skeleton className="h-5 w-20 motion-reduce:animate-none" /><Skeleton className="h-9 w-full motion-reduce:animate-none" /><div className="grid grid-cols-2 gap-3"><Skeleton className="h-12 motion-reduce:animate-none" /><Skeleton className="h-12 motion-reduce:animate-none" /></div><Skeleton className="h-20 w-full motion-reduce:animate-none" /></div>

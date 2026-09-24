@@ -1,0 +1,75 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
+import type { ReactElement, ReactNode } from "react";
+import type { BookingGalleryCard } from "../lib/booking-gallery.ts";
+
+test("month arrows stop before invalid calendar bounds", async () => {
+  const { adjacentBookingGalleryMonth } = await import("../lib/booking-gallery-month.ts");
+  assert.equal(adjacentBookingGalleryMonth("1000-01", -1), null);
+  assert.equal(adjacentBookingGalleryMonth("9999-11", 1), null);
+  assert.equal(adjacentBookingGalleryMonth("2026-09", -1), "2026-08");
+  assert.equal(adjacentBookingGalleryMonth("2026-09", 1), "2026-10");
+});
+
+interface ElementProps { children?: ReactNode; "aria-label"?: string; tabIndex?: number; onClick?: (event: { currentTarget: HTMLElement }) => void; }
+function buttonsIn(node: ReactNode): ReactElement<ElementProps>[] {
+  if (Array.isArray(node)) return node.flatMap(buttonsIn);
+  if (!node || typeof node !== "object" || !("type" in node) || !("props" in node)) return [];
+  const element = node as ReactElement<ElementProps>;
+  return [ ...(element.type === "button" ? [element] : []), ...buttonsIn(element.props.children) ];
+}
+
+test("card calendar keeps occupied and free days keyboard accessible and forwards their own triggers", async () => {
+  const entry = fileURLToPath(new URL("../components/admin/bookings/booking-gallery-days.tsx", import.meta.url));
+  const output = await build({ entryPoints: [entry], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", output.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
+  const Days = loaded.exports.BookingGalleryDays as (props: Record<string, unknown>) => ReactElement<ElementProps>;
+  const card: BookingGalleryCard = {
+    propertyId: "house-101", title: "บ้านริมทะเล", zone: "พัทยา", bookedNights: 1,
+    days: {
+      "2026-09-20": { date: "2026-09-20", tone: "confirmed", bookingId: "booking-7" },
+      "2026-09-21": { date: "2026-09-21", tone: "free", bookingId: null },
+    },
+  };
+  const dateButton = {} as HTMLElement;
+  const selected: unknown[][] = [];
+  const element = Days({ card, month: "2026-09", today: "2026-09-01",
+    onBookingSelect: (...values: unknown[]) => selected.push(["edit", ...values]),
+    onCreateSelect: (...values: unknown[]) => selected.push(["create", ...values]),
+  });
+  const buttons = buttonsIn(element);
+  assert.equal(buttons.length, 2);
+  assert.deepEqual(buttons.map(button => button.props.tabIndex), [0, 0]);
+  buttons.find(button => button.props["aria-label"]?.includes("2026-09-20"))?.props.onClick?.({ currentTarget: dateButton });
+  buttons.find(button => button.props["aria-label"]?.includes("2026-09-21"))?.props.onClick?.({ currentTarget: dateButton });
+  assert.deepEqual(selected, [
+    ["edit", "house-101", "booking-7", dateButton],
+    ["create", "house-101", "2026-09-21", dateButton],
+  ]);
+});
+
+test("legacy occupied date has an accessible unknown-status label and opens its booking", async () => {
+  const entry = fileURLToPath(new URL("../components/admin/bookings/booking-gallery-days.tsx", import.meta.url));
+  const output = await build({ entryPoints: [entry], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", output.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
+  const Days = loaded.exports.BookingGalleryDays as (props: Record<string, unknown>) => ReactElement<ElementProps>;
+  const card: BookingGalleryCard = {
+    propertyId: "house-101", title: "บ้านริมทะเล", zone: "พัทยา", bookedNights: 1,
+    days: { "2026-09-20": { date: "2026-09-20", tone: "unknown", bookingId: "legacy-1" } },
+  };
+  const trigger = {} as HTMLElement;
+  const selected: unknown[][] = [];
+  const element = Days({ card, month: "2026-09", today: "2026-09-01",
+    onBookingSelect: (...values: unknown[]) => selected.push(values),
+    onCreateSelect: () => assert.fail("occupied date must not create a booking"),
+  });
+  const button = buttonsIn(element)[0];
+  assert.match(button.props["aria-label"] ?? "", /สถานะไม่ทราบ.*เปิดการจอง/);
+  button.props.onClick?.({ currentTarget: trigger });
+  assert.deepEqual(selected, [["house-101", "legacy-1", trigger]]);
+});

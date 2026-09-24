@@ -1,0 +1,22 @@
+.booking-gallery-weekdays,
+.booking-gallery-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.booking-gallery-weekdays { color: var(--muted-foreground); text-align: center; font-size: 10px; line-height: 1.25rem; }
+.booking-gallery-day { display: grid; place-items: center; min-width: 0; min-height: 40px; border-radius: .35rem; font-size: 12px; font-weight: 600; line-height: 1; transition: filter .15s ease; }
+.booking-gallery-day:not(:disabled):hover { filter: brightness(.91); }
+.booking-gallery-day:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; position: relative; z-index: 1; }
+.booking-gallery-day-free { background: var(--muted); color: var(--foreground); }
+.booking-gallery-day-confirmed { background: #b91c1c; color: white; }
+.booking-gallery-day-waiting { background: #15803d; color: white; }
+.booking-gallery-day-repair { background: #6b7280; color: white; }
+.booking-gallery-day-unknown { background: #cbd5e1; color: #0f172a; }
+.booking-gallery-day-holiday { background: #facc15; color: #422006; }
+.booking-gallery-day-outside { opacity: .48; }
+.booking-gallery-day-today { box-shadow: inset 0 0 0 2px #2563eb; }
+.booking-gallery-day:disabled { cursor: default; }
+.booking-gallery-legend { display: flex; flex-wrap: wrap; gap: .2rem .45rem; color: var(--muted-foreground); font-size: 10px; line-height: 1rem; }
+.booking-gallery-legend span { display: inline-flex; align-items: center; gap: .2rem; white-space: nowrap; }
+.booking-gallery-dot { display: inline-block; width: .4rem; height: .4rem; border-radius: 50%; }
+.booking-gallery-dot-confirmed { background: #b91c1c; }
+.booking-gallery-dot-waiting { background: #15803d; }
+.booking-gallery-dot-repair { background: #6b7280; }
+.booking-gallery-dot-unknown { background: #cbd5e1; }

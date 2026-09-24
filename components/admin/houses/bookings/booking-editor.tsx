@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { toast } from "sonner";
 import { BookingDateRange } from "./booking-date-range";
 import { BookingCustomerPicker } from "./booking-customer-picker";
@@ -14,10 +14,10 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { BOOKING_STATUSES, nightsBetween, parseBookingCreate, parseBookingUpdate, type Booking, type BookingUpdate } from "@/lib/house-bookings";
 import { cancelHouseBookingAction, createHouseBookingAction, getHouseBookingAction, saveHouseBookingAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
 
-interface EditorProps { propertyId: string; bookingId?: string; initialDate?: string; onClose: () => void; onSaved: (booking: Booking) => void }
-interface FormProps { propertyId: string; booking: Booking | null; initialDate: string; onDirty: (dirty: boolean) => void; onSaving: (saving: boolean) => void; onClose: () => void; onSaved: (booking: Booking) => void }
+interface EditorProps { propertyId: string; bookingId?: string; initialDate?: string; onClose: () => void; onSaved: (booking: Booking) => void; presentation?: "sheet" | "dialog"; triggerRef?: RefObject<HTMLElement | null> }
+interface FormProps { propertyId: string; booking: Booking | null; initialDate: string; onDirty: (dirty: boolean) => void; onSaving: (saving: boolean) => void; onClose: () => void; onSaved: (booking: Booking) => void; presentation?: "sheet" | "dialog" }
 
-export function BookingEditor({ propertyId, bookingId, initialDate = "", onClose, onSaved }: EditorProps) {
+export function BookingEditor({ propertyId, bookingId, initialDate = "", onClose, onSaved, presentation = "sheet", triggerRef }: EditorProps) {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -63,16 +63,14 @@ export function BookingEditor({ propertyId, bookingId, initialDate = "", onClose
     } catch { toast.error("ยกเลิกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
     finally { saving.current = false; setEditorBusy(false); }
   }
-  return <Sheet open onOpenChange={open => { if (!open) close(); }}>
-    <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-lg" showCloseButton={false}>
-      <SheetHeader className="border-b p-5">
-        <div className="flex items-start justify-between gap-3"><div>
-          <SheetTitle className="flex items-center gap-2"><CalendarDays aria-hidden className="size-5 shrink-0" />{bookingId ? "แก้ไขการจอง" : "สร้างการจอง"}</SheetTitle>
-          <SheetDescription className="break-words">{booking ? `${booking.booking_code} · ` : ""}DV-{propertyId}</SheetDescription>
-        </div><div className="flex shrink-0 items-center gap-1">{booking && booking.status !== "cancelled" && <Button variant="ghost" size="icon" className="text-destructive" disabled={editorBusy} aria-label="ยกเลิกการจอง" title="ยกเลิกการจอง" onClick={() => { if (!saving.current) { setCancelHasUnsaved(dirty.current); setCancelOpen(true); } }}><Trash2 aria-hidden className="size-4" /></Button>}<Button variant="ghost" size="sm" onClick={close} aria-label="ปิดแผงแก้ไข">ปิด</Button></div></div>
-      </SheetHeader>
-      {loading ? <BookingEditorSkeleton /> : error ? <div className="space-y-3 p-5"><p role="alert" className="text-destructive">{error}</p><Button onClick={() => void load()}>ลองอีกครั้ง</Button></div> :
-        <BookingForm propertyId={propertyId} booking={booking} initialDate={initialDate} onDirty={value => { dirty.current = value; }} onSaving={value => { saving.current = value; setEditorBusy(value); }} onClose={close}
+  const headerActions = <div className="flex shrink-0 items-center gap-1">{booking && booking.status !== "cancelled" && <Button variant="ghost" size="icon" className="text-destructive" disabled={editorBusy} aria-label="ยกเลิกการจอง" title="ยกเลิกการจอง" onClick={() => { if (!saving.current) { setCancelHasUnsaved(dirty.current); setCancelOpen(true); } }}><Trash2 aria-hidden className="size-4" /></Button>}<Button variant="ghost" size="sm" onClick={close} aria-label="ปิดแผงแก้ไข">ปิด</Button></div>;
+  const title = <><CalendarDays aria-hidden className="size-5 shrink-0" />{bookingId ? "แก้ไขการจอง" : "สร้างการจอง"}</>;
+  const description = <>{booking ? `${booking.booking_code} · ` : ""}DV-{propertyId}</>;
+  const body = <>
+      {presentation === "dialog" ? <DialogHeader className="shrink-0 border-b p-5"><div className="flex items-start justify-between gap-3"><div><DialogTitle className="flex items-center gap-2">{title}</DialogTitle><DialogDescription className="break-words">{description}</DialogDescription></div>{headerActions}</div></DialogHeader>
+        : <SheetHeader className="border-b p-5"><div className="flex items-start justify-between gap-3"><div><SheetTitle className="flex items-center gap-2">{title}</SheetTitle><SheetDescription className="break-words">{description}</SheetDescription></div>{headerActions}</div></SheetHeader>}
+      {loading ? <BookingEditorSkeleton presentation={presentation} /> : error ? <div className="space-y-3 p-5"><p role="alert" className="text-destructive">{error}</p><Button onClick={() => void load()}>ลองอีกครั้ง</Button></div> :
+        <BookingEditorForm propertyId={propertyId} booking={booking} initialDate={initialDate} presentation={presentation} onDirty={value => { dirty.current = value; }} onSaving={value => { saving.current = value; setEditorBusy(value); }} onClose={close}
           onSaved={value => { dirty.current = false; onSaved(value); onClose(); }} />}
       <Dialog open={cancelOpen} onOpenChange={open => { if (!saving.current) setCancelOpen(open); }}>
         <DialogContent showCloseButton={false} onInteractOutside={event => event.preventDefault()}
@@ -98,11 +96,18 @@ export function BookingEditor({ propertyId, bookingId, initialDate = "", onClose
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SheetContent>
+  </>;
+  return presentation === "dialog" ? <Dialog open onOpenChange={open => { if (!open) close(); }}>
+    <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl" showCloseButton={false}
+      onCloseAutoFocus={event => { event.preventDefault(); if (triggerRef?.current?.isConnected) triggerRef.current.focus(); }}>
+      {body}
+    </DialogContent>
+  </Dialog> : <Sheet open onOpenChange={open => { if (!open) close(); }}>
+    <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-lg" showCloseButton={false}>{body}</SheetContent>
   </Sheet>;
 }
 
-function BookingForm({ propertyId, booking, initialDate, onDirty, onSaving, onClose, onSaved }: FormProps) {
+export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, onSaving, onClose, onSaved, presentation = "sheet" }: FormProps) {
   const [datesValid, setDatesValid] = useState(false);
   const [availabilityRevision, setAvailabilityRevision] = useState(0);
   const [requestId] = useState(() => crypto.randomUUID());
@@ -134,12 +139,14 @@ function BookingForm({ propertyId, booking, initialDate, onDirty, onSaving, onCl
   const datesChanged = !!booking && (form.check_in !== booking.check_in || form.check_out !== booking.check_out);
   const supportedStatus = BOOKING_STATUSES.some(status => status.value === form.status);
   return <form onSubmit={save} className="flex min-h-0 flex-1 flex-col">
-    <fieldset disabled={saving} className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto"><fieldset disabled={saving} className="min-w-0 p-5">
+      <div className={presentation === "dialog" ? "grid gap-5 lg:grid-cols-[minmax(19rem,0.8fr)_minmax(0,1.2fr)]" : "space-y-5"}>
       <section className="space-y-3"><h3 className="flex items-center gap-2 font-semibold"><CalendarDays aria-hidden className="size-4 shrink-0 text-muted-foreground" />ช่วงเข้าพัก</h3>
         <BookingDateRange propertyId={propertyId} excludeId={booking?.id} originalStart={booking?.check_in} originalEnd={booking?.check_out} originalStatus={booking?.status} start={form.check_in} end={form.check_out} revision={availabilityRevision}
           onValid={setDatesValid} onChange={(check_in, check_out) => { setDatesValid(false); setForm(previous => ({ ...previous, check_in, check_out })); }} />
         {datesChanged && form.status !== "repair" && <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">เปลี่ยนวันแล้ว ยอดเงินยังเท่าเดิม โปรดตรวจสอบ</p>}
       </section>
+      <div className="space-y-5">
       {form.status !== "repair" && <section className="space-y-3 border-t pt-4">
         <BookingCustomerPicker propertyId={propertyId} customer={customer} onBusy={busy => { setCustomerBusy(busy); onSaving(busy); }} onSelect={next => { setCustomer(next); change("customer_id", next.id); }} />
       </section>}
@@ -152,8 +159,10 @@ function BookingForm({ propertyId, booking, initialDate, onDirty, onSaving, onCl
         {form.status !== "repair" && ([{ key: "price_max", label: "ค่าบ้านเต็มจำนวน" }, { key: "price_sell", label: "มัดจำที่ต้องชำระ" }, { key: "extra_charge", label: "ค่าใช้จ่ายเพิ่ม" }] as const).map(({ key, label }) => <label key={key} className={`space-y-1 ${key === "price_max" ? "col-span-2" : ""}`}>{label}<Input type="number" required={!booking || key !== "price_max"} min={0} max={999999999.99} step="0.01" value={form[key] === null || Number.isNaN(form[key]) ? "" : form[key]} onChange={e => change(key, key === "price_max" && e.target.value === "" ? null : e.target.valueAsNumber)} /></label>)}
         <label className="col-span-2 space-y-1">หมายเหตุ<Textarea rows={3} maxLength={10000} value={form.note ?? ""} onChange={e => change("note", e.target.value || null)} /></label>
       </div></section>
-    </fieldset>
-    <div className="space-y-3 border-t p-4">{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<div className="flex justify-between gap-3"><Button type="button" variant="outline" disabled={saving} onClick={onClose}>ยกเลิก</Button><Button type="submit" disabled={saving || (!datesValid && form.status !== "cancelled") || !supportedStatus || nights <= 0 || !dirty || (form.status !== "repair" && form.status !== "cancelled" && (!booking || booking.status === "repair") && !form.customer_id)}>{saving ? "กำลังบันทึก…" : "บันทึก"}</Button></div></div>
+      </div>
+      </div>
+    </fieldset></div>
+    <div className="shrink-0 space-y-3 border-t bg-popover p-4">{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<div className="flex justify-between gap-3"><Button type="button" variant="outline" disabled={saving} onClick={onClose}>ยกเลิก</Button><Button type="submit" disabled={saving || (!datesValid && form.status !== "cancelled") || !supportedStatus || nights <= 0 || !dirty || (form.status !== "repair" && form.status !== "cancelled" && (!booking || booking.status === "repair") && !form.customer_id)}>{saving ? "กำลังบันทึก…" : "บันทึก"}</Button></div></div>
   </form>;
 }
 

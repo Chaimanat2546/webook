@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, House, Megaphone, Menu, ShieldUser, Users } from "lucide-react";
+import { CalendarDays, FileText, House, Megaphone, Menu, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -9,7 +9,7 @@ import { cn } from "../../lib/utils";
 import { useSidebar } from "../ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
-const icons = { houses: House, advertisements: Megaphone, quotations: FileText, users: Users };
+const icons = { houses: House, bookings: CalendarDays, advertisements: Megaphone, quotations: FileText, users: Users };
 const tabClass = "flex min-h-18 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-ring";
 
 export function AdminMobileHeader() {

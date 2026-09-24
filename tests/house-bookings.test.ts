@@ -5,8 +5,10 @@ import { canUseBooking, canAccessHouses } from "../server/auth/admin.ts";
 
 const input = { id: "17", updated_at: "2026-09-18T10:00:00+00:00", check_in: "2026-09-28", check_out: "2026-10-03", customer_id: null, status: "confirmed", quantity: 1, price_max: 6900, price_sell: 3900, deposit_amount: 5000, extra_charge: 0, note: "" };
 test("changing dates preserves one total rather than multiplying by nights", () => {
-  const result = parseBookingUpdate({ ...input, check_out: "2026-10-04" });
+  const result = parseBookingUpdate({ ...input, check_out: "2026-10-04", extra_charge: 725 });
+  assert.equal(result.price_max, 6900);
   assert.equal(result.price_sell, 3900);
+  assert.equal(result.extra_charge, 725);
   assert.equal(nightsBetween(result.check_in, result.check_out), 6);
 });
 test("rejects nonexistent dates and nonpositive stays", () => {

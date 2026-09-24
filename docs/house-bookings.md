@@ -14,6 +14,45 @@ Open **การจอง** from the desktop or mobile actions for a house. The 
   such as deposit_amount, details, booking_type, house linkage and agent_id are preserved.
 - The sheet warns on unsaved close and shows errors without discarding input.
 
+## Calendar Gallery
+
+Open **การจอง** in the primary admin navigation for `/admin/bookings`. This
+shows one monthly calendar per house, including houses without bookings. Search
+by house title or DV property ID; six matching houses appear per page. The
+grid has three columns on desktop and one on mobile. Each card has its own Thai
+month heading and previous/next controls, so houses can display different
+months. Select a booked date to edit it, an available future date to start a
+booking, or the card's **สร้างการจอง** action to create one without a date.
+
+The Gallery opens the existing booking form in a centred modal over the dimmed
+calendar. Stay dates and availability appear on the left, with customer, status,
+money and notes on the right. On narrow screens the modal fills the width and
+stacks the stay section above the other fields in a scrollable view. The same
+validation, save/cancel actions, stale-revision and overlap protection, and
+unsaved-change confirmation apply. Closing returns focus to the selected card
+control or search field. A successful save or cancellation refreshes every
+visited month, including dates in other months affected by a changed stay.
+If a month fails to load, its card shows an error and **ลองอีกครั้ง** instead
+of stale availability. Editor errors keep entered values available
+for correction and retry.
+
+The per-house route `/admin/houses/[propertyId]/bookings` remains available
+from house navigation. It keeps the House Workspace Shell, full house calendar,
+and Sheet editor. The Gallery adds a second entry point and does not replace
+this workflow.
+
+Confirmed dates are red, waiting dates green, and repair dates have a separate
+state. The user approved deferring yellow holiday dates until an authoritative
+holiday source is available; the Gallery uses actual booking statuses for now.
+An unrecognized saved status other than `cancelled`
+appears as a neutral **สถานะไม่ทราบ (ติดจอง)** date with a booking edit target,
+matching the availability rule that treats it as occupied until corrected.
+Card headers show only the house title and DV ID; province/zone and booked-night
+counts are not displayed. Checkout remains exclusive. Unbooked dates
+display as free. Both routes use
+the existing booking permissions, service and repository paths. This addition
+requires no database schema or RLS change.
+
 ## Access and data flow
 
 Every action verifies the Supabase session, then loads `users.allow_tools` by
