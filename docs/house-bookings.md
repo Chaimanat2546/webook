@@ -14,6 +14,38 @@ Open **การจอง** from the desktop or mobile actions for a house. The 
   such as deposit_amount, details, booking_type, house linkage and agent_id are preserved.
 - The sheet warns on unsaved close and shows errors without discarding input.
 
+## Calendar Gallery
+
+Open **การจอง** in the primary admin navigation for `/admin/bookings`. This
+shows one compact monthly calendar per house, including houses without bookings.
+Use the shared toolbar to change month, filter by zone, sort by house name or
+booked nights, and choose a house for a new booking. The grid shows up to five
+cards per row on wide screens and two per row on mobile. Each card has an
+**ขยายปฏิทิน** action that opens a larger calendar with easier date targets;
+select a booked date to edit it, or an available future date to start a booking.
+
+The Gallery opens the existing booking form in a centred modal over the dimmed
+calendar. Stay dates and availability appear on the left, with customer, status,
+money and notes on the right. On narrow screens the modal fills the width and
+stacks the stay section above the other fields in a scrollable view. The same
+validation, save/cancel actions, stale-revision and overlap protection, and
+unsaved-change confirmation apply. Closing returns focus to the selected card
+or toolbar control. A successful save or cancellation refreshes the Gallery.
+If loading fails, it shows an error and **ลองอีกครั้ง**; it does not show stale
+cards from another month/filter. Editor errors keep entered values available
+for correction and retry.
+
+The per-house route `/admin/houses/[propertyId]/bookings` remains available
+from house navigation. It keeps the House Workspace Shell, full house calendar,
+and Sheet editor. The Gallery adds a second entry point and does not replace
+this workflow.
+
+Confirmed dates are red, waiting dates green, and repair dates have a separate
+state. No authoritative holiday source is connected, so the Gallery does not
+invent yellow holiday dates; unbooked dates display as free. Both routes use
+the existing booking permissions, service and repository paths. This addition
+requires no database schema or RLS change.
+
 ## Access and data flow
 
 Every action verifies the Supabase session, then loads `users.allow_tools` by

@@ -55,6 +55,12 @@ test("route mounts the gallery after the existing server authorization", () => {
   assert.match(source, /<BookingCalendarGallery\s*\/>/);
 });
 
+test("the per-house booking route remains the workspace calendar and does not mount the gallery", () => {
+  const legacyPageSource = readFileSync(new URL("../app/admin/houses/[propertyId]/bookings/page.tsx", import.meta.url), "utf8");
+  assert.match(legacyPageSource, /<HouseBookingCalendar propertyId=\{house\.property_id\} \/>/);
+  assert.doesNotMatch(legacyPageSource, /BookingCalendarGallery/);
+});
+
 test("gallery editor reuses one booking form with Sheet and centred Dialog presentations", () => {
   const source = editor();
   assert.match(source, /export function BookingEditorForm/);
