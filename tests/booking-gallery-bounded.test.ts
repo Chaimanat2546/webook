@@ -64,15 +64,15 @@ test("unknown and null booking statuses occupy dates, while checkout and wrong p
 });
 
 test("repository pages listings in DB and searches title, raw DV and prefixed DV", async () => {
-  const requests: Array<{ fields: string; range: number[]; or: string; ilike: string; orders: string[]; count: string }> = [];
+  const requests: Array<{ fields: string; range: number[]; or: string; regex: string; orders: string[]; count: string }> = [];
   const client = { from() {
-    const request = { fields: "", range: [] as number[], or: "", ilike: "", orders: [] as string[], count: "" }; requests.push(request);
+    const request = { fields: "", range: [] as number[], or: "", regex: "", orders: [] as string[], count: "" }; requests.push(request);
     const query = {
       select(fields: string, options?: { count?: string }) { request.fields = fields; request.count = options?.count ?? ""; return query; },
       order(field: string) { request.orders.push(field); return query; },
       range(start: number, end: number) { request.range = [start, end]; return query; },
       or(filter: string) { request.or = filter; return query; },
-      ilike(field: string, pattern: string) { request.ilike = `${field}:${pattern}`; return query; },
+      regexIMatch(field: string, pattern: string) { request.regex = `${field}:${pattern}`; return query; },
       then(resolve: (result: { data: GalleryHouseSummary[]; count: number; error: null }) => void) { resolve({ data: [house(7)], count: 13, error: null }); },
     }; return query;
   } } as unknown as SupabaseClient;
@@ -84,11 +84,28 @@ test("repository pages listings in DB and searches title, raw DV and prefixed DV
   assert.deepEqual(requests.map(request => request.range), [[6, 11], [0, 5], [0, 5], [0, 5]]);
   assert.deepEqual(requests[0].orders, ["title", "property_id"]);
   assert.equal(requests[0].count, "exact");
-  assert.equal(requests[0].ilike, "title:%Sea%");
+  assert.equal(requests[0].regex, "title:Sea");
   assert.match(requests[1].or, /property_id\.eq\.101/);
   assert.match(requests[2].or, /property_id\.eq\.101/);
-  assert.equal(requests[3].ilike, "title:%Sea & Sun%");
+  assert.equal(requests[3].regex, "title:Sea & Sun");
   assert.equal(requests[0].fields, "id,property_id,title,location_zone");
+});
+
+test("title search treats asterisk and mixed wildcard characters as literal substrings", async () => {
+  const patterns: string[] = [];
+  const client = { from() {
+    const query = {
+      select() { return query; }, order() { return query; }, range() { return query; },
+      regexIMatch(_field: string, pattern: string) { patterns.push(pattern); return query; },
+      ilike() { assert.fail("LIKE wildcard alias must not be used for arbitrary title search"); },
+      then(resolve: (result: { data: unknown[]; count: number; error: null }) => void) { resolve({ data: [], count: 0, error: null }); },
+    }; return query;
+  } } as unknown as SupabaseClient;
+  const repository = createHouseBookingsRepository(client);
+  await repository.galleryHousePage({ page: 1, search: "*" });
+  await repository.galleryHousePage({ page: 1, search: "Sea%_\\*" });
+  assert.deepEqual(["Sea* View", "Sea View", "Asterisk *"].filter(title => new RegExp(patterns[0], "i").test(title)), ["Sea* View", "Asterisk *"]);
+  assert.deepEqual(["Sea%_\\* Pool", "SeaXX Pool", "Sea%_\\ Pool"].filter(title => new RegExp(patterns[1], "i").test(title)), ["Sea%_\\* Pool"]);
 });
 
 test("repository paginates dense minimal booking rows with exact pair filter", async () => {

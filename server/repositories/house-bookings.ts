@@ -37,6 +37,11 @@ function galleryPropertySearch(search: string): string | null {
   const property = /^(?:dv\s*)?([1-9]\d{0,18})$/i.exec(search)?.[1];
   return property && BigInt(property) <= BigInt("9223372036854775807") ? property : null;
 }
+function galleryLiteralTitlePattern(search: string): string {
+  // PostgREST treats * as a LIKE wildcard alias. A regex filter keeps every
+  // search character literal, including *, %, _, and backslashes.
+  return search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 function mapGalleryBookingSlice(value: unknown): GalleryBookingSlice {
   const row = record(value);
   return { id: bookingId(row.id), listing_id: text(row.listing_id), houseid: bookingId(row.houseid), check_in: text(row.check_in), check_out: text(row.check_out), status: nullableText(row.status) };
@@ -49,7 +54,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       if (input.search) {
         const property = galleryPropertySearch(input.search);
         if (property) query = query.or(`title.ilike.%${input.search}%,property_id.eq.${property}`);
-        else query = query.ilike("title", `%${input.search.replace(/[\\%_]/g, "\\$&")}%`);
+        else query = query.regexIMatch("title", galleryLiteralTitlePattern(input.search));
       }
       const { data, count, error } = await query;
       if (error) throw error;
