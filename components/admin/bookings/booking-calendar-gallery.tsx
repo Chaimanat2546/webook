@@ -8,6 +8,7 @@ import { bookingToday } from "@/lib/booking-availability";
 import { parseBookingGalleryQuery, type BookingGalleryCard, type BookingGalleryQuery } from "@/lib/booking-gallery";
 import { adjacentBookingGalleryMonth, tryBookingGalleryQuery } from "@/lib/booking-gallery-month";
 import { BookingGalleryCard as GalleryCard } from "./booking-gallery-card";
+import { BookingGalleryEditorDialog } from "./booking-gallery-editor-dialog";
 
 export interface GallerySelection {
   propertyId: string;
@@ -34,25 +35,27 @@ export function BookingCalendarGallery() {
   const [monthError, setMonthError] = useState("");
   const [retry, setRetry] = useState(0);
   const trigger = useRef<HTMLElement | null>(null);
+  const monthInput = useRef<HTMLInputElement | null>(null);
+  const requestSequence = useRef(0);
   const today = bookingToday();
 
   const load = useCallback(async (isActive: () => boolean) => {
+    const request = ++requestSequence.current;
     setLoading(true);
     setError("");
     try {
       const result = await listBookingGalleryAction(query);
-      if (!isActive()) return;
+      if (!isActive() || request !== requestSequence.current) return;
       if (result.ok) {
         setCards(result.data);
         if (query.zone === null) setZones([...new Set(result.data.map(card => card.zone).filter((zone): zone is string => !!zone))].sort((a, b) => a.localeCompare(b, "th")));
       } else {
-        setCards([]);
         setError(result.message);
       }
     } catch {
-      if (isActive()) { setCards([]); setError("โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง"); }
+      if (isActive() && request === requestSequence.current) setError("โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง");
     } finally {
-      if (isActive()) setLoading(false);
+      if (isActive() && request === requestSequence.current) setLoading(false);
     }
   }, [query]);
 
@@ -80,14 +83,14 @@ export function BookingCalendarGallery() {
           onChange={event => setCreatePropertyId(event.target.value)} className="h-8 max-w-36 rounded-lg border border-input bg-background px-2 text-sm">
           {cards.map(card => <option key={card.propertyId} value={card.propertyId}>{card.title}</option>)}
         </select>
-        <Button type="button" size="sm" disabled={loading || !creationTarget} onClick={event => { if (creationTarget) choose({ propertyId: creationTarget }, event.currentTarget); }}><Plus aria-hidden="true" />สร้างการจอง</Button>
+        <Button type="button" size="sm" disabled={!creationTarget} onClick={event => { if (creationTarget) choose({ propertyId: creationTarget }, event.currentTarget); }}><Plus aria-hidden="true" />สร้างการจอง</Button>
       </div>
     </div>
     <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
       <div className="flex items-center gap-1">
         <Button type="button" variant="outline" size="icon-sm" aria-label="เดือนก่อนหน้า" disabled={!previousMonth} onClick={() => { if (previousMonth) updateQuery({ month: previousMonth }); }}><ChevronLeft aria-hidden="true" /></Button>
         <label className="sr-only" htmlFor="booking-gallery-month">เดือนที่แสดง</label>
-        <input id="booking-gallery-month" type="month" min="1000-01" max="9999-11" aria-label="เดือนที่แสดง" aria-invalid={!!monthError} aria-describedby={monthError ? "booking-gallery-month-error" : undefined}
+        <input ref={monthInput} id="booking-gallery-month" type="month" min="1000-01" max="9999-11" aria-label="เดือนที่แสดง" aria-invalid={!!monthError} aria-describedby={monthError ? "booking-gallery-month-error" : undefined}
           value={query.month} onChange={event => updateQuery({ month: event.target.value })} className="h-7 w-32 rounded-lg border border-input bg-background px-2 text-sm" />
         <Button type="button" variant="outline" size="icon-sm" aria-label="เดือนถัดไป" disabled={!nextMonth} onClick={() => { if (nextMonth) updateQuery({ month: nextMonth }); }}><ChevronRight aria-hidden="true" /></Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => updateQuery({ month: bookingToday().slice(0, 7) })}>วันนี้</Button>
@@ -103,14 +106,16 @@ export function BookingCalendarGallery() {
     {monthError && <p id="booking-gallery-month-error" role="alert" className="text-sm text-destructive">{monthError}</p>}
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">{error}<Button type="button" size="sm" variant="outline" onClick={() => setRetry(value => value + 1)}>ลองอีกครั้ง</Button></div>}
     <div aria-busy={loading}>
-      {loading ? <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดปฏิทินการจอง…</p>
-        : !error && cards.length === 0 ? <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">ไม่พบบ้านใน{query.zone ? `โซน ${query.zone}` : "รายการ"}</p>
-          : <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      {cards.length > 0 ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {cards.map(card => <GalleryCard key={card.propertyId} card={card} month={query.month} today={today}
               onBookingSelect={(propertyId, bookingId, element) => choose({ propertyId, bookingId }, element)}
               onCreateSelect={(propertyId, initialDate, element) => choose({ propertyId, initialDate }, element)} />)}
-          </div>}
+          </div> : loading ? <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดปฏิทินการจอง…</p>
+        : !error && <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">ไม่พบบ้านใน{query.zone ? `โซน ${query.zone}` : "รายการ"}</p>}
     </div>
-    {selected && <p role="status" className="sr-only">{selected.bookingId ? "เลือกรายการจองแล้ว" : "เลือกบ้านสำหรับสร้างการจองแล้ว"}</p>}
+    {selected && <BookingGalleryEditorDialog key={`${selected.propertyId}:${selected.bookingId ?? "new"}:${selected.initialDate ?? ""}`}
+      propertyId={selected.propertyId} bookingId={selected.bookingId} initialDate={selected.initialDate} triggerRef={trigger}
+      onClose={() => { setSelected(null); requestAnimationFrame(() => { if (trigger.current?.isConnected && !(trigger.current instanceof HTMLButtonElement && trigger.current.disabled)) trigger.current?.focus(); else monthInput.current?.focus(); }); }}
+      onSaved={() => { void load(() => true); }} />}
   </main>;
 }
