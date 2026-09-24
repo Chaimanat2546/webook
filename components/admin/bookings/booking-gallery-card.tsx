@@ -31,10 +31,7 @@ export function BookingGalleryCard({ house, card, month, today, loading, error, 
   return <Card size="sm" className="booking-gallery-card min-w-0 gap-2">
     <CardHeader className="min-w-0 gap-1">
       <CardTitle className="truncate" title={house.title}>{house.title}</CardTitle>
-      <div className="flex items-center justify-between gap-1 text-[11px] text-muted-foreground">
-        <span className="truncate">DV {house.propertyId}{house.zone ? ` · ${house.zone}` : ""}</span>
-        {card && <span className="shrink-0">ติดจอง {card.bookedNights} คืน</span>}
-      </div>
+      <div className="truncate text-[11px] text-muted-foreground">DV {house.propertyId}</div>
       <div className="flex items-center justify-center gap-2 pt-1">
         <Button type="button" variant="outline" size="icon-sm" aria-label={`เดือนก่อนหน้า ${house.title}`} disabled={!previousMonth}
           onClick={() => { if (previousMonth) onMonthChange(house.propertyId, previousMonth); }}><ChevronLeft aria-hidden="true" /></Button>
