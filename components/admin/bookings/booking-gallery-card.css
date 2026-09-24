@@ -1,7 +1,7 @@
 .booking-gallery-weekdays,
 .booking-gallery-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .booking-gallery-weekdays { color: var(--muted-foreground); text-align: center; font-size: 10px; line-height: 1.25rem; }
-.booking-gallery-day { display: grid; place-items: center; min-width: 0; aspect-ratio: 1; border-radius: .35rem; font-size: 11px; font-weight: 600; line-height: 1; transition: filter .15s ease; }
+.booking-gallery-day { display: grid; place-items: center; min-width: 0; min-height: 40px; border-radius: .35rem; font-size: 12px; font-weight: 600; line-height: 1; transition: filter .15s ease; }
 .booking-gallery-day:not(:disabled):hover { filter: brightness(.91); }
 .booking-gallery-day:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; position: relative; z-index: 1; }
 .booking-gallery-day-free { background: var(--muted); color: var(--foreground); }
@@ -20,8 +20,3 @@
 .booking-gallery-dot-waiting { background: #15803d; }
 .booking-gallery-dot-repair { background: #6b7280; }
 .booking-gallery-dot-unknown { background: #cbd5e1; }
-.booking-gallery-expanded-scroll { max-width: 100%; overflow-x: auto; padding: 2px; }
-.booking-gallery-weekdays-expanded,
-.booking-gallery-days-expanded { min-width: 304px; gap: 4px; }
-.booking-gallery-weekdays-expanded { font-size: 12px; }
-.booking-gallery-days-expanded .booking-gallery-day { min-height: 40px; aspect-ratio: auto; font-size: 14px; }

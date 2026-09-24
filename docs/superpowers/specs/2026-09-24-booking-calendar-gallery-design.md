@@ -19,9 +19,12 @@ state across the portfolio without entering a house workspace first.
   status legend. Yellow holiday dates are deferred by user approval until an
   authoritative holiday source is available; use actual booking statuses now.
   The card also shows the house name and summary.
-- A shared toolbar controls the month, zone filtering, ordering, and new-booking
-  action. On wide viewports show up to five cards per row; reduce progressively to
-  two cards per row on mobile.
+- The approved revision places Thai month navigation inside each house card.
+  Each house may display a different month. Search matches house title or DV
+  property ID; the results show six houses per page and reset to page one when
+  the search changes. Desktop shows three columns and mobile shows one. The
+  shared month, zone, ordering, and new-booking controls and the expanded
+  calendar dialog are removed. Day cells remain directly keyboard accessible.
 - Selecting a booking opens a centred modal rather than navigating away. The
   gallery remains visible but is dimmed behind the modal.
 
@@ -45,8 +48,11 @@ it is a new presentation host, not a new booking form.
 
 - Add a dedicated top-level Booking route and server guard that reuses
   `requireBookingAdmin` for every gallery and modal operation.
-- Load authorised houses and bookings for the selected visible month through a
-  booking service/repository query; filter only from trusted server parameters.
+- Load authorised houses and bookings through the existing booking
+  service/repository query. Client search and paging operate on that authorised
+  house list. Each distinct visited month has one cached all-house request;
+  failed or loading months do not show old date availability. Saving or
+  cancelling refreshes every visited month so cross-month stays remain current.
 - Introduce framework-light gallery view models in `lib/`, mapping each property
   and monthly booking interval to the visual date-cell state. Keep date-only,
   Bangkok-safe behavior and exclusive checkout semantics.
@@ -73,5 +79,6 @@ or allow client-provided privilege/scope values.
 - Test that the modal uses the current editor validation and actions unchanged,
   including conflict, stale revision, dirty-close, and cancellation behavior.
 - Browser-test desktop modal layout and mobile stacked layout, focus trapping,
-  return focus to the selected gallery card, and toolbar/filter updates.
+  return focus to the selected gallery date or search input, independent card
+  month navigation, search, paging, and failed-month retry.
 - Run typecheck, lint, relevant Node tests, build, and code review before release.

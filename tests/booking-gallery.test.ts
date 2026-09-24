@@ -1,22 +1,55 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildBookingGallery, currentBookingGallerySnapshot, parseBookingGalleryQuery, type BookingGalleryHouse } from "../lib/booking-gallery.ts";
+import { buildBookingGallery, parseBookingGalleryQuery, type BookingGalleryHouse } from "../lib/booking-gallery.ts";
 import type { Booking } from "../lib/house-bookings.ts";
+import * as galleryView from "../lib/booking-gallery.ts";
 
 const houseA: BookingGalleryHouse = { id: "listing-a", property_id: "101", title: "Alpha", location_zone: "พัทยา" };
 const houseB: BookingGalleryHouse = { id: "listing-b", property_id: "102", title: "Beta", location_zone: null };
 const booking: Booking = { id: "1", booking_code: "BK1", listing_id: "listing-a", houseid: "101", agent_id: null, customer_id: null, customer: null, check_in: "2026-09-30", check_out: "2026-10-03", status: "confirmed", booking_type: null, price_sell: 0, price_max: null, deposit_amount: 0, extra_charge: 0, quantity: 3, details: null, note: null, updated_at: "2026-09-18T00:00:00Z" };
 
-test("same-query refresh retains cards while changed query and failed refresh hide them", () => {
-  const september = parseBookingGalleryQuery({ month: "2026-09" });
-  const cards = buildBookingGallery([houseA], [booking], "2026-09");
-  const snapshot = { query: september, cards };
-  assert.equal(currentBookingGallerySnapshot(september, snapshot, ""), snapshot);
-  assert.equal(currentBookingGallerySnapshot(parseBookingGalleryQuery({ month: "2026-10" }), snapshot, ""), null);
-  assert.equal(currentBookingGallerySnapshot(parseBookingGalleryQuery({ month: "2026-09", zone: "พัทยา" }), snapshot, ""), null);
-  assert.equal(currentBookingGallerySnapshot(parseBookingGalleryQuery({ month: "2026-09", order: "booked" }), snapshot, ""), null);
-  assert.equal(currentBookingGallerySnapshot(september, snapshot, "โหลดไม่สำเร็จ"), null);
-  assert.equal(currentBookingGallerySnapshot(september, null, ""), null);
+test("house search matches title or DV property ID and paginates six results", () => {
+  const cards = Array.from({ length: 13 }, (_, index) => ({ ...buildBookingGallery([houseA], [], "2026-09")[0], propertyId: `DV-${index + 1}`, title: index === 8 ? "Sea Breeze" : `House ${index + 1}` }));
+  const page = galleryView.paginateBookingGallery(cards, "", 2);
+  assert.equal(page.total, 13);
+  assert.equal(page.pageCount, 3);
+  assert.deepEqual(page.cards.map(card => card.propertyId), ["DV-7", "DV-8", "DV-9", "DV-10", "DV-11", "DV-12"]);
+  assert.deepEqual(galleryView.paginateBookingGallery(cards, " sea ", 2).cards.map(card => card.propertyId), ["DV-9"]);
+  assert.deepEqual(galleryView.paginateBookingGallery(cards, "dv-12", 1).cards.map(card => card.propertyId), ["DV-12"]);
+  assert.deepEqual(galleryView.paginateBookingGallery(cards, "dV DV-12", 1).cards.map(card => card.propertyId), ["DV-12"]);
+  assert.deepEqual(galleryView.paginateBookingGallery([{ ...cards[0], propertyId: "1003" }], "DV 1003", 1).cards.map(card => card.propertyId), ["1003"]);
+  assert.deepEqual(galleryView.paginateBookingGallery(cards, "missing", 1).cards, []);
+  assert.equal(galleryView.paginateBookingGallery(cards, "", 99).page, 3);
+});
+
+test("per-house month lookup never displays another month or a failed load as availability", () => {
+  const septemberCard = buildBookingGallery([houseA], [booking], "2026-09")[0];
+  const octoberCard = buildBookingGallery([houseA], [booking], "2026-10")[0];
+  const months = {
+    "2026-09": { status: "ready" as const, cards: [septemberCard] },
+    "2026-10": { status: "loading" as const },
+  };
+  assert.equal(galleryView.bookingGalleryCardForMonth("101", "2026-09", months).card?.days["2026-09-30"].tone, "confirmed");
+  assert.equal(galleryView.bookingGalleryCardForMonth("101", "2026-10", months).card, null);
+  assert.equal(galleryView.bookingGalleryCardForMonth("102", "2026-09", months).card, null);
+  assert.equal(galleryView.bookingGalleryCardForMonth("101", "2026-10", { ...months, "2026-10": { status: "error", message: "failed" } }).card, null);
+  assert.equal(galleryView.bookingGalleryCardForMonth("101", "2026-10", { ...months, "2026-10": { status: "ready", cards: [octoberCard] } }).card?.days["2026-10-01"].tone, "confirmed");
+});
+
+test("a booking save refreshes every visited month because stays may cross months", () => {
+  const months = {
+    "2026-09": { status: "ready" as const, cards: [] },
+    "2026-10": { status: "ready" as const, cards: [] },
+    "2026-11": { status: "error" as const, message: "failed" },
+  };
+  assert.deepEqual(galleryView.bookingGalleryMonthsToRefresh(months), ["2026-09", "2026-10", "2026-11"]);
+});
+
+test("pagination keeps large portfolios to five numbered controls around the current page", () => {
+  assert.deepEqual(galleryView.bookingGalleryPageNumbers(1, 30), [1, 2, 3, "ellipsis", 30]);
+  assert.deepEqual(galleryView.bookingGalleryPageNumbers(15, 30), [1, "ellipsis", 14, 15, 16, "ellipsis", 30]);
+  assert.deepEqual(galleryView.bookingGalleryPageNumbers(30, 30), [1, "ellipsis", 28, 29, 30]);
+  assert.deepEqual(galleryView.bookingGalleryPageNumbers(2, 3), [1, 2, 3]);
 });
 
 test("query bounds September to its Monday-first six-week grid and normalises zone", () => {

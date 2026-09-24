@@ -30,16 +30,42 @@ export interface BookingGalleryCard {
   days: Record<string, BookingGalleryDay>;
 }
 
-export interface BookingGallerySnapshot {
-  query: BookingGalleryQuery;
-  cards: BookingGalleryCard[];
+export type BookingGalleryMonthState =
+  | { status: "loading" }
+  | { status: "ready"; cards: BookingGalleryCard[] }
+  | { status: "error"; message: string };
+
+export function paginateBookingGallery(cards: BookingGalleryCard[], search: string, requestedPage: number) {
+  const term = search.trim().toLocaleLowerCase();
+  const filtered = cards.filter(card => card.title.toLocaleLowerCase().includes(term)
+    || card.propertyId.toLocaleLowerCase().includes(term)
+    || `dv ${card.propertyId}`.toLocaleLowerCase().includes(term));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / 6));
+  const page = Math.min(Math.max(1, requestedPage), pageCount);
+  return { cards: filtered.slice((page - 1) * 6, page * 6), total: filtered.length, pageCount, page };
 }
 
-export function currentBookingGallerySnapshot(requested: BookingGalleryQuery, loaded: BookingGallerySnapshot | null, error: string): BookingGallerySnapshot | null {
-  if (!loaded || error) return null;
-  const query = loaded.query;
-  return query.month === requested.month && query.start === requested.start && query.end === requested.end
-    && query.zone === requested.zone && query.order === requested.order ? loaded : null;
+export function bookingGalleryCardForMonth(propertyId: string, month: string, months: Record<string, BookingGalleryMonthState>) {
+  const state = months[month] ?? { status: "loading" as const };
+  return { status: state.status, message: state.status === "error" ? state.message : "", card: state.status === "ready" ? state.cards.find(card => card.propertyId === propertyId) ?? null : null };
+}
+
+export function bookingGalleryMonthsToRefresh(months: Record<string, BookingGalleryMonthState>): string[] {
+  return Object.keys(months).sort();
+}
+
+export function bookingGalleryPageNumbers(page: number, pageCount: number): Array<number | "ellipsis"> {
+  if (pageCount <= 5) return Array.from({ length: pageCount }, (_, index) => index + 1);
+  const middle = page <= 3 ? [2, 3] : page >= pageCount - 2 ? [pageCount - 2, pageCount - 1] : [page - 1, page, page + 1];
+  const numbers = [1, ...middle, pageCount];
+  const items: Array<number | "ellipsis"> = [];
+  let previous = 0;
+  for (const number of numbers) {
+    if (previous > 0 && number - previous > 1) items.push("ellipsis");
+    items.push(number);
+    previous = number;
+  }
+  return items;
 }
 
 const dayMilliseconds = 86_400_000;

@@ -17,12 +17,12 @@ Open **การจอง** from the desktop or mobile actions for a house. The 
 ## Calendar Gallery
 
 Open **การจอง** in the primary admin navigation for `/admin/bookings`. This
-shows one compact monthly calendar per house, including houses without bookings.
-Use the shared toolbar to change month, filter by zone, sort by house name or
-booked nights, and choose a house for a new booking. The grid shows up to five
-cards per row on wide screens and two per row on mobile. Each card has an
-**ขยายปฏิทิน** action that opens a larger calendar with easier date targets;
-select a booked date to edit it, or an available future date to start a booking.
+shows one monthly calendar per house, including houses without bookings. Search
+by house title or DV property ID; six matching houses appear per page. The
+grid has three columns on desktop and one on mobile. Each card has its own Thai
+month heading and previous/next controls, so houses can display different
+months. Select a booked date to edit it, an available future date to start a
+booking, or the card's **สร้างการจอง** action to create one without a date.
 
 The Gallery opens the existing booking form in a centred modal over the dimmed
 calendar. Stay dates and availability appear on the left, with customer, status,
@@ -30,9 +30,10 @@ money and notes on the right. On narrow screens the modal fills the width and
 stacks the stay section above the other fields in a scrollable view. The same
 validation, save/cancel actions, stale-revision and overlap protection, and
 unsaved-change confirmation apply. Closing returns focus to the selected card
-or toolbar control. A successful save or cancellation refreshes the Gallery.
-If loading fails, it shows an error and **ลองอีกครั้ง**; it does not show stale
-cards from another month/filter. Editor errors keep entered values available
+control or search field. A successful save or cancellation refreshes every
+visited month, including dates in other months affected by a changed stay.
+If a month fails to load, its card shows an error and **ลองอีกครั้ง** instead
+of stale availability. Editor errors keep entered values available
 for correction and retry.
 
 The per-house route `/admin/houses/[propertyId]/bookings` remains available

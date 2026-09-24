@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 const gallery = () => readFileSync(new URL("../components/admin/bookings/booking-calendar-gallery.tsx", import.meta.url), "utf8");
-const card = () => readFileSync(new URL("../components/admin/bookings/booking-gallery-card.tsx", import.meta.url), "utf8");
 const days = () => readFileSync(new URL("../components/admin/bookings/booking-gallery-days.tsx", import.meta.url), "utf8");
 const cardCss = () => readFileSync(new URL("../components/admin/bookings/booking-gallery-card.css", import.meta.url), "utf8");
 const editor = () => readFileSync(new URL("../components/admin/houses/bookings/booking-editor.tsx", import.meta.url), "utf8");
@@ -11,13 +10,12 @@ const galleryDialog = () => readFileSync(new URL("../components/admin/bookings/b
 const skeleton = () => readFileSync(new URL("../components/admin/houses/bookings/booking-skeletons.tsx", import.meta.url), "utf8");
 const dateRange = () => readFileSync(new URL("../components/admin/houses/bookings/booking-date-range.tsx", import.meta.url), "utf8");
 
-test("gallery loads through the authorized action and exposes month, zone, order, and retry controls", () => {
+test("gallery requests authorized month data and exposes search, pagination, and retry controls", () => {
   const source = gallery();
-  assert.match(source, /listBookingGalleryAction\(query\)/);
-  assert.match(source, /aria-label="เดือนที่แสดง"/);
-  assert.match(source, /setQuery\([^]*?month:/);
-  assert.match(source, /zone:/);
-  assert.match(source, /order:/);
+  assert.match(source, /listBookingGalleryAction\(parseBookingGalleryQuery\(\{ month \}\)\)/);
+  assert.match(source, /paginateBookingGallery\(houses \?\? \[\], search, requestedPage\)/);
+  assert.match(source, /aria-label="ค้นหาชื่อบ้านหรือรหัส DV"/);
+  assert.match(source, /<Pagination>/);
   assert.match(source, /ลองอีกครั้ง/);
   assert.match(source, /ไม่พบ/);
 });
@@ -40,13 +38,6 @@ test("card styles distinguish confirmed, waiting, repair and free days without i
     assert.match(css, new RegExp(`\\.booking-gallery-day-${tone}\\b`));
   }
   assert.doesNotMatch(source, /holidayDates|holidays\.map/);
-});
-
-test("expanded dialog keeps a focusable card trigger and large date targets", () => {
-  assert.match(card(), /ref=\{expandButton\}/);
-  assert.match(card(), /<Dialog open=\{expanded\}/);
-  assert.match(card(), /getTrigger=\{dayButton => expandButton\.current \?\? dayButton\}/);
-  assert.match(cardCss(), /\.booking-gallery-days-expanded \.booking-gallery-day \{[^}]*min-height: 40px/);
 });
 
 test("route mounts the gallery after the existing server authorization", () => {
@@ -77,12 +68,12 @@ test("gallery editor reuses one booking form with Sheet and centred Dialog prese
   assert.match(gallery(), /<BookingGalleryEditorDialog/);
 });
 
-test("gallery retains card triggers during reload and forwards focus to the modal", () => {
+test("gallery returns focus to the card trigger or search and refreshes visited months after save", () => {
   const source = gallery();
   assert.match(source, /triggerRef=\{trigger\}/);
-  assert.match(source, /trigger\.current\?\.focus\(\)/);
-  assert.match(source, /cards\.length > 0/);
+  assert.match(source, /trigger\.current\.focus\(\)/);
+  assert.match(source, /searchInput\.current\?\.focus\(\)/);
   assert.match(source, /onSaved=\{/);
-  assert.match(source, /disabled=\{!creationTarget\}/);
+  assert.match(source, /bookingGalleryMonthsToRefresh\(monthStates\.current\)/);
   assert.match(source, /trigger\.current instanceof HTMLButtonElement && trigger\.current\.disabled/);
 });

@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { listBookingGalleryAction } from "@/app/admin/bookings/actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination";
 import { bookingToday } from "@/lib/booking-availability";
-import { currentBookingGallerySnapshot, parseBookingGalleryQuery, type BookingGalleryQuery, type BookingGallerySnapshot } from "@/lib/booking-gallery";
-import { adjacentBookingGalleryMonth, tryBookingGalleryQuery } from "@/lib/booking-gallery-month";
+import { bookingGalleryCardForMonth, bookingGalleryMonthsToRefresh, bookingGalleryPageNumbers, paginateBookingGallery, parseBookingGalleryQuery, type BookingGalleryCard, type BookingGalleryMonthState } from "@/lib/booking-gallery";
 import { BookingGalleryCard as GalleryCard } from "./booking-gallery-card";
 import { BookingGalleryEditorDialog } from "./booking-gallery-editor-dialog";
 
@@ -16,109 +17,93 @@ export interface GallerySelection {
   initialDate?: string;
 }
 
-function currentBangkokGalleryQuery(): BookingGalleryQuery {
-  return parseBookingGalleryQuery({ month: bookingToday().slice(0, 7) });
-}
-
-function monthLabel(month: string): string {
-  return new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`));
-}
+const loadError = "โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง";
 
 export function BookingCalendarGallery() {
-  const [query, setQuery] = useState<BookingGalleryQuery>(() => currentBangkokGalleryQuery());
-  const [loaded, setLoaded] = useState<BookingGallerySnapshot | null>(null);
-  const [zones, setZones] = useState<string[]>([]);
-  const [createPropertyId, setCreatePropertyId] = useState("");
+  const [initialMonth] = useState(() => bookingToday().slice(0, 7));
+  const [houses, setHouses] = useState<BookingGalleryCard[] | null>(null);
+  const [months, setMonths] = useState<Record<string, BookingGalleryMonthState>>({});
+  const [houseMonths, setHouseMonths] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [requestedPage, setRequestedPage] = useState(1);
   const [selected, setSelected] = useState<GallerySelection | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [monthError, setMonthError] = useState("");
-  const [retry, setRetry] = useState(0);
   const trigger = useRef<HTMLElement | null>(null);
-  const monthInput = useRef<HTMLInputElement | null>(null);
-  const requestSequence = useRef(0);
+  const searchInput = useRef<HTMLInputElement | null>(null);
+  const monthStates = useRef<Record<string, BookingGalleryMonthState>>({});
+  const requestSequence = useRef<Record<string, number>>({});
+  const mounted = useRef(true);
   const today = bookingToday();
 
-  const load = useCallback(async (isActive: () => boolean) => {
-    const request = ++requestSequence.current;
-    setLoading(true);
-    setError("");
+  const loadMonth = useCallback(async (month: string, refresh = false) => {
+    const current = monthStates.current[month];
+    if (!refresh && current && current.status !== "error") return;
+    const request = (requestSequence.current[month] ?? 0) + 1;
+    requestSequence.current[month] = request;
+    const loading = { ...monthStates.current, [month]: { status: "loading" as const } };
+    monthStates.current = loading;
+    if (mounted.current) setMonths(loading);
     try {
-      const result = await listBookingGalleryAction(query);
-      if (!isActive() || request !== requestSequence.current) return;
-      if (result.ok) {
-        setLoaded({ query, cards: result.data });
-        if (query.zone === null) setZones([...new Set(result.data.map(card => card.zone).filter((zone): zone is string => !!zone))].sort((a, b) => a.localeCompare(b, "th")));
-      } else {
-        setLoaded(null);
-        setError(result.message);
-      }
+      const result = await listBookingGalleryAction(parseBookingGalleryQuery({ month }));
+      if (!mounted.current || request !== requestSequence.current[month]) return;
+      const state: BookingGalleryMonthState = result.ok ? { status: "ready", cards: result.data } : { status: "error", message: result.message };
+      const next = { ...monthStates.current, [month]: state };
+      monthStates.current = next;
+      setMonths(next);
+      if (result.ok && month === initialMonth) setHouses(result.data);
     } catch {
-      if (isActive() && request === requestSequence.current) { setLoaded(null); setError("โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง"); }
-    } finally {
-      if (isActive() && request === requestSequence.current) setLoading(false);
+      if (!mounted.current || request !== requestSequence.current[month]) return;
+      const next = { ...monthStates.current, [month]: { status: "error" as const, message: loadError } };
+      monthStates.current = next;
+      setMonths(next);
     }
-  }, [query]);
+  }, [initialMonth]);
 
   useEffect(() => {
-    let active = true;
-    const timer = setTimeout(() => { void load(() => active); }, 0);
-    return () => { active = false; clearTimeout(timer); };
-  }, [load, retry]);
+    mounted.current = true;
+    const timer = setTimeout(() => { void loadMonth(initialMonth); }, 0);
+    return () => { mounted.current = false; clearTimeout(timer); };
+  }, [initialMonth, loadMonth]);
 
-  const updateQuery = (values: Partial<Pick<BookingGalleryQuery, "month" | "zone" | "order">>) => {
-    const result = tryBookingGalleryQuery(query, values);
-    if (result.ok) { requestSequence.current++; setError(""); setMonthError(""); setQuery(result.query); }
-    else setMonthError(result.message);
-  };
   const choose = (selection: GallerySelection, element: HTMLElement) => { trigger.current = element; setSelected(selection); };
-  const currentSnapshot = currentBookingGallerySnapshot(query, loaded, error);
-  const cards = currentSnapshot?.cards ?? [];
-  const creationTarget = cards.some(card => card.propertyId === createPropertyId) ? createPropertyId : cards[0]?.propertyId;
-  const previousMonth = adjacentBookingGalleryMonth(query.month, -1);
-  const nextMonth = adjacentBookingGalleryMonth(query.month, 1);
+  const page = paginateBookingGallery(houses ?? [], search, requestedPage);
+  const initialState = months[initialMonth];
 
   return <main className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div><h1 className="text-2xl font-semibold">การจอง</h1><p className="text-sm text-muted-foreground">ปฏิทินการจองของบ้านทั้งหมด</p></div>
-      <div className="flex items-center gap-2">
-        <select aria-label="บ้านสำหรับการจองใหม่" value={creationTarget ?? ""} disabled={loading || cards.length === 0}
-          onChange={event => setCreatePropertyId(event.target.value)} className="h-8 max-w-36 rounded-lg border border-input bg-background px-2 text-sm">
-          {cards.map(card => <option key={card.propertyId} value={card.propertyId}>{card.title}</option>)}
-        </select>
-        <Button type="button" size="sm" disabled={!creationTarget} onClick={event => { if (creationTarget) choose({ propertyId: creationTarget }, event.currentTarget); }}><Plus aria-hidden="true" />สร้างการจอง</Button>
-      </div>
+    <div><h1 className="text-2xl font-semibold">การจอง</h1><p className="text-sm text-muted-foreground">ปฏิทินการจองของบ้านทั้งหมด</p></div>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
+      <Input ref={searchInput} type="search" aria-label="ค้นหาชื่อบ้านหรือรหัส DV" placeholder="ค้นหาชื่อบ้านหรือรหัส DV" value={search}
+        onChange={event => { setSearch(event.target.value); setRequestedPage(1); }} className="max-w-sm" />
+      {houses && <p role="status" className="text-sm text-muted-foreground">{page.total === 0 ? "ไม่พบบ้าน" : `แสดง ${(page.page - 1) * 6 + 1}–${Math.min(page.page * 6, page.total)} จาก ${page.total} บ้าน`}</p>}
     </div>
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
-      <div className="flex items-center gap-1">
-        <Button type="button" variant="outline" size="icon-sm" aria-label="เดือนก่อนหน้า" disabled={!previousMonth} onClick={() => { if (previousMonth) updateQuery({ month: previousMonth }); }}><ChevronLeft aria-hidden="true" /></Button>
-        <label className="sr-only" htmlFor="booking-gallery-month">เดือนที่แสดง</label>
-        <input ref={monthInput} id="booking-gallery-month" type="month" min="1000-01" max="9999-11" aria-label="เดือนที่แสดง" aria-invalid={!!monthError} aria-describedby={monthError ? "booking-gallery-month-error" : undefined}
-          value={query.month} onChange={event => updateQuery({ month: event.target.value })} className="h-7 w-32 rounded-lg border border-input bg-background px-2 text-sm" />
-        <Button type="button" variant="outline" size="icon-sm" aria-label="เดือนถัดไป" disabled={!nextMonth} onClick={() => { if (nextMonth) updateQuery({ month: nextMonth }); }}><ChevronRight aria-hidden="true" /></Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => updateQuery({ month: bookingToday().slice(0, 7) })}>วันนี้</Button>
-      </div>
-      <strong className="mr-auto text-sm font-medium">{monthLabel(query.month)}</strong>
-      <select aria-label="กรองตามโซน" value={query.zone ?? ""} onChange={event => updateQuery({ zone: event.target.value || null })} className="h-8 rounded-lg border border-input bg-background px-2 text-sm">
-        <option value="">ทุกโซน</option>{zones.map(zone => <option key={zone} value={zone}>{zone}</option>)}
-      </select>
-      <select aria-label="เรียงลำดับบ้าน" value={query.order} onChange={event => updateQuery({ order: event.target.value === "booked" ? "booked" : "title" })} className="h-8 rounded-lg border border-input bg-background px-2 text-sm">
-        <option value="title">เรียงตามชื่อ</option><option value="booked">คืนที่ติดจองมากสุด</option>
-      </select>
-    </div>
-    {monthError && <p id="booking-gallery-month-error" role="alert" className="text-sm text-destructive">{monthError}</p>}
-    {error && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">{error}<Button type="button" size="sm" variant="outline" onClick={() => setRetry(value => value + 1)}>ลองอีกครั้ง</Button></div>}
-    <div aria-busy={loading}>
-      {cards.length > 0 ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {cards.map(card => <GalleryCard key={card.propertyId} card={card} month={query.month} today={today}
-              onBookingSelect={(propertyId, bookingId, element) => choose({ propertyId, bookingId }, element)}
-              onCreateSelect={(propertyId, initialDate, element) => choose({ propertyId, initialDate }, element)} />)}
-          </div> : loading || (!error && !currentSnapshot) ? <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดปฏิทินการจอง…</p>
-        : !error && <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">ไม่พบบ้านใน{query.zone ? `โซน ${query.zone}` : "รายการ"}</p>}
-    </div>
+    {!houses && (initialState?.status === "error" ? <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
+      {initialState.message}<Button type="button" size="sm" variant="outline" onClick={() => { void loadMonth(initialMonth); }}>ลองอีกครั้ง</Button>
+    </div> : <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดปฏิทินการจอง…</p>)}
+    {houses && page.total === 0 && <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">{search.trim() ? "ไม่พบบ้านที่ตรงกับคำค้นหา" : "ไม่พบบ้านในรายการ"}</p>}
+    {houses && page.cards.length > 0 && <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {page.cards.map(house => {
+        const month = houseMonths[house.propertyId] ?? initialMonth;
+        const state = bookingGalleryCardForMonth(house.propertyId, month, months);
+        return <GalleryCard key={house.propertyId} house={house} card={state.card} month={month} today={today}
+          loading={state.status === "loading"} error={state.status === "ready" && !state.card ? "ไม่พบข้อมูลปฏิทินของบ้านนี้" : state.message}
+          onMonthChange={(propertyId, nextMonth) => { setHouseMonths(current => ({ ...current, [propertyId]: nextMonth })); void loadMonth(nextMonth); }}
+          onRetry={retryMonth => { void loadMonth(retryMonth, true); }}
+          onBookingSelect={(propertyId, bookingId, element) => choose({ propertyId, bookingId }, element)}
+          onCreateSelect={(propertyId, initialDate, element) => choose({ propertyId, initialDate }, element)} />;
+      })}
+    </div>}
+    {houses && page.pageCount > 1 && <Pagination>
+      <PaginationContent className="flex-wrap justify-center">
+        <PaginationItem><Button type="button" variant="outline" size="icon-sm" aria-label="หน้าก่อนหน้า" disabled={page.page <= 1} onClick={() => setRequestedPage(page.page - 1)}><ChevronLeft aria-hidden="true" /></Button></PaginationItem>
+        {bookingGalleryPageNumbers(page.page, page.pageCount).map((number, index) => number === "ellipsis" ? <PaginationItem key={`ellipsis-${index}`}><PaginationEllipsis /></PaginationItem> : <PaginationItem key={number}>
+          <Button type="button" variant={number === page.page ? "outline" : "ghost"} size="icon-sm" aria-label={`หน้า ${number}`} aria-current={number === page.page ? "page" : undefined}
+            onClick={() => setRequestedPage(number)}>{number}</Button>
+        </PaginationItem>)}
+        <PaginationItem><Button type="button" variant="outline" size="icon-sm" aria-label="หน้าถัดไป" disabled={page.page >= page.pageCount} onClick={() => setRequestedPage(page.page + 1)}><ChevronRight aria-hidden="true" /></Button></PaginationItem>
+      </PaginationContent>
+    </Pagination>}
     {selected && <BookingGalleryEditorDialog key={`${selected.propertyId}:${selected.bookingId ?? "new"}:${selected.initialDate ?? ""}`}
       propertyId={selected.propertyId} bookingId={selected.bookingId} initialDate={selected.initialDate} triggerRef={trigger}
-      onClose={() => { setSelected(null); requestAnimationFrame(() => { if (trigger.current?.isConnected && !(trigger.current instanceof HTMLButtonElement && trigger.current.disabled)) trigger.current?.focus(); else monthInput.current?.focus(); }); }}
-      onSaved={() => { void load(() => true); }} />}
+      onClose={() => { setSelected(null); requestAnimationFrame(() => { if (trigger.current?.isConnected && !(trigger.current instanceof HTMLButtonElement && trigger.current.disabled)) trigger.current.focus(); else searchInput.current?.focus(); }); }}
+      onSaved={() => { for (const month of bookingGalleryMonthsToRefresh(monthStates.current)) void loadMonth(month, true); }} />}
   </main>;
 }
