@@ -1,17 +1,21 @@
 import "server-only";
 import { assertBookingNotPast, bookingToday } from "../../lib/booking-availability.ts";
-import { buildBookingGallery, parseBookingGalleryQuery } from "../../lib/booking-gallery.ts";
+import { buildBookingGallery, parseGalleryCalendarInput, parseGalleryPageInput, type GalleryHousePage } from "../../lib/booking-gallery.ts";
 import { bookingId, parseBookingCreate, parseBookingRange, parseBookingUpdate, type BookingResult } from "../../lib/house-bookings.ts";
 import type { HouseBookingsRepository } from "../repositories/house-bookings.ts";
 
-export async function listBookingGallery(repository: HouseBookingsRepository, raw: unknown) {
-  const query = parseBookingGalleryQuery(raw);
-  const houses = await repository.galleryHouses(query.zone);
+export async function listBookingGalleryHouses(repository: HouseBookingsRepository, raw: unknown): Promise<GalleryHousePage> {
+  const input = parseGalleryPageInput(raw);
+  const result = await repository.galleryHousePage(input);
+  return { houses: result.houses, total: result.total, page: input.page, pageCount: Math.max(1, Math.ceil(result.total / 6)) };
+}
+
+export async function listBookingGalleryCalendars(repository: HouseBookingsRepository, raw: unknown) {
+  const input = parseGalleryCalendarInput(raw);
+  const houses = await repository.galleryHousesByPropertyIds(input.propertyIds);
   if (houses.length === 0) return [];
-  const bookings = await repository.galleryBookings(houses, query.start, query.end);
-  const cards = buildBookingGallery(houses, bookings, query.month);
-  const byTitle = (left: (typeof cards)[number], right: (typeof cards)[number]) => left.title.localeCompare(right.title, "th") || left.propertyId.localeCompare(right.propertyId);
-  return cards.sort((left, right) => query.order === "booked" ? right.bookedNights - left.bookedNights || byTitle(left, right) : byTitle(left, right));
+  const bookings = await repository.galleryBookingSlices(houses, input.start, input.end);
+  return buildBookingGallery(houses, bookings, input.month);
 }
 
 export async function requireBookingHouse(repository: HouseBookingsRepository, propertyId: unknown) {

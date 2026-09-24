@@ -1,97 +1,152 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { listBookingGalleryAction } from "@/app/admin/bookings/actions";
+import { listBookingGalleryCalendarsAction, listBookingGalleryHousesAction } from "@/app/admin/bookings/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination";
 import { bookingToday } from "@/lib/booking-availability";
-import { bookingGalleryCardForMonth, bookingGalleryMonthsToRefresh, bookingGalleryPageNumbers, paginateBookingGallery, parseBookingGalleryQuery, type BookingGalleryCard, type BookingGalleryMonthState } from "@/lib/booking-gallery";
+import { GalleryPairCache, groupGalleryPairsByMonth, type GalleryVisiblePair } from "@/lib/booking-gallery-cache";
+import { bookingGalleryPageNumbers, type GalleryHousePage } from "@/lib/booking-gallery";
 import { BookingGalleryCard as GalleryCard } from "./booking-gallery-card";
-import { BookingGalleryEditorDialog } from "./booking-gallery-editor-dialog";
 
-export interface GallerySelection {
-  propertyId: string;
-  bookingId?: string;
-  initialDate?: string;
-}
+const BookingGalleryEditorDialog = dynamic(() => import("./booking-gallery-editor-dialog").then(module => module.BookingGalleryEditorDialog), {
+  loading: () => <p role="status" className="rounded-lg border bg-card p-4 text-sm">กำลังเปิดการจอง…</p>,
+});
+
+export interface GallerySelection { propertyId: string; bookingId?: string; initialDate?: string }
+type PageState =
+  | { status: "loading"; key: string }
+  | { status: "ready"; key: string; data: GalleryHousePage }
+  | { status: "error"; key: string; message: string };
 
 const loadError = "โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง";
+const pageError = "โหลดรายการบ้านไม่สำเร็จ กรุณาลองอีกครั้ง";
 
 export function BookingCalendarGallery() {
   const [initialMonth] = useState(() => bookingToday().slice(0, 7));
-  const [houses, setHouses] = useState<BookingGalleryCard[] | null>(null);
-  const [months, setMonths] = useState<Record<string, BookingGalleryMonthState>>({});
-  const [houseMonths, setHouseMonths] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  const [committedSearch, setCommittedSearch] = useState("");
   const [requestedPage, setRequestedPage] = useState(1);
+  const [pageState, setPageState] = useState<PageState>({ status: "loading", key: ":1" });
+  const [pageRetry, setPageRetry] = useState(0);
+  const [houseMonths, setHouseMonths] = useState<Record<string, string>>({});
+  const [cacheStates, setCacheStates] = useState(() => ({} as ReturnType<GalleryPairCache["snapshot"]>));
   const [selected, setSelected] = useState<GallerySelection | null>(null);
   const trigger = useRef<HTMLElement | null>(null);
   const searchInput = useRef<HTMLInputElement | null>(null);
-  const monthStates = useRef<Record<string, BookingGalleryMonthState>>({});
-  const requestSequence = useRef<Record<string, number>>({});
   const mounted = useRef(true);
+  const [cache] = useState(() => new GalleryPairCache());
   const today = bookingToday();
+  const publishCache = useCallback(() => setCacheStates(cache.snapshot(Date.now())), [cache]);
 
-  const loadMonth = useCallback(async (month: string, refresh = false) => {
-    const current = monthStates.current[month];
-    if (!refresh && current && current.status !== "error") return;
-    const request = (requestSequence.current[month] ?? 0) + 1;
-    requestSequence.current[month] = request;
-    const loading = { ...monthStates.current, [month]: { status: "loading" as const } };
-    monthStates.current = loading;
-    if (mounted.current) setMonths(loading);
-    try {
-      const result = await listBookingGalleryAction(parseBookingGalleryQuery({ month }));
-      if (!mounted.current || request !== requestSequence.current[month]) return;
-      const state: BookingGalleryMonthState = result.ok ? { status: "ready", cards: result.data } : { status: "error", message: result.message };
-      const next = { ...monthStates.current, [month]: state };
-      monthStates.current = next;
-      setMonths(next);
-      if (result.ok && month === initialMonth) setHouses(result.data);
-    } catch {
-      if (!mounted.current || request !== requestSequence.current[month]) return;
-      const next = { ...monthStates.current, [month]: { status: "error" as const, message: loadError } };
-      monthStates.current = next;
-      setMonths(next);
-    }
-  }, [initialMonth]);
+  useEffect(() => {
+    const timer = setTimeout(() => setCommittedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     mounted.current = true;
-    const timer = setTimeout(() => { void loadMonth(initialMonth); }, 0);
-    return () => { mounted.current = false; clearTimeout(timer); };
-  }, [initialMonth, loadMonth]);
+    return () => { mounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (search.trim() !== committedSearch) return;
+    const key = `${committedSearch}:${requestedPage}`;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setPageState({ status: "loading", key });
+      try {
+        const result = await listBookingGalleryHousesAction({ search: committedSearch, page: requestedPage });
+        if (cancelled) return;
+        if (!result.ok) { setPageState({ status: "error", key, message: result.message }); return; }
+        if (requestedPage > result.data.pageCount) { setRequestedPage(result.data.pageCount); return; }
+        setPageState({ status: "ready", key, data: result.data });
+      } catch {
+        if (!cancelled) setPageState({ status: "error", key, message: pageError });
+      }
+    }, 0);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [search, committedSearch, requestedPage, pageRetry]);
+
+  const loadPairs = useCallback(async (pairs: GalleryVisiblePair[], force = false) => {
+    const groups = force
+      ? [...new Map(pairs.map(pair => [pair.month, pairs.filter(candidate => candidate.month === pair.month).map(candidate => candidate.propertyId)]))].map(([month, propertyIds]) => ({ month, propertyIds }))
+      : groupGalleryPairsByMonth(cache, pairs, Date.now());
+    for (const group of groups) {
+      const tokens = group.propertyIds.map(propertyId => ({ propertyId, token: cache.start(propertyId, group.month, Date.now(), force) }))
+        .filter((item): item is { propertyId: string; token: number } => item.token !== null);
+      if (tokens.length === 0) continue;
+      if (mounted.current) publishCache();
+      void (async () => {
+        try {
+          const result = await listBookingGalleryCalendarsAction({ month: group.month, propertyIds: tokens.map(item => item.propertyId) });
+          if (!mounted.current) return;
+          if (!result.ok) {
+            for (const item of tokens) cache.reject(item.propertyId, group.month, item.token, result.message);
+          } else {
+            const cards = new Map(result.data.map(card => [card.propertyId, card]));
+            for (const item of tokens) {
+              const card = cards.get(item.propertyId);
+              if (card) cache.resolve(item.propertyId, group.month, item.token, card, Date.now());
+              else cache.reject(item.propertyId, group.month, item.token, "ไม่พบข้อมูลปฏิทินของบ้านนี้");
+            }
+          }
+        } catch {
+          if (!mounted.current) return;
+          for (const item of tokens) cache.reject(item.propertyId, group.month, item.token, loadError);
+        }
+        if (mounted.current) publishCache();
+      })();
+    }
+  }, [cache, publishCache]);
+
+  const currentKey = `${committedSearch}:${requestedPage}`;
+  const page = search.trim() === committedSearch && pageState.key === currentKey && pageState.status === "ready" ? pageState.data : null;
+  const houses = page?.houses;
+
+  useEffect(() => {
+    if (!houses?.length) return;
+    const pairs = houses.map(house => ({ propertyId: house.property_id, month: houseMonths[house.property_id] ?? initialMonth }));
+    const timer = setTimeout(() => { void loadPairs(pairs); }, 0);
+    return () => clearTimeout(timer);
+  }, [houses, houseMonths, initialMonth, loadPairs, cacheStates]);
+
+  useEffect(() => {
+    const nextExpiry = cache.nextExpiry(Date.now());
+    if (nextExpiry === null) return;
+    const timer = setTimeout(publishCache, Math.max(0, nextExpiry - Date.now()));
+    return () => clearTimeout(timer);
+  }, [cache, cacheStates, publishCache]);
 
   const choose = (selection: GallerySelection, element: HTMLElement) => { trigger.current = element; setSelected(selection); };
-  const page = paginateBookingGallery(houses ?? [], search, requestedPage);
-  const initialState = months[initialMonth];
 
   return <main className="space-y-5">
     <div><h1 className="text-2xl font-semibold">การจอง</h1><p className="text-sm text-muted-foreground">ปฏิทินการจองของบ้านทั้งหมด</p></div>
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
       <Input ref={searchInput} type="search" aria-label="ค้นหาชื่อบ้านหรือรหัส DV" placeholder="ค้นหาชื่อบ้านหรือรหัส DV" value={search}
         onChange={event => { setSearch(event.target.value); setRequestedPage(1); }} className="max-w-sm" />
-      {houses && <p role="status" className="text-sm text-muted-foreground">{page.total === 0 ? "ไม่พบบ้าน" : `แสดง ${(page.page - 1) * 6 + 1}–${Math.min(page.page * 6, page.total)} จาก ${page.total} บ้าน`}</p>}
+      {page && <p role="status" className="text-sm text-muted-foreground">{page.total === 0 ? "ไม่พบบ้าน" : `แสดง ${(page.page - 1) * 6 + 1}–${Math.min(page.page * 6, page.total)} จาก ${page.total} บ้าน`}</p>}
     </div>
-    {!houses && (initialState?.status === "error" ? <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
-      {initialState.message}<Button type="button" size="sm" variant="outline" onClick={() => { void loadMonth(initialMonth); }}>ลองอีกครั้ง</Button>
-    </div> : <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดปฏิทินการจอง…</p>)}
-    {houses && page.total === 0 && <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">{search.trim() ? "ไม่พบบ้านที่ตรงกับคำค้นหา" : "ไม่พบบ้านในรายการ"}</p>}
-    {houses && page.cards.length > 0 && <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {page.cards.map(house => {
-        const month = houseMonths[house.propertyId] ?? initialMonth;
-        const state = bookingGalleryCardForMonth(house.propertyId, month, months);
-        return <GalleryCard key={house.propertyId} house={house} card={state.card} month={month} today={today}
-          loading={state.status === "loading"} error={state.status === "ready" && !state.card ? "ไม่พบข้อมูลปฏิทินของบ้านนี้" : state.message}
-          onMonthChange={(propertyId, nextMonth) => { setHouseMonths(current => ({ ...current, [propertyId]: nextMonth })); void loadMonth(nextMonth); }}
-          onRetry={retryMonth => { void loadMonth(retryMonth, true); }}
+    {!page && (pageState.status === "error" && pageState.key === currentKey ? <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
+      {pageState.message}<Button type="button" size="sm" variant="outline" onClick={() => setPageRetry(value => value + 1)}>ลองอีกครั้ง</Button>
+    </div> : <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดรายการบ้าน…</p>)}
+    {page && page.total === 0 && <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">{search.trim() ? "ไม่พบบ้านที่ตรงกับคำค้นหา" : "ไม่พบบ้านในรายการ"}</p>}
+    {houses && houses.length > 0 && <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {houses.map(house => {
+        const month = houseMonths[house.property_id] ?? initialMonth;
+        const state = cacheStates[`${house.property_id}:${month}`];
+        return <GalleryCard key={house.property_id} house={house} card={state?.status === "ready" ? state.card : null} month={month} today={today}
+          loading={!state || state.status === "loading"} error={state?.status === "error" ? state.message : ""}
+          onMonthChange={(propertyId, nextMonth) => setHouseMonths(current => ({ ...current, [propertyId]: nextMonth }))}
+          onRetry={retryMonth => { void loadPairs([{ propertyId: house.property_id, month: retryMonth }], true); }}
           onBookingSelect={(propertyId, bookingId, element) => choose({ propertyId, bookingId }, element)}
           onCreateSelect={(propertyId, initialDate, element) => choose({ propertyId, initialDate }, element)} />;
       })}
     </div>}
-    {houses && page.pageCount > 1 && <Pagination>
+    {page && page.pageCount > 1 && <Pagination>
       <PaginationContent className="flex-wrap justify-center">
         <PaginationItem><Button type="button" variant="outline" size="icon-sm" aria-label="หน้าก่อนหน้า" disabled={page.page <= 1} onClick={() => setRequestedPage(page.page - 1)}><ChevronLeft aria-hidden="true" /></Button></PaginationItem>
         {bookingGalleryPageNumbers(page.page, page.pageCount).map((number, index) => number === "ellipsis" ? <PaginationItem key={`ellipsis-${index}`}><PaginationEllipsis /></PaginationItem> : <PaginationItem key={number}>
@@ -104,6 +159,11 @@ export function BookingCalendarGallery() {
     {selected && <BookingGalleryEditorDialog key={`${selected.propertyId}:${selected.bookingId ?? "new"}:${selected.initialDate ?? ""}`}
       propertyId={selected.propertyId} bookingId={selected.bookingId} initialDate={selected.initialDate} triggerRef={trigger}
       onClose={() => { setSelected(null); requestAnimationFrame(() => { if (trigger.current?.isConnected && !(trigger.current instanceof HTMLButtonElement && trigger.current.disabled)) trigger.current.focus(); else searchInput.current?.focus(); }); }}
-      onSaved={() => { for (const month of bookingGalleryMonthsToRefresh(monthStates.current)) void loadMonth(month, true); }} />}
+      onSaved={() => {
+        cache.invalidateHouse(selected.propertyId);
+        publishCache();
+        const visible = houses?.find(house => house.property_id === selected.propertyId);
+        if (visible) void loadPairs([{ propertyId: selected.propertyId, month: houseMonths[selected.propertyId] ?? initialMonth }]);
+      }} />}
   </main>;
 }

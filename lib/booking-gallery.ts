@@ -1,5 +1,5 @@
 import { bookingToday } from "./booking-availability.ts";
-import type { Booking } from "./house-bookings.ts";
+import { bookingId, type Booking } from "./house-bookings.ts";
 
 export interface BookingGalleryQuery {
   month: string;
@@ -14,6 +14,32 @@ export interface BookingGalleryHouse {
   property_id: string;
   title: string;
   location_zone: string | null;
+}
+export type GalleryHouseSummary = BookingGalleryHouse;
+export interface GalleryHousePage { houses: GalleryHouseSummary[]; total: number; page: number; pageCount: number }
+export interface GalleryPageInput { page: number; search: string }
+export interface GalleryCalendarInput { month: string; start: string; end: string; propertyIds: string[] }
+export interface GalleryBookingSlice { id: string; listing_id: string; houseid: string; check_in: string; check_out: string; status: string | null }
+
+export function parseGalleryPageInput(input: unknown): GalleryPageInput {
+  if (input != null && (typeof input !== "object" || Array.isArray(input))) throw new Error("ข้อมูลไม่ถูกต้อง");
+  const raw = (input ?? {}) as Record<string, unknown>;
+  const page = raw.page === undefined ? 1 : raw.page;
+  const search = raw.search === undefined ? "" : raw.search;
+  if (typeof page !== "number" || !Number.isInteger(page) || page < 1 || page > 100000) throw new Error("หน้าไม่ถูกต้อง");
+  if (typeof search !== "string" || search.trim().length > 120) throw new Error("คำค้นหาไม่ถูกต้อง");
+  return { page, search: search.trim() };
+}
+
+export function parseGalleryCalendarInput(input: unknown): GalleryCalendarInput {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("ข้อมูลไม่ถูกต้อง");
+  const raw = input as Record<string, unknown>;
+  if (typeof raw.month !== "string") throw new Error("เดือนไม่ถูกต้อง");
+  const { start, end } = monthRange(raw.month);
+  if (!Array.isArray(raw.propertyIds) || raw.propertyIds.length < 1 || raw.propertyIds.length > 6) throw new Error("รหัสบ้านไม่ถูกต้อง");
+  const propertyIds = raw.propertyIds.map(bookingId);
+  if (new Set(propertyIds).size !== propertyIds.length) throw new Error("รหัสบ้านซ้ำกัน");
+  return { month: raw.month, start, end, propertyIds };
 }
 
 export interface BookingGalleryDay {
@@ -96,7 +122,7 @@ export function parseBookingGalleryQuery(input: unknown): BookingGalleryQuery {
   return { month, start, end, zone: trimmedZone || null, order };
 }
 
-export function buildBookingGallery(houses: BookingGalleryHouse[], bookings: Booking[], month: string): BookingGalleryCard[] {
+export function buildBookingGallery(houses: BookingGalleryHouse[], bookings: Array<GalleryBookingSlice | Booking>, month: string): BookingGalleryCard[] {
   const { start, end } = monthRange(month);
   const firstDay = Date.parse(`${start}T00:00:00Z`);
   const lastDay = Date.parse(`${end}T00:00:00Z`);

@@ -8,7 +8,7 @@ const row: Booking = { id: "1", booking_code: "BK1", listing_id: "listing1", hou
 function memory() {
   let saved = { ...row };
   const repository: HouseBookingsRepository = {
-    galleryHouses: async () => [], galleryBookings: async () => [],
+    galleryHousePage: async () => ({ houses: [], total: 0 }), galleryHousesByPropertyIds: async () => [], galleryBookingSlices: async () => [],
     house: async property => property === "1024" ? { id: "listing1", property_id: "1024", title: "test" } : { id: "listing2", property_id: property, title: "other" },
     get: async (house, id) => house.id === saved.listing_id && id === saved.id ? saved : null,
     create: async () => { throw new Error("unused"); },

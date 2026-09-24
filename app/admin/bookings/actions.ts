@@ -1,11 +1,18 @@
 "use server";
 
 import { requireBookingAdmin } from "../../../server/auth/bookings";
-import { bookingResult, listBookingGallery } from "../../../server/services/house-bookings";
+import { bookingResult, listBookingGalleryCalendars, listBookingGalleryHouses } from "../../../server/services/house-bookings";
 
-export async function listBookingGalleryAction(input: unknown) {
+export async function listBookingGalleryHousesAction(input: unknown) {
   return bookingResult(async () => {
     const { repository } = await requireBookingAdmin();
-    return listBookingGallery(repository, input);
+    return listBookingGalleryHouses(repository, input);
+  });
+}
+
+export async function listBookingGalleryCalendarsAction(input: unknown) {
+  return bookingResult(async () => {
+    const { repository } = await requireBookingAdmin();
+    return listBookingGalleryCalendars(repository, input);
   });
 }
