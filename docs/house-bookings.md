@@ -47,8 +47,8 @@ holiday source is available; the Gallery uses actual booking statuses for now.
 An unrecognized saved status other than `cancelled`
 appears as a neutral **สถานะไม่ทราบ (ติดจอง)** date with a booking edit target,
 matching the availability rule that treats it as occupied until corrected.
-The card's booked-night count includes those dates, counts each date once, and
-excludes repair and cancelled dates. Checkout remains exclusive. Unbooked dates
+Card headers show only the house title and DV ID; province/zone and booked-night
+counts are not displayed. Checkout remains exclusive. Unbooked dates
 display as free. Both routes use
 the existing booking permissions, service and repository paths. This addition
 requires no database schema or RLS change.
