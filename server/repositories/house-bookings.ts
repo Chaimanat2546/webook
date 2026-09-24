@@ -63,7 +63,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
     },
     async galleryBookingSlices(houses: GalleryHouseSummary[], start: string, end: string): Promise<GalleryBookingSlice[]> {
       const pairs = houses.filter(house => /^[a-zA-Z0-9-]+$/.test(house.id) && /^[1-9]\d{0,18}$/.test(house.property_id))
-        .map(house => `(listing_id.eq.${house.id},houseid.eq.${house.property_id})`);
+        .map(house => `and(listing_id.eq.${house.id},houseid.eq.${house.property_id})`);
       if (pairs.length !== houses.length) throw new Error("invalid_gallery_house_pair");
       if (pairs.length === 0) return [];
       const allowed = new Set(houses.map(house => `${house.id}:${house.property_id}`));
