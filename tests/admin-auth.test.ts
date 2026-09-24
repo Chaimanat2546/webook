@@ -8,6 +8,7 @@ import {
   canManageHousePrices,
   canManageHouseRating,
   canUseAccommodation,
+  canUseBooking,
   canViewHousePrices,
   pickAdminUser,
 } from "../server/auth/admin.ts";
@@ -93,6 +94,20 @@ describe("admin authorization", () => {
     });
 
     assert.deepEqual(user, { allow_tools: { allow_accommodation: true }, mid: 2, role_id: 1 });
+  });
+
+  it("does not show Booking navigation for an email-only booking permission", () => {
+    const emailOnlyUser = pickAdminUser({
+      authUser: { id: "auth-1", email: "admin@example.com" },
+      byUid: null,
+      byEmail: { allow_tools: { allow_booking: true }, mid: 2, role_id: 1 },
+    });
+    assert.equal(canUseBooking(emailOnlyUser), true);
+
+    const layoutSource = readFileSync(new URL("../app/admin/layout.tsx", import.meta.url), "utf8");
+    assert.match(layoutSource, /await requireBookingAdmin\(\)/);
+    assert.match(layoutSource, /canUseBooking=\{bookingAccess\.ok\}/);
+    assert.doesNotMatch(layoutSource, /canUseBooking\(adminUser\)/);
   });
 
   it("does not include a local auth override", () => {
