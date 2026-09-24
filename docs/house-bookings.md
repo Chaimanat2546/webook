@@ -18,7 +18,8 @@ Open **การจอง** from the desktop or mobile actions for a house. The 
 
 Open **การจอง** in the primary admin navigation for `/admin/bookings`. This
 shows one monthly calendar per house, including houses without bookings. Search
-by house title or DV property ID; six matching houses appear per page. The
+by house title substring or exact raw/DV-prefixed property ID; six matching
+houses appear per server page with an exact total count. The
 grid has three columns on desktop and one on mobile. Each card has its own Thai
 month heading and previous/next controls, so houses can display different
 months. Select a booked date to edit it, an available future date to start a
@@ -30,8 +31,9 @@ money and notes on the right. On narrow screens the modal fills the width and
 stacks the stay section above the other fields in a scrollable view. The same
 validation, save/cancel actions, stale-revision and overlap protection, and
 unsaved-change confirmation apply. Closing returns focus to the selected card
-control or search field. A successful save or cancellation refreshes every
-visited month, including dates in other months affected by a changed stay.
+control or search field. A successful save or cancellation invalidates every
+cached month for that house, including cross-month stays, and reloads its
+currently visible month. Other houses do not refetch for that mutation.
 If a month fails to load, its card shows an error and **ลองอีกครั้ง** instead
 of stale availability. Editor errors keep entered values available
 for correction and retry.
@@ -52,6 +54,18 @@ counts are not displayed. Checkout remains exclusive. Unbooked dates
 display as free. Both routes use
 the existing booking permissions, service and repository paths. This addition
 requires no database schema or RLS change.
+
+The Gallery reads metadata and availability through separate authorized
+actions. Calendar requests contain one to six validated property IDs and one
+month. The repository resolves their listing IDs, selects only
+`id,listing_id,houseid,check_in,check_out,status` from bookings, filters exact
+listing/property pairs, and paginates dense results in 500-row batches. The
+client caches up to 24 house/month pairs for 30 seconds; late responses cannot
+restore data invalidated by a save. Search waits 250 ms before requesting a
+page, and the existing editor is loaded only when selected. The page uses the
+database's deterministic title/property ID ordering, which can differ from
+JavaScript Thai locale order. Partial numeric ID search would require a
+database cast or index and is not part of this bounded query.
 
 ## Access and data flow
 
@@ -112,8 +126,9 @@ Production has not been modified.
 - Browser verification used the actual calendar/editor components with local
   fixture actions: confirmed red, waiting green, 5 -> 6 nights with total 30000
   unchanged, successful fixture save, and a 320px mobile sheet with no field overflow.
-- Run `npm run build` before full tests because the checked-in Service Worker
-  includes a source revision. Keep its regenerated output with the feature.
+- Run `npm run build:pwa` before full tests because the checked-in Service
+  Worker includes a source revision. Keep its regenerated output with the
+  feature.
 
 The legacy-upgrade Docker test also checks populated-table refusal, RLS retention,
 customer privilege isolation and idempotence. Run tests/legacy-booking-upgrade.test.ts

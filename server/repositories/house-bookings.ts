@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BookingGalleryHouse } from "../../lib/booking-gallery.ts";
+import type { BookingGalleryHouse, GalleryBookingSlice, GalleryHouseSummary, GalleryPageInput } from "../../lib/booking-gallery.ts";
 import { CUSTOMER_FIELDS, normalizeBookingPhone, type BookingCustomerDetail, type BookingCustomerInput } from "../../lib/booking-customers.ts";
 import { bookingId, record, type Booking, type BookingCreate, type BookingCustomer, type BookingUpdate } from "../../lib/house-bookings.ts";
 
@@ -32,27 +32,50 @@ export function mapBookingGalleryHouse(value: unknown): BookingGalleryHouse {
   const row = record(value);
   return { id: text(row.id), property_id: bookingId(row.property_id), title: text(row.title), location_zone: nullableText(row.location_zone) };
 }
+function galleryPropertySearch(search: string): string | null {
+  // Only an exact raw or DV-prefixed decimal ID enters the PostgREST or grammar.
+  const property = /^(?:dv\s*)?([1-9]\d{0,18})$/i.exec(search)?.[1];
+  return property && BigInt(property) <= BigInt("9223372036854775807") ? property : null;
+}
+function mapGalleryBookingSlice(value: unknown): GalleryBookingSlice {
+  const row = record(value);
+  return { id: bookingId(row.id), listing_id: text(row.listing_id), houseid: bookingId(row.houseid), check_in: text(row.check_in), check_out: text(row.check_out), status: nullableText(row.status) };
+}
 export function createHouseBookingsRepository(client: SupabaseClient) {
   return {
-    async galleryHouses(zone: string | null): Promise<BookingGalleryHouse[]> {
-      const houses: BookingGalleryHouse[] = [];
-      for (let from = 0; ; from += 500) {
-        let query = client.from("listings").select("id,property_id,title,location_zone").order("title").order("property_id").range(from, from + 499);
-        if (zone) query = query.eq("location_zone", zone);
-        const { data, error } = await query;
-        if (error) throw error;
-        const rows: unknown[] = data ?? [];
-        houses.push(...rows.map(mapBookingGalleryHouse));
-        if (rows.length < 500) return houses;
+    async galleryHousePage(input: GalleryPageInput): Promise<{ houses: GalleryHouseSummary[]; total: number }> {
+      let query = client.from("listings").select("id,property_id,title,location_zone", { count: "exact" })
+        .order("title").order("property_id").range((input.page - 1) * 6, input.page * 6 - 1);
+      if (input.search) {
+        const property = galleryPropertySearch(input.search);
+        if (property) query = query.or(`title.ilike.%${input.search}%,property_id.eq.${property}`);
+        else query = query.ilike("title", `%${input.search.replace(/[\\%_]/g, "\\$&")}%`);
       }
+      const { data, count, error } = await query;
+      if (error) throw error;
+      return { houses: (data ?? []).map(mapBookingGalleryHouse), total: count ?? 0 };
     },
-    async galleryBookings(houses: BookingGalleryHouse[], start: string, end: string): Promise<Booking[]> {
-      const bookings: Booking[] = [];
-      for (let index = 0; index < houses.length; index += 5) {
-        const batches = await Promise.all(houses.slice(index, index + 5).map(house => this.list(house, start, end)));
-        bookings.push(...batches.flat());
+    async galleryHousesByPropertyIds(propertyIds: string[]): Promise<GalleryHouseSummary[]> {
+      const { data, error } = await client.from("listings").select("id,property_id,title,location_zone").in("property_id", propertyIds);
+      if (error) throw error;
+      const wanted = new Set(propertyIds);
+      return (data ?? []).map(mapBookingGalleryHouse).filter(house => wanted.has(house.property_id));
+    },
+    async galleryBookingSlices(houses: GalleryHouseSummary[], start: string, end: string): Promise<GalleryBookingSlice[]> {
+      const pairs = houses.filter(house => /^[a-zA-Z0-9-]+$/.test(house.id) && /^[1-9]\d{0,18}$/.test(house.property_id))
+        .map(house => `(listing_id.eq.${house.id},houseid.eq.${house.property_id})`);
+      if (pairs.length !== houses.length) throw new Error("invalid_gallery_house_pair");
+      if (pairs.length === 0) return [];
+      const allowed = new Set(houses.map(house => `${house.id}:${house.property_id}`));
+      const rows: GalleryBookingSlice[] = [];
+      for (let from = 0; ; from += 500) {
+        const { data, error } = await client.from("bookings").select("id,listing_id,houseid,check_in,check_out,status")
+          .or(pairs.join(",")).lt("check_in", end).gt("check_out", start).order("check_in").order("id").range(from, from + 499);
+        if (error) throw error;
+        const page: unknown[] = data ?? [];
+        rows.push(...page.map(mapGalleryBookingSlice).filter(row => allowed.has(`${row.listing_id}:${row.houseid}`)));
+        if (page.length < 500) return rows;
       }
-      return bookings;
     },
     async house(propertyId: string): Promise<BookingHouse | null> {
       const { data, error } = await client.from("listings").select("id,property_id,title").eq("property_id", propertyId).maybeSingle();

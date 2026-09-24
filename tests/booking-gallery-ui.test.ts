@@ -10,10 +10,11 @@ const galleryDialog = () => readFileSync(new URL("../components/admin/bookings/b
 const skeleton = () => readFileSync(new URL("../components/admin/houses/bookings/booking-skeletons.tsx", import.meta.url), "utf8");
 const dateRange = () => readFileSync(new URL("../components/admin/houses/bookings/booking-date-range.tsx", import.meta.url), "utf8");
 
-test("gallery requests authorized month data and exposes search, pagination, and retry controls", () => {
+test("gallery requests separate bounded house and calendar data with search, pagination, and retry controls", () => {
   const source = gallery();
-  assert.match(source, /listBookingGalleryAction\(parseBookingGalleryQuery\(\{ month \}\)\)/);
-  assert.match(source, /paginateBookingGallery\(houses \?\? \[\], search, requestedPage\)/);
+  assert.match(source, /listBookingGalleryHousesAction\(\{ search: committedSearch, page: requestedPage \}\)/);
+  assert.match(source, /listBookingGalleryCalendarsAction\(\{ month: group\.month, propertyIds:/);
+  assert.match(source, /setTimeout\(\(\) => setCommittedSearch\(search\.trim\(\)\), 250\)/);
   assert.match(source, /aria-label="ค้นหาชื่อบ้านหรือรหัส DV"/);
   assert.match(source, /<Pagination>/);
   assert.match(source, /ลองอีกครั้ง/);
@@ -68,12 +69,13 @@ test("gallery editor reuses one booking form with Sheet and centred Dialog prese
   assert.match(gallery(), /<BookingGalleryEditorDialog/);
 });
 
-test("gallery returns focus to the card trigger or search and refreshes visited months after save", () => {
+test("gallery returns focus to the card trigger or search and invalidates the saved house", () => {
   const source = gallery();
   assert.match(source, /triggerRef=\{trigger\}/);
   assert.match(source, /trigger\.current\.focus\(\)/);
   assert.match(source, /searchInput\.current\?\.focus\(\)/);
   assert.match(source, /onSaved=\{/);
-  assert.match(source, /bookingGalleryMonthsToRefresh\(monthStates\.current\)/);
+  assert.match(source, /cache\.invalidateHouse\(selected\.propertyId\)/);
+  assert.match(source, /if \(visible\) void loadPairs\(\[\{ propertyId: selected\.propertyId/);
   assert.match(source, /trigger\.current instanceof HTMLButtonElement && trigger\.current\.disabled/);
 });

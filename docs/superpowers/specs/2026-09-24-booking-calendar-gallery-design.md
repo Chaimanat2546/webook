@@ -48,11 +48,14 @@ it is a new presentation host, not a new booking form.
 
 - Add a dedicated top-level Booking route and server guard that reuses
   `requireBookingAdmin` for every gallery and modal operation.
-- Load authorised houses and bookings through the existing booking
-  service/repository query. Client search and paging operate on that authorised
-  house list. Each distinct visited month has one cached all-house request;
-  failed or loading months do not show old date availability. Saving or
-  cancelling refreshes every visited month so cross-month stays remain current.
+- Load authorised house metadata through a six-row server page with an exact
+  total. The server searches title substrings and exact raw or DV-prefixed
+  property IDs. Availability is requested separately for only the visible
+  property/month pairs, with a minimal booking projection and explicit row
+  pagination. The client keeps at most 24 pairs fresh for 30 seconds; failed or
+  loading months do not show old date availability. Saving or cancelling
+  invalidates every cached month for that house and reloads only its currently
+  visible month.
 - Introduce framework-light gallery view models in `lib/`, mapping each property
   and monthly booking interval to the visual date-cell state. Keep date-only,
   Bangkok-safe behavior and exclusive checkout semantics.
@@ -63,6 +66,11 @@ it is a new presentation host, not a new booking form.
   removed in this implementation.
 - Add Booking as a new primary admin navigation item. The house-level booking
   route remains an entry point for a preselected house.
+
+The six-row page uses the database's deterministic title/property ID order.
+Its collation may differ from JavaScript Thai locale ordering. Exact partial
+numeric property-ID substring search is unavailable without a database cast or
+index; raw and DV-prefixed exact IDs are supported.
 
 ## Error handling and access
 
