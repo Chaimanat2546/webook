@@ -62,6 +62,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       const property = input.searchMode === "dv" && input.search ? galleryPropertySearch(input.search) : null;
       if (input.searchMode === "dv" && input.search && !property) return { houses: [], total: 0 };
       let query = client.from("listings").select("id,property_id,title,location_zone,is_active", { count: "exact" })
+        .order("is_active", { ascending: false, nullsFirst: false })
         .order("property_id", { ascending: true }).range((input.page - 1) * 6, input.page * 6 - 1);
       if (input.search) {
         if (property) query = query.eq("property_id", property);

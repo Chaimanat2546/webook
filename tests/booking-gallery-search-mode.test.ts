@@ -26,7 +26,7 @@ test("search modes emit mutually exclusive filters and invalid DV never searches
   }
   assert.equal(urls[2].searchParams.get("title"), "imatch.12");
   assert.equal(urls[2].searchParams.has("property_id"), false);
-  assert.equal(urls[2].searchParams.get("order"), "property_id.asc");
+  assert.equal(urls[2].searchParams.get("order"), "is_active.desc.nullslast,property_id.asc");
   assert.equal(urls[2].searchParams.get("offset"), "6");
   for (const search of ["บ้าน", "0", "12)", "9223372036854775808"]) {
     assert.deepEqual(await repository.galleryHousePage(parseGalleryPageInput({ search, searchMode: "dv" })), { houses: [], total: 0 });

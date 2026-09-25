@@ -27,6 +27,25 @@ test("loading house card keeps status visible and replaces dates with an accessi
   }
 });
 
+test("inactive and unknown house cards retain all controls but disable them", async () => {
+  const Card = await loadComponent("../components/admin/bookings/booking-gallery-card.tsx", "BookingGalleryCard");
+  for (const active of [true, false, null]) {
+    for (const error of ["", "โหลดไม่สำเร็จ"]) {
+      const card = error ? null : { propertyId: "2", title: "บ้านสอง", days: {
+        "2026-09-20": { date: "2026-09-20", tone: "confirmed", bookingId: "7" },
+        "2026-09-21": { date: "2026-09-21", tone: "free", bookingId: null },
+      } };
+      const html = renderToStaticMarkup(createElement(Card, { house: { property_id: "2", title: "บ้านสอง", is_active: active },
+        card, month: "2026-09", today: "2026-09-01", loading: false, error }));
+      const buttons = html.match(/<button\b[^>]*>/g) ?? [];
+      assert.equal(buttons.length, error ? 4 : 5);
+      assert.equal(buttons.every(button => button.includes('disabled=""')), active !== true);
+      if (active === true) assert.ok(buttons.every(button => !button.includes('disabled=""')));
+      assert.ok(html.includes("สร้างการจอง"));
+    }
+  }
+});
+
 test("gallery page skeleton reserves six cards without interactive fake dates", async () => {
   const Skeleton = await loadComponent("../components/admin/bookings/booking-gallery-skeleton.tsx", "BookingGallerySkeleton");
   const html = renderToStaticMarkup(createElement(Skeleton));

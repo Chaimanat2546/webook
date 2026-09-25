@@ -16,14 +16,19 @@ Open **การจอง** from the desktop or mobile actions for a house. The 
 
 ## Calendar Gallery
 
-Open **การจอง** in the primary admin navigation for `/admin/bookings`. This
+Open **การจอง**, the first permitted destination in both the desktop sidebar and
+mobile navigation, for `/admin/bookings`. Existing permission checks still apply. This
 shows one monthly calendar per house, including houses without bookings. Search
 using the **DV ID** (default) or **ชื่อบ้าน** radio option. DV ID matches an exact
 raw/DV-prefixed property ID; invalid IDs return no results. ชื่อบ้าน matches only
 a house-title substring. Switching modes preserves the search text and resets
 pagination to page 1; request identity includes the mode to discard stale results.
 Six matching
-houses appear per server page with an exact total count. The
+houses appear per server page; the exact total count is used for pagination but
+no result-count text is displayed. Active houses come first, then inactive, then
+unknown-status houses, with numeric DV ID ascending within each group. Sorting
+happens before pagination. Inactive and unknown-status cards remain visible, but
+all their buttons (dates, month arrows, retry, and create) are disabled. The
 grid has three columns on desktop and one on mobile. Each card has its own Thai
 month heading and previous/next controls, so houses can display different
 months. Select a booked date to edit it, an available future date to start a

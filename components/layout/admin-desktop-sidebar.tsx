@@ -79,20 +79,6 @@ export function AdminDesktopSidebar({
             {!isMobile && <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
-                {canAccessHouses && !isMobile ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname.startsWith("/admin/houses")}
-                      tooltip="บ้านพัก"
-                    >
-                      <Link href="/admin/houses" onClick={closeMobileSidebar}>
-                        <House data-icon="inline-start" />
-                        <span>บ้านพัก</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ) : null}
                 {canUseBooking && !isMobile ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton
@@ -103,6 +89,20 @@ export function AdminDesktopSidebar({
                       <Link href="/admin/bookings" onClick={closeMobileSidebar}>
                         <CalendarDays data-icon="inline-start" />
                         <span>การจอง</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) : null}
+                {canAccessHouses && !isMobile ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith("/admin/houses")}
+                      tooltip="บ้านพัก"
+                    >
+                      <Link href="/admin/houses" onClick={closeMobileSidebar}>
+                        <House data-icon="inline-start" />
+                        <span>บ้านพัก</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

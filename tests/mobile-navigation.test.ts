@@ -23,6 +23,7 @@ test("list memory preserves queries across external navigation and ignores detai
 
 const noTools = { canAccessHouses: false, canUseBooking: false, canUseQuotation: false, canUseAccommodation: false, canManageCentralUsers: false, canManageWebookUsers: false };
 test("mobile destinations follow permissions without duplicate quotation/customer active states", () => {
+  assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: true, canUseBooking: true, canUseAccommodation: true, canUseQuotation: true }).map(x => x.id), ["bookings", "houses", "advertisements", "quotations"]);
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: false, canUseQuotation: false }), []);
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: true, canUseQuotation: false }).map(x => x.id), ["houses"]);
   assert.deepEqual(mobileDestinations({ ...noTools, canUseBooking: true }).map(x => x.id), ["bookings"]);

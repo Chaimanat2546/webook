@@ -30,6 +30,7 @@ function monthLabel(month: string): string {
 export function BookingGalleryCard({ house, card, month, today, loading, error, onMonthChange, onRetry, onBookingSelect, onCreateSelect }: Props) {
   const previousMonth = adjacentBookingGalleryMonth(month, -1);
   const nextMonth = adjacentBookingGalleryMonth(month, 1);
+  const disabled = house.is_active !== true;
   return <Card size="sm" className="booking-gallery-card min-w-0 gap-2">
     <CardHeader className="min-w-0 gap-1">
       <CardTitle className="truncate" title={house.title}>{house.title}</CardTitle>
@@ -40,16 +41,16 @@ export function BookingGalleryCard({ house, card, month, today, loading, error, 
         </Badge>
       </div>
       <div className="flex items-center justify-center gap-2 pt-1">
-        <Button type="button" variant="outline" size="icon-sm" aria-label={`เดือนก่อนหน้า ${house.title}`} disabled={!previousMonth}
+        <Button type="button" variant="outline" size="icon-sm" aria-label={`เดือนก่อนหน้า ${house.title}`} disabled={disabled || !previousMonth}
           onClick={() => { if (previousMonth) onMonthChange(house.property_id, previousMonth); }}><ChevronLeft aria-hidden="true" /></Button>
         <strong className="min-w-0 flex-1 text-center text-sm font-medium" aria-live="polite">{monthLabel(month)}</strong>
-        <Button type="button" variant="outline" size="icon-sm" aria-label={`เดือนถัดไป ${house.title}`} disabled={!nextMonth}
+        <Button type="button" variant="outline" size="icon-sm" aria-label={`เดือนถัดไป ${house.title}`} disabled={disabled || !nextMonth}
           onClick={() => { if (nextMonth) onMonthChange(house.property_id, nextMonth); }}><ChevronRight aria-hidden="true" /></Button>
       </div>
     </CardHeader>
     <CardContent className="space-y-2" aria-busy={loading}>
       {card ? <>
-        <BookingGalleryDays card={card} month={month} today={today} onBookingSelect={onBookingSelect} onCreateSelect={onCreateSelect} />
+        <BookingGalleryDays card={card} month={month} today={today} disabled={disabled} onBookingSelect={onBookingSelect} onCreateSelect={onCreateSelect} />
         <div className="booking-gallery-legend" aria-label="สีสถานะการจอง">
           <span><i className="booking-gallery-dot booking-gallery-dot-confirmed" />โอนแล้ว</span>
           <span><i className="booking-gallery-dot booking-gallery-dot-waiting" />รอโอน</span>
@@ -57,9 +58,9 @@ export function BookingGalleryCard({ house, card, month, today, loading, error, 
           {Object.values(card.days).some(day => day.tone === "unknown") && <span><i className="booking-gallery-dot booking-gallery-dot-unknown" />สถานะไม่ทราบ (ติดจอง)</span>}
         </div>
       </> : error ? <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3 text-sm text-destructive">
-        <p>{error}</p><Button type="button" variant="outline" size="sm" onClick={() => onRetry(month)}>ลองอีกครั้ง</Button>
+        <p>{error}</p><Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => onRetry(month)}>ลองอีกครั้ง</Button>
       </div> : <BookingGalleryDatesSkeleton />}
-      <Button type="button" size="sm" variant="outline" className="w-full" onClick={event => onCreateSelect(house.property_id, undefined, event.currentTarget)}>
+      <Button type="button" size="sm" variant="outline" className="w-full" disabled={disabled} onClick={event => onCreateSelect(house.property_id, undefined, event.currentTarget)}>
         <Plus aria-hidden="true" />สร้างการจอง
       </Button>
     </CardContent>

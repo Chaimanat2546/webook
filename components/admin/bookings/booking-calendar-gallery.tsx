@@ -128,7 +128,7 @@ export function BookingCalendarGallery() {
 
   return <main className="space-y-5">
     <div><h1 className="text-2xl font-semibold">การจอง</h1><p className="text-sm text-muted-foreground">ปฏิทินการจองของบ้านทั้งหมด</p></div>
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
+    <div className="flex flex-wrap items-center justify-start gap-3 rounded-xl border bg-card p-3">
       <RadioGroup aria-label="ค้นหาจาก" value={searchMode} className="flex flex-wrap gap-4"
         onValueChange={value => { if (value === "dv" || value === "title") { setSearchMode(value); setRequestedPage(1); } }}>
         <label className="flex cursor-pointer items-center gap-2 text-sm"><RadioGroupItem value="dv" />DV ID</label>
@@ -136,7 +136,6 @@ export function BookingCalendarGallery() {
       </RadioGroup>
       <Input ref={searchInput} type="search" aria-label={searchMode === "dv" ? "ค้นหา DV ID" : "ค้นหาชื่อบ้าน"} placeholder={searchMode === "dv" ? "ระบุ DV ID เช่น 123 หรือ DV 123" : "พิมพ์ชื่อบ้าน"} value={search}
         onChange={event => { setSearch(event.target.value); setRequestedPage(1); }} className="max-w-sm" />
-      {page && <p role="status" className="text-sm text-muted-foreground">{page.total === 0 ? "ไม่พบบ้าน" : `แสดง ${(page.page - 1) * 6 + 1}–${Math.min(page.page * 6, page.total)} จาก ${page.total} บ้าน`}</p>}
     </div>
     {!page && (pageState.status === "error" && pageState.key === currentKey ? <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
       {pageState.message}<Button type="button" size="sm" variant="outline" onClick={() => setPageRetry(value => value + 1)}>ลองอีกครั้ง</Button>

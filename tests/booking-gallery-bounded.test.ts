@@ -82,7 +82,7 @@ test("repository pages listings in DB and searches title, raw DV and prefixed DV
   await repository.galleryHousePage({ page: 1, search: "DV 101", searchMode: "dv" });
   await repository.galleryHousePage({ page: 1, search: "Sea & Sun", searchMode: "title" });
   assert.deepEqual(requests.map(request => request.range), [[6, 11], [0, 5], [0, 5], [0, 5]]);
-  assert.deepEqual(requests[0].orders, ["property_id"]);
+  assert.deepEqual(requests[0].orders, ["is_active", "property_id"]);
   assert.equal(requests[0].count, "exact");
   assert.equal(requests[0].regex, "title:Sea");
   assert.match(requests[1].or, /property_id\.eq\.101/);
