@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseGalleryCalendarInput, parseGalleryPageInput, buildBookingGallery, type GalleryHouseSummary } from "../lib/booking-gallery.ts";
-import { createHouseBookingsRepository } from "../server/repositories/house-bookings.ts";
+import { createHouseBookingsRepository, mapBookingGalleryHouse } from "../server/repositories/house-bookings.ts";
 import { listBookingGalleryCalendars, listBookingGalleryHouses } from "../server/services/house-bookings.ts";
 
-const house = (number: number): GalleryHouseSummary => ({ id: `listing-${number}`, property_id: String(number), title: `House ${number}`, location_zone: null });
+const house = (number: number): GalleryHouseSummary => ({ id: `listing-${number}`, property_id: String(number), title: `House ${number}`, location_zone: null, is_active: true });
 
 test("page input limits page and search before any repository read", async () => {
   let reads = 0;
@@ -82,13 +82,19 @@ test("repository pages listings in DB and searches title, raw DV and prefixed DV
   await repository.galleryHousePage({ page: 1, search: "DV 101" });
   await repository.galleryHousePage({ page: 1, search: "Sea & Sun" });
   assert.deepEqual(requests.map(request => request.range), [[6, 11], [0, 5], [0, 5], [0, 5]]);
-  assert.deepEqual(requests[0].orders, ["title", "property_id"]);
+  assert.deepEqual(requests[0].orders, ["property_id"]);
   assert.equal(requests[0].count, "exact");
   assert.equal(requests[0].regex, "title:Sea");
   assert.match(requests[1].or, /property_id\.eq\.101/);
   assert.match(requests[2].or, /property_id\.eq\.101/);
   assert.equal(requests[3].regex, "title:Sea & Sun");
-  assert.equal(requests[0].fields, "id,property_id,title,location_zone");
+  assert.equal(requests[0].fields, "id,property_id,title,location_zone,is_active");
+});
+
+test("gallery metadata preserves active, inactive and unknown house status", () => {
+  for (const active of [true, false, null]) {
+    assert.equal(mapBookingGalleryHouse({ ...house(7), is_active: active }).is_active, active);
+  }
 });
 
 test("title search treats asterisk and mixed wildcard characters as literal substrings", async () => {

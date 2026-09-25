@@ -11,6 +11,7 @@ import { bookingToday } from "@/lib/booking-availability";
 import { GalleryPairCache, groupGalleryPairsByMonth, type GalleryVisiblePair } from "@/lib/booking-gallery-cache";
 import { bookingGalleryPageNumbers, type GalleryHousePage } from "@/lib/booking-gallery";
 import { BookingGalleryCard as GalleryCard } from "./booking-gallery-card";
+import { BookingGallerySkeleton } from "./booking-gallery-skeleton";
 
 const BookingGalleryEditorDialog = dynamic(() => import("./booking-gallery-editor-dialog").then(module => module.BookingGalleryEditorDialog), {
   loading: () => <p role="status" className="rounded-lg border bg-card p-4 text-sm">กำลังเปิดการจอง…</p>,
@@ -132,7 +133,7 @@ export function BookingCalendarGallery() {
     </div>
     {!page && (pageState.status === "error" && pageState.key === currentKey ? <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
       {pageState.message}<Button type="button" size="sm" variant="outline" onClick={() => setPageRetry(value => value + 1)}>ลองอีกครั้ง</Button>
-    </div> : <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดรายการบ้าน…</p>)}
+    </div> : <BookingGallerySkeleton />)}
     {page && page.total === 0 && <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">{search.trim() ? "ไม่พบบ้านที่ตรงกับคำค้นหา" : "ไม่พบบ้านในรายการ"}</p>}
     {houses && houses.length > 0 && <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {houses.map(house => {

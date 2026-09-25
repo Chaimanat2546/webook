@@ -15,7 +15,7 @@ export interface BookingGalleryHouse {
   title: string;
   location_zone: string | null;
 }
-export type GalleryHouseSummary = BookingGalleryHouse;
+export interface GalleryHouseSummary extends BookingGalleryHouse { is_active: boolean | null }
 export interface GalleryHousePage { houses: GalleryHouseSummary[]; total: number; page: number; pageCount: number }
 export interface GalleryPageInput { page: number; search: string }
 export interface GalleryCalendarInput { month: string; start: string; end: string; propertyIds: string[] }

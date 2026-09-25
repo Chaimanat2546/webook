@@ -49,8 +49,10 @@ holiday source is available; the Gallery uses actual booking statuses for now.
 An unrecognized saved status other than `cancelled`
 appears as a neutral **สถานะไม่ทราบ (ติดจอง)** date with a booking edit target,
 matching the availability rule that treats it as occupied until corrected.
-Card headers show only the house title and DV ID; province/zone and booked-night
-counts are not displayed. Checkout remains exclusive. Unbooked dates
+Card headers show the house title, DV ID and the saved listing `is_active` status
+(เปิดใช้งาน / ปิดใช้งาน; missing status shows ไม่ทราบสถานะ). Both active and inactive
+houses remain visible, without changing booking permissions. Province/zone and
+booked-night counts are not displayed. Checkout remains exclusive. Unbooked dates
 display as free. Both routes use
 the existing booking permissions, service and repository paths. This addition
 requires no database schema or RLS change.
@@ -63,8 +65,11 @@ listing/property pairs, and paginates dense results in 500-row batches. The
 client caches up to 24 house/month pairs for 30 seconds; late responses cannot
 restore data invalidated by a save. Search waits 250 ms before requesting a
 page, and the existing editor is loaded only when selected. The page uses the
-database's deterministic title/property ID ordering, which can differ from
-JavaScript Thai locale order. Partial numeric ID search would require a
+database's numeric property ID ascending order before six-house pagination,
+including search results. Six card skeletons reserve the loading page layout;
+individual calendar loading replaces only that card's date grid with a skeleton.
+Skeletons announce loading, contain no fake interactive dates and respect reduced motion.
+Partial numeric ID search would require a
 database cast or index and is not part of this bounded query.
 
 ## Access and data flow

@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BookingGalleryHouse, GalleryBookingSlice, GalleryHouseSummary, GalleryPageInput } from "../../lib/booking-gallery.ts";
+import type { GalleryBookingSlice, GalleryHouseSummary, GalleryPageInput } from "../../lib/booking-gallery.ts";
 import { CUSTOMER_FIELDS, normalizeBookingPhone, type BookingCustomerDetail, type BookingCustomerInput } from "../../lib/booking-customers.ts";
 import { bookingId, record, type Booking, type BookingCreate, type BookingCustomer, type BookingUpdate } from "../../lib/house-bookings.ts";
 
@@ -28,9 +28,9 @@ export function mapBooking(value: unknown): Booking {
   const b = record(value);
   return { id: bookingId(b.id), booking_code: text(b.booking_code), listing_id: text(b.listing_id), houseid: bookingId(b.houseid), agent_id: b.agent_id == null ? null : bookingId(b.agent_id), customer_id: b.customer_id == null ? null : bookingId(b.customer_id), customer: b.customer && record(b.customer).dv_id != null && bookingId(record(b.customer).dv_id) === bookingId(b.houseid) ? mapBookingCustomer(b.customer) : null, check_in: text(b.check_in), check_out: text(b.check_out), status: text(b.status), booking_type: nullableText(b.booking_type), price_sell: number(b.price_sell), price_max: b.price_max == null ? null : number(b.price_max), deposit_amount: number(b.deposit_amount), extra_charge: number(b.extra_charge), quantity: number(b.quantity), details: nullableText(b.details), note: nullableText(b.note), updated_at: text(b.updated_at) };
 }
-export function mapBookingGalleryHouse(value: unknown): BookingGalleryHouse {
+export function mapBookingGalleryHouse(value: unknown): GalleryHouseSummary {
   const row = record(value);
-  return { id: text(row.id), property_id: bookingId(row.property_id), title: text(row.title), location_zone: nullableText(row.location_zone) };
+  return { id: text(row.id), property_id: bookingId(row.property_id), title: text(row.title), location_zone: nullableText(row.location_zone), is_active: typeof row.is_active === "boolean" ? row.is_active : null };
 }
 function galleryPropertySearch(search: string): string | null {
   // Only an exact raw or DV-prefixed decimal ID enters the PostgREST or grammar.
@@ -49,8 +49,8 @@ function mapGalleryBookingSlice(value: unknown): GalleryBookingSlice {
 export function createHouseBookingsRepository(client: SupabaseClient) {
   return {
     async galleryHousePage(input: GalleryPageInput): Promise<{ houses: GalleryHouseSummary[]; total: number }> {
-      let query = client.from("listings").select("id,property_id,title,location_zone", { count: "exact" })
-        .order("title").order("property_id").range((input.page - 1) * 6, input.page * 6 - 1);
+      let query = client.from("listings").select("id,property_id,title,location_zone,is_active", { count: "exact" })
+        .order("property_id", { ascending: true }).range((input.page - 1) * 6, input.page * 6 - 1);
       if (input.search) {
         const property = galleryPropertySearch(input.search);
         if (property) query = query.or(`title.ilike.%${input.search}%,property_id.eq.${property}`);
@@ -61,7 +61,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       return { houses: (data ?? []).map(mapBookingGalleryHouse), total: count ?? 0 };
     },
     async galleryHousesByPropertyIds(propertyIds: string[]): Promise<GalleryHouseSummary[]> {
-      const { data, error } = await client.from("listings").select("id,property_id,title,location_zone").in("property_id", propertyIds);
+      const { data, error } = await client.from("listings").select("id,property_id,title,location_zone,is_active").in("property_id", propertyIds);
       if (error) throw error;
       const wanted = new Set(propertyIds);
       return (data ?? []).map(mapBookingGalleryHouse).filter(house => wanted.has(house.property_id));
