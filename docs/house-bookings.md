@@ -74,8 +74,8 @@ database cast or index and is not part of this bounded query.
 
 ## Access and data flow
 
-The shared booking form displays a read-only **ข้อมูลที่พัก** panel below the
-stay dates (left column in the Gallery dialog). On form mount it requests only
+The shared booking form displays a read-only **ข้อมูลที่พัก** panel above the
+booking totals (right column in the Gallery dialog; after status and nights on mobile). On form mount it requests only
 `listings.extra_beds`, `insurance_fee`, `checkin_time`, and `checkout_time` for
 the validated property ID through a booking-authorized server action. Extra-bed
 price is labelled ราคาคนเสริม. These are current house settings, not historical
