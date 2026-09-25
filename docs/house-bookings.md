@@ -18,7 +18,11 @@ Open **การจอง** from the desktop or mobile actions for a house. The 
 
 Open **การจอง** in the primary admin navigation for `/admin/bookings`. This
 shows one monthly calendar per house, including houses without bookings. Search
-by house title substring or exact raw/DV-prefixed property ID; six matching
+using the **DV ID** (default) or **ชื่อบ้าน** radio option. DV ID matches an exact
+raw/DV-prefixed property ID; invalid IDs return no results. ชื่อบ้าน matches only
+a house-title substring. Switching modes preserves the search text and resets
+pagination to page 1; request identity includes the mode to discard stale results.
+Six matching
 houses appear per server page with an exact total count. The
 grid has three columns on desktop and one on mobile. Each card has its own Thai
 month heading and previous/next controls, so houses can display different

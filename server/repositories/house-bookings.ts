@@ -59,11 +59,12 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
         checkin_time: nullableText(row.checkin_time), checkout_time: nullableText(row.checkout_time) };
     },
     async galleryHousePage(input: GalleryPageInput): Promise<{ houses: GalleryHouseSummary[]; total: number }> {
+      const property = input.searchMode === "dv" && input.search ? galleryPropertySearch(input.search) : null;
+      if (input.searchMode === "dv" && input.search && !property) return { houses: [], total: 0 };
       let query = client.from("listings").select("id,property_id,title,location_zone,is_active", { count: "exact" })
         .order("property_id", { ascending: true }).range((input.page - 1) * 6, input.page * 6 - 1);
       if (input.search) {
-        const property = galleryPropertySearch(input.search);
-        if (property) query = query.or(`title.ilike.%${input.search}%,property_id.eq.${property}`);
+        if (property) query = query.eq("property_id", property);
         else query = query.regexIMatch("title", galleryLiteralTitlePattern(input.search));
       }
       const { data, count, error } = await query;

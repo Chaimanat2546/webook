@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseGalleryCalendarInput, parseGalleryPageInput, buildBookingGallery, type GalleryHouseSummary } from "../lib/booking-gallery.ts";
+import { parseGalleryCalendarInput, parseGalleryPageInput, buildBookingGallery, type GalleryHouseSummary, type GalleryPageInput } from "../lib/booking-gallery.ts";
 import { createHouseBookingsRepository, mapBookingGalleryHouse } from "../server/repositories/house-bookings.ts";
 import { listBookingGalleryCalendars, listBookingGalleryHouses } from "../server/services/house-bookings.ts";
 
@@ -14,16 +14,16 @@ test("page input limits page and search before any repository read", async () =>
     await assert.rejects(() => listBookingGalleryHouses(repository, input));
   }
   assert.equal(reads, 0);
-  assert.deepEqual(parseGalleryPageInput({ page: 2, search: "  DV 103  " }), { page: 2, search: "DV 103" });
+  assert.deepEqual(parseGalleryPageInput({ page: 2, search: "  DV 103  " }), { page: 2, search: "DV 103", searchMode: "dv" });
 });
 
 test("house page has exactly six ordered entries and a total independent of bookings", async () => {
   const calls: unknown[][] = [];
-  const repository = { galleryHousePage: async (query: { page: number; search: string }) => {
-    calls.push([query.page, query.search]); return { houses: Array.from({ length: 6 }, (_, index) => house(index + 7)), total: 13 };
-  } } as ReturnType<typeof createHouseBookingsRepository>;
-  const result = await listBookingGalleryHouses(repository, { page: 2, search: " House " });
-  assert.deepEqual(calls, [[2, "House"]]);
+  const repository = { galleryHousePage: async (query: GalleryPageInput) => {
+    calls.push([query.page, query.search, query.searchMode]); return { houses: Array.from({ length: 6 }, (_, index) => house(index + 7)), total: 13 };
+  } } as unknown as ReturnType<typeof createHouseBookingsRepository>;
+  const result = await listBookingGalleryHouses(repository, { page: 2, search: " House ", searchMode: "title" });
+  assert.deepEqual(calls, [[2, "House", "title"]]);
   assert.equal(result.total, 13);
   assert.equal(result.pageCount, 3);
   assert.deepEqual(result.houses.map(item => item.property_id), ["7", "8", "9", "10", "11", "12"]);
@@ -71,16 +71,16 @@ test("repository pages listings in DB and searches title, raw DV and prefixed DV
       select(fields: string, options?: { count?: string }) { request.fields = fields; request.count = options?.count ?? ""; return query; },
       order(field: string) { request.orders.push(field); return query; },
       range(start: number, end: number) { request.range = [start, end]; return query; },
-      or(filter: string) { request.or = filter; return query; },
+      eq(field: string, value: string) { request.or = `${field}.eq.${value}`; return query; },
       regexIMatch(field: string, pattern: string) { request.regex = `${field}:${pattern}`; return query; },
       then(resolve: (result: { data: GalleryHouseSummary[]; count: number; error: null }) => void) { resolve({ data: [house(7)], count: 13, error: null }); },
     }; return query;
   } } as unknown as SupabaseClient;
   const repository = createHouseBookingsRepository(client);
-  await repository.galleryHousePage({ page: 2, search: "Sea" });
-  await repository.galleryHousePage({ page: 1, search: "101" });
-  await repository.galleryHousePage({ page: 1, search: "DV 101" });
-  await repository.galleryHousePage({ page: 1, search: "Sea & Sun" });
+  await repository.galleryHousePage({ page: 2, search: "Sea", searchMode: "title" });
+  await repository.galleryHousePage({ page: 1, search: "101", searchMode: "dv" });
+  await repository.galleryHousePage({ page: 1, search: "DV 101", searchMode: "dv" });
+  await repository.galleryHousePage({ page: 1, search: "Sea & Sun", searchMode: "title" });
   assert.deepEqual(requests.map(request => request.range), [[6, 11], [0, 5], [0, 5], [0, 5]]);
   assert.deepEqual(requests[0].orders, ["property_id"]);
   assert.equal(requests[0].count, "exact");
@@ -108,8 +108,8 @@ test("title search treats asterisk and mixed wildcard characters as literal subs
     }; return query;
   } } as unknown as SupabaseClient;
   const repository = createHouseBookingsRepository(client);
-  await repository.galleryHousePage({ page: 1, search: "*" });
-  await repository.galleryHousePage({ page: 1, search: "Sea%_\\*" });
+  await repository.galleryHousePage({ page: 1, search: "*", searchMode: "title" });
+  await repository.galleryHousePage({ page: 1, search: "Sea%_\\*", searchMode: "title" });
   assert.deepEqual(["Sea* View", "Sea View", "Asterisk *"].filter(title => new RegExp(patterns[0], "i").test(title)), ["Sea* View", "Asterisk *"]);
   assert.deepEqual(["Sea%_\\* Pool", "SeaXX Pool", "Sea%_\\ Pool"].filter(title => new RegExp(patterns[1], "i").test(title)), ["Sea%_\\* Pool"]);
 });
