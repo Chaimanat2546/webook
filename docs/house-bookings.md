@@ -1,18 +1,13 @@
-# House booking calendar
+# House bookings
 
-Open **การจอง** from the desktop or mobile actions for a house. The route is
-`/admin/houses/[propertyId]/bookings`. It uses the existing House Workspace Shell.
+Booking management lives at `/admin/bookings`. The retired
+`/admin/houses/[propertyId]/bookings` page has been removed with no redirect;
+old URLs return 404. Booking links have been removed from house-list actions and
+the house workspace navigation. Other house workspace sections are unchanged.
 
-- Confirmed is red (จองแล้ว), waiting is green (รอยืนยัน). Cancelled bookings are excluded from the calendar response and legend; records remain in the database. Cancelling through the editor removes the event after save and refresh.
-- Status is the saved `bookings.status`; deposits do not change status automatically.
-- One bar represents one booking. Checkout is exclusive. Cross-week/month stays
-  keep the same record and total.
-- Click a bar to edit dates, linked customer, status, quantity, full house price (`price_max`), required deposit (`price_sell`),
-  extra charge and note. Changing dates preserves all amounts and displays a warning.
-- The approved mockup replaces an existing customer link; creating/editing the
-  shared customer master is not part of this first editor. Unedited booking fields
-  such as deposit_amount, details, booking_type, house linkage and agent_id are preserved.
-- The sheet warns on unsaved close and shows errors without discarding input.
+Shared booking forms and the authorized Server Actions in the old route folder
+remain in use by the Gallery. No booking data, validation, or permission checks
+were removed. The old calendar loading screen has been removed.
 
 ## Calendar Gallery
 
@@ -47,11 +42,6 @@ If a month fails to load, its card shows an error and **ลองอีกคร
 of stale availability. Editor errors keep entered values available
 for correction and retry.
 
-The per-house route `/admin/houses/[propertyId]/bookings` remains available
-from house navigation. It keeps the House Workspace Shell, full house calendar,
-and Sheet editor. The Gallery adds a second entry point and does not replace
-this workflow.
-
 Confirmed dates are red, waiting dates green, and repair dates have a separate
 state. The user approved deferring yellow holiday dates until an authoritative
 holiday source is available; the Gallery uses actual booking statuses for now.
@@ -62,7 +52,7 @@ Card headers show the house title, DV ID and the saved listing `is_active` statu
 (เปิดใช้งาน / ปิดใช้งาน; missing status shows ไม่ทราบสถานะ). Both active and inactive
 houses remain visible, without changing booking permissions. Province/zone and
 booked-night counts are not displayed. Checkout remains exclusive. Unbooked dates
-display as free. Both routes use
+display as free. The Gallery uses
 the existing booking permissions, service and repository paths. This addition
 requires no database schema or RLS change.
 
@@ -74,7 +64,7 @@ listing/property pairs, and paginates dense results in 500-row batches. The
 client caches up to 24 house/month pairs for 30 seconds; late responses cannot
 restore data invalidated by a save. Search waits 250 ms before requesting a
 page, and the existing editor is loaded only when selected. The page uses the
-database's numeric property ID ascending order before six-house pagination,
+database's active-first, numeric property ID ascending order before six-house pagination,
 including search results. Six card skeletons reserve the loading page layout;
 individual calendar loading replaces only that card's date grid with a skeleton.
 Skeletons announce loading, contain no fake interactive dates and respect reduced motion.

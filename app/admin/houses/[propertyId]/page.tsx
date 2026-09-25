@@ -22,7 +22,6 @@ import {
   canManageHousePrices,
   canManageHouseRating,
   canUseAccommodation,
-  canUseBooking,
   canViewHousePrices,
   requireAdmin,
 } from "../../../../server/auth/admin";
@@ -235,7 +234,6 @@ export default async function HouseDetailPage({
         contentTitle={activeSection.label}
         sidebar={
           <HouseDetailSectionNav
-              canManageBookings={canUseBooking(adminUser)}
             propertyId={propertyId}
             returnTo={safeReturnTo}
             sections={detailSections}

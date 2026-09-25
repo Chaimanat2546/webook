@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeDollarSign, CalendarDays, HouseIcon, SparklesIcon } from "lucide-react";
+import { BadgeDollarSign, HouseIcon, SparklesIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
@@ -15,7 +15,6 @@ interface HouseDetailSection {
 }
 
 interface HouseDetailSectionNavProps {
-  canManageBookings?: boolean;
   propertyId: string;
   returnTo?: string | null;
   sections: readonly HouseDetailSection[];
@@ -35,7 +34,6 @@ function sectionHref(propertyId: string, section: string, returnTo?: string | nu
 }
 
 export function HouseDetailSectionNav({
-  canManageBookings = false,
   propertyId,
   returnTo,
   sections,
@@ -72,7 +70,6 @@ export function HouseDetailSectionNav({
             />
           );
         })}
-        {canManageBookings ? <HouseWorkspaceNavItem active={selectedSection === "bookings"} ref={selectedSection === "bookings" ? activeSectionRef : undefined} href={`/admin/houses/${encodeURIComponent(propertyId)}/bookings?${new URLSearchParams(returnTo ? { returnTo } : {})}`} icon={<CalendarDays aria-hidden className="size-4 shrink-0" />} label="การจอง" /> : null}
       </nav>
       <ScrollBar orientation="horizontal" />
     </ScrollArea>
