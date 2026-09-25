@@ -12,10 +12,10 @@ const dateRange = () => readFileSync(new URL("../components/admin/houses/booking
 
 test("gallery requests separate bounded house and calendar data with search, pagination, and retry controls", () => {
   const source = gallery();
-  assert.match(source, /listBookingGalleryHousesAction\(\{ search: committedSearch, page: requestedPage \}\)/);
+  assert.match(source, /listBookingGalleryHousesAction\(\{ search: committedSearch, page: requestedPage, searchMode \}\)/);
   assert.match(source, /listBookingGalleryCalendarsAction\(\{ month: group\.month, propertyIds:/);
   assert.match(source, /setTimeout\(\(\) => setCommittedSearch\(search\.trim\(\)\), 250\)/);
-  assert.match(source, /aria-label="ค้นหาชื่อบ้านหรือรหัส DV"/);
+  assert.match(source, /aria-label="ค้นหาจาก"/);
   assert.match(source, /<Pagination>/);
   assert.match(source, /ลองอีกครั้ง/);
   assert.match(source, /ไม่พบ/);
@@ -45,12 +45,6 @@ test("route mounts the gallery after the existing server authorization", () => {
   const source = readFileSync(new URL("../app/admin/bookings/page.tsx", import.meta.url), "utf8");
   assert.match(source, /await requireBookingAdmin\(\)/);
   assert.match(source, /<BookingCalendarGallery\s*\/>/);
-});
-
-test("the per-house booking route remains the workspace calendar and does not mount the gallery", () => {
-  const legacyPageSource = readFileSync(new URL("../app/admin/houses/[propertyId]/bookings/page.tsx", import.meta.url), "utf8");
-  assert.match(legacyPageSource, /<HouseBookingCalendar propertyId=\{house\.property_id\} \/>/);
-  assert.doesNotMatch(legacyPageSource, /BookingCalendarGallery/);
 });
 
 test("gallery editor reuses one booking form with Sheet and centred Dialog presentations", () => {

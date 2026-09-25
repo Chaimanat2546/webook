@@ -6,11 +6,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { listBookingGalleryCalendarsAction, listBookingGalleryHousesAction } from "@/app/admin/bookings/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination";
 import { bookingToday } from "@/lib/booking-availability";
 import { GalleryPairCache, groupGalleryPairsByMonth, type GalleryVisiblePair } from "@/lib/booking-gallery-cache";
-import { bookingGalleryPageNumbers, type GalleryHousePage } from "@/lib/booking-gallery";
+import { bookingGalleryPageNumbers, type GalleryHousePage, type GallerySearchMode } from "@/lib/booking-gallery";
 import { BookingGalleryCard as GalleryCard } from "./booking-gallery-card";
+import { BookingGallerySkeleton } from "./booking-gallery-skeleton";
 
 const BookingGalleryEditorDialog = dynamic(() => import("./booking-gallery-editor-dialog").then(module => module.BookingGalleryEditorDialog), {
   loading: () => <p role="status" className="rounded-lg border bg-card p-4 text-sm">กำลังเปิดการจอง…</p>,
@@ -28,9 +30,10 @@ const pageError = "โหลดรายการบ้านไม่สำเ�
 export function BookingCalendarGallery() {
   const [initialMonth] = useState(() => bookingToday().slice(0, 7));
   const [search, setSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<GallerySearchMode>("dv");
   const [committedSearch, setCommittedSearch] = useState("");
   const [requestedPage, setRequestedPage] = useState(1);
-  const [pageState, setPageState] = useState<PageState>({ status: "loading", key: ":1" });
+  const [pageState, setPageState] = useState<PageState>({ status: "loading", key: "dv::1" });
   const [pageRetry, setPageRetry] = useState(0);
   const [houseMonths, setHouseMonths] = useState<Record<string, string>>({});
   const [cacheStates, setCacheStates] = useState(() => ({} as ReturnType<GalleryPairCache["snapshot"]>));
@@ -54,12 +57,12 @@ export function BookingCalendarGallery() {
 
   useEffect(() => {
     if (search.trim() !== committedSearch) return;
-    const key = `${committedSearch}:${requestedPage}`;
+    const key = `${searchMode}:${committedSearch}:${requestedPage}`;
     let cancelled = false;
     const timer = setTimeout(async () => {
       setPageState({ status: "loading", key });
       try {
-        const result = await listBookingGalleryHousesAction({ search: committedSearch, page: requestedPage });
+        const result = await listBookingGalleryHousesAction({ search: committedSearch, page: requestedPage, searchMode });
         if (cancelled) return;
         if (!result.ok) { setPageState({ status: "error", key, message: result.message }); return; }
         if (requestedPage > result.data.pageCount) { setRequestedPage(result.data.pageCount); return; }
@@ -69,7 +72,7 @@ export function BookingCalendarGallery() {
       }
     }, 0);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [search, committedSearch, requestedPage, pageRetry]);
+  }, [search, committedSearch, requestedPage, searchMode, pageRetry]);
 
   const loadPairs = useCallback(async (pairs: GalleryVisiblePair[], force = false) => {
     const groups = force
@@ -103,7 +106,7 @@ export function BookingCalendarGallery() {
     }
   }, [cache, publishCache]);
 
-  const currentKey = `${committedSearch}:${requestedPage}`;
+  const currentKey = `${searchMode}:${committedSearch}:${requestedPage}`;
   const page = search.trim() === committedSearch && pageState.key === currentKey && pageState.status === "ready" ? pageState.data : null;
   const houses = page?.houses;
 
@@ -125,14 +128,18 @@ export function BookingCalendarGallery() {
 
   return <main className="space-y-5">
     <div><h1 className="text-2xl font-semibold">การจอง</h1><p className="text-sm text-muted-foreground">ปฏิทินการจองของบ้านทั้งหมด</p></div>
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
-      <Input ref={searchInput} type="search" aria-label="ค้นหาชื่อบ้านหรือรหัส DV" placeholder="ค้นหาชื่อบ้านหรือรหัส DV" value={search}
+    <div className="flex flex-wrap items-center justify-start gap-3 rounded-xl border bg-card p-3">
+      <RadioGroup aria-label="ค้นหาจาก" value={searchMode} className="flex flex-wrap gap-4"
+        onValueChange={value => { if (value === "dv" || value === "title") { setSearchMode(value); setRequestedPage(1); } }}>
+        <label className="flex cursor-pointer items-center gap-2 text-sm"><RadioGroupItem value="dv" />DV ID</label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm"><RadioGroupItem value="title" />ชื่อบ้าน</label>
+      </RadioGroup>
+      <Input ref={searchInput} type="search" aria-label={searchMode === "dv" ? "ค้นหา DV ID" : "ค้นหาชื่อบ้าน"} placeholder={searchMode === "dv" ? "ระบุ DV ID เช่น 123 หรือ DV 123" : "พิมพ์ชื่อบ้าน"} value={search}
         onChange={event => { setSearch(event.target.value); setRequestedPage(1); }} className="max-w-sm" />
-      {page && <p role="status" className="text-sm text-muted-foreground">{page.total === 0 ? "ไม่พบบ้าน" : `แสดง ${(page.page - 1) * 6 + 1}–${Math.min(page.page * 6, page.total)} จาก ${page.total} บ้าน`}</p>}
     </div>
     {!page && (pageState.status === "error" && pageState.key === currentKey ? <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
       {pageState.message}<Button type="button" size="sm" variant="outline" onClick={() => setPageRetry(value => value + 1)}>ลองอีกครั้ง</Button>
-    </div> : <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">กำลังโหลดรายการบ้าน…</p>)}
+    </div> : <BookingGallerySkeleton />)}
     {page && page.total === 0 && <p role="status" className="rounded-xl border p-8 text-center text-sm text-muted-foreground">{search.trim() ? "ไม่พบบ้านที่ตรงกับคำค้นหา" : "ไม่พบบ้านในรายการ"}</p>}
     {houses && houses.length > 0 && <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {houses.map(house => {

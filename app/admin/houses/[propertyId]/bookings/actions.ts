@@ -4,7 +4,7 @@ import { requireBookingAdmin } from "../../../../../server/auth/bookings";
 import { thaiAddressRepository } from "../../../../../server/geography/thai-address-repository";
 import { createBookingCustomer, getBookingCustomer, updateBookingCustomer } from "../../../../../server/services/booking-customers";
 import { lookupDbdJuristicPerson } from "../../../../../server/services/dbd-juristic-person";
-import { bookingResult, cancelHouseBooking, createHouseBooking, getHouseBooking, listHouseBookings, requireBookingHouse, saveHouseBooking } from "../../../../../server/services/house-bookings";
+import { bookingResult, cancelHouseBooking, createHouseBooking, getHouseBooking, getBookingHouseInformation, listHouseBookings, requireBookingHouse, saveHouseBooking } from "../../../../../server/services/house-bookings";
 import { listThaiDistricts, listThaiProvinces, listThaiSubdistricts, lookupThaiPostalCode, resolveThaiAddressNames } from "../../../../../server/services/thai-addresses";
 
 export async function listHouseBookingsAction(propertyId: string, start: string, end: string) {
@@ -17,6 +17,12 @@ export async function getHouseBookingAction(propertyId: string, id: string) {
   return bookingResult(async () => {
     const { repository } = await requireBookingAdmin();
     return getHouseBooking(repository, propertyId, id);
+  });
+}
+export async function getBookingHouseInformationAction(propertyId: string) {
+  return bookingResult(async () => {
+    const { repository } = await requireBookingAdmin();
+    return getBookingHouseInformation(repository, propertyId);
   });
 }
 export async function searchBookingCustomersAction(propertyId: string, query: string) {

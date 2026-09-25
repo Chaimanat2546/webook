@@ -36,8 +36,8 @@ export function createMobileNavigationMemory() {
 
 export function mobileDestinations(permissions: MobileNavigationPermissions): MobileDestination[] {
   const items: MobileDestination[] = [];
-  if (permissions.canAccessHouses) items.push({ id: "houses", label: "บ้านพัก", href: "/admin/houses" });
   if (permissions.canUseBooking) items.push({ id: "bookings", label: "การจอง", href: "/admin/bookings" });
+  if (permissions.canAccessHouses) items.push({ id: "houses", label: "บ้านพัก", href: "/admin/houses" });
   if (permissions.canUseAccommodation) items.push({ id: "advertisements", label: "โฆษณา", href: "/admin/advertisements" });
   if (permissions.canUseQuotation) items.push(
     { id: "quotations", label: "ใบเสนอราคา", href: "/admin/quotations" },

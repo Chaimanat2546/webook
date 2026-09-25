@@ -15,9 +15,10 @@ export interface BookingGalleryHouse {
   title: string;
   location_zone: string | null;
 }
-export type GalleryHouseSummary = BookingGalleryHouse;
+export interface GalleryHouseSummary extends BookingGalleryHouse { is_active: boolean | null }
 export interface GalleryHousePage { houses: GalleryHouseSummary[]; total: number; page: number; pageCount: number }
-export interface GalleryPageInput { page: number; search: string }
+export type GallerySearchMode = "dv" | "title";
+export interface GalleryPageInput { page: number; search: string; searchMode: GallerySearchMode }
 export interface GalleryCalendarInput { month: string; start: string; end: string; propertyIds: string[] }
 export interface GalleryBookingSlice { id: string; listing_id: string; houseid: string; check_in: string; check_out: string; status: string | null }
 
@@ -26,9 +27,11 @@ export function parseGalleryPageInput(input: unknown): GalleryPageInput {
   const raw = (input ?? {}) as Record<string, unknown>;
   const page = raw.page === undefined ? 1 : raw.page;
   const search = raw.search === undefined ? "" : raw.search;
+  const searchMode = raw.searchMode === undefined ? "dv" : raw.searchMode;
+  if (searchMode !== "dv" && searchMode !== "title") throw new Error("ประเภทการค้นหาไม่ถูกต้อง");
   if (typeof page !== "number" || !Number.isInteger(page) || page < 1 || page > 100000) throw new Error("หน้าไม่ถูกต้อง");
   if (typeof search !== "string" || search.trim().length > 120) throw new Error("คำค้นหาไม่ถูกต้อง");
-  return { page, search: search.trim() };
+  return { page, search: search.trim(), searchMode };
 }
 
 export function parseGalleryCalendarInput(input: unknown): GalleryCalendarInput {

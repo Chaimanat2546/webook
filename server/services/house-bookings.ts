@@ -23,6 +23,11 @@ export async function requireBookingHouse(repository: HouseBookingsRepository, p
   if (!house) throw new Error("booking_house_not_found");
   return house;
 }
+export async function getBookingHouseInformation(repository: HouseBookingsRepository, propertyId: unknown) {
+  const information = await repository.houseInformation(bookingId(propertyId));
+  if (!information) throw new Error("booking_house_not_found");
+  return information;
+}
 export async function listHouseBookings(repository: HouseBookingsRepository, propertyId: unknown, start: unknown, end: unknown) {
   const range = parseBookingRange(start, end);
   const house = await requireBookingHouse(repository, propertyId);

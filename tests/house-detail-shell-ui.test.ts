@@ -87,7 +87,7 @@ describe("house detail shell UI", () => {
     const scrollSource = readFileSync(activeScrollUrl, "utf8");
 
     assert.match(source, /"use client"/);
-    assert.match(source, /import \{ BadgeDollarSign, CalendarDays, HouseIcon, SparklesIcon \} from "lucide-react";/);
+    assert.match(source, /import \{ BadgeDollarSign, HouseIcon, SparklesIcon \} from "lucide-react";/);
     assert.match(source, /import \{ scrollActiveItemToStart \} from "\.\.\/\.\.\/\.\.\/lib\/scroll-active-item";/);
     assert.match(source, /import \{ HouseWorkspaceNavItem \} from "\.\/house-workspace-nav-item";/);
     assert.match(source, /const sectionIconByKey: Record<string, LucideIcon>/);
