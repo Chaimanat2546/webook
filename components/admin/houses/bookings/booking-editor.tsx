@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObjec
 import { toast } from "sonner";
 import { BookingDateRange } from "./booking-date-range";
 import { BookingCustomerPicker } from "./booking-customer-picker";
+import { BookingHouseInformation } from "./booking-house-information";
 import { BookingEditorSkeleton } from "./booking-skeletons";
 import { CalendarDays, Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -145,6 +146,7 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
         <BookingDateRange propertyId={propertyId} excludeId={booking?.id} originalStart={booking?.check_in} originalEnd={booking?.check_out} originalStatus={booking?.status} start={form.check_in} end={form.check_out} revision={availabilityRevision}
           onValid={setDatesValid} onChange={(check_in, check_out) => { setDatesValid(false); setForm(previous => ({ ...previous, check_in, check_out })); }} />
         {datesChanged && form.status !== "repair" && <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">เปลี่ยนวันแล้ว ยอดเงินยังเท่าเดิม โปรดตรวจสอบ</p>}
+        <BookingHouseInformation key={propertyId} propertyId={propertyId} />
       </section>
       <div className="space-y-5">
       {form.status !== "repair" && <section className="space-y-3 border-t pt-4">

@@ -1,3 +1,10 @@
+export interface BookingHouseInformation {
+  extra_beds: number | null;
+  insurance_fee: number | null;
+  checkin_time: string | null;
+  checkout_time: string | null;
+}
+
 export interface BookingCustomer {
   id: string;
   first_name: string;

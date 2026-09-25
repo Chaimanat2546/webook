@@ -74,6 +74,16 @@ database cast or index and is not part of this bounded query.
 
 ## Access and data flow
 
+The shared booking form displays a read-only **ข้อมูลที่พัก** panel below the
+stay dates (left column in the Gallery dialog). On form mount it requests only
+`listings.extra_beds`, `insurance_fee`, `checkin_time`, and `checkout_time` for
+the validated property ID through a booking-authorized server action. Extra-bed
+price is labelled ราคาคนเสริม. These are current house settings, not historical
+booking snapshots; they are never included in booking totals or save payloads.
+Missing values show ไม่ระบุ, zero amounts remain 0 บาท, and local times show
+HH:mm without timezone conversion. Loading/error/retry is local to this panel
+and does not block the booking form. Gallery list/calendar queries are unchanged.
+
 Every action verifies the Supabase session, then loads `users.allow_tools` by
 `uid` using the server-only admin client. Only explicit `allow_booking: true`
 permits booking operations; email fallback is not used at this privileged boundary.

@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GalleryBookingSlice, GalleryHouseSummary, GalleryPageInput } from "../../lib/booking-gallery.ts";
 import { CUSTOMER_FIELDS, normalizeBookingPhone, type BookingCustomerDetail, type BookingCustomerInput } from "../../lib/booking-customers.ts";
-import { bookingId, record, type Booking, type BookingCreate, type BookingCustomer, type BookingUpdate } from "../../lib/house-bookings.ts";
+import { bookingId, record, type Booking, type BookingCreate, type BookingCustomer, type BookingUpdate, type BookingHouseInformation } from "../../lib/house-bookings.ts";
 
 export interface BookingHouse { id: string; property_id: string; title: string }
 const customerDetailSelection = `id,first_name,last_name,phone,customer_type,vip_status,tax_head_office,updated_at,dv_id,${CUSTOMER_FIELDS.map(field => field.key).join(",")}`;
@@ -48,6 +48,16 @@ function mapGalleryBookingSlice(value: unknown): GalleryBookingSlice {
 }
 export function createHouseBookingsRepository(client: SupabaseClient) {
   return {
+    async houseInformation(propertyId: string): Promise<BookingHouseInformation | null> {
+      const { data, error } = await client.from("listings")
+        .select("extra_beds,insurance_fee,checkin_time,checkout_time").eq("property_id", propertyId).maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      const row = record(data);
+      return { extra_beds: row.extra_beds == null ? null : number(row.extra_beds),
+        insurance_fee: row.insurance_fee == null ? null : number(row.insurance_fee),
+        checkin_time: nullableText(row.checkin_time), checkout_time: nullableText(row.checkout_time) };
+    },
     async galleryHousePage(input: GalleryPageInput): Promise<{ houses: GalleryHouseSummary[]; total: number }> {
       let query = client.from("listings").select("id,property_id,title,location_zone,is_active", { count: "exact" })
         .order("property_id", { ascending: true }).range((input.page - 1) * 6, input.page * 6 - 1);
