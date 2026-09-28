@@ -13,7 +13,7 @@ describe("house booking RPC integration", { skip: process.env.RUN_BOOKING_DB_TES
     return `${result.stdout}${result.stderr}`;
   }
   const actor = "00000000-0000-4000-8000-000000000001";
-  const values = { check_in: "2026-09-28", check_out: "2026-10-04", status: "confirmed", customer_id: 1, quantity: 1, price_sell: 3900, price_max: 6900, extra_charge: 0, note: "test" };
+  const values = { check_in: "2026-09-28", check_out: "2026-10-04", status: "confirmed", customer_id: 1, quantity: 1, price_sell: 3900, price_max: 6900, extra_charge: 0, note: "test", extra_beds: 300, insurance_fee: 3000, checkin_time: "14:00:00", checkout_time: "12:00:00" };
   const call = (house = 1024, revision = "2026-09-18T00:00:00Z", v = values) => `select public.admin_update_house_booking(${house},1,'${revision}','${actor}','${JSON.stringify(v)}'::jsonb);`;
   before(async () => {
     const run = spawnSync("docker", ["run", "--rm", "-d", "--name", container, "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "postgres:17-alpine"], { encoding: "utf8" });
@@ -31,18 +31,19 @@ describe("house booking RPC integration", { skip: process.env.RUN_BOOKING_DB_TES
       create table public.listings(id uuid primary key,property_id bigint unique);
       insert into public.listings values ('00000000-0000-4000-8000-000000000010',1024);
       create table public.customers(id bigint primary key); insert into public.customers values(1);
-      create table public.bookings(id bigint primary key,listing_id uuid references public.listings,houseid bigint,customer_id bigint references public.customers,check_in date,check_out date,status text,quantity integer,price_sell numeric,deposit_amount numeric,extra_charge numeric,note text,updated_at timestamptz);
+      create table public.bookings(id bigint primary key,listing_id uuid references public.listings,houseid bigint,customer_id bigint references public.customers,check_in date,check_out date,status text,quantity integer,price_sell numeric,deposit_amount numeric,extra_charge numeric,note text,updated_at timestamptz,booking_code text,created_by uuid);
       alter table public.bookings add exclude using gist(listing_id with =,daterange(check_in,check_out,'[)') with &&) where (status not in ('cancelled','rejected'));
       create table public.booking_logs(booking_id bigint,performed_by uuid references auth.users(id));
       create function public.test_audit() returns trigger language plpgsql as 'begin insert into public.booking_logs values(new.id,auth.uid());return new;end';
       create trigger audit after update on public.bookings for each row execute function public.test_audit();
-      insert into public.bookings values(1,'00000000-0000-4000-8000-000000000010',1024,null,'2026-09-28','2026-10-03','confirmed',1,15000,5000,0,null,'2026-09-18T00:00:00Z');
+      insert into public.bookings values(1,'00000000-0000-4000-8000-000000000010',1024,null,'2026-09-28','2026-10-03','confirmed',1,15000,5000,0,null,'2026-09-18T00:00:00Z',null,null);
       grant usage on schema public,auth to service_role; grant all on all tables in schema public to service_role;`);
     sql(readFileSync(new URL("../supabase/migrations/20260918100000_admin_update_house_booking.sql", import.meta.url), "utf8"));
     assert.match(sql(`set role service_role; ${call()}`, false), /permission denied for table users/);
     sql(readFileSync(new URL("../supabase/migrations/20260918110000_booking_actor_integrity.sql", import.meta.url), "utf8"));
     sql("alter table public.bookings add column price_max numeric");
     sql(readFileSync(new URL("../supabase/migrations/20260918120000_booking_money_fields.sql", import.meta.url), "utf8"));
+    sql(readFileSync(new URL("../supabase/migrations/20260928100000_booking_house_information_overrides.sql", import.meta.url), "utf8"));
   });
   after(() => { spawnSync("docker", ["rm", "-f", container], { encoding: "utf8" }); });
   it("only the service role can invoke the mutation", () => {
@@ -57,15 +58,20 @@ describe("house booking RPC integration", { skip: process.env.RUN_BOOKING_DB_TES
   });
   it("updates one stay, preserves its total and writes one correctly attributed audit record", () => {
     sql(`set role service_role; ${call()}`);
-    assert.match(sql("select check_out,price_sell,customer_id,price_max,deposit_amount from public.bookings where id=1"), /2026-10-04\|3900\|1\|6900\|5000/);
+    assert.match(sql("select check_out,price_sell,customer_id,price_max,deposit_amount,extra_beds,insurance_fee,checkin_time,checkout_time from public.bookings where id=1"), /2026-10-04\|3900\|1\|6900\|5000\|300\|3000\|14:00:00\|12:00:00/);
     assert.match(sql("select count(*),min(performed_by::text) from public.booking_logs"), new RegExp(`1\\|${actor}`));
   });
   it("rejects a stale revision without logging a second update", () => {
     assert.match(sql(call(), false), /booking_stale/);
     assert.match(sql("select count(*) from public.booking_logs"), /^1\s/);
   });
+  it("rejects invalid booking-specific house information", () => {
+    const revision = sql("select updated_at from public.bookings where id=1").trim();
+    assert.match(sql(call(1024, revision, { ...values, extra_beds: -1 }), false), /booking_invalid_input/);
+    assert.match(sql(call(1024, revision, { ...values, checkin_time: "25:00" }), false), /booking_invalid_input/);
+  });
   it("retains database overlap protection and rolls back log/write together", () => {
-    sql("insert into public.bookings values(2,'00000000-0000-4000-8000-000000000010',1024,null,'2026-10-04','2026-10-06','confirmed',1,10000,0,0,null,now(),null)");
+    sql("insert into public.bookings(id,listing_id,houseid,customer_id,check_in,check_out,status,quantity,price_sell,deposit_amount,extra_charge,note,updated_at,price_max) values(2,'00000000-0000-4000-8000-000000000010',1024,null,'2026-10-04','2026-10-06','confirmed',1,10000,0,0,null,now(),null)");
     const revision = sql("select updated_at from public.bookings where id=1").trim();
     assert.match(sql(call(1024, revision, { ...values, check_out: "2026-10-05" }), false), /exclusion constraint/);
     assert.match(sql("select check_out from public.bookings where id=1"), /2026-10-04/);

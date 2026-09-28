@@ -4,7 +4,7 @@ import type { Booking } from "../lib/house-bookings.ts";
 import type { HouseBookingsRepository } from "../server/repositories/house-bookings.ts";
 import { cancelHouseBooking, createHouseBooking, saveHouseBooking, getHouseBooking, listHouseBookings, bookingError } from "../server/services/house-bookings.ts";
 
-const row: Booking = { id: "1", booking_code: "BK1", listing_id: "listing1", houseid: "1024", agent_id: null, customer_id: null, customer: null, check_in: "2026-09-28", check_out: "2026-10-03", status: "confirmed", booking_type: "booking", price_sell: 15000, price_max: 0, deposit_amount: 5000, extra_charge: 0, quantity: 1, details: null, note: null, updated_at: "2026-09-18T00:00:00Z" };
+const row: Booking = { id: "1", booking_code: "BK1", listing_id: "listing1", houseid: "1024", agent_id: null, customer_id: null, customer: null, check_in: "2026-09-28", check_out: "2026-10-03", status: "confirmed", booking_type: "booking", price_sell: 15000, price_max: 0, deposit_amount: 5000, extra_charge: 0, quantity: 1, details: null, note: null, extra_beds: null, insurance_fee: null, checkin_time: null, checkout_time: null, updated_at: "2026-09-18T00:00:00Z" };
 function memory() {
   let saved = { ...row };
   const repository: HouseBookingsRepository = {
@@ -72,6 +72,34 @@ test("creation derives nights and house from the route and accepts only an exist
   await createHouseBooking(store.repository, "actor", "1024", input);
   await assert.rejects(createHouseBooking(store.repository, "actor", "1024", { ...input, customer_id: null }));
   assert.equal(calls, 1);
+});
+
+test("creation snapshots the current house information when the booking has no overrides", async t => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-09-21T00:00:00Z") });
+  const store = memory();
+  store.repository.houseInformation = async () => ({ extra_beds: 300, insurance_fee: 3000, checkin_time: "14:00:00", checkout_time: "12:00:00" });
+  store.repository.create = async (_house, _actor, input) => {
+    assert.deepEqual(
+      { extra_beds: input.extra_beds, insurance_fee: input.insurance_fee, checkin_time: input.checkin_time, checkout_time: input.checkout_time },
+      { extra_beds: 300, insurance_fee: 3000, checkin_time: "14:00:00", checkout_time: "12:00:00" },
+    );
+    return { ...row, ...input };
+  };
+  await createHouseBooking(store.repository, "actor", "1024", { ...row, request_id: "00000000-0000-4000-8000-000000000001", customer_id: "42" });
+});
+
+test("creation keeps a booking override while snapshotting the remaining house information", async t => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-09-21T00:00:00Z") });
+  const store = memory();
+  store.repository.houseInformation = async () => ({ extra_beds: 300, insurance_fee: 3000, checkin_time: "14:00:00", checkout_time: "12:00:00" });
+  store.repository.create = async (_house, _actor, input) => {
+    assert.deepEqual(
+      { extra_beds: input.extra_beds, insurance_fee: input.insurance_fee, checkin_time: input.checkin_time, checkout_time: input.checkout_time },
+      { extra_beds: 450, insurance_fee: 3000, checkin_time: "14:00:00", checkout_time: "12:00:00" },
+    );
+    return { ...row, ...input };
+  };
+  await createHouseBooking(store.repository, "actor", "1024", { ...row, request_id: "00000000-0000-4000-8000-000000000001", customer_id: "42", extra_beds: 450 });
 });
 
 test("creation rejects past check-in before writing", async t => {

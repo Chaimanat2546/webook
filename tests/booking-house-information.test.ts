@@ -29,15 +29,15 @@ test("house information reads only four latest listing fields scoped to validate
   await assert.rejects(() => getBookingHouseInformation(repository, "12"), /booking_house_not_found/);
 });
 
-test("house information renders read-only amounts and local times without confusing zero with missing", async () => {
+test("house information renders editable booking-specific amounts and local times", async () => {
   const output = await build({ entryPoints: [fileURLToPath(new URL("../components/admin/houses/bookings/booking-house-information-details.tsx", import.meta.url))],
     bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
   const loaded = { exports: {} as Record<string, unknown> };
   new Function("require", "module", "exports", output.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
   const Details = loaded.exports.BookingHouseInformationDetails as ComponentType<Record<string, unknown>>;
-  const html = renderToStaticMarkup(createElement(Details, { data: { extra_beds: 0, insurance_fee: 3000, checkin_time: "14:00:00", checkout_time: "00:00:00" } }));
-  for (const text of ["ราคาคนเสริม", "ประกันที่พัก", "เวลาเช็คอิน", "เวลาเช็คเอาท์", "0 บาท", "3,000 บาท", "14:00", "00:00"]) assert.ok(html.includes(text), text);
-  assert.doesNotMatch(html, /<(input|select|textarea)\b/);
-  const missing = renderToStaticMarkup(createElement(Details, { data: { extra_beds: null, insurance_fee: null, checkin_time: null, checkout_time: null } }));
-  assert.equal((missing.match(/ไม่ระบุ/g) ?? []).length, 4);
+  const html = renderToStaticMarkup(createElement(Details, { data: { extra_beds: 0, insurance_fee: 3000, checkin_time: "14:00:00", checkout_time: "00:00:00" }, values: { extra_beds: null, insurance_fee: null, checkin_time: null, checkout_time: null }, onChange: () => {} }));
+  for (const text of ["ราคาคนเสริม", "ประกันที่พัก", "เวลาเช็คอิน", "เวลาเช็คเอาท์", "14:00", "00:00", "ไม่กระทบข้อมูลบ้านหลัก"]) assert.ok(html.includes(text), text);
+  assert.match(html, /<input[^>]+type="number"/);
+  assert.match(html, /<input[^>]+type="time"/);
+  assert.doesNotMatch(html, /ข้อมูลบ้าน:/);
 });
