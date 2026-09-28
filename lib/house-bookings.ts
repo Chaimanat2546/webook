@@ -23,6 +23,10 @@ export interface BookingUpdate {
   price_max: number | null;
   extra_charge: number;
   note: string | null;
+  extra_beds: number | null;
+  insurance_fee: number | null;
+  checkin_time: string | null;
+  checkout_time: string | null;
 }
 export interface Booking extends BookingUpdate {
   booking_code: string;
@@ -70,6 +74,14 @@ function amount(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 999999999.99 || Math.abs(value * 100 - Math.round(value * 100)) > 0.0001) throw new Error("ยอดเงินต้องเป็นจำนวนบวกหรือศูนย์ และมีทศนิยมไม่เกิน 2 ตำแหน่ง");
   return value;
 }
+function nullableAmount(value: unknown): number | null {
+  return value === null ? null : amount(value);
+}
+function nullableTime(value: unknown): string | null {
+  if (value === null) return null;
+  if (typeof value !== "string" || !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value)) throw new Error("เวลาเช็คอินและเช็คเอาท์ไม่ถูกต้อง");
+  return value.length === 5 ? `${value}:00` : value;
+}
 export function parseBookingUpdate(value: unknown): BookingUpdate {
   const raw = record(value);
   const v = raw.status === "repair" ? { ...raw, customer_id: null, price_max: 0, price_sell: 0, extra_charge: 0 } : raw;
@@ -79,7 +91,7 @@ export function parseBookingUpdate(value: unknown): BookingUpdate {
   if (typeof v.status !== "string" || !BOOKING_STATUSES.some(s => s.value === v.status)) throw new Error("สถานะไม่ถูกต้อง");
   if (typeof v.updated_at !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(v.updated_at) || !Number.isFinite(Date.parse(v.updated_at))) throw new Error("ไม่พบรุ่นข้อมูล กรุณาโหลดการจองใหม่");
   if (v.note !== null && (typeof v.note !== "string" || v.note.length > 10000)) throw new Error("หมายเหตุยาวเกินไป");
-  return { id: bookingId(v.id), updated_at: v.updated_at, check_in, check_out, status: v.status, customer_id: v.customer_id === null ? null : bookingId(v.customer_id), quantity, price_sell: amount(v.price_sell), price_max: v.price_max === null ? null : amount(v.price_max), extra_charge: amount(v.extra_charge), note: v.note as string | null };
+  return { id: bookingId(v.id), updated_at: v.updated_at, check_in, check_out, status: v.status, customer_id: v.customer_id === null ? null : bookingId(v.customer_id), quantity, price_sell: amount(v.price_sell), price_max: v.price_max === null ? null : amount(v.price_max), extra_charge: amount(v.extra_charge), note: v.note as string | null, extra_beds: nullableAmount(v.extra_beds), insurance_fee: nullableAmount(v.insurance_fee), checkin_time: nullableTime(v.checkin_time), checkout_time: nullableTime(v.checkout_time) };
 }
 export function bookingCustomerName(customer: BookingCustomer | null): string {
   return customer ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") || `ลูกค้า #${customer.id}` : "ยังไม่ได้ผูกลูกค้า";
@@ -101,5 +113,5 @@ export function parseBookingCreate(value: unknown): BookingCreate {
   const price_max = v.status === "repair" ? 0 : amount(v.price_max);
   const parsed = parseBookingUpdate({ ...v, id: "1", updated_at: "2000-01-01T00:00:00Z" });
   if (parsed.status !== "waiting" && parsed.status !== "confirmed" && parsed.status !== "repair") throw new Error("สถานะการจองใหม่ไม่ถูกต้อง");
-  return { request_id: v.request_id, customer_id, price_max, check_in: parsed.check_in, check_out: parsed.check_out, quantity: parsed.quantity, status: parsed.status, price_sell: parsed.price_sell, extra_charge: parsed.extra_charge, note: parsed.note };
+  return { request_id: v.request_id, customer_id, price_max, check_in: parsed.check_in, check_out: parsed.check_out, quantity: parsed.quantity, status: parsed.status, price_sell: parsed.price_sell, extra_charge: parsed.extra_charge, note: parsed.note, extra_beds: parsed.extra_beds, insurance_fee: parsed.insurance_fee, checkin_time: parsed.checkin_time, checkout_time: parsed.checkout_time };
 }

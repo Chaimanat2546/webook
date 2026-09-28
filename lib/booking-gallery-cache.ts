@@ -2,7 +2,7 @@ import type { BookingGalleryCard } from "./booking-gallery.ts";
 
 export type GalleryPairState =
   | { status: "loading" }
-  | { status: "ready"; card: BookingGalleryCard; loadedAt: number }
+  | { status: "ready"; card: BookingGalleryCard }
   | { status: "error"; message: string };
 
 interface Entry { token: number; state: GalleryPairState }
@@ -10,7 +10,6 @@ export interface GalleryVisiblePair { propertyId: string; month: string }
 export interface GalleryMonthGroup { month: string; propertyIds: string[] }
 
 const maxPairs = 24;
-const freshMilliseconds = 30_000;
 const pairKey = (propertyId: string, month: string) => `${propertyId}:${month}`;
 
 export class GalleryPairCache {
@@ -19,39 +18,25 @@ export class GalleryPairCache {
 
   get size(): number { return this.entries.size; }
 
-  snapshot(now: number): Record<string, GalleryPairState> {
+  snapshot(): Record<string, GalleryPairState> {
     const states: Record<string, GalleryPairState> = {};
     for (const [key, entry] of this.entries) {
-      if (entry.state.status !== "ready" || now - entry.state.loadedAt < freshMilliseconds) states[key] = entry.state;
+      states[key] = entry.state;
     }
     return states;
   }
 
-  nextExpiry(now: number): number | null {
-    let next: number | null = null;
-    for (const entry of this.entries.values()) {
-      if (entry.state.status !== "ready") continue;
-      const expiresAt = entry.state.loadedAt + freshMilliseconds;
-      if (expiresAt > now && (next === null || expiresAt < next)) next = expiresAt;
-    }
-    return next;
-  }
-
-  read(propertyId: string, month: string, now: number): GalleryPairState | null {
+  read(propertyId: string, month: string): GalleryPairState | null {
     const key = pairKey(propertyId, month);
     const entry = this.entries.get(key);
     if (!entry) return null;
-    if (entry.state.status === "ready" && now - entry.state.loadedAt >= freshMilliseconds) {
-      this.entries.delete(key);
-      return null;
-    }
     this.entries.delete(key);
     this.entries.set(key, entry);
     return entry.state;
   }
 
-  start(propertyId: string, month: string, now: number, force = false): number | null {
-    if (!force && this.read(propertyId, month, now)) return null;
+  start(propertyId: string, month: string, force = false): number | null {
+    if (!force && this.read(propertyId, month)) return null;
     const key = pairKey(propertyId, month);
     const token = ++this.sequence;
     this.entries.delete(key);
@@ -60,12 +45,12 @@ export class GalleryPairCache {
     return token;
   }
 
-  resolve(propertyId: string, month: string, token: number, card: BookingGalleryCard, now: number): boolean {
+  resolve(propertyId: string, month: string, token: number, card: BookingGalleryCard): boolean {
     const key = pairKey(propertyId, month);
     const entry = this.entries.get(key);
     if (!entry || entry.token !== token) return false;
     this.entries.delete(key);
-    this.entries.set(key, { token, state: { status: "ready", card, loadedAt: now } });
+    this.entries.set(key, { token, state: { status: "ready", card } });
     return true;
   }
 
@@ -82,10 +67,10 @@ export class GalleryPairCache {
   }
 }
 
-export function groupGalleryPairsByMonth(cache: GalleryPairCache, pairs: GalleryVisiblePair[], now: number): GalleryMonthGroup[] {
+export function groupGalleryPairsByMonth(cache: GalleryPairCache, pairs: GalleryVisiblePair[]): GalleryMonthGroup[] {
   const groups = new Map<string, string[]>();
   for (const pair of pairs) {
-    if (cache.read(pair.propertyId, pair.month, now)) continue;
+    if (cache.read(pair.propertyId, pair.month)) continue;
     const ids = groups.get(pair.month) ?? [];
     ids.push(pair.propertyId);
     groups.set(pair.month, ids);

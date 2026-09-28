@@ -71,9 +71,17 @@ export async function bookingResult<T>(work: () => Promise<T>): Promise<BookingR
 }
 
 export async function createHouseBooking(repository: HouseBookingsRepository, actorId: string, propertyId: unknown, raw: unknown) {
-  const input = parseBookingCreate(raw);
-  assertBookingNotPast(input.check_in, input.check_out, bookingToday());
+  const parsed = parseBookingCreate(raw);
+  assertBookingNotPast(parsed.check_in, parsed.check_out, bookingToday());
   const house = await requireBookingHouse(repository, propertyId);
+  const defaults = await repository.houseInformation(house.property_id);
+  const input = defaults ? {
+    ...parsed,
+    extra_beds: parsed.extra_beds ?? defaults.extra_beds,
+    insurance_fee: parsed.insurance_fee ?? defaults.insurance_fee,
+    checkin_time: parsed.checkin_time ?? defaults.checkin_time,
+    checkout_time: parsed.checkout_time ?? defaults.checkout_time,
+  } : parsed;
   if (input.customer_id && !await repository.ownsCustomer(house, input.customer_id)) throw new Error("กรุณาเลือกลูกค้าของบ้านนี้");
   return repository.create(house, actorId, input);
 }

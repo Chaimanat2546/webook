@@ -61,9 +61,11 @@ actions. Calendar requests contain one to six validated property IDs and one
 month. The repository resolves their listing IDs, selects only
 `id,listing_id,houseid,check_in,check_out,status` from bookings, filters exact
 listing/property pairs, and paginates dense results in 500-row batches. The
-client caches up to 24 house/month pairs for 30 seconds; late responses cannot
-restore data invalidated by a save. Search waits 250 ms before requesting a
-page, and the existing editor is loaded only when selected. The page uses the
+client caches up to 24 house/month pairs for the current gallery session; it
+reloads only for an initial page/search, a per-house month change, an explicit
+retry, or after saving that house. Late responses cannot restore data
+invalidated by a save. Search waits 250 ms before requesting a page, and the
+existing editor is loaded only when selected. The page uses the
 database's active-first, numeric property ID ascending order before six-house pagination,
 including search results. Six card skeletons reserve the loading page layout;
 individual calendar loading replaces only that card's date grid with a skeleton.
@@ -73,15 +75,17 @@ database cast or index and is not part of this bounded query.
 
 ## Access and data flow
 
-The shared booking form displays a read-only **ข้อมูลที่พัก** panel above the
-booking totals (right column in the Gallery dialog; after status and nights on mobile). On form mount it requests only
+The shared booking form displays an editable **ข้อมูลที่พัก** panel above the
+booking totals (right column in the Gallery dialog; after status and nights on mobile). It obtains
 `listings.extra_beds`, `insurance_fee`, `checkin_time`, and `checkout_time` for
-the validated property ID through a booking-authorized server action. Extra-bed
-price is labelled ราคาคนเสริม. These are current house settings, not historical
-booking snapshots; they are never included in booking totals or save payloads.
-Missing values show ไม่ระบุ, zero amounts remain 0 บาท, and local times show
-HH:mm without timezone conversion. Loading/error/retry is local to this panel
-and does not block the booking form. Gallery list/calendar queries are unchanged.
+the validated property ID as defaults, but saves any edited values in the matching
+nullable columns on `bookings`. Thus changing ราคาคนเสริม, ประกันที่พัก, เวลาเช็คอิน,
+or เวลาเช็คเอาท์ does not change the source house. New bookings snapshot all four
+values from the house; a user-entered value takes precedence over its default.
+These fields are not included in booking totals. Missing values show ไม่ระบุ, zero
+amounts remain 0 บาท, and local times show HH:mm without timezone conversion.
+Loading/error/retry is local to this panel and does not block the booking form.
+Gallery list/calendar queries are unchanged.
 
 Every action verifies the Supabase session, then loads `users.allow_tools` by
 `uid` using the server-only admin client. Only explicit `allow_booking: true`
@@ -101,7 +105,8 @@ customer identity documents, tax data or addresses.
 The `admin_update_house_booking` RPC is executable only by service_role. It does
 not perform user permission checks: those belong to the web server. It locks the
 booking, verifies the expected updated_at and house relationship, allowlists
-fields, and preserves the existing overlap constraint and audit trigger. It sets
+fields including the four booking-specific house-information fields, and preserves
+the existing overlap constraint and audit trigger. It sets
 the transaction-local JWT subject to the verified actor so the existing audit
 trigger records that user once, then restores the prior subject. No RLS changes.
 

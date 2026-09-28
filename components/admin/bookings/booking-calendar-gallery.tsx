@@ -43,7 +43,7 @@ export function BookingCalendarGallery() {
   const mounted = useRef(true);
   const [cache] = useState(() => new GalleryPairCache());
   const today = bookingToday();
-  const publishCache = useCallback(() => setCacheStates(cache.snapshot(Date.now())), [cache]);
+  const publishCache = useCallback(() => setCacheStates(cache.snapshot()), [cache]);
 
   useEffect(() => {
     const timer = setTimeout(() => setCommittedSearch(search.trim()), 250);
@@ -77,9 +77,9 @@ export function BookingCalendarGallery() {
   const loadPairs = useCallback(async (pairs: GalleryVisiblePair[], force = false) => {
     const groups = force
       ? [...new Map(pairs.map(pair => [pair.month, pairs.filter(candidate => candidate.month === pair.month).map(candidate => candidate.propertyId)]))].map(([month, propertyIds]) => ({ month, propertyIds }))
-      : groupGalleryPairsByMonth(cache, pairs, Date.now());
+      : groupGalleryPairsByMonth(cache, pairs);
     for (const group of groups) {
-      const tokens = group.propertyIds.map(propertyId => ({ propertyId, token: cache.start(propertyId, group.month, Date.now(), force) }))
+      const tokens = group.propertyIds.map(propertyId => ({ propertyId, token: cache.start(propertyId, group.month, force) }))
         .filter((item): item is { propertyId: string; token: number } => item.token !== null);
       if (tokens.length === 0) continue;
       if (mounted.current) publishCache();
@@ -93,7 +93,7 @@ export function BookingCalendarGallery() {
             const cards = new Map(result.data.map(card => [card.propertyId, card]));
             for (const item of tokens) {
               const card = cards.get(item.propertyId);
-              if (card) cache.resolve(item.propertyId, group.month, item.token, card, Date.now());
+              if (card) cache.resolve(item.propertyId, group.month, item.token, card);
               else cache.reject(item.propertyId, group.month, item.token, "ไม่พบข้อมูลปฏิทินของบ้านนี้");
             }
           }
@@ -116,13 +116,6 @@ export function BookingCalendarGallery() {
     const timer = setTimeout(() => { void loadPairs(pairs); }, 0);
     return () => clearTimeout(timer);
   }, [houses, houseMonths, initialMonth, loadPairs, cacheStates]);
-
-  useEffect(() => {
-    const nextExpiry = cache.nextExpiry(Date.now());
-    if (nextExpiry === null) return;
-    const timer = setTimeout(publishCache, Math.max(0, nextExpiry - Date.now()));
-    return () => clearTimeout(timer);
-  }, [cache, cacheStates, publishCache]);
 
   const choose = (selection: GallerySelection, element: HTMLElement) => { trigger.current = element; setSelected(selection); };
 

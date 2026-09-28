@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { CommandExitError, withProductionEnvironmentExcluded } from "./staging-build-environment.mjs";
 
 const command = process.argv[2];
 if (command !== "deploy" && command !== "upload") {
@@ -34,7 +35,7 @@ function run(executable, args, env) {
     stdio: "inherit",
   });
   if (result.error) throw result.error;
-  if (result.status !== 0) process.exit(result.status ?? 1);
+  if (result.status !== 0) throw new CommandExitError(result.status ?? 1, `${executable} exited with status ${result.status ?? 1}`);
 }
 
 const env = {
@@ -46,5 +47,12 @@ const env = {
 const openNextCli = join(process.cwd(), "node_modules", "@opennextjs", "cloudflare", "dist", "cli", "index.js");
 const wranglerCli = join(process.cwd(), "node_modules", ".bin", process.platform === "win32" ? "wrangler.cmd" : "wrangler");
 
-run(process.execPath, [openNextCli, "build"], env);
-run(wranglerCli, [command, "-c", "wrangler.staging.jsonc", "--keep-vars"], env);
+try {
+  await withProductionEnvironmentExcluded(process.cwd(), async () => {
+    run(process.execPath, [openNextCli, "build"], env);
+  });
+  run(wranglerCli, [command, "-c", "wrangler.staging.jsonc", "--keep-vars"], env);
+} catch (error) {
+  if (error instanceof CommandExitError) process.exitCode = error.exitCode;
+  else throw error;
+}

@@ -156,7 +156,7 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
       </select></label><label className="space-y-1">จำนวนคืน<Input readOnly aria-label="จำนวนคืน" value={nights > 0 ? nights : ""} /></label></div>
       {booking && booking.status !== "repair" && form.status === "repair" && <p className="text-xs text-amber-800">เมื่อบันทึกเป็นปิดซ่อม จะล้างลูกค้าและยอดเงินของรายการนี้</p>}
       {!supportedStatus && <p className="text-xs text-amber-800">กรุณาเลือกสถานะที่รองรับก่อนบันทึก</p>}
-      <BookingHouseInformation key={propertyId} propertyId={propertyId} />
+      <BookingHouseInformation key={propertyId} propertyId={propertyId} values={{ extra_beds: form.extra_beds, insurance_fee: form.insurance_fee, checkin_time: form.checkin_time, checkout_time: form.checkout_time }} onChange={value => setForm(previous => ({ ...previous, ...value }))} />
       <section className="space-y-3 border-t pt-4">{form.status !== "repair" && <h3 className="flex items-center gap-2 font-semibold"><Wallet aria-hidden className="size-4 shrink-0 text-muted-foreground" />ยอดรวมการจอง (บาท)</h3>}<div className="grid grid-cols-2 gap-3">
         {form.status !== "repair" && ([{ key: "price_max", label: "ค่าบ้านเต็มจำนวน" }, { key: "price_sell", label: "มัดจำที่ต้องชำระ" }, { key: "extra_charge", label: "ค่าใช้จ่ายเพิ่ม" }] as const).map(({ key, label }) => <label key={key} className={`space-y-1 ${key === "price_max" ? "col-span-2" : ""}`}>{label}<Input type="number" required={!booking || key !== "price_max"} min={0} max={999999999.99} step="0.01" value={form[key] === null || Number.isNaN(form[key]) ? "" : form[key]} onChange={e => change(key, key === "price_max" && e.target.value === "" ? null : e.target.valueAsNumber)} /></label>)}
         <label className="col-span-2 space-y-1">หมายเหตุ<Textarea rows={3} maxLength={10000} value={form.note ?? ""} onChange={e => change("note", e.target.value || null)} /></label>
@@ -171,10 +171,10 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
 type BookingDraft = Omit<BookingUpdate, "id" | "updated_at">;
 
 function newDraft(date: string): BookingDraft {
-  return { check_in: date, check_out: "", customer_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null };
+  return { check_in: date, check_out: "", customer_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_beds: null, insurance_fee: null, checkin_time: null, checkout_time: null };
 }
 
 function parseInitial(booking: Booking): BookingDraft {
-  const { check_in, check_out, customer_id, status, quantity, price_sell, price_max, extra_charge, note } = booking;
-  return { check_in, check_out, customer_id, status, quantity, price_sell, price_max, extra_charge, note };
+  const { check_in, check_out, customer_id, status, quantity, price_sell, price_max, extra_charge, note, extra_beds, insurance_fee, checkin_time, checkout_time } = booking;
+  return { check_in, check_out, customer_id, status, quantity, price_sell, price_max, extra_charge, note, extra_beds, insurance_fee, checkin_time, checkout_time };
 }

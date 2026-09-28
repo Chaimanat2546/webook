@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { parseBookingCreate, parseBookingUpdate, nightsBetween, parseBookingRange, bookingEvent } from "../lib/house-bookings.ts";
 import { canUseBooking, canAccessHouses } from "../server/auth/admin.ts";
 
-const input = { id: "17", updated_at: "2026-09-18T10:00:00+00:00", check_in: "2026-09-28", check_out: "2026-10-03", customer_id: null, status: "confirmed", quantity: 1, price_max: 6900, price_sell: 3900, deposit_amount: 5000, extra_charge: 0, note: "" };
+const input = { id: "17", updated_at: "2026-09-18T10:00:00+00:00", check_in: "2026-09-28", check_out: "2026-10-03", customer_id: null, status: "confirmed", quantity: 1, price_max: 6900, price_sell: 3900, deposit_amount: 5000, extra_charge: 0, note: "", extra_beds: null, insurance_fee: null, checkin_time: null, checkout_time: null };
 test("changing dates preserves one total rather than multiplying by nights", () => {
   const result = parseBookingUpdate({ ...input, check_out: "2026-10-04", extra_charge: 725 });
   assert.equal(result.price_max, 6900);
