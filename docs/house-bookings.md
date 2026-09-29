@@ -108,9 +108,10 @@ directly above the customer selector. It lists active agencies by name, includes
 `bookings.agent_id`. Other booking operators neither receive agency choices nor
 send an `agent_id` value, so an existing historic agency assignment is preserved.
 The service and RPC independently require role ID `1` for an explicit agency
-change and reject inactive or unknown agencies. After the numeric-ID migration,
-the booking foreign key uses `ON DELETE SET NULL`; legacy non-null booking agent
-values are cleared because their former UUID mapping cannot be established safely.
+change and reject inactive or unknown agencies. The direct UUID migration keeps
+Agent identities unchanged, uses `ON DELETE SET NULL` for the booking foreign
+key, and clears legacy numeric booking Agent values because they cannot be
+mapped to a UUID safely.
 
 Server Actions -> booking services -> booking repositories -> Supabase admin
 client. The server resolves property_id and verifies both listing_id and houseid
@@ -137,12 +138,14 @@ confirmation. Production is not modified by this repository change.
 
 The same Production inspection found `agents.id` and `agent_accounts.agent_id`
 as UUID values but `bookings.agent_id` as a nullable bigint without a foreign key.
-The forward UUID correction migration `20260929160000_restore_booking_agent_uuid.sql`
-keeps Agent IDs as UUIDs, converts booking Agent references to UUIDs, preserves
-known Staging Agent/account/booking links, and adds optional agency handling to
-both booking RPCs. It must be applied only after a fresh Production-schema summary
-and explicit confirmation; Production itself is never changed by the migration
-workflow.
+The direct migration `20260929150000_booking_agent_numeric_id.sql` changes only
+`bookings.agent_id` from bigint to UUID, adds its `ON DELETE SET NULL` foreign
+key, and adds optional agency handling to both booking RPCs. It never changes
+Agent or Agent Account UUID identities. Legacy numeric booking Agent values are
+cleared because no trustworthy UUID mapping exists. Version
+`20260929160000_restore_booking_agent_uuid.sql` is a no-op retained solely for
+Staging history compatibility. Apply Production migrations only after a fresh
+Production-schema summary and explicit confirmation.
 
 ## Verification
 
