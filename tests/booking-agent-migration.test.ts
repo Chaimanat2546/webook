@@ -15,11 +15,11 @@ describe("booking Agent UUID correction migration", { skip: process.env.RUN_BOOK
     return `${result.stdout}${result.stderr}`;
   }
 
-  const values = (agentId: string | null) => JSON.stringify({
+  const values = (agentId: string | null, includeAgent = true) => JSON.stringify({
     check_in: "2026-10-20", check_out: "2026-10-22", customer_id: 1,
     status: "waiting", quantity: 2, price_sell: 9000, price_max: 10000,
     extra_charge: 0, note: "test", insurance: 1000, extra_person: 2,
-    checkin_time: "14:00", checkout_time: "12:00", agent_id: agentId,
+    checkin_time: "14:00", checkout_time: "12:00", ...(includeAgent ? { agent_id: agentId } : {}),
   });
 
   before(async () => {
@@ -76,5 +76,22 @@ describe("booking Agent UUID correction migration", { skip: process.env.RUN_BOOK
     assert.match(sql(`select public.admin_create_house_booking(990001,'00000000-0000-4000-8000-000000000302','${administrator}','${values(inactiveId)}'::jsonb)`, false), /booking_agent_invalid/);
     assert.match(sql(`select public.admin_create_house_booking(990001,'00000000-0000-4000-8000-000000000303','${operator}','${values(activeId)}'::jsonb)`, false), /booking_agent_forbidden/);
     assert.match(sql(`select public.admin_create_house_booking(990001,'00000000-0000-4000-8000-000000000304','${administrator}','${values("not-a-uuid")}'::jsonb)`, false), /booking_invalid_input/);
+  });
+
+  it("preserves omitted Agent updates, rejects forged changes, and clears deleted Agent references", () => {
+    const activeId = sql("select id from public.agents where name='Active Agent'").trim();
+    const inactiveId = sql("select id from public.agents where name='Inactive Agent'").trim();
+    const target = "BK-00000000-0000-4000-8000-000000000301";
+    const update = (actor: string, payload: string, success = true) => sql(`set role service_role; select public.admin_update_house_booking(990001, (select id from public.bookings where booking_code='${target}'), (select updated_at from public.bookings where booking_code='${target}'), '${actor}', '${payload}'::jsonb)`, success);
+
+    update(operator, values(null, false));
+    assert.match(sql(`select agent_id from public.bookings where booking_code='${target}'`), new RegExp(`^${activeId}\\s*$`));
+    assert.match(update(operator, values(null), false), /booking_agent_forbidden/);
+    assert.match(update(administrator, values(inactiveId), false), /booking_agent_invalid/);
+    update(administrator, values(null));
+    assert.match(sql(`select agent_id is null from public.bookings where booking_code='${target}'`), /^t\s*$/);
+    update(administrator, values(activeId));
+    sql(`delete from public.agents where id='${activeId}'`);
+    assert.match(sql(`select agent_id is null from public.bookings where booking_code='${target}'`), /^t\s*$/);
   });
 });
