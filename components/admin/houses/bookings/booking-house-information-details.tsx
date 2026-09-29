@@ -16,8 +16,8 @@ export function BookingHouseInformationDetails({ data, values, onChange }: Props
     onChange({ ...values, [key]: value });
   };
   const moneyFields = [
-    { key: "extra_beds" as const, label: "ราคาคนเสริม" },
-    { key: "insurance_fee" as const, label: "ประกันที่พัก" },
+    { key: "extra_person" as const, label: "ราคาคนเสริม" },
+    { key: "insurance" as const, label: "ประกันที่พัก" },
   ];
   const timeFields = [
     { key: "checkin_time" as const, label: "เวลาเช็คอิน" },

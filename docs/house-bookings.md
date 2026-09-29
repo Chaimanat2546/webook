@@ -76,15 +76,20 @@ database cast or index and is not part of this bounded query.
 ## Access and data flow
 
 The shared booking form displays an editable **ข้อมูลที่พัก** panel above the
-booking totals (right column in the Gallery dialog; after status and nights on mobile). It obtains
-`listings.extra_beds`, `insurance_fee`, `checkin_time`, and `checkout_time` for
-the validated property ID as defaults, but saves any edited values in the matching
-nullable columns on `bookings`. Thus changing ราคาคนเสริม, ประกันที่พัก, เวลาเช็คอิน,
-or เวลาเช็คเอาท์ does not change the source house. New bookings snapshot all four
-values from the house; a user-entered value takes precedence over its default.
+booking totals (right column in the Gallery dialog; after status and nights on mobile).
+For **ปิดซ่อม/ปรับปรุง**, this panel and the Agency selector are hidden; the
+editor does not submit a new Agent assignment while saving that status.
+Only when creating a booking, the repository reads
+`listings.insurance`, `listings.extra_person`, `listings.checkin_time`, and
+`listings.checkout_time`, mapping them respectively to `bookings.insurance`,
+`bookings.extra_person`, `bookings.checkin_time`, and `bookings.checkout_time`.
+Those four values are inserted as a booking snapshot. When editing an existing
+booking, the panel reads and writes the saved booking values only; it never loads
+listing defaults and never writes to a listing or house. Thus changing ราคาคนเสริม,
+ประกันที่พัก, เวลาเช็คอิน, or เวลาเช็คเอาท์ does not change source accommodation data.
 These fields are not included in booking totals. Missing values show ไม่ระบุ, zero
 amounts remain 0 บาท, and local times show HH:mm without timezone conversion.
-Loading/error/retry is local to this panel and does not block the booking form.
+Loading/error/retry is local to create mode and does not block the booking form.
 Gallery list/calendar queries are unchanged.
 
 Every action verifies the Supabase session, then loads `users.allow_tools` by
@@ -97,40 +102,50 @@ allow_booking may manage bookings for every house and select existing customers
 globally. No additional scope environment variable is required. Every detail read
 and edit still checks that the booking belongs to the house opened in the route.
 
+Administrators (role ID `1`) additionally see the native **เอเจนซี่** selector
+directly above the customer selector. It lists active agencies by name, includes
+**ไม่ระบุเอเจนซี่**, and saves the selected UUID `agents.id` in
+`bookings.agent_id`. Other booking operators neither receive agency choices nor
+send an `agent_id` value, so an existing historic agency assignment is preserved.
+The service and RPC independently require role ID `1` for an explicit agency
+change and reject inactive or unknown agencies. The direct UUID migration keeps
+Agent identities unchanged, uses `ON DELETE SET NULL` for the booking foreign
+key, and clears legacy numeric booking Agent values because they cannot be
+mapped to a UUID safely.
+
 Server Actions -> booking services -> booking repositories -> Supabase admin
 client. The server resolves property_id and verifies both listing_id and houseid
 for detail reads and edits. Reads load only the fields needed by the UI, not
 customer identity documents, tax data or addresses.
 
-The `admin_update_house_booking` RPC is executable only by service_role. It does
-not perform user permission checks: those belong to the web server. It locks the
-booking, verifies the expected updated_at and house relationship, allowlists
-fields including the four booking-specific house-information fields, and preserves
-the existing overlap constraint and audit trigger. It sets
-the transaction-local JWT subject to the verified actor so the existing audit
-trigger records that user once, then restores the prior subject. No RLS changes.
+The `admin_create_house_booking` and `admin_update_house_booking` RPCs are
+executable only by service_role. They lock/idempotently create as appropriate,
+verify the expected revision and house relationship, and allowlist the four
+booking snapshot fields, the optional `agent_id`, and the ordinary booking fields. They reject
+legacy booking keys `insurance_fee` and `extra_beds`. The update RPC preserves
+the existing overlap constraint and audit trigger. Both set the transaction-local
+JWT subject to the verified actor, then restore the prior subject. No RLS changes.
 
 ## Database readiness
 
-Read-only Production metadata inspection confirmed an exclusion constraint on
-listing_id and daterange(check_in, check_out, '[)'), except cancelled/rejected
-bookings. The existing `trigger_booking_audit_log` writes old/new data and uses
-auth.uid(). Neither was changed.
+The Production schema inspected on 2026-09-29 has `bookings.insurance` and
+`bookings.extra_person`, while the two booking time columns are absent. Its current
+RPCs do not accept the four snapshot keys. The forward migration
+`20260929140000_booking_house_information_snapshot.sql` adds only the two nullable
+time columns and replaces those two RPC bodies. Before applying it or deploying,
+inspect Production metadata again, summarize the result, and obtain explicit
+confirmation. Production is not modified by this repository change.
 
-Staging was upgraded on 2026-09-18 after confirming bookings and booking_logs
-were empty. Migration 20260918090000 locks and refuses populated legacy tables,
-converts empty UUID IDs to bigint, adds missing fields/customer linkage, and
-preserves table identities and existing RLS. New customers are granted only to
-service_role, including when default privileges would otherwise expose them.
-Migration 20260918100000 adds the update RPC. Migration 20260918110000 removes
-an auth.users read that service_role cannot perform; the audit FK validates actor
-existence. All three migrations were applied only to Staging.
-
-A Staging transaction tested the RPC under service_role with a synthetic house
-and booking, verified preserved total and exactly one correctly attributed audit
-update, then rolled back all test rows. Original bookings/logs RLS remains enabled
-with unchanged policy counts. Missing schema/RPC returns a controlled error.
-Production has not been modified.
+The same Production inspection found `agents.id` and `agent_accounts.agent_id`
+as UUID values but `bookings.agent_id` as a nullable bigint without a foreign key.
+The direct migration `20260929150000_booking_agent_numeric_id.sql` changes only
+`bookings.agent_id` from bigint to UUID, adds its `ON DELETE SET NULL` foreign
+key, and adds optional agency handling to both booking RPCs. It never changes
+Agent or Agent Account UUID identities. Legacy numeric booking Agent values are
+cleared because no trustworthy UUID mapping exists. Version
+`20260929160000_restore_booking_agent_uuid.sql` is a no-op retained solely for
+Staging history compatibility. Apply Production migrations only after a fresh
+Production-schema summary and explicit confirmation.
 
 ## Verification
 
@@ -140,8 +155,9 @@ Production has not been modified.
   `postgres:17-alpine` Docker container, with synthetic records and no host port.
   It never reads Supabase environment files or contacts a deployed database.
 - The database test checks service-only execution, substituted houses, stale
-  revisions, preserved totals, actor attribution, single audit entry and overlap
-  rollback. Its audit trigger is a focused fixture, not the deployed trigger.
+  revisions, Production-named snapshot values, idempotent creation, preserved
+  totals, actor attribution, single audit entry and overlap rollback. Its audit
+  trigger is a focused fixture, not the deployed trigger.
 - Browser verification used the actual calendar/editor components with local
   fixture actions: confirmed red, waiting green, 5 -> 6 nights with total 30000
   unchanged, successful fixture save, and a 320px mobile sheet with no field overflow.
@@ -149,58 +165,14 @@ Production has not been modified.
   Worker includes a source revision. Keep its regenerated output with the
   feature.
 
-The legacy-upgrade Docker test also checks populated-table refusal, RLS retention,
-customer privilege isolation and idempotence. Run tests/legacy-booking-upgrade.test.ts
-with RUN_BOOKING_DB_TESTS=1.
-
-## Staging deployment (2026-09-18)
-
-Deployed via npm run deploy:cf:staging to
-https://webook-staging.chaymanus2003.workers.dev, version
-3cbd55e9-7081-4356-9d6a-23029e67db97, account
-0df55f166fa309dcc904e992c43f86db. Compiled bundle: 12 files with the Staging
-Supabase reference and zero with the Production reference. Login returned 200;
-unauthenticated house-list and booking requests returned 307 to /login.
-
-Staging currently has no houses or bookings. Synthetic integration data was
-rolled back; no demo records or account permission changes were left behind.
-Authenticated browser testing against deployed data has not been performed.
-
-Verification: typecheck/lint passed; Node suite 641 passed with one opt-in test
-skipped; all 6 explicit Docker database tests passed.
-
-## Money fields correction
-
-`price_max` is the full house price; `price_sell` is the required deposit, not money already received. `deposit_amount` is not shown, calculated or sent for editing; its stored value is preserved. A missing full price remains null until entered. Dates never multiply these booking amounts. Migration 20260918120000 updates the RPC allowlist without modifying RLS; apply it before deploying this editor update.
-
-Correction verification: npm run build and npm run verify passed (642 tests passed, one opt-in test skipped). Six isolated PostgreSQL RPC tests passed, including preservation of a nonzero deposit_amount and rejection of attempts to edit it. The correction migration was subsequently applied to Staging only; see deployment verification below.
-
-### Money correction deployed to Staging (2026-09-18)
-
-Migration 20260918120000 applied to sxvkhzhqtrpxgzumsswl. A rollback-only service_role transaction saved price_max=6900 and price_sell=3900 while preserving deposit_amount=1234, verified one attributed audit update, and left zero fixture rows. RLS was unchanged.
-
-Deployed via npm run deploy:cf:staging, version 0e8ac004-aab9-4ad9-b453-288ba57e5cd1. Bundle verification found 12 files containing the Staging reference and zero containing the Production reference. Login returned 200; unauthenticated house routes redirected to login. Staging still has no bookings, so authenticated booking-screen testing with hosted records remains unverified. Production was not changed.
-
-### Staging demo data (2026-09-18)
-
-At user request, seeded 10 synthetic houses (property_id 1–10), 20 synthetic customers, and 50 bookings dated September 18–October 8, 2026. Each house has two confirmed, two waiting and one cancelled booking, including a five-night cross-month stay. Customer names are fictional, phones use a 000000 prefix, and email addresses use example.invalid. Marker: STAGING-DEMO-20260918; booking prefix: DEMO-202609-H. No Production data was copied. price_max is full stay cost and price_sell the required deposit; deposit_amount retains its default zero. This supersedes the earlier empty-Staging notes. Only data changed, so no build or deployment was required.
-
 ### Shared shell navigation
 
 The booking page uses HouseDetailSectionNav from the house detail page, including mobile active-item scrolling, with bookings selected. It uses the same viewport height, sidebar title and shell-owned content padding. Only calendar content and its task header change.
 
-Shell correction deployed to Staging as 22ea42ab-444f-4df1-9ab6-73cbe74a76f6. Build, typecheck, lint and 642 tests passed (one opt-in skipped). Independent static review passed. Authenticated browser verification confirmed the shared sidebar, active booking item and seeded calendar events. Bundle contains Staging references only.
-
 The booking calendar now fills the remaining workspace height on desktop and mobile. FullCalendar uses height=100% and one visible event per day with overflow links so the whole month fits without scrolling the calendar body.
 
-Viewport fit deployed to Staging version 3e7e09aa-d4af-47f4-8e54-4693918b1afc. Verified September six-week calendar with seeded events at desktop 1280x720 (scroller 293/293px) and mobile 375x667 (312/312px), with no calendar overflow. Mobile shell uses explicit auto/minmax grid rows and accommodates the hidden content header. Build and lint passed; suite 642 passed with one opt-in skipped.
-
 Unsaved booking edits use the existing shadcn Dialog for close/cancel confirmation. The safe default returns to editing; Escape also keeps edits. Only explicit discard closes the editor. Browser/tab unload retains the native beforeunload guard, which cannot use an in-page modal.
-
-Unsaved-edit modal deployed to Staging version b5710260-73f8-4741-b9ed-e35b2fe2d78c. Build/typecheck/lint and 642 tests passed (one opt-in skipped). Authenticated browser verified opening the shadcn modal, safe initial focus, keeping edited text on cancel, and explicit discard returning focus to the booking. No test edit was saved.
 
 Booking saves use the existing Sonner success toast with concise text. No persistent success message is rendered inside the calendar, preserving its available height.
 
 `bookings.quantity` is the number of nights (exclusive checkout minus check-in). The editor displays it read-only and recalculates on date edits; server validation independently derives it, ignoring submitted quantities. Existing mismatches can be corrected by saving without changing other fields. Money remains unchanged.
-
-Night quantity deployed to Staging d87a2cde-c406-43b4-b28d-c225b991d954. Corrected 40 marked demo records; all 50 now match date differences. Build/typecheck/lint and 643 tests passed (one opt-in skipped), including cross-month and leap-day calculations and ignoring client quantities. Production unchanged.

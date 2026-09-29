@@ -1,0 +1,3 @@
+-- No-op. This version is retained because Staging already recorded it before
+-- the migration history was corrected. Production's direct UUID migration is
+-- version 20260929150000 and never changes public.agents.id away from UUID.

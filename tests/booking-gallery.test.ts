@@ -6,7 +6,7 @@ import * as galleryView from "../lib/booking-gallery.ts";
 
 const houseA: BookingGalleryHouse = { id: "listing-a", property_id: "101", title: "Alpha", location_zone: "พัทยา" };
 const houseB: BookingGalleryHouse = { id: "listing-b", property_id: "102", title: "Beta", location_zone: null };
-const booking: Booking = { id: "1", booking_code: "BK1", listing_id: "listing-a", houseid: "101", agent_id: null, customer_id: null, customer: null, check_in: "2026-09-30", check_out: "2026-10-03", status: "confirmed", booking_type: null, price_sell: 0, price_max: null, deposit_amount: 0, extra_charge: 0, quantity: 3, details: null, note: null, extra_beds: null, insurance_fee: null, checkin_time: null, checkout_time: null, updated_at: "2026-09-18T00:00:00Z" };
+const booking: Booking = { id: "1", booking_code: "BK1", listing_id: "listing-a", houseid: "101", agent_id: null, customer_id: null, customer: null, check_in: "2026-09-30", check_out: "2026-10-03", status: "confirmed", booking_type: null, price_sell: 0, price_max: null, deposit_amount: 0, extra_charge: 0, quantity: 3, details: null, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null, updated_at: "2026-09-18T00:00:00Z" };
 
 test("house search matches title or DV property ID and paginates six results", () => {
   const cards = Array.from({ length: 13 }, (_, index) => ({ ...buildBookingGallery([houseA], [], "2026-09")[0], propertyId: `DV-${index + 1}`, title: index === 8 ? "Sea Breeze" : `House ${index + 1}` }));
