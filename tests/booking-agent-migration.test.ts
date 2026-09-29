@@ -3,7 +3,7 @@ import { after, before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
-describe("booking Agent numeric-ID migration", { skip: process.env.RUN_BOOKING_DB_TESTS !== "1" }, () => {
+describe("booking Agent UUID correction migration", { skip: process.env.RUN_BOOKING_DB_TESTS !== "1" }, () => {
   const container = `webook-booking-agent-test-${process.pid}`;
   const administrator = "00000000-0000-4000-8000-000000000001";
   const operator = "00000000-0000-4000-8000-000000000002";
@@ -15,7 +15,7 @@ describe("booking Agent numeric-ID migration", { skip: process.env.RUN_BOOKING_D
     return `${result.stdout}${result.stderr}`;
   }
 
-  const values = (agentId: number | null) => JSON.stringify({
+  const values = (agentId: string | null) => JSON.stringify({
     check_in: "2026-10-20", check_out: "2026-10-22", customer_id: 1,
     status: "waiting", quantity: 2, price_sell: 9000, price_max: 10000,
     extra_charge: 0, note: "test", insurance: 1000, extra_person: 2,
@@ -30,7 +30,7 @@ describe("booking Agent numeric-ID migration", { skip: process.env.RUN_BOOKING_D
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     sql(`
-      create extension pgcrypto; create extension btree_gist;
+      create extension pgcrypto; create extension "uuid-ossp"; create extension btree_gist;
       create role anon; create role authenticated; create role service_role; create schema auth;
       create table auth.users(id uuid primary key);
       insert into auth.users values ('${administrator}'), ('${operator}');
@@ -53,21 +53,26 @@ describe("booking Agent numeric-ID migration", { skip: process.env.RUN_BOOKING_D
     `);
     sql(readFileSync(new URL("../supabase/migrations/20260929140000_booking_house_information_snapshot.sql", import.meta.url), "utf8"));
     sql(readFileSync(new URL("../supabase/migrations/20260929150000_booking_agent_numeric_id.sql", import.meta.url), "utf8"));
+    sql("insert into public.bookings(booking_code,listing_id,houseid,status,check_in,check_out,quantity,price_sell,price_max,deposit_amount,extra_charge,agent_id) values ('NUMERIC-SELECTED','00000000-0000-4000-8000-000000000100',990001,'confirmed','2026-10-05','2026-10-06',1,0,0,0,0,(select id from public.agents where name='Active Agent'));");
+    sql(readFileSync(new URL("../supabase/migrations/20260929160000_restore_booking_agent_uuid.sql", import.meta.url), "utf8"));
   });
 
   after(() => { spawnSync("docker", ["rm", "-f", container], { encoding: "utf8" }); });
 
-  it("converts Agents and account ownership to bigint without retaining an unsafe legacy booking ID", () => {
-    assert.match(sql("select pg_typeof(a.id)::text, pg_typeof(aa.agent_id)::text, aa.account_number from public.agents a join public.agent_accounts aa on aa.agent_id=a.id"), /bigint\|bigint\|1234/);
+  it("restores UUID Agent and account ownership while preserving mapped booking selections", () => {
+    assert.match(sql("select pg_typeof(a.id)::text, pg_typeof(aa.agent_id)::text, aa.account_number from public.agents a join public.agent_accounts aa on aa.agent_id=a.id"), /uuid\|uuid\|1234/);
     assert.match(sql("select agent_id is null from public.bookings where booking_code='LEGACY'"), /^t\s*$/);
+    assert.match(sql("select b.agent_id = a.id from public.bookings b join public.agents a on a.name='Active Agent' where b.booking_code='NUMERIC-SELECTED'"), /^t\s*$/);
   });
 
-  it("allows only an administrator to assign an active Agent through booking RPC", () => {
-    const activeId = Number(sql("select id from public.agents where name='Active Agent'").trim());
-    const inactiveId = Number(sql("select id from public.agents where name='Inactive Agent'").trim());
-    assert.match(sql(`set role service_role; select public.admin_create_house_booking(990001,'00000000-0000-4000-8000-000000000301','${administrator}','${values(activeId)}'::jsonb)`), /2/);
+  it("allows only an administrator to assign an active UUID Agent through booking RPC", () => {
+    const activeId = sql("select id from public.agents where name='Active Agent'").trim();
+    const inactiveId = sql("select id from public.agents where name='Inactive Agent'").trim();
+    assert.match(activeId, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    assert.match(sql(`set role service_role; select public.admin_create_house_booking(990001,'00000000-0000-4000-8000-000000000301','${administrator}','${values(activeId)}'::jsonb)`), /\d+/);
     assert.match(sql(`select agent_id from public.bookings where booking_code='BK-00000000-0000-4000-8000-000000000301'`), new RegExp(`^${activeId}\\s*$`));
     assert.match(sql(`select public.admin_create_house_booking(990001,'00000000-0000-4000-8000-000000000302','${administrator}','${values(inactiveId)}'::jsonb)`, false), /booking_agent_invalid/);
     assert.match(sql(`select public.admin_create_house_booking(990001,'00000000-0000-4000-8000-000000000303','${operator}','${values(activeId)}'::jsonb)`, false), /booking_agent_forbidden/);
+    assert.match(sql(`select public.admin_create_house_booking(990001,'00000000-0000-4000-8000-000000000304','${administrator}','${values("not-a-uuid")}'::jsonb)`, false), /booking_invalid_input/);
   });
 });
