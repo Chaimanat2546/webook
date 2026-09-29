@@ -66,3 +66,10 @@ test("booking editor loads an administrator-only Agent selector above the custom
   assert.match(agencyChoices, /ไม่ระบุเอเจนซี่/);
   assert.ok(editor.indexOf("เอเจนซี่") < editor.lastIndexOf("BookingCustomerPicker"));
 });
+
+test("repair bookings hide house information and Agent inputs without submitting a new Agent", async () => {
+  const editor = await readFile(fileURLToPath(new URL("../components/admin/houses/bookings/booking-editor.tsx", import.meta.url)), "utf8");
+  assert.match(editor, /form\.status !== "repair" && agencyAccess\.canManageBookingAgency/);
+  assert.match(editor, /\{form\.status !== "repair" && <BookingHouseInformation/);
+  assert.match(editor, /agencyAccess\.canManageBookingAgency && form\.status !== "repair"/);
+});

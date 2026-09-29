@@ -77,6 +77,8 @@ database cast or index and is not part of this bounded query.
 
 The shared booking form displays an editable **ข้อมูลที่พัก** panel above the
 booking totals (right column in the Gallery dialog; after status and nights on mobile).
+For **ปิดซ่อม/ปรับปรุง**, this panel and the Agency selector are hidden; the
+editor does not submit a new Agent assignment while saving that status.
 Only when creating a booking, the repository reads
 `listings.insurance`, `listings.extra_person`, `listings.checkin_time`, and
 `listings.checkout_time`, mapping them respectively to `bookings.insurance`,
