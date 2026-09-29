@@ -60,6 +60,10 @@ export function bookingId(value: unknown): string {
   if (typeof id !== "string" || !/^[1-9]\d{0,18}$/.test(id) || BigInt(id) > BigInt("9223372036854775807")) throw new Error("รหัสข้อมูลไม่ถูกต้อง");
   return id;
 }
+export function bookingAgencyId(value: unknown): string {
+  if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new Error("รหัสเอเจนซี่ไม่ถูกต้อง");
+  return value.toLowerCase();
+}
 export function bookingDate(value: unknown): string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("วันที่ไม่ถูกต้อง");
   const time = Date.parse(`${value}T00:00:00Z`);
@@ -100,7 +104,7 @@ export function parseBookingUpdate(value: unknown): BookingUpdate {
   if (typeof v.status !== "string" || !BOOKING_STATUSES.some(s => s.value === v.status)) throw new Error("สถานะไม่ถูกต้อง");
   if (typeof v.updated_at !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(v.updated_at) || !Number.isFinite(Date.parse(v.updated_at))) throw new Error("ไม่พบรุ่นข้อมูล กรุณาโหลดการจองใหม่");
   if (v.note !== null && (typeof v.note !== "string" || v.note.length > 10000)) throw new Error("หมายเหตุยาวเกินไป");
-  return { id: bookingId(v.id), updated_at: v.updated_at, check_in, check_out, status: v.status, customer_id: v.customer_id === null ? null : bookingId(v.customer_id), quantity, price_sell: amount(v.price_sell), price_max: v.price_max === null ? null : amount(v.price_max), extra_charge: amount(v.extra_charge), note: v.note as string | null, extra_person: nullableAmount(v.extra_person), insurance: nullableAmount(v.insurance), checkin_time: nullableTime(v.checkin_time), checkout_time: nullableTime(v.checkout_time), ...(v.agent_id === undefined ? {} : { agent_id: v.agent_id === null ? null : bookingId(v.agent_id) }) };
+  return { id: bookingId(v.id), updated_at: v.updated_at, check_in, check_out, status: v.status, customer_id: v.customer_id === null ? null : bookingId(v.customer_id), quantity, price_sell: amount(v.price_sell), price_max: v.price_max === null ? null : amount(v.price_max), extra_charge: amount(v.extra_charge), note: v.note as string | null, extra_person: nullableAmount(v.extra_person), insurance: nullableAmount(v.insurance), checkin_time: nullableTime(v.checkin_time), checkout_time: nullableTime(v.checkout_time), ...(v.agent_id === undefined ? {} : { agent_id: v.agent_id === null ? null : bookingAgencyId(v.agent_id) }) };
 }
 export function bookingCustomerName(customer: BookingCustomer | null): string {
   return customer ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") || `ลูกค้า #${customer.id}` : "ยังไม่ได้ผูกลูกค้า";

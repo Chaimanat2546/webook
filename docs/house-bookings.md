@@ -102,7 +102,7 @@ and edit still checks that the booking belongs to the house opened in the route.
 
 Administrators (role ID `1`) additionally see the native **เอเจนซี่** selector
 directly above the customer selector. It lists active agencies by name, includes
-**ไม่ระบุเอเจนซี่**, and saves the selected numeric `agents.id` in
+**ไม่ระบุเอเจนซี่**, and saves the selected UUID `agents.id` in
 `bookings.agent_id`. Other booking operators neither receive agency choices nor
 send an `agent_id` value, so an existing historic agency assignment is preserved.
 The service and RPC independently require role ID `1` for an explicit agency
@@ -135,11 +135,12 @@ confirmation. Production is not modified by this repository change.
 
 The same Production inspection found `agents.id` and `agent_accounts.agent_id`
 as UUID values but `bookings.agent_id` as a nullable bigint without a foreign key.
-The forward migration `20260929150000_booking_agent_numeric_id.sql` replaces the
-agency primary key with a generated numeric ID, preserves agent-account links,
-adds the booking foreign key, and adds optional agency handling to both booking
-RPCs. It must be applied only after a fresh Production-schema summary and explicit
-confirmation; Production itself is never changed by the migration workflow.
+The forward UUID correction migration `20260929160000_restore_booking_agent_uuid.sql`
+keeps Agent IDs as UUIDs, converts booking Agent references to UUIDs, preserves
+known Staging Agent/account/booking links, and adds optional agency handling to
+both booking RPCs. It must be applied only after a fresh Production-schema summary
+and explicit confirmation; Production itself is never changed by the migration
+workflow.
 
 ## Verification
 

@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GalleryBookingSlice, GalleryHouseSummary, GalleryPageInput } from "../../lib/booking-gallery.ts";
 import { CUSTOMER_FIELDS, normalizeBookingPhone, type BookingCustomerDetail, type BookingCustomerInput } from "../../lib/booking-customers.ts";
-import { bookingId, record, type Booking, type BookingAgency, type BookingCreate, type BookingCustomer, type BookingUpdate, type BookingHouseInformation } from "../../lib/house-bookings.ts";
+import { bookingAgencyId, bookingId, record, type Booking, type BookingAgency, type BookingCreate, type BookingCustomer, type BookingUpdate, type BookingHouseInformation } from "../../lib/house-bookings.ts";
 
 export interface BookingHouse { id: string; property_id: string; title: string }
 const customerDetailSelection = `id,first_name,last_name,phone,customer_type,vip_status,tax_head_office,updated_at,dv_id,${CUSTOMER_FIELDS.map(field => field.key).join(",")}`;
@@ -26,7 +26,7 @@ export function mapBookingCustomer(value: unknown): BookingCustomer {
 }
 export function mapBooking(value: unknown): Booking {
   const b = record(value);
-  return { id: bookingId(b.id), booking_code: text(b.booking_code), listing_id: text(b.listing_id), houseid: bookingId(b.houseid), agent_id: b.agent_id == null ? null : bookingId(b.agent_id), customer_id: b.customer_id == null ? null : bookingId(b.customer_id), customer: b.customer && record(b.customer).dv_id != null && bookingId(record(b.customer).dv_id) === bookingId(b.houseid) ? mapBookingCustomer(b.customer) : null, check_in: text(b.check_in), check_out: text(b.check_out), status: text(b.status), booking_type: nullableText(b.booking_type), price_sell: number(b.price_sell), price_max: b.price_max == null ? null : number(b.price_max), deposit_amount: number(b.deposit_amount), extra_charge: number(b.extra_charge), quantity: number(b.quantity), details: nullableText(b.details), note: nullableText(b.note), extra_person: b.extra_person == null ? null : number(b.extra_person), insurance: b.insurance == null ? null : number(b.insurance), checkin_time: nullableText(b.checkin_time), checkout_time: nullableText(b.checkout_time), updated_at: text(b.updated_at) };
+  return { id: bookingId(b.id), booking_code: text(b.booking_code), listing_id: text(b.listing_id), houseid: bookingId(b.houseid), agent_id: b.agent_id == null ? null : bookingAgencyId(b.agent_id), customer_id: b.customer_id == null ? null : bookingId(b.customer_id), customer: b.customer && record(b.customer).dv_id != null && bookingId(record(b.customer).dv_id) === bookingId(b.houseid) ? mapBookingCustomer(b.customer) : null, check_in: text(b.check_in), check_out: text(b.check_out), status: text(b.status), booking_type: nullableText(b.booking_type), price_sell: number(b.price_sell), price_max: b.price_max == null ? null : number(b.price_max), deposit_amount: number(b.deposit_amount), extra_charge: number(b.extra_charge), quantity: number(b.quantity), details: nullableText(b.details), note: nullableText(b.note), extra_person: b.extra_person == null ? null : number(b.extra_person), insurance: b.insurance == null ? null : number(b.insurance), checkin_time: nullableText(b.checkin_time), checkout_time: nullableText(b.checkout_time), updated_at: text(b.updated_at) };
 }
 export function mapBookingGalleryHouse(value: unknown): GalleryHouseSummary {
   const row = record(value);
@@ -53,7 +53,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       if (error) throw error;
       return (data ?? []).map((value): BookingAgency => {
         const row = record(value);
-        return { id: bookingId(row.id), name: text(row.name) };
+        return { id: bookingAgencyId(row.id), name: text(row.name) };
       });
     },
     async isActiveBookingAgency(id: string): Promise<boolean> {
