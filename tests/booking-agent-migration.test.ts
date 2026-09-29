@@ -3,7 +3,7 @@ import { after, before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
-describe("booking Agent UUID correction migration", { skip: process.env.RUN_BOOKING_DB_TESTS !== "1" }, () => {
+describe("direct booking Agent UUID migration", { skip: process.env.RUN_BOOKING_DB_TESTS !== "1" }, () => {
   const container = `webook-booking-agent-test-${process.pid}`;
   const administrator = "00000000-0000-4000-8000-000000000001";
   const operator = "00000000-0000-4000-8000-000000000002";
@@ -53,18 +53,14 @@ describe("booking Agent UUID correction migration", { skip: process.env.RUN_BOOK
     `);
     sql(readFileSync(new URL("../supabase/migrations/20260929140000_booking_house_information_snapshot.sql", import.meta.url), "utf8"));
     sql(readFileSync(new URL("../supabase/migrations/20260929150000_booking_agent_numeric_id.sql", import.meta.url), "utf8"));
-    sql("insert into public.bookings(booking_code,listing_id,houseid,status,check_in,check_out,quantity,price_sell,price_max,deposit_amount,extra_charge,agent_id) values ('NUMERIC-SELECTED','00000000-0000-4000-8000-000000000100',990001,'confirmed','2026-10-05','2026-10-06',1,0,0,0,0,(select id from public.agents where name='Active Agent'));");
     sql(readFileSync(new URL("../supabase/migrations/20260929160000_restore_booking_agent_uuid.sql", import.meta.url), "utf8"));
   });
 
   after(() => { spawnSync("docker", ["rm", "-f", container], { encoding: "utf8" }); });
 
-  it("restores UUID Agent and account ownership while preserving mapped booking selections", () => {
-    const migration = readFileSync(new URL("../supabase/migrations/20260929160000_restore_booking_agent_uuid.sql", import.meta.url), "utf8");
-    assert.match(migration, /pg_catalog\.gen_random_uuid\(\)/);
-    assert.match(sql("select pg_typeof(a.id)::text, pg_typeof(aa.agent_id)::text, aa.account_number from public.agents a join public.agent_accounts aa on aa.agent_id=a.id"), /uuid\|uuid\|1234/);
+  it("keeps Agent and account UUID identities while discarding an unmappable numeric booking reference", () => {
+    assert.match(sql("select pg_typeof(a.id)::text, a.id::text, pg_typeof(aa.agent_id)::text, aa.agent_id::text, aa.account_number from public.agents a join public.agent_accounts aa on aa.agent_id=a.id where a.name='Active Agent'"), /uuid\|00000000-0000-4000-8000-000000000101\|uuid\|00000000-0000-4000-8000-000000000101\|1234/);
     assert.match(sql("select agent_id is null from public.bookings where booking_code='LEGACY'"), /^t\s*$/);
-    assert.match(sql("select b.agent_id = a.id from public.bookings b join public.agents a on a.name='Active Agent' where b.booking_code='NUMERIC-SELECTED'"), /^t\s*$/);
   });
 
   it("allows only an administrator to assign an active UUID Agent through booking RPC", () => {
