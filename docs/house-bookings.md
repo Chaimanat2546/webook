@@ -78,7 +78,7 @@ database cast or index and is not part of this bounded query.
 The shared booking form displays an editable **ข้อมูลที่พัก** panel above the
 booking totals (right column in the Gallery dialog; after status and nights on mobile).
 Only when creating a booking, the repository reads
-`listings.insurance_fee`, `listings.extra_beds`, `listings.checkin_time`, and
+`listings.insurance`, `listings.extra_person`, `listings.checkin_time`, and
 `listings.checkout_time`, mapping them respectively to `bookings.insurance`,
 `bookings.extra_person`, `bookings.checkin_time`, and `bookings.checkout_time`.
 Those four values are inserted as a booking snapshot. When editing an existing
@@ -100,6 +100,16 @@ allow_booking may manage bookings for every house and select existing customers
 globally. No additional scope environment variable is required. Every detail read
 and edit still checks that the booking belongs to the house opened in the route.
 
+Administrators (role ID `1`) additionally see the native **เอเจนซี่** selector
+directly above the customer selector. It lists active agencies by name, includes
+**ไม่ระบุเอเจนซี่**, and saves the selected numeric `agents.id` in
+`bookings.agent_id`. Other booking operators neither receive agency choices nor
+send an `agent_id` value, so an existing historic agency assignment is preserved.
+The service and RPC independently require role ID `1` for an explicit agency
+change and reject inactive or unknown agencies. After the numeric-ID migration,
+the booking foreign key uses `ON DELETE SET NULL`; legacy non-null booking agent
+values are cleared because their former UUID mapping cannot be established safely.
+
 Server Actions -> booking services -> booking repositories -> Supabase admin
 client. The server resolves property_id and verifies both listing_id and houseid
 for detail reads and edits. Reads load only the fields needed by the UI, not
@@ -108,7 +118,7 @@ customer identity documents, tax data or addresses.
 The `admin_create_house_booking` and `admin_update_house_booking` RPCs are
 executable only by service_role. They lock/idempotently create as appropriate,
 verify the expected revision and house relationship, and allowlist the four
-booking snapshot fields together with the ordinary booking fields. They reject
+booking snapshot fields, the optional `agent_id`, and the ordinary booking fields. They reject
 legacy booking keys `insurance_fee` and `extra_beds`. The update RPC preserves
 the existing overlap constraint and audit trigger. Both set the transaction-local
 JWT subject to the verified actor, then restore the prior subject. No RLS changes.
@@ -122,6 +132,14 @@ RPCs do not accept the four snapshot keys. The forward migration
 time columns and replaces those two RPC bodies. Before applying it or deploying,
 inspect Production metadata again, summarize the result, and obtain explicit
 confirmation. Production is not modified by this repository change.
+
+The same Production inspection found `agents.id` and `agent_accounts.agent_id`
+as UUID values but `bookings.agent_id` as a nullable bigint without a foreign key.
+The forward migration `20260929150000_booking_agent_numeric_id.sql` replaces the
+agency primary key with a generated numeric ID, preserves agent-account links,
+adds the booking foreign key, and adds optional agency handling to both booking
+RPCs. It must be applied only after a fresh Production-schema summary and explicit
+confirmation; Production itself is never changed by the migration workflow.
 
 ## Verification
 

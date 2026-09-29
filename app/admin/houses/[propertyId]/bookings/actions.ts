@@ -4,7 +4,7 @@ import { requireBookingAdmin } from "../../../../../server/auth/bookings";
 import { thaiAddressRepository } from "../../../../../server/geography/thai-address-repository";
 import { createBookingCustomer, getBookingCustomer, updateBookingCustomer } from "../../../../../server/services/booking-customers";
 import { lookupDbdJuristicPerson } from "../../../../../server/services/dbd-juristic-person";
-import { bookingResult, cancelHouseBooking, createHouseBooking, getHouseBooking, getBookingCreationDefaults, listHouseBookings, requireBookingHouse, saveHouseBooking } from "../../../../../server/services/house-bookings";
+import { bookingResult, cancelHouseBooking, createHouseBooking, getHouseBooking, getBookingCreationDefaults, listBookingAgencies, listHouseBookings, requireBookingHouse, saveHouseBooking } from "../../../../../server/services/house-bookings";
 import { listThaiDistricts, listThaiProvinces, listThaiSubdistricts, lookupThaiPostalCode, resolveThaiAddressNames } from "../../../../../server/services/thai-addresses";
 
 export async function listHouseBookingsAction(propertyId: string, start: string, end: string) {
@@ -23,6 +23,12 @@ export async function getBookingCreationDefaultsAction(propertyId: string) {
   return bookingResult(async () => {
     const { repository } = await requireBookingAdmin();
     return getBookingCreationDefaults(repository, propertyId);
+  });
+}
+export async function listBookingAgenciesAction(propertyId: string) {
+  return bookingResult(async () => {
+    const { repository, canManageBookingAgency } = await requireBookingAdmin();
+    return { canManageBookingAgency, agencies: await listBookingAgencies(repository, propertyId, canManageBookingAgency) };
   });
 }
 export async function searchBookingCustomersAction(propertyId: string, query: string) {
@@ -104,8 +110,8 @@ export async function resolveThaiAddressNamesAction(propertyId: string, value: u
 
 export async function saveHouseBookingAction(propertyId: string, input: unknown) {
   return bookingResult(async () => {
-    const { repository, actorId } = await requireBookingAdmin();
-    const saved = await saveHouseBooking(repository, actorId, propertyId, input);
+    const { repository, actorId, canManageBookingAgency } = await requireBookingAdmin();
+    const saved = await saveHouseBooking(repository, actorId, propertyId, input, canManageBookingAgency);
     revalidatePath(`/admin/houses/${encodeURIComponent(propertyId)}/bookings`);
     return saved;
   });
@@ -113,8 +119,8 @@ export async function saveHouseBookingAction(propertyId: string, input: unknown)
 
 export async function createHouseBookingAction(propertyId: string, input: unknown) {
   return bookingResult(async () => {
-    const { repository, actorId } = await requireBookingAdmin();
-    const saved = await createHouseBooking(repository, actorId, propertyId, input);
+    const { repository, actorId, canManageBookingAgency } = await requireBookingAdmin();
+    const saved = await createHouseBooking(repository, actorId, propertyId, input, canManageBookingAgency);
     revalidatePath(`/admin/houses/${encodeURIComponent(propertyId)}/bookings`);
     return saved;
   });

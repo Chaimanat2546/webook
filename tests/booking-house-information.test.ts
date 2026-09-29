@@ -56,9 +56,13 @@ test("an existing booking renders saved house information without loading listin
   assert.doesNotMatch(action, /getBookingHouseInformationAction/);
 });
 
-test("booking editor does not expose an agency selector outside the production-aligned scope", async () => {
+test("booking editor loads an administrator-only Agent selector above the customer picker", async () => {
   const editor = await readFile(fileURLToPath(new URL("../components/admin/houses/bookings/booking-editor.tsx", import.meta.url)), "utf8");
-  assert.doesNotMatch(editor, /listBookingAgenciesAction/);
-  assert.doesNotMatch(editor, /bookingAgencyChoices/);
-  assert.doesNotMatch(editor, />เอเจนซี่</);
+  const action = await readFile(fileURLToPath(new URL("../app/admin/houses/[propertyId]/bookings/actions.ts", import.meta.url)), "utf8");
+  const agencyChoices = await readFile(fileURLToPath(new URL("../lib/booking-agency.ts", import.meta.url)), "utf8");
+  assert.match(action, /listBookingAgenciesAction/);
+  assert.match(editor, /listBookingAgenciesAction/);
+  assert.match(editor, /bookingAgencyChoices/);
+  assert.match(agencyChoices, /ไม่ระบุเอเจนซี่/);
+  assert.ok(editor.indexOf("เอเจนซี่") < editor.lastIndexOf("BookingCustomerPicker"));
 });
