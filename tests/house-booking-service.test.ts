@@ -15,6 +15,7 @@ function memory() {
     create: async () => { throw new Error("unused"); },
     list: async () => [saved], customers: async () => [],
     ownsCustomer: async () => true, customerDetail: async () => null, updateCustomer: async () => { throw new Error("unused"); }, customersByPhone: async () => [], createCustomer: async () => { throw new Error("unused"); },
+    bookingAgencies: async () => [], isActiveBookingAgency: async () => false,
     update: async (house, actor, input) => { assert.equal(house.id, "listing1"); assert.equal(actor, "actor"); saved = { ...saved, ...input }; return saved; },
   };
   return { repository, value: () => saved };
@@ -30,7 +31,8 @@ test("stale save does not overwrite the current total", async () => {
   await assert.rejects(saveHouseBooking(store.repository, "actor", "1024", { ...row, updated_at: "2026-09-17T00:00:00Z", price_sell: 1 }), /booking_stale/);
   assert.equal(store.value().price_sell, 15000);
 });
-test("save allowlists editable fields and preserves the single total when dates change", async () => {
+test("save allowlists editable fields and preserves the single total when dates change", async t => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-09-21T00:00:00Z") });
   const store = memory();
   const saved = await saveHouseBooking(store.repository, "actor", "1024", { ...row, check_out: "2026-10-04", listing_id: "attacker", houseid: "999", details: "overwritten", price_max: 6900, price_sell: 3900, deposit_amount: 99999 });
   assert.equal(saved.price_sell, 3900);
@@ -137,4 +139,33 @@ test("forged cross-house customer IDs cannot create or update bookings", async t
  store.repository.ownsCustomer = async () => false;
  await assert.rejects(createHouseBooking(store.repository, "actor", "1024", { ...row, request_id: "00000000-0000-4000-8000-000000000001", customer_id: "42" }), /ลูกค้า/);
  await assert.rejects(saveHouseBooking(store.repository, "actor", "1024", { ...row, customer_id: "42" }), /ลูกค้า/);
+});
+
+test("a role-1 administrator can assign an active numeric agency to a booking", async () => {
+  const store = memory();
+  const repository = {
+    ...store.repository,
+    isActiveBookingAgency: async (id: string) => id === "2",
+  };
+  const saved = await saveHouseBooking(
+    repository,
+    "actor",
+    "1024",
+    { ...row, agent_id: "2" },
+    true,
+  );
+  assert.equal(saved.agent_id, "2");
+});
+
+test("a booking operator without role-1 access cannot forge an agency selection", async () => {
+  const store = memory();
+  const repository = {
+    ...store.repository,
+    isActiveBookingAgency: async () => true,
+  };
+  await assert.rejects(
+    saveHouseBooking(repository, "actor", "1024", { ...row, agent_id: "2" }, false),
+    /เอเจนซี่/,
+  );
+  assert.equal(store.value().agent_id, null);
 });

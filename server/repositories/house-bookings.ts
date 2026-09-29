@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GalleryBookingSlice, GalleryHouseSummary, GalleryPageInput } from "../../lib/booking-gallery.ts";
 import { CUSTOMER_FIELDS, normalizeBookingPhone, type BookingCustomerDetail, type BookingCustomerInput } from "../../lib/booking-customers.ts";
-import { bookingId, record, type Booking, type BookingCreate, type BookingCustomer, type BookingUpdate, type BookingHouseInformation } from "../../lib/house-bookings.ts";
+import { bookingId, record, type Booking, type BookingAgency, type BookingCreate, type BookingCustomer, type BookingUpdate, type BookingHouseInformation } from "../../lib/house-bookings.ts";
 
 export interface BookingHouse { id: string; property_id: string; title: string }
 const customerDetailSelection = `id,first_name,last_name,phone,customer_type,vip_status,tax_head_office,updated_at,dv_id,${CUSTOMER_FIELDS.map(field => field.key).join(",")}`;
@@ -27,6 +27,10 @@ export function mapBookingCustomer(value: unknown): BookingCustomer {
 export function mapBooking(value: unknown): Booking {
   const b = record(value);
   return { id: bookingId(b.id), booking_code: text(b.booking_code), listing_id: text(b.listing_id), houseid: bookingId(b.houseid), agent_id: b.agent_id == null ? null : bookingId(b.agent_id), customer_id: b.customer_id == null ? null : bookingId(b.customer_id), customer: b.customer && record(b.customer).dv_id != null && bookingId(record(b.customer).dv_id) === bookingId(b.houseid) ? mapBookingCustomer(b.customer) : null, check_in: text(b.check_in), check_out: text(b.check_out), status: text(b.status), booking_type: nullableText(b.booking_type), price_sell: number(b.price_sell), price_max: b.price_max == null ? null : number(b.price_max), deposit_amount: number(b.deposit_amount), extra_charge: number(b.extra_charge), quantity: number(b.quantity), details: nullableText(b.details), note: nullableText(b.note), extra_beds: b.extra_beds == null ? null : number(b.extra_beds), insurance_fee: b.insurance_fee == null ? null : number(b.insurance_fee), checkin_time: nullableText(b.checkin_time), checkout_time: nullableText(b.checkout_time), updated_at: text(b.updated_at) };
+}
+function mapBookingAgency(value: unknown): BookingAgency {
+  const agency = record(value);
+  return { id: bookingId(agency.id), name: text(agency.name) };
 }
 export function mapBookingGalleryHouse(value: unknown): GalleryHouseSummary {
   const row = record(value);
@@ -166,6 +170,16 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       if (error) throw error;
       return data !== null;
     },
+    async bookingAgencies(): Promise<BookingAgency[]> {
+      const { data, error } = await client.from("agents").select("id,name").eq("is_active", true).order("name").order("id");
+      if (error) throw error;
+      return (data ?? []).map(mapBookingAgency);
+    },
+    async isActiveBookingAgency(id: string): Promise<boolean> {
+      const { data, error } = await client.from("agents").select("id").eq("id", id).eq("is_active", true).maybeSingle();
+      if (error) throw error;
+      return data !== null;
+    },
     async create(house: BookingHouse, actorId: string, input: BookingCreate): Promise<Booking> {
       const { request_id, ...values } = input;
       const { data, error } = await client.rpc("admin_create_house_booking", { p_property_id: house.property_id, p_request_id: request_id, p_actor_id: actorId, p_values: values });
@@ -175,7 +189,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       return saved;
     },
     async update(house: BookingHouse, actorId: string, input: BookingUpdate): Promise<Booking> {
-      const { error } = await client.rpc("admin_update_house_booking", { p_property_id: house.property_id, p_booking_id: input.id, p_expected_updated_at: input.updated_at, p_actor_id: actorId, p_values: { check_in: input.check_in, check_out: input.check_out, customer_id: input.customer_id, status: input.status, quantity: input.quantity, price_sell: input.price_sell, price_max: input.price_max, extra_charge: input.extra_charge, note: input.note, extra_beds: input.extra_beds, insurance_fee: input.insurance_fee, checkin_time: input.checkin_time, checkout_time: input.checkout_time } });
+      const { error } = await client.rpc("admin_update_house_booking", { p_property_id: house.property_id, p_booking_id: input.id, p_expected_updated_at: input.updated_at, p_actor_id: actorId, p_values: { check_in: input.check_in, check_out: input.check_out, customer_id: input.customer_id, agent_id: input.agent_id, status: input.status, quantity: input.quantity, price_sell: input.price_sell, price_max: input.price_max, extra_charge: input.extra_charge, note: input.note, extra_beds: input.extra_beds, insurance_fee: input.insurance_fee, checkin_time: input.checkin_time, checkout_time: input.checkout_time } });
       if (error) throw error;
       const saved = await this.get(house, input.id);
       if (!saved) throw new Error("booking_not_found");

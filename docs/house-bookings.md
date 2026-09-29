@@ -97,16 +97,24 @@ allow_booking may manage bookings for every house and select existing customers
 globally. No additional scope environment variable is required. Every detail read
 and edit still checks that the booking belongs to the house opened in the route.
 
+The `agents` and `agent_accounts` primary/foreign-key pair uses numeric IDs.
+Existing UUID relationships are remapped by migration before their legacy keys
+are removed; `bookings.agent_id` remains a nullable numeric field so historical
+booking values are preserved. Only `users.role_id = 1` receives the optional
+**เอเจนซี่** selector above the customer section. It lists active agencies by
+`agents.name` and saves `agents.id`; non-role-1 operators cannot create, clear,
+or replace the value through either the UI or a forged Server Action request.
+
 Server Actions -> booking services -> booking repositories -> Supabase admin
 client. The server resolves property_id and verifies both listing_id and houseid
 for detail reads and edits. Reads load only the fields needed by the UI, not
 customer identity documents, tax data or addresses.
 
-The `admin_update_house_booking` RPC is executable only by service_role. It does
-not perform user permission checks: those belong to the web server. It locks the
+The `admin_update_house_booking` RPC is executable only by service_role. It locks the
 booking, verifies the expected updated_at and house relationship, allowlists
-fields including the four booking-specific house-information fields, and preserves
-the existing overlap constraint and audit trigger. It sets
+fields including the agency and four booking-specific house-information fields,
+and independently checks role-1 access plus the active agency before a changed
+agency value is persisted. It preserves the existing overlap constraint and audit trigger. It sets
 the transaction-local JWT subject to the verified actor so the existing audit
 trigger records that user once, then restores the prior subject. No RLS changes.
 

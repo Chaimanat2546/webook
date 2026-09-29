@@ -1,7 +1,7 @@
 import "server-only";
 import { assertBookingNotPast, bookingToday } from "../../lib/booking-availability.ts";
 import { buildBookingGallery, parseGalleryCalendarInput, parseGalleryPageInput, type GalleryHousePage } from "../../lib/booking-gallery.ts";
-import { bookingId, parseBookingCreate, parseBookingRange, parseBookingUpdate, type BookingResult } from "../../lib/house-bookings.ts";
+import { bookingId, parseBookingCreate, parseBookingRange, parseBookingUpdate, type BookingAgency, type BookingResult } from "../../lib/house-bookings.ts";
 import type { HouseBookingsRepository } from "../repositories/house-bookings.ts";
 
 export async function listBookingGalleryHouses(repository: HouseBookingsRepository, raw: unknown): Promise<GalleryHousePage> {
@@ -28,6 +28,17 @@ export async function getBookingHouseInformation(repository: HouseBookingsReposi
   if (!information) throw new Error("booking_house_not_found");
   return information;
 }
+export async function listBookingAgencies(repository: HouseBookingsRepository, propertyId: unknown, canManageAgency: boolean): Promise<BookingAgency[]> {
+  await requireBookingHouse(repository, propertyId);
+  return canManageAgency ? repository.bookingAgencies() : [];
+}
+async function assertBookingAgency(repository: HouseBookingsRepository, agentId: string | null, canManageAgency: boolean, currentAgentId: string | null = null) {
+  if (!canManageAgency) {
+    if (agentId !== currentAgentId) throw new Error("คุณไม่มีสิทธิ์เลือกเอเจนซี่");
+    return;
+  }
+  if (agentId && !await repository.isActiveBookingAgency(agentId)) throw new Error("ไม่พบเอเจนซี่ที่เลือก");
+}
 export async function listHouseBookings(repository: HouseBookingsRepository, propertyId: unknown, start: unknown, end: unknown) {
   const range = parseBookingRange(start, end);
   const house = await requireBookingHouse(repository, propertyId);
@@ -40,13 +51,14 @@ export async function getHouseBooking(repository: HouseBookingsRepository, prope
   if (!booking) throw new Error("booking_not_found");
   return booking;
 }
-export async function saveHouseBooking(repository: HouseBookingsRepository, actorId: string, propertyId: unknown, raw: unknown) {
+export async function saveHouseBooking(repository: HouseBookingsRepository, actorId: string, propertyId: unknown, raw: unknown, canManageAgency = false) {
   const input = parseBookingUpdate(raw);
   const house = await requireBookingHouse(repository, propertyId);
   // The RPC repeats these checks under a row lock to prevent concurrent edits.
   const current = await repository.get(house, input.id);
   if (!current) throw new Error("booking_not_found");
   if (current.updated_at !== input.updated_at) throw new Error("booking_stale");
+  await assertBookingAgency(repository, input.agent_id, canManageAgency, current.agent_id);
   if (input.status !== "cancelled") assertBookingNotPast(input.check_in, input.check_out, bookingToday(), current);
   if (current.status === "repair" && input.status !== "repair" && input.status !== "cancelled" && !input.customer_id) throw new Error("กรุณาเลือกลูกค้าสำหรับการจอง");
   if (input.customer_id && !await repository.ownsCustomer(house, input.customer_id)) throw new Error("กรุณาเลือกลูกค้าของบ้านนี้");
@@ -57,7 +69,7 @@ export function bookingError(error: unknown): string {
   const message = error && typeof error === "object" && "message" in error && typeof error.message === "string" ? error.message : "";
   if (code === "23P01") return "ช่วงวันที่นี้ซ้อนกับการจองอื่น กรุณาตรวจสอบวันเข้าพัก";
   if (message === "booking_stale") return "มีผู้แก้ไขการจองนี้แล้ว กรุณาปิดและเปิดรายการใหม่";
-  if (message === "booking_forbidden") return "คุณไม่มีสิทธิ์จัดการการจอง";
+  if (message === "booking_forbidden" || message === "booking_agency_forbidden") return "คุณไม่มีสิทธิ์จัดการการจอง";
   if (message === "booking_not_found" || message === "booking_house_not_found") return "ไม่พบการจองหรือบ้านที่เลือก";
   if (code === "23503") return "ไม่พบลูกค้าที่เลือก กรุณาค้นหาและเลือกลูกค้าใหม่";
   if (["42P01", "42703", "PGRST200", "PGRST202", "PGRST204", "PGRST205"].includes(String(code))) return "ฐานข้อมูลยังไม่พร้อมสำหรับระบบการจอง กรุณาติดต่อผู้ดูแล";
@@ -70,7 +82,7 @@ export async function bookingResult<T>(work: () => Promise<T>): Promise<BookingR
   catch (error) { return { ok: false, message: bookingError(error) }; }
 }
 
-export async function createHouseBooking(repository: HouseBookingsRepository, actorId: string, propertyId: unknown, raw: unknown) {
+export async function createHouseBooking(repository: HouseBookingsRepository, actorId: string, propertyId: unknown, raw: unknown, canManageAgency = false) {
   const parsed = parseBookingCreate(raw);
   assertBookingNotPast(parsed.check_in, parsed.check_out, bookingToday());
   const house = await requireBookingHouse(repository, propertyId);
@@ -82,6 +94,7 @@ export async function createHouseBooking(repository: HouseBookingsRepository, ac
     checkin_time: parsed.checkin_time ?? defaults.checkin_time,
     checkout_time: parsed.checkout_time ?? defaults.checkout_time,
   } : parsed;
+  await assertBookingAgency(repository, input.agent_id, canManageAgency);
   if (input.customer_id && !await repository.ownsCustomer(house, input.customer_id)) throw new Error("กรุณาเลือกลูกค้าของบ้านนี้");
   return repository.create(house, actorId, input);
 }

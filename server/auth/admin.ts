@@ -46,6 +46,10 @@ export function canManageHouseRating(user: Pick<AdminUserForAuth, "role_id"> | n
   return user?.role_id === 1;
 }
 
+export function canManageBookingAgency(user: Pick<AdminUserForAuth, "role_id"> | null): boolean {
+  return user?.role_id === 1;
+}
+
 export function canManageHousePrices(user: Pick<AdminUserForAuth, "allow_tools"> | null): boolean {
   return user?.allow_tools?.allow_price === true;
 }
