@@ -12,9 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { BOOKING_STATUSES, nightsBetween, parseBookingCreate, parseBookingUpdate, type Booking, type BookingAgency, type BookingUpdate } from "@/lib/house-bookings";
-import { bookingAgencyChoices } from "@/lib/booking-agency";
-import { cancelHouseBookingAction, createHouseBookingAction, getHouseBookingAction, listBookingAgenciesAction, saveHouseBookingAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
+import { BOOKING_STATUSES, nightsBetween, parseBookingCreate, parseBookingUpdate, type Booking, type BookingUpdate } from "@/lib/house-bookings";
+import { cancelHouseBookingAction, createHouseBookingAction, getHouseBookingAction, saveHouseBookingAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
 
 interface EditorProps { propertyId: string; bookingId?: string; initialDate?: string; onClose: () => void; onSaved: (booking: Booking) => void; presentation?: "sheet" | "dialog"; triggerRef?: RefObject<HTMLElement | null> }
 interface FormProps { propertyId: string; booking: Booking | null; initialDate: string; onDirty: (dirty: boolean) => void; onSaving: (saving: boolean) => void; onClose: () => void; onSaved: (booking: Booking) => void; presentation?: "sheet" | "dialog" }
@@ -117,17 +116,9 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
   const [form, setForm] = useState(initial);
   const [customer, setCustomer] = useState(booking?.customer ?? null);
   const [customerBusy, setCustomerBusy] = useState(false);
-  const [agencyAccess, setAgencyAccess] = useState<{ canManageBookingAgency: boolean; agencies: BookingAgency[] }>({ canManageBookingAgency: false, agencies: [] });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
-  useEffect(() => {
-    let active = true;
-    void listBookingAgenciesAction(propertyId).then((result) => {
-      if (active && result.ok) setAgencyAccess(result.data);
-    });
-    return () => { active = false; };
-  }, [propertyId]);
   let nights = 0;
   try { nights = nightsBetween(form.check_in, form.check_out); } catch { /* Incomplete date field. */ }
   const dirty = JSON.stringify(form) !== JSON.stringify(initial) || (!!booking && nights > 0 && nights !== booking.quantity);
@@ -157,7 +148,6 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
         {datesChanged && form.status !== "repair" && <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">เปลี่ยนวันแล้ว ยอดเงินยังเท่าเดิม โปรดตรวจสอบ</p>}
       </section>
       <div className="space-y-5">
-      {agencyAccess.canManageBookingAgency && <section className="space-y-3 border-t pt-4"><label className="space-y-1"><span>เอเจนซี่</span><select className="h-8 w-full rounded-lg border bg-background px-2" value={form.agent_id ?? ""} onChange={event => change("agent_id", event.target.value || null)}>{bookingAgencyChoices(true, agencyAccess.agencies, form.agent_id).map((agency) => <option key={agency.id} value={agency.id}>{agency.label}</option>)}</select></label></section>}
       {form.status !== "repair" && <section className="space-y-3 border-t pt-4">
         <BookingCustomerPicker propertyId={propertyId} customer={customer} onBusy={busy => { setCustomerBusy(busy); onSaving(busy); }} onSelect={next => { setCustomer(next); change("customer_id", next.id); }} />
       </section>}
@@ -166,7 +156,7 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
       </select></label><label className="space-y-1">จำนวนคืน<Input readOnly aria-label="จำนวนคืน" value={nights > 0 ? nights : ""} /></label></div>
       {booking && booking.status !== "repair" && form.status === "repair" && <p className="text-xs text-amber-800">เมื่อบันทึกเป็นปิดซ่อม จะล้างลูกค้าและยอดเงินของรายการนี้</p>}
       {!supportedStatus && <p className="text-xs text-amber-800">กรุณาเลือกสถานะที่รองรับก่อนบันทึก</p>}
-      <BookingHouseInformation key={propertyId} propertyId={propertyId} values={{ extra_beds: form.extra_beds, insurance_fee: form.insurance_fee, checkin_time: form.checkin_time, checkout_time: form.checkout_time }} onChange={value => setForm(previous => ({ ...previous, ...value }))} />
+      <BookingHouseInformation key={propertyId} propertyId={propertyId} loadDefaults={!booking} values={{ extra_person: form.extra_person, insurance: form.insurance, checkin_time: form.checkin_time, checkout_time: form.checkout_time }} onChange={value => setForm(previous => ({ ...previous, ...value }))} />
       <section className="space-y-3 border-t pt-4">{form.status !== "repair" && <h3 className="flex items-center gap-2 font-semibold"><Wallet aria-hidden className="size-4 shrink-0 text-muted-foreground" />ยอดรวมการจอง (บาท)</h3>}<div className="grid grid-cols-2 gap-3">
         {form.status !== "repair" && ([{ key: "price_max", label: "ค่าบ้านเต็มจำนวน" }, { key: "price_sell", label: "มัดจำที่ต้องชำระ" }, { key: "extra_charge", label: "ค่าใช้จ่ายเพิ่ม" }] as const).map(({ key, label }) => <label key={key} className={`space-y-1 ${key === "price_max" ? "col-span-2" : ""}`}>{label}<Input type="number" required={!booking || key !== "price_max"} min={0} max={999999999.99} step="0.01" value={form[key] === null || Number.isNaN(form[key]) ? "" : form[key]} onChange={e => change(key, key === "price_max" && e.target.value === "" ? null : e.target.valueAsNumber)} /></label>)}
         <label className="col-span-2 space-y-1">หมายเหตุ<Textarea rows={3} maxLength={10000} value={form.note ?? ""} onChange={e => change("note", e.target.value || null)} /></label>
@@ -181,10 +171,10 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
 type BookingDraft = Omit<BookingUpdate, "id" | "updated_at">;
 
 function newDraft(date: string): BookingDraft {
-  return { check_in: date, check_out: "", customer_id: null, agent_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_beds: null, insurance_fee: null, checkin_time: null, checkout_time: null };
+  return { check_in: date, check_out: "", customer_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null };
 }
 
 function parseInitial(booking: Booking): BookingDraft {
-  const { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_beds, insurance_fee, checkin_time, checkout_time } = booking;
-  return { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_beds, insurance_fee, checkin_time, checkout_time };
+  const { check_in, check_out, customer_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time } = booking;
+  return { check_in, check_out, customer_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time };
 }

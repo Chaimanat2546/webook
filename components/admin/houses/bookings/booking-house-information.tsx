@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { House } from "lucide-react";
-import { getBookingHouseInformationAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
+import { getBookingCreationDefaultsAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BookingHouseInformation as Information } from "@/lib/house-bookings";
@@ -14,18 +14,20 @@ type State = { propertyId: string; retry: number } & (
 
 interface Props {
   propertyId: string;
+  loadDefaults: boolean;
   values: Information;
   onChange: (values: Information) => void;
 }
 
-export function BookingHouseInformation({ propertyId, values, onChange }: Props) {
+export function BookingHouseInformation({ propertyId, loadDefaults, values, onChange }: Props) {
   const [state, setState] = useState<State | null>(null);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
+    if (!loadDefaults) return;
     let cancelled = false;
     void (async () => {
       try {
-        const result = await getBookingHouseInformationAction(propertyId);
+        const result = await getBookingCreationDefaultsAction(propertyId);
         if (cancelled) return;
         setState(result.ok ? { propertyId, retry, status: "ready", data: result.data }
           : { propertyId, retry, status: "error", message: result.message });
@@ -34,8 +36,10 @@ export function BookingHouseInformation({ propertyId, values, onChange }: Props)
       }
     })();
     return () => { cancelled = true; };
-  }, [propertyId, retry]);
-  const current = state?.propertyId === propertyId && state.retry === retry ? state : null;
+  }, [propertyId, loadDefaults, retry]);
+  const current = loadDefaults
+    ? state?.propertyId === propertyId && state.retry === retry ? state : null
+    : { propertyId, retry, status: "ready" as const, data: values };
   return <section aria-label="ข้อมูลที่พัก" className="space-y-3 border-t pt-4">
     <h3 className="flex items-center gap-2 font-semibold"><House aria-hidden className="size-4 text-muted-foreground" />ข้อมูลที่พัก</h3>
     {!current ? <div role="status" aria-label="กำลังโหลดข้อมูลที่พัก" aria-busy="true">
