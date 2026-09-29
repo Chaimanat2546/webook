@@ -9,6 +9,7 @@ function memory() {
   let saved = { ...row };
   const repository: HouseBookingsRepository = {
     bookingCreationDefaults: async () => null,
+    bookingAgencies: async () => [], isActiveBookingAgency: async () => false,
     galleryHousePage: async () => ({ houses: [], total: 0 }), galleryHousesByPropertyIds: async () => [], galleryBookingSlices: async () => [],
     house: async property => property === "1024" ? { id: "listing1", property_id: "1024", title: "test" } : { id: "listing2", property_id: property, title: "other" },
     get: async (house, id) => house.id === saved.listing_id && id === saved.id ? saved : null,

@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GalleryBookingSlice, GalleryHouseSummary, GalleryPageInput } from "../../lib/booking-gallery.ts";
 import { CUSTOMER_FIELDS, normalizeBookingPhone, type BookingCustomerDetail, type BookingCustomerInput } from "../../lib/booking-customers.ts";
-import { bookingId, record, type Booking, type BookingCreate, type BookingCustomer, type BookingUpdate, type BookingHouseInformation } from "../../lib/house-bookings.ts";
+import { bookingId, record, type Booking, type BookingAgency, type BookingCreate, type BookingCustomer, type BookingUpdate, type BookingHouseInformation } from "../../lib/house-bookings.ts";
 
 export interface BookingHouse { id: string; property_id: string; title: string }
 const customerDetailSelection = `id,first_name,last_name,phone,customer_type,vip_status,tax_head_office,updated_at,dv_id,${CUSTOMER_FIELDS.map(field => field.key).join(",")}`;
@@ -48,6 +48,19 @@ function mapGalleryBookingSlice(value: unknown): GalleryBookingSlice {
 }
 export function createHouseBookingsRepository(client: SupabaseClient) {
   return {
+    async bookingAgencies(): Promise<BookingAgency[]> {
+      const { data, error } = await client.from("agents").select("id,name").eq("is_active", true).order("name");
+      if (error) throw error;
+      return (data ?? []).map((value): BookingAgency => {
+        const row = record(value);
+        return { id: bookingId(row.id), name: text(row.name) };
+      });
+    },
+    async isActiveBookingAgency(id: string): Promise<boolean> {
+      const { data, error } = await client.from("agents").select("id").eq("id", id).eq("is_active", true).maybeSingle();
+      if (error) throw error;
+      return data !== null;
+    },
     async bookingCreationDefaults(propertyId: string): Promise<BookingHouseInformation | null> {
       const { data, error } = await client.from("listings")
         .select("extra_beds,insurance_fee,checkin_time,checkout_time").eq("property_id", propertyId).maybeSingle();
@@ -175,7 +188,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       return saved;
     },
     async update(house: BookingHouse, actorId: string, input: BookingUpdate): Promise<Booking> {
-      const { error } = await client.rpc("admin_update_house_booking", { p_property_id: house.property_id, p_booking_id: input.id, p_expected_updated_at: input.updated_at, p_actor_id: actorId, p_values: { check_in: input.check_in, check_out: input.check_out, customer_id: input.customer_id, status: input.status, quantity: input.quantity, price_sell: input.price_sell, price_max: input.price_max, extra_charge: input.extra_charge, note: input.note, extra_person: input.extra_person, insurance: input.insurance, checkin_time: input.checkin_time, checkout_time: input.checkout_time } });
+      const { error } = await client.rpc("admin_update_house_booking", { p_property_id: house.property_id, p_booking_id: input.id, p_expected_updated_at: input.updated_at, p_actor_id: actorId, p_values: { check_in: input.check_in, check_out: input.check_out, customer_id: input.customer_id, status: input.status, quantity: input.quantity, price_sell: input.price_sell, price_max: input.price_max, extra_charge: input.extra_charge, note: input.note, extra_person: input.extra_person, insurance: input.insurance, checkin_time: input.checkin_time, checkout_time: input.checkout_time, ...(input.agent_id === undefined ? {} : { agent_id: input.agent_id }) } });
       if (error) throw error;
       const saved = await this.get(house, input.id);
       if (!saved) throw new Error("booking_not_found");

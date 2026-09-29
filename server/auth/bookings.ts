@@ -11,5 +11,5 @@ export async function requireBookingAdmin() {
   const { data, error } = await client.from("users").select("allow_tools,role_id").eq("uid", session.user.id).maybeSingle();
   if (error || !data || !canUseBooking(data)) throw new Error("booking_forbidden");
   // Booking operators manage every house; the user explicitly approved this scope.
-  return { actorId: session.user.id, repository: createHouseBookingsRepository(client) };
+  return { actorId: session.user.id, canManageBookingAgency: data.role_id === 1, repository: createHouseBookingsRepository(client) };
 }
