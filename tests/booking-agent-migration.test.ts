@@ -60,6 +60,8 @@ describe("booking Agent UUID correction migration", { skip: process.env.RUN_BOOK
   after(() => { spawnSync("docker", ["rm", "-f", container], { encoding: "utf8" }); });
 
   it("restores UUID Agent and account ownership while preserving mapped booking selections", () => {
+    const migration = readFileSync(new URL("../supabase/migrations/20260929160000_restore_booking_agent_uuid.sql", import.meta.url), "utf8");
+    assert.match(migration, /pg_catalog\.gen_random_uuid\(\)/);
     assert.match(sql("select pg_typeof(a.id)::text, pg_typeof(aa.agent_id)::text, aa.account_number from public.agents a join public.agent_accounts aa on aa.agent_id=a.id"), /uuid\|uuid\|1234/);
     assert.match(sql("select agent_id is null from public.bookings where booking_code='LEGACY'"), /^t\s*$/);
     assert.match(sql("select b.agent_id = a.id from public.bookings b join public.agents a on a.name='Active Agent' where b.booking_code='NUMERIC-SELECTED'"), /^t\s*$/);

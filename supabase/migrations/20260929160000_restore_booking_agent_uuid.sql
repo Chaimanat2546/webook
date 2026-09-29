@@ -14,7 +14,7 @@ create temporary table booking_agent_uuid_map (
   id uuid not null unique
 ) on commit drop;
 insert into booking_agent_uuid_map (legacy_id, id)
-select id, uuid_generate_v4() from public.agents;
+select id, pg_catalog.gen_random_uuid() from public.agents;
 
 alter table public.agents add column uuid_id uuid;
 update public.agents agent set uuid_id = map.id from booking_agent_uuid_map map where map.legacy_id = agent.id;
@@ -30,7 +30,7 @@ update public.bookings booking set agent_id_uuid = map.id from booking_agent_uui
 alter table public.agents drop constraint agents_pkey;
 alter table public.agents drop column id;
 alter table public.agents rename column uuid_id to id;
-alter table public.agents alter column id set default uuid_generate_v4();
+alter table public.agents alter column id set default pg_catalog.gen_random_uuid();
 alter table public.agents add constraint agents_pkey primary key (id);
 drop sequence if exists public.agents_id_seq;
 
