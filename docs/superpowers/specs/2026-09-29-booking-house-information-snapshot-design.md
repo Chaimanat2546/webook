@@ -1,80 +1,78 @@
-# Booking House Information Snapshot Design
+# แบบออกแบบ Snapshot ข้อมูลที่พักใน Booking
 
-## Goal
+## เป้าหมาย
 
-Allow each booking to retain editable accommodation information without
-changing its source listing or house. Production is the sole schema source of
-truth.
+ให้แต่ละ booking เก็บข้อมูลที่พักซึ่งแก้ไขได้ โดยไม่เปลี่ยนข้อมูลต้นทางของ
+listing หรือ house และให้ Production เป็นแหล่งอ้างอิง schema เพียงแห่งเดียว
 
-## Production Contract
+## Contract ของ Production
 
-- `public.bookings` already has nullable `insurance numeric` and
-  `extra_person numeric`, both with a `0.00` default.
-- `public.bookings` does not have `checkin_time` or `checkout_time`.
-- `public.listings` has `insurance_fee`, `extra_beds`, `checkin_time`, and
-  `checkout_time`. These are creation-time source values only.
-- Booking create and update RPCs currently do not accept the four booking
-  house-information values.
+- `public.bookings` มี `insurance numeric` และ `extra_person numeric` ซึ่งรับ
+  ค่า `null` ได้ และมีค่าเริ่มต้น `0.00`
+- `public.bookings` ยังไม่มี `checkin_time` และ `checkout_time`
+- `public.listings` มี `insurance_fee`, `extra_beds`, `checkin_time` และ
+  `checkout_time` ใช้เป็นข้อมูลต้นทางเฉพาะตอนสร้าง booking
+- RPC สำหรับสร้างและแก้ booking ยังไม่รับค่าข้อมูลที่พักทั้งสี่ค่า
 
-## Data Model
+## รูปแบบข้อมูล
 
-Create one new forward migration that:
+สร้าง forward migration ใหม่หนึ่งไฟล์เพื่อ:
 
-1. Adds nullable `checkin_time time without time zone` and `checkout_time
-   time without time zone` to `public.bookings`.
-2. Replaces `admin_create_house_booking` and `admin_update_house_booking` so
-   their JSON contracts accept `insurance`, `extra_person`, `checkin_time`,
-   and `checkout_time`, validate them, and persist only booking columns.
-3. Retains the existing RPC signature, authorization, optimistic-concurrency,
-   booking overlap, audit-log, and grant behavior.
+1. เพิ่ม `checkin_time time without time zone` และ `checkout_time time without
+   time zone` ซึ่งรับ `null` ได้ ลงใน `public.bookings`
+2. แทนที่ `admin_create_house_booking` และ `admin_update_house_booking` ให้
+   JSON contract รับ `insurance`, `extra_person`, `checkin_time` และ
+   `checkout_time` พร้อมตรวจสอบค่า และบันทึกลงเฉพาะคอลัมน์ของ booking
+3. คง RPC signature, การอนุญาต, optimistic concurrency, การตรวจวันจองทับ,
+   audit log และสิทธิ์ execute เดิมไว้
 
-No migration changes `listings`, `house`, `agents`, or `agent_accounts`.
-No old migration is edited.
+Migration จะไม่เปลี่ยน `listings`, `house`, `agents` หรือ `agent_accounts`
+และจะไม่แก้ไข migration เก่า
 
-## Application Flow
+## ลำดับการทำงานของแอป
 
-For a new booking, the service reads the selected listing once and maps:
+เมื่อสร้าง booking ใหม่ service จะอ่าน listing ที่เลือกเพียงครั้งเดียว แล้ว map
+ค่าดังนี้:
 
-| Listing source | Booking snapshot |
+| ข้อมูลจาก listing | Snapshot ใน booking |
 | --- | --- |
 | `insurance_fee` | `insurance` |
 | `extra_beds` | `extra_person` |
 | `checkin_time` | `checkin_time` |
 | `checkout_time` | `checkout_time` |
 
-An explicit form value overrides its creation default. For an existing
-booking, the UI reads and writes only booking values; it does not fetch a
-listing for fallback data.
+ค่าที่กรอกจากฟอร์มโดยตรงจะมีผลเหนือค่าเริ่มต้นจาก listing สำหรับ booking ที่มี
+อยู่แล้ว UI จะอ่านและเขียนเฉพาะค่าจาก booking โดยไม่โหลด listing เพื่อใช้เป็น
+fallback
 
-## UI and Boundaries
+## UI และขอบเขตของระบบ
 
-The booking “ข้อมูลที่พัก” form displays editable insurance, extra-person,
-check-in time, and check-out time values. Its wording and types use booking
-field names only. Listing field names stay isolated inside the creation-time
-mapping repository/service boundary.
+ฟอร์ม “ข้อมูลที่พัก” ใน booking จะแสดงและแก้ไขค่า insurance, ราคาคนเสริม,
+เวลาเช็คอิน และเวลาเช็คเอาท์ โดยข้อความและ TypeScript type ใช้ชื่อ field ของ
+booking เท่านั้น ชื่อ field ของ listing จะถูกจำกัดไว้ใน repository/service ที่
+map ค่าเฉพาะตอนสร้าง
 
-The work updates the booking TypeScript contracts, validation, repositories,
-services, server actions, RPC payloads, tests, and relevant documentation.
-All booking references to `insurance_fee` and `extra_beds` are removed.
+งานนี้จะปรับ TypeScript contract, validation, repository, service, server
+action, RPC payload, tests และเอกสารที่เกี่ยวข้องกับ booking รวมทั้งนำการอ้างอิง
+`insurance_fee` และ `extra_beds` ออกจาก booking ทั้งหมด
 
-## Error Handling and Validation
+## การจัดการข้อผิดพลาดและ Validation
 
-- Monetary values are nullable non-negative numeric amounts with at most two
-  decimal places.
-- Times are nullable `HH:mm` or `HH:mm:ss` values.
-- Invalid payload keys or values return the existing `booking_invalid_input`
-  error.
-- Existing stale-write and authorization failures are preserved.
+- จำนวนเงินรับ `null` ได้ ต้องไม่ติดลบ และมีทศนิยมไม่เกินสองตำแหน่ง
+- เวลา รับ `null` ได้ และอยู่ในรูปแบบ `HH:mm` หรือ `HH:mm:ss`
+- key หรือค่าของ payload ที่ไม่ถูกต้องจะคืน error เดิมคือ
+  `booking_invalid_input`
+- คงการป้องกันการเขียนทับข้อมูลเก่าและการตรวจสิทธิ์เดิมไว้
 
-## Testing and Verification
+## การทดสอบและตรวจสอบ
 
-Tests cover listing-to-booking snapshot mapping, explicit booking overrides,
-existing-booking isolation from listing changes, field-name validation, RPC
-payload contracts, and the UI fields. Before completion, run typecheck, lint,
-the relevant tests, and the full test suite.
+Tests ต้องครอบคลุมการ map ค่า listing ไปเป็น booking snapshot, การ override
+จากฟอร์ม, การแก้ booking ที่ไม่ถูกกระทบเมื่อ listing เปลี่ยน, validation ของชื่อ
+field, RPC payload contract และ field บน UI ก่อนสรุปงานให้รัน typecheck, lint,
+tests ที่เกี่ยวข้อง และ test suite ทั้งหมด
 
-## Deployment Gate
+## เงื่อนไขก่อน Deploy
 
-Before any migration apply or Staging deploy, re-check and summarize the
-Production schema and wait for explicit confirmation. Staging deployment uses
-only `npm run deploy:cf:staging` after verification.
+ก่อน apply migration หรือ deploy ไป Staging ต้องตรวจและสรุป Production schema
+อีกครั้ง แล้วรอการยืนยันอย่างชัดเจน การ deploy Staging ใช้เฉพาะ
+`npm run deploy:cf:staging` หลังตรวจสอบครบถ้วน
