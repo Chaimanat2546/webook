@@ -71,6 +71,10 @@ export function bookingDate(value: unknown): string {
   if (!Number.isFinite(time) || new Date(time).toISOString().slice(0, 10) !== value) throw new Error("วันที่ไม่ถูกต้อง");
   return value;
 }
+export function nextBookingDate(value: unknown): string {
+  const date = bookingDate(value);
+  return new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+}
 export function nightsBetween(start: string, end: string): number {
   return (Date.parse(`${bookingDate(end)}T00:00:00Z`) - Date.parse(`${bookingDate(start)}T00:00:00Z`)) / 86_400_000;
 }

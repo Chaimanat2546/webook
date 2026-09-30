@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseBookingCreate, parseBookingUpdate, nightsBetween, parseBookingRange, bookingEvent } from "../lib/house-bookings.ts";
+import { parseBookingCreate, parseBookingUpdate, nightsBetween, nextBookingDate, parseBookingRange, bookingEvent } from "../lib/house-bookings.ts";
 import { defaultPaymentExpiry, paymentExpiryFromBangkokLocal, paymentExpiryToBangkokLocal } from "../lib/booking-payment-expiry.ts";
 import { canUseBooking, canAccessHouses } from "../server/auth/admin.ts";
 
@@ -16,6 +16,11 @@ test("rejects nonexistent dates and nonpositive stays", () => {
   for (const dates of [{ check_in: "2026-02-30" }, { check_out: input.check_in }, { check_out: "2026-09-01" }]) {
     assert.throws(() => parseBookingUpdate({ ...input, ...dates }));
   }
+});
+test("new bookings default checkout to the next calendar day", () => {
+  assert.equal(nextBookingDate("2026-09-30"), "2026-10-01");
+  assert.equal(nextBookingDate("2028-02-28"), "2028-02-29");
+  assert.equal(nextBookingDate("2026-12-31"), "2027-01-01");
 });
 test("rejects invalid money, IDs, revisions and status", () => {
   for (const patch of [{ price_sell: Infinity }, { price_max: -1 }, { id: "17 OR 1=1" }, { customer_id: "bad" }, { status: "paid" }, { updated_at: "" }]) {

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { BOOKING_STATUSES, nightsBetween, parseBookingCreate, parseBookingUpdate, type Booking, type BookingAgency, type BookingUpdate } from "@/lib/house-bookings";
+import { BOOKING_STATUSES, nextBookingDate, nightsBetween, parseBookingCreate, parseBookingUpdate, type Booking, type BookingAgency, type BookingUpdate } from "@/lib/house-bookings";
 import { defaultPaymentExpiry, paymentExpiryFromBangkokLocal, paymentExpiryToBangkokLocal } from "@/lib/booking-payment-expiry";
 import { bookingAgencyChoices } from "@/lib/booking-agency";
 import { cancelHouseBookingAction, createHouseBookingAction, getHouseBookingAction, listBookingAgenciesAction, saveHouseBookingAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
@@ -188,7 +188,7 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
 type BookingDraft = Omit<BookingUpdate, "id" | "updated_at">;
 
 function newDraft(date: string): BookingDraft {
-  return { check_in: date, check_out: "", customer_id: null, agent_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null, payment_expires_at: defaultPaymentExpiry(new Date()) };
+  return { check_in: date, check_out: date ? nextBookingDate(date) : "", customer_id: null, agent_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null, payment_expires_at: defaultPaymentExpiry(new Date()) };
 }
 
 function parseInitial(booking: Booking): BookingDraft {
