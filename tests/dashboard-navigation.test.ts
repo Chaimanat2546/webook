@@ -35,6 +35,13 @@ test("dashboard links retain an allowlisted booking source and never use a retur
   assert.equal(dashboardBackHref(direct), "/admin/dashboard?month=2026-09");
 });
 
+test("agency detail Back drops the selected detail ID while preserving source search and page", () => {
+  const detail = parseDashboardQuery({ month: "2026-09", view: "agency", from: "agencies", agency: "agency-a", agencySearch: "trip", agenciesPage: "2" });
+  assert.equal(dashboardBackHref(detail), "/admin/dashboard?month=2026-09&view=agencies&agencySearch=trip&agenciesPage=2");
+  const source = parseDashboardQuery({ month: "2026-09", view: "agencies", agency: "irrelevant-booking-filter", agencySearch: "trip", agenciesPage: "2" });
+  assert.equal(dashboardHref(source), "/admin/dashboard?month=2026-09&view=agencies&agencySearch=trip&agenciesPage=2");
+});
+
 test("dashboard links reset the affected list page and reset detail selection for a new month", () => {
   const query = parseDashboardQuery({ month: "2026-09", view: "bookings", status: "waiting", search: "villa", page: "3", agenciesPage: "4", houseSearch: "sea", housesPage: "5" });
   assert.equal(dashboardHref(query, { status: "cancelled" }), "/admin/dashboard?month=2026-09&view=bookings&status=cancelled&search=villa&agenciesPage=4&houseSearch=sea&housesPage=5");

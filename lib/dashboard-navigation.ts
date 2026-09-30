@@ -36,6 +36,9 @@ export function dashboardHref(query: DashboardQuery, changes: DashboardHrefChang
     if (changesAgencyFilter) merged.agenciesPage = 1;
     if (changesHouseFilter) merged.housesPage = 1;
   }
+  // `agency` is the selected ID in agency details, not a filter on the agency list.
+  // Canonical list URLs drop it so Back matches the recorded list context.
+  if (merged.view === "agencies") merged.agency = "";
   const params = new URLSearchParams();
   params.set("month", merged.month);
   addIfNonDefault(params, "view", merged.view, "overview");
