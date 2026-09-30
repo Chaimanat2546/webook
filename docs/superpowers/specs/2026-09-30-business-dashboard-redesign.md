@@ -1,6 +1,6 @@
 # Business dashboard redesign
 
-Status: approved visual direction; implementation and release verification in progress.
+Status: implemented and deployed to Staging; live owner-account acceptance remains pending because Staging has no existing owner identity with a valid DV. Verification: `docs/superpowers/reports/2026-09-30-business-dashboard-verification.md`.
 
 ## Purpose and reference
 

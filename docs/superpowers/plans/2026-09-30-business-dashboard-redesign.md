@@ -141,15 +141,17 @@
 
 **Files:** `docs/dashboard.md`, plan checklist; generated `public/sw.js` through the build command.
 
-- [ ] Update dashboard documentation to describe views, previews, page size, Back behavior and unchanged sales/count rules. Remove obsolete descriptions of the old long expanded layout.
-- [ ] Review the final feature diff against every spec section, including data redaction, share calculations, date boundaries, stable ordering, missing values and error handling.
-- [ ] Run focused dashboard/navigation tests and typecheck/lint. Address new errors; document existing warnings by filename.
-- [ ] Run `npm run build`, then `npm run verify` sequentially. Require successful exit codes and no failed tests; report intentional skips. Do not regenerate PWA concurrently with its reproducibility test.
-- [ ] Review final screenshots in light/dark at target widths. Ensure the real app matches the approved layout and has all three information areas for Admin.
-- [ ] Record release-ready file changes and checks. Preserve pre-existing dirty work; only stage/commit the agreed dashboard changes and any required generated PWA output.
-- [ ] When implementation is authorized for release, verify Staging Supabase/account targets without exposing secrets; deploy using `npm run deploy:cf:staging`.
-- [ ] Verify the compiled bundle contains Staging project reference `sxvkhzhqtrpxgzumsswl` and no Production reference `rqizfiayvcbozlzuvbok`; inspect deployment exit code/version.
+- [x] Update dashboard documentation to describe views, previews, page size, Back behavior and unchanged sales/count rules. Remove obsolete descriptions of the old long expanded layout.
+- [x] Review the final feature diff against every spec section, including data redaction, share calculations, date boundaries, stable ordering, missing values and error handling.
+- [x] Run focused dashboard/navigation tests and typecheck/lint. Address new errors; document existing warnings by filename.
+- [x] Run `npm run build`, then `npm run verify` sequentially. Require successful exit codes and no failed tests; report intentional skips. Do not regenerate PWA concurrently with its reproducibility test.
+- [x] Review final screenshots in light/dark at target widths. Ensure the real app matches the approved layout and has all three information areas for Admin.
+- [x] Record release-ready file changes and checks. Preserve pre-existing dirty work; only stage/commit the agreed dashboard changes and any required generated PWA output.
+- [x] When implementation is authorized for release, verify Staging Supabase/account targets without exposing secrets; deploy using `npm run deploy:cf:staging`.
+- [x] Verify the compiled bundle contains Staging project reference `sxvkhzhqtrpxgzumsswl` and no Production reference `rqizfiayvcbozlzuvbok`; inspect deployment exit code/version.
 - [ ] Smoke-test live Staging overview, status filter, agency search/pagination/drilldown, new-house history, deep-link Back and owner scope. Confirm totals reconcile before handing off the Staging URL. No DB seeding or schema changes are needed.
+
+Task 5 acceptance note: all release/build/deploy checks and Admin live smoke flows passed; the final smoke checkbox remains open only for a signed-in real-owner Staging check. No existing owner identity with a valid DV is available, and account/permission changes are outside this plan. See `docs/superpowers/reports/2026-09-30-business-dashboard-verification.md` for evidence and limitations.
 
 ## Planning self-review
 
