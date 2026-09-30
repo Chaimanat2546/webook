@@ -8,6 +8,8 @@ describe("WeBooks Staging Cloudflare boundary", () => {
     assert.equal(config.account_id, "0df55f166fa309dcc904e992c43f86db");
     assert.equal(config.name, "webook-staging");
     assert.equal(config.workers_dev, true);
+    assert.equal(config.main, "worker.ts");
+    assert.deepEqual(config.triggers, { crons: ["* * * * *"] });
     assert.deepEqual(config.r2_buckets, [{ binding: "NEXT_INC_CACHE_R2_BUCKET", bucket_name: "webook-staging-next-cache" }]);
     assert.equal(Object.hasOwn(config, "services"), false);
     assert.equal(Object.hasOwn(config, "routes"), false);
