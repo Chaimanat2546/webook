@@ -186,10 +186,10 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
 type BookingDraft = Omit<BookingUpdate, "id" | "updated_at">;
 
 function newDraft(date: string): BookingDraft {
-  return { check_in: date, check_out: "", customer_id: null, agent_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null };
+  return { check_in: date, check_out: "", customer_id: null, agent_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null, payment_expires_at: null };
 }
 
 function parseInitial(booking: Booking): BookingDraft {
-  const { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time } = booking;
-  return { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time };
+  const { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time, payment_expires_at } = booking;
+  return { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time, payment_expires_at };
 }

@@ -97,7 +97,7 @@ test("booking repository sends house-information overrides to the booking RPC", 
   assert.deepEqual((payload as { p_values: Record<string, unknown> }).p_values, {
     check_in: "2026-10-01", check_out: "2026-10-03", customer_id: "2", status: "waiting", quantity: 2,
     price_sell: 500, price_max: 1500, extra_charge: 0, note: null,
-    extra_person: 300, insurance: 3000, checkin_time: "14:00:00", checkout_time: "12:00:00",
+    extra_person: 300, insurance: 3000, checkin_time: "14:00:00", checkout_time: "12:00:00", payment_expires_at: null,
   });
 });
 

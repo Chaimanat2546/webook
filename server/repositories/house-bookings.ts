@@ -12,7 +12,7 @@ function mapCustomerDetail(value: unknown): BookingCustomerDetail {
   for (const field of CUSTOMER_FIELDS) customer[field.key] = nullableText(row[field.key]);
   return customer;
 }
-const selection = "id,booking_code,listing_id,houseid,agent_id,customer_id,booking_type,status,check_in,check_out,price_sell,price_max,deposit_amount,extra_charge,quantity,details,note,extra_person,insurance,checkin_time,checkout_time,updated_at,customer:customers(id,first_name,last_name,phone,dv_id)";
+const selection = "id,booking_code,listing_id,houseid,agent_id,customer_id,booking_type,status,check_in,check_out,price_sell,price_max,deposit_amount,extra_charge,quantity,details,note,extra_person,insurance,checkin_time,checkout_time,payment_expires_at,updated_at,customer:customers(id,first_name,last_name,phone,dv_id)";
 function text(value: unknown): string { return typeof value === "string" ? value : ""; }
 function nullableText(value: unknown): string | null { return value == null ? null : text(value); }
 function number(value: unknown): number {
@@ -26,7 +26,7 @@ export function mapBookingCustomer(value: unknown): BookingCustomer {
 }
 export function mapBooking(value: unknown): Booking {
   const b = record(value);
-  return { id: bookingId(b.id), booking_code: text(b.booking_code), listing_id: text(b.listing_id), houseid: bookingId(b.houseid), agent_id: b.agent_id == null ? null : bookingAgencyId(b.agent_id), customer_id: b.customer_id == null ? null : bookingId(b.customer_id), customer: b.customer && record(b.customer).dv_id != null && bookingId(record(b.customer).dv_id) === bookingId(b.houseid) ? mapBookingCustomer(b.customer) : null, check_in: text(b.check_in), check_out: text(b.check_out), status: text(b.status), booking_type: nullableText(b.booking_type), price_sell: number(b.price_sell), price_max: b.price_max == null ? null : number(b.price_max), deposit_amount: number(b.deposit_amount), extra_charge: number(b.extra_charge), quantity: number(b.quantity), details: nullableText(b.details), note: nullableText(b.note), extra_person: b.extra_person == null ? null : number(b.extra_person), insurance: b.insurance == null ? null : number(b.insurance), checkin_time: nullableText(b.checkin_time), checkout_time: nullableText(b.checkout_time), updated_at: text(b.updated_at) };
+  return { id: bookingId(b.id), booking_code: text(b.booking_code), listing_id: text(b.listing_id), houseid: bookingId(b.houseid), agent_id: b.agent_id == null ? null : bookingAgencyId(b.agent_id), customer_id: b.customer_id == null ? null : bookingId(b.customer_id), customer: b.customer && record(b.customer).dv_id != null && bookingId(record(b.customer).dv_id) === bookingId(b.houseid) ? mapBookingCustomer(b.customer) : null, check_in: text(b.check_in), check_out: text(b.check_out), status: text(b.status), booking_type: nullableText(b.booking_type), price_sell: number(b.price_sell), price_max: b.price_max == null ? null : number(b.price_max), deposit_amount: number(b.deposit_amount), extra_charge: number(b.extra_charge), quantity: number(b.quantity), details: nullableText(b.details), note: nullableText(b.note), extra_person: b.extra_person == null ? null : number(b.extra_person), insurance: b.insurance == null ? null : number(b.insurance), checkin_time: nullableText(b.checkin_time), checkout_time: nullableText(b.checkout_time), payment_expires_at: nullableText(b.payment_expires_at), updated_at: text(b.updated_at) };
 }
 export function mapBookingGalleryHouse(value: unknown): GalleryHouseSummary {
   const row = record(value);
@@ -188,7 +188,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       return saved;
     },
     async update(house: BookingHouse, actorId: string, input: BookingUpdate): Promise<Booking> {
-      const { error } = await client.rpc("admin_update_house_booking", { p_property_id: house.property_id, p_booking_id: input.id, p_expected_updated_at: input.updated_at, p_actor_id: actorId, p_values: { check_in: input.check_in, check_out: input.check_out, customer_id: input.customer_id, status: input.status, quantity: input.quantity, price_sell: input.price_sell, price_max: input.price_max, extra_charge: input.extra_charge, note: input.note, extra_person: input.extra_person, insurance: input.insurance, checkin_time: input.checkin_time, checkout_time: input.checkout_time, ...(input.agent_id === undefined ? {} : { agent_id: input.agent_id }) } });
+      const { error } = await client.rpc("admin_update_house_booking", { p_property_id: house.property_id, p_booking_id: input.id, p_expected_updated_at: input.updated_at, p_actor_id: actorId, p_values: { check_in: input.check_in, check_out: input.check_out, customer_id: input.customer_id, status: input.status, quantity: input.quantity, price_sell: input.price_sell, price_max: input.price_max, extra_charge: input.extra_charge, note: input.note, extra_person: input.extra_person, insurance: input.insurance, checkin_time: input.checkin_time, checkout_time: input.checkout_time, payment_expires_at: input.payment_expires_at, ...(input.agent_id === undefined ? {} : { agent_id: input.agent_id }) } });
       if (error) throw error;
       const saved = await this.get(house, input.id);
       if (!saved) throw new Error("booking_not_found");
