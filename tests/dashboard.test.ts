@@ -246,16 +246,16 @@ test("dashboard renders month controls and only administrator views include agen
     const html = renderToStaticMarkup(createElement(View, { report, query }));
     assert.match(html, /name="month"/);
     assert.match(html, /value="2026-09"/);
-    assert.match(html, /BK1/);
     assert.match(html, /ติดจอง/);
     assert.match(html, /ยอดขายจากการจอง/);
-    assert.match(html, /การจองทุกสถานะ/);
+    assert.match(html, /สถานะการจอง/);
+    assert.match(html, /การจองล่าสุด/);
+    assert.match(html, /ดูรายการทั้งหมด/);
+    assert.match(html, /view=bookings/);
     assert.doesNotMatch(html, /ไม่ใช่เงินรับแล้ว/);
     assert.match(html, /status=waiting/);
     assert.match(html, /<details/);
-    if (scope.kind === "admin") {
-      assert.ok(html.indexOf("ยอดขายเอเจนซี่") < html.indexOf('id="bookings"'));
-    }
+    if (scope.kind === "admin") assert.match(html, /ดูทั้งหมด/);
     assert.equal(html.includes("ยอดขายเอเจนซี่"), scope.kind === "admin");
     assert.equal(html.includes("บ้านที่เพิ่มใหม่"), scope.kind === "admin");
     assert.equal(html.includes("Agency A"), scope.kind === "admin");
@@ -263,12 +263,12 @@ test("dashboard renders month controls and only administrator views include agen
   }
   const empty = await loadDashboard(repository({ kind: "admin" }, []), "signed-in-user", { month: "2026-09" });
   const emptyHtml = renderToStaticMarkup(createElement(View, { report: empty, query }));
-  assert.match(emptyHtml, /ไม่พบการจองตามตัวกรอง/);
+  assert.match(emptyHtml, /ไม่มีการจองในเดือนนี้/);
   assert.match(emptyHtml, /ไม่มียอดขายติดจองในเดือนนี้/);
   assert.doesNotMatch(emptyHtml, /aria-label="กราฟยอดขายเอเจนซี่/);
   const missing = await loadDashboard(repository({ kind: "admin" }, [{ ...booking, priceCents: null }]), "signed-in-user", { month: "2026-09" });
   const missingHtml = renderToStaticMarkup(createElement(View, { report: missing, query }));
   assert.match(missingHtml, /role="status"/);
-  assert.match(missingHtml, /มูลค่าการจองยังไม่ครบ/);
-  assert.match(missingHtml, /BK1/);
+  assert.match(missingHtml, /ยังไม่ระบุยอด/);
+  assert.match(missingHtml, /House A/);
 });
