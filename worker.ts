@@ -1,4 +1,3 @@
-// @ts-expect-error OpenNext generates this module during the build.
 import handler from "./.open-next/worker.js";
 import { createClient } from "@supabase/supabase-js";
 import { expireWaitingBookings } from "./server/repositories/booking-expiry";
