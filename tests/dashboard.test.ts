@@ -1,0 +1,183 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { build } from "esbuild";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { createElement, type ComponentType } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createClient } from "@supabase/supabase-js";
+import { dashboardScope, parseDashboardQuery, type DashboardBookingSource, type DashboardScope } from "../lib/dashboard.ts";
+import { createDashboardRepository, type DashboardRepository } from "../server/repositories/dashboard.ts";
+import { DashboardForbidden, loadDashboard } from "../server/services/dashboard.ts";
+
+const booking: DashboardBookingSource = {
+  id: "1", code: "BK1", propertyId: "101", houseTitle: "House A", checkIn: "2026-11-01", checkOut: "2026-11-03",
+  createdAt: "2026-09-10T00:00:00Z", status: "confirmed", priceCents: 123450, agentId: "agency-a", agentName: "Agency A",
+};
+
+function repository(scope: DashboardScope | null, rows: DashboardBookingSource[] = [booking]): DashboardRepository {
+  return {
+    async access(actorId) { assert.equal(actorId, "signed-in-user"); return scope; },
+    async bookings(actualScope) { assert.deepEqual(actualScope, scope); return rows; },
+    async newHouses() { return [{ id: "listing-new", propertyId: "202", title: "New House", createdAt: "2026-09-12T00:00:00Z" }]; },
+  };
+}
+
+test("dashboard permissions grant every house only to role 1 and fail closed without a valid DV ID", () => {
+  assert.deepEqual(dashboardScope({ role_id: 1, dv_id: null }), { kind: "admin" });
+  assert.deepEqual(dashboardScope({ role_id: 3, dv_id: 101 }), { kind: "owner", propertyId: "101" });
+  assert.deepEqual(dashboardScope({ role_id: null, dv_id: "9223372036854775807" }), { kind: "owner", propertyId: "9223372036854775807" });
+  assert.equal(dashboardScope(null), null);
+  for (const dv_id of [null, "", 0, -1, "101,102", "101 or true", 1.5, "9223372036854775808", Number.MAX_SAFE_INTEGER + 1]) {
+    assert.equal(dashboardScope({ role_id: 2, dv_id }), null);
+  }
+  assert.equal(dashboardScope({ role_id: "1", dv_id: null }), null);
+});
+
+test("dashboard months use Bangkok midnight, including year change and leap February", () => {
+  assert.deepEqual(parseDashboardQuery({}, new Date("2026-09-30T17:00:00Z")), {
+    month: "2026-10", start: "2026-09-30T17:00:00.000Z", end: "2026-10-31T17:00:00.000Z", page: 1, housesPage: 1,
+  });
+  assert.equal(parseDashboardQuery({ month: "2028-02" }).end, "2028-02-29T17:00:00.000Z");
+  assert.equal(parseDashboardQuery({ month: "2026-12" }).end, "2026-12-31T17:00:00.000Z");
+  for (const raw of [{ month: "2026-13" }, { month: ["2026-09"] }, { month: "" }, { page: "0" }, { housesPage: "-1" }, { month: "2026-9" }]) assert.throws(() => parseDashboardQuery(raw));
+});
+
+test("denied dashboard identities cannot read any booking or new-house data", async () => {
+  const repo = repository(null);
+  repo.bookings = async () => { assert.fail("denied identity queried bookings"); };
+  repo.newHouses = async () => { assert.fail("denied identity queried new houses"); };
+  await assert.rejects(loadDashboard(repo, "signed-in-user", { month: "2026-09", role_id: 1, dv_id: "101" }), DashboardForbidden);
+});
+
+test("owner cannot expand scope through URL parameters and receives no agency or foreign-house data", async () => {
+  const repo = repository({ kind: "owner", propertyId: "101" }, [booking, { ...booking, id: "2", propertyId: "202", houseTitle: "Other house" }]);
+  repo.newHouses = async () => { assert.fail("owner queried admin-only house history"); };
+  const report = await loadDashboard(repo, "signed-in-user", { month: "2026-09", role_id: 1, dv_id: "202", propertyId: "202" });
+  assert.equal(report.bookingCount, 1);
+  assert.equal(report.admin, null);
+  assert.equal(report.sales.amountCents, 123450);
+  assert.equal(report.bookings.rows[0].propertyId, "101");
+  assert.equal("agentId" in report.bookings.rows[0], false);
+  assert.equal(JSON.stringify(report).includes("Agency A"), false);
+  assert.equal(JSON.stringify(report).includes("Other house"), false);
+});
+
+test("admin sales count only confirmed bookings, group agencies and flag missing full prices", async () => {
+  const rows = [booking,
+    { ...booking, id: "2", propertyId: "202", agentId: "agency-b", agentName: "Inactive B", priceCents: 20 },
+    { ...booking, id: "3", priceCents: 10 },
+    { ...booking, id: "4", priceCents: null },
+    { ...booking, id: "5", agentId: null, agentName: null, priceCents: 30000 },
+    ...["waiting", "cancelled", "repair", null].map((status, index) => ({ ...booking, id: `other-${index}`, status, priceCents: 99999999 })),
+  ];
+  const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09" });
+  assert.deepEqual(report.sales, { count: 5, amountCents: 153480, missingPrices: 1 });
+  assert.equal(report.waitingCount, 1);
+  assert.equal(report.bookingCount, 8);
+  assert.deepEqual(report.admin?.agencies.map(row => [row.name, row.count, row.amountCents]), [
+    ["Agency A", 3, 123460], ["ไม่ระบุเอเจนซี่", 1, 30000], ["Inactive B", 1, 20],
+  ]);
+  assert.equal(report.admin?.houses.total, 1);
+});
+
+test("report boundaries exclude the next month and paginate details without reducing totals", async () => {
+  const rows = Array.from({ length: 25 }, (_, i) => ({ ...booking, id: String(i + 1), priceCents: 100 }));
+  rows.push({ ...booking, id: "26", createdAt: "2026-08-31T17:00:00Z", priceCents: 100 });
+  rows.push({ ...booking, id: "27", createdAt: "2026-09-30T17:00:00Z", priceCents: 99999 });
+  const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", page: "999" });
+  assert.equal(report.sales.amountCents, 2600);
+  assert.equal(report.bookings.total, 26);
+  assert.equal(report.bookings.page, 2);
+  assert.equal(report.bookings.rows.length, 6);
+});
+
+const dbRow = {
+  id: 1, booking_code: "BK1", listing_id: "listing-a", houseid: 101, check_in: "2026-11-01", check_out: "2026-11-03",
+  status: "confirmed", price_max: "1234.50", created_at: "2026-09-10T00:00:00Z",
+  listing: { id: "listing-a", property_id: 101, title: "House A" },
+};
+
+test("repository owner reads constrain both house identifiers and omit agency/customer fields", async () => {
+  let calls = 0;
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    const request = new Request(input, init), url = new URL(request.url);
+    assert.equal(url.searchParams.get("houseid"), "eq.101");
+    assert.equal(url.searchParams.get("listing.property_id"), "eq.101");
+    assert.deepEqual(url.searchParams.getAll("created_at"), ["gte.2026-08-31T17:00:00.000Z", "lt.2026-09-30T17:00:00.000Z"]);
+    assert.doesNotMatch(url.searchParams.get("select") ?? "", /agent|customer|note|phone/);
+    assert.equal(url.searchParams.get("offset"), String(calls));
+    calls++;
+    // Simulate a server cap of one row despite our requested batch of 500.
+    return new Response(JSON.stringify([{ ...dbRow, id: calls }]), { headers: { "Content-Type": "application/json", "Content-Range": `${calls - 1}-${calls - 1}/2` } });
+  } } });
+  const rows = await createDashboardRepository(client).bookings({ kind: "owner", propertyId: "101" }, parseDashboardQuery({ month: "2026-09" }));
+  assert.equal(calls, 2);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].priceCents, 123450);
+  assert.equal(rows[0].agentId, null);
+});
+
+test("repository discards mismatched or foreign house joins even if supplied by a data source", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => new Response(JSON.stringify([
+    dbRow,
+    { ...dbRow, id: 2, listing: { ...dbRow.listing, property_id: 202 } },
+    { ...dbRow, id: 3, houseid: 202, listing: { ...dbRow.listing, property_id: 202 } },
+    { ...dbRow, id: 4, listing_id: "foreign-listing" },
+  ]), { headers: { "Content-Type": "application/json", "Content-Range": "0-3/4" } }) } });
+  const rows = await createDashboardRepository(client).bookings({ kind: "owner", propertyId: "101" }, parseDashboardQuery({ month: "2026-09" }));
+  assert.deepEqual(rows.map(row => row.id), ["1"]);
+});
+
+test("repository resolves access by authenticated UID and never by email or request DV ID", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    const url = new URL(new Request(input, init).url);
+    assert.equal(url.pathname, "/rest/v1/users");
+    assert.equal(url.searchParams.get("uid"), "eq.signed-in-user");
+    assert.equal(url.searchParams.get("select"), "role_id,dv_id");
+    return new Response(JSON.stringify({ role_id: 3, dv_id: "101" }), { headers: { "Content-Type": "application/json" } });
+  } } });
+  assert.deepEqual(await createDashboardRepository(client).access("signed-in-user"), { kind: "owner", propertyId: "101" });
+});
+
+test("new-house history paginates beyond the server response cap using the selected month", async () => {
+  let calls = 0;
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    const url = new URL(new Request(input, init).url);
+    assert.equal(url.pathname, "/rest/v1/listings");
+    assert.equal(url.searchParams.get("offset"), String(calls));
+    assert.deepEqual(url.searchParams.getAll("created_at"), ["gte.2026-08-31T17:00:00.000Z", "lt.2026-09-30T17:00:00.000Z"]);
+    calls++;
+    return new Response(JSON.stringify([{ id: `listing-${calls}`, property_id: 100 + calls, title: "New House", created_at: "2026-09-10T00:00:00Z" }]), { headers: { "Content-Type": "application/json", "Content-Range": `${calls - 1}-${calls - 1}/2` } });
+  } } });
+  const rows = await createDashboardRepository(client).newHouses(parseDashboardQuery({ month: "2026-09" }));
+  assert.equal(rows.length, 2);
+  assert.equal(calls, 2);
+});
+
+test("failed or incomplete reads reject rather than displaying partial totals", async () => {
+  for (const response of [new Response("{}", { status: 500 }), new Response("[]", { headers: { "Content-Type": "application/json", "Content-Range": "*/3" } })]) {
+    const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => response.clone() } });
+    await assert.rejects(createDashboardRepository(client).bookings({ kind: "admin" }, parseDashboardQuery({ month: "2026-09" })));
+  }
+});
+
+test("dashboard renders month controls and only administrator views include agency and house history", async () => {
+  const bundle = await build({ entryPoints: [fileURLToPath(new URL("../components/admin/dashboard/dashboard-view.tsx", import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
+  const View = loaded.exports.DashboardView as ComponentType<Record<string, unknown>>;
+  const query = parseDashboardQuery({ month: "2026-09" });
+  for (const scope of [{ kind: "admin" }, { kind: "owner", propertyId: "101" }] as const) {
+    const report = await loadDashboard(repository(scope), "signed-in-user", { month: "2026-09" });
+    const html = renderToStaticMarkup(createElement(View, { report, query }));
+    assert.match(html, /name="month"/);
+    assert.match(html, /value="2026-09"/);
+    assert.match(html, /BK1/);
+    assert.match(html, /ติดจอง/);
+    assert.equal(html.includes("ยอดขายเอเจนซี่"), scope.kind === "admin");
+    assert.equal(html.includes("บ้านที่เพิ่มใหม่"), scope.kind === "admin");
+    assert.equal(html.includes("Agency A"), scope.kind === "admin");
+    assert.equal(html.includes("New House"), scope.kind === "admin");
+  }
+});

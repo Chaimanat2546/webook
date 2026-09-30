@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Contact, Files, FileText, House, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
+import { CalendarDays, Contact, Files, FileText, House, LayoutDashboard, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -24,6 +24,7 @@ import { TooltipProvider } from "../ui/tooltip";
 import { InstallAppMenuItem } from "../pwa/install-app-menu-item";
 
 export function AdminDesktopSidebar({
+  canUseDashboard = false,
   canAccessHouses,
   canManageCentralUsers,
   canManageWebookUsers,
@@ -32,6 +33,7 @@ export function AdminDesktopSidebar({
   canUseQuotation,
   signOutAction,
 }: {
+  canUseDashboard?: boolean;
   canAccessHouses: boolean;
   canManageCentralUsers: boolean;
   canManageWebookUsers: boolean;
@@ -79,6 +81,11 @@ export function AdminDesktopSidebar({
             {!isMobile && <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
+                {canUseDashboard && <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/dashboard")} tooltip="Dashboard">
+                    <Link href="/admin/dashboard" onClick={closeMobileSidebar}><LayoutDashboard data-icon="inline-start" /><span>Dashboard</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>}
                 {canUseBooking && !isMobile ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton
