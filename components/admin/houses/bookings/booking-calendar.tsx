@@ -53,7 +53,7 @@ function BookingCalendarWorkspace({ propertyId }: { propertyId: string }) {
   function refresh() { if (range.current) void load(range.current.start, range.current.end); }
   return <div className="house-booking-calendar flex h-full min-h-0 flex-col gap-2">
     <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground" aria-label="สีสถานะการจอง">
-      <span><i className="mr-1 inline-block size-2 rounded-full bg-red-600" />โอนแล้ว</span>
+      <span><i className="mr-1 inline-block size-2 rounded-full bg-red-600" />ติดจอง</span>
       <span><i className="mr-1 inline-block size-2 rounded-full bg-green-700" />รอโอน</span>
       <span><i className="mr-1 inline-block size-2 rounded-full bg-gray-500" />ปิดซ่อม/ปรับปรุง</span>
       <Button size="sm" className="ml-auto" onClick={event => { trigger.current = event.currentTarget; setCreateDate(bangkokToday); }}><Plus aria-hidden className="size-4" />สร้างการจอง</Button>

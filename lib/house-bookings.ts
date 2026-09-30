@@ -46,7 +46,7 @@ export interface Booking extends BookingUpdate {
 }
 export type BookingResult<T> = { ok: true; data: T } | { ok: false; message: string };
 export const BOOKING_STATUSES = [
-  { value: "confirmed", label: "โอนแล้ว" },
+  { value: "confirmed", label: "ติดจอง" },
   { value: "waiting", label: "รอโอน" },
   { value: "repair", label: "ปิดซ่อม/ปรับปรุง" },
   { value: "cancelled", label: "ยกเลิก" },

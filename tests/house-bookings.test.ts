@@ -29,6 +29,7 @@ test("query ranges accept month spillover and reject unlimited ranges", () => {
 test("calendar event uses exclusive checkout, stable identity and confirmed red", () => {
   const event = bookingEvent({ ...input, booking_code: "BK17", customer: null, booking_type: "booking", price_max: 0, details: null, listing_id: "house", houseid: "1024", agent_id: null });
   assert.equal(event.id, "17");
+  assert.match(event.title, /ติดจอง/);
   assert.equal(event.start, "2026-09-28");
   assert.equal(event.end, "2026-10-03");
   assert.equal(event.allDay, true);

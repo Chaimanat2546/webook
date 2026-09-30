@@ -18,7 +18,7 @@ The range picker uses full-cell targets, occupied-night colors, numbered check-i
 
 Past dates are disabled using the Asia/Bangkok calendar day. Server services reject backdated creation, rescheduling, and reactivation. Existing active bookings may retain their original historical stay dates when editing other information; cancellation remains available. Today is allowed.
 
-Statuses: confirmed is โอนแล้ว (red), waiting is รอโอน (green), cancelled remains ยกเลิก and hidden. repair is ปิดซ่อม/ปรับปรุง (gray), requires dates and optional note only, blocks availability, and stores customer_id null and price_max/price_sell/extra_charge zero; deposit_amount remains untouched. Changing a booking to repair clears its customer and editable money values on save. Changing repair back to a booking requires selecting a customer. Migration 20260921100000 extends the existing RPC status allowlists without changing RLS.
+Statuses: confirmed is ติดจอง (red), waiting is รอโอน (green), cancelled remains ยกเลิก and hidden. repair is ปิดซ่อม/ปรับปรุง (gray), requires dates and optional note only, blocks availability, and stores customer_id null and price_max/price_sell/extra_charge zero; deposit_amount remains untouched. Changing a booking to repair clears its customer and editable money values on save. Changing repair back to a booking requires selecting a customer. Migration 20260921100000 extends the existing RPC status allowlists without changing RLS.
 
 ## Waiting-payment expiry (2026-09-30)
 
