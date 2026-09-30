@@ -1,5 +1,5 @@
 import "server-only";
-import { parseDashboardQuery, type DashboardReport, type DashboardPage, type DashboardSales, type DashboardAgency, type DashboardBooking } from "../../lib/dashboard.ts";
+import { dashboardStatus, parseDashboardQuery, type DashboardReport, type DashboardPage, type DashboardSales, type DashboardAgency, type DashboardBooking } from "../../lib/dashboard.ts";
 import type { DashboardRepository } from "../repositories/dashboard.ts";
 
 export class DashboardForbidden extends Error {}
@@ -32,7 +32,9 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     && Date.parse(row.createdAt) >= Date.parse(query.start) && Date.parse(row.createdAt) < Date.parse(query.end));
   const sales: DashboardSales = { count: 0, amountCents: 0, missingPrices: 0 };
   const agencies = new Map<string | null, DashboardAgency>();
+  const statusCounts: DashboardReport["statusCounts"] = { confirmed: 0, waiting: 0, cancelled: 0, repair: 0, unknown: 0 };
   for (const booking of bookings) {
+    statusCounts[dashboardStatus(booking.status)]++;
     if (booking.status !== "confirmed") continue;
     addSale(sales, booking.priceCents);
     if (scope.kind === "admin") {
@@ -42,9 +44,13 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     }
   }
   // Project safe booking fields; owner responses never include agency details.
-  const visibleBookings: DashboardBooking[] = bookings.map(row => ({ id: row.id, code: row.code, propertyId: row.propertyId, houseTitle: row.houseTitle, checkIn: row.checkIn, checkOut: row.checkOut, createdAt: row.createdAt, status: row.status, priceCents: row.priceCents }));
+  const visibleBookings: DashboardBooking[] = bookings.filter(row =>
+    (query.status === "all" || dashboardStatus(row.status) === query.status)
+    && (scope.kind !== "admin" || !query.agency || (row.agentId ?? "unassigned") === query.agency)
+    && (!query.search || [row.code, row.houseTitle, row.propertyId, `DV-${row.propertyId}`].some(value => value.toLocaleLowerCase("th").includes(query.search.toLocaleLowerCase("th"))))
+  ).map(row => ({ id: row.id, code: row.code, propertyId: row.propertyId, houseTitle: row.houseTitle, checkIn: row.checkIn, checkOut: row.checkOut, createdAt: row.createdAt, status: row.status, priceCents: row.priceCents }));
   return {
-    scope, month: query.month, bookingCount: bookings.filter(row => row.status !== "repair").length,
+    scope, month: query.month, bookingCount: bookings.length, statusCounts,
     waitingCount: bookings.filter(row => row.status === "waiting").length,
     sales, bookings: paginate(visibleBookings, query.page),
     admin: scope.kind === "admin" ? {

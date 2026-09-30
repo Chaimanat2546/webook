@@ -6,9 +6,36 @@ export interface DashboardMonth {
   end: string;
 }
 
+export const DASHBOARD_VIEWS = ["overview", "bookings", "agencies", "houses", "booking", "agency", "house"] as const;
+export type DashboardViewName = typeof DASHBOARD_VIEWS[number];
+export const DASHBOARD_SOURCE_VIEWS = ["overview", "bookings", "agencies", "houses"] as const;
+export type DashboardSourceView = typeof DASHBOARD_SOURCE_VIEWS[number];
+
 export interface DashboardQuery extends DashboardMonth {
+  view: DashboardViewName;
+  from: DashboardSourceView;
   page: number;
   housesPage: number;
+  agenciesPage: number;
+  status: string;
+  search: string;
+  agency: string;
+  agencySearch: string;
+  houseSearch: string;
+  bookingId: string;
+  houseId: string;
+}
+
+export const DASHBOARD_STATUSES = [
+  { value: "confirmed", label: "ติดจอง" },
+  { value: "waiting", label: "รอโอน" },
+  { value: "cancelled", label: "ยกเลิก" },
+  { value: "repair", label: "ปิดซ่อม/ปรับปรุง" },
+  { value: "unknown", label: "ไม่ทราบสถานะ" },
+] as const;
+export type DashboardStatus = typeof DASHBOARD_STATUSES[number]["value"];
+export function dashboardStatus(value: string | null): DashboardStatus {
+  return DASHBOARD_STATUSES.find(item => item.value === value)?.value ?? "unknown";
 }
 
 export interface DashboardBooking {
@@ -58,6 +85,7 @@ export interface DashboardReport {
   month: string;
   bookingCount: number;
   waitingCount: number;
+  statusCounts: Record<DashboardStatus, number>;
   sales: DashboardSales;
   bookings: DashboardPage<DashboardBooking>;
   admin: { agencies: DashboardAgency[]; houses: DashboardPage<DashboardHouse> } | null;
@@ -85,17 +113,52 @@ export function parseDashboardQuery(raw: Record<string, unknown>, now = new Date
     throw new Error("กรุณาเลือกเดือนที่ถูกต้อง (ค.ศ. 1900–2199)");
   }
   const [year, number] = month.split("-").map(Number);
+  const status = raw.status ?? "all";
+  if (typeof status !== "string" || (status !== "all" && !DASHBOARD_STATUSES.some(item => item.value === status))) throw new Error("สถานะไม่ถูกต้อง");
+  function text(value: unknown): string {
+    if (value === undefined) return "";
+    if (typeof value !== "string" || value.length > 200) throw new Error("ตัวกรองไม่ถูกต้อง");
+    return value.trim();
+  }
   function page(value: unknown): number {
     if (value === undefined) return 1;
     if (typeof value !== "string" || !/^[1-9]\d{0,5}$/.test(value)) throw new Error("เลขหน้าไม่ถูกต้อง");
     return Number(value);
   }
+  function view(value: unknown): DashboardViewName | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value !== "string" || !DASHBOARD_VIEWS.includes(value as DashboardViewName)) throw new Error("มุมมอง Dashboard ไม่ถูกต้อง");
+    return value as DashboardViewName;
+  }
+  function from(value: unknown): DashboardSourceView {
+    if (value === undefined) return "overview";
+    if (typeof value !== "string" || !DASHBOARD_SOURCE_VIEWS.includes(value as DashboardSourceView)) throw new Error("ต้นทาง Dashboard ไม่ถูกต้อง");
+    return value as DashboardSourceView;
+  }
+  const requestedView = view(raw.view);
+  const resolvedView = requestedView
+    ?? (raw.housesPage !== undefined || raw.houseSearch !== undefined ? "houses"
+      : raw.agenciesPage !== undefined || raw.agencySearch !== undefined ? "agencies"
+        : raw.status !== undefined || raw.search !== undefined || raw.agency !== undefined || raw.page !== undefined ? "bookings"
+          : "overview");
+  const bookingId = text(raw.bookingId);
+  const agency = text(raw.agency);
+  const houseId = text(raw.houseId);
+  if (resolvedView === "booking" && !bookingId) throw new Error("ไม่พบรหัสการจอง");
+  if (resolvedView === "agency" && !agency) throw new Error("ไม่พบเอเจนซี่");
+  if (resolvedView === "house" && !houseId) throw new Error("ไม่พบรหัสบ้าน");
   return {
     month,
     start: new Date(Date.UTC(year, number - 1, 1) - 7 * 60 * 60 * 1000).toISOString(),
     end: new Date(Date.UTC(year, number, 1) - 7 * 60 * 60 * 1000).toISOString(),
+    view: resolvedView,
+    from: from(raw.from),
     page: page(raw.page),
     housesPage: page(raw.housesPage),
+    agenciesPage: page(raw.agenciesPage),
+    status, search: text(raw.search), agency,
+    agencySearch: text(raw.agencySearch), houseSearch: text(raw.houseSearch),
+    bookingId, houseId,
   };
 }
 

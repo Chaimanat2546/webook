@@ -13,7 +13,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let query;
   try { query = parseDashboardQuery(raw); }
   catch {
-    return <div className="space-y-4"><DashboardHeader month={parseDashboardQuery({}).month} /><p role="alert">เดือนหรือเลขหน้าไม่ถูกต้อง กรุณาเลือกเดือนอีกครั้ง</p></div>;
+    return <div className="space-y-4"><DashboardHeader month={parseDashboardQuery({}).month} /><p role="alert">เดือน เลขหน้า หรือตัวกรองไม่ถูกต้อง กรุณาเลือกเดือนอีกครั้ง</p></div>;
   }
   let report;
   try {

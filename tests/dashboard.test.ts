@@ -36,7 +36,7 @@ test("dashboard permissions grant every house only to role 1 and fail closed wit
 
 test("dashboard months use Bangkok midnight, including year change and leap February", () => {
   assert.deepEqual(parseDashboardQuery({}, new Date("2026-09-30T17:00:00Z")), {
-    month: "2026-10", start: "2026-09-30T17:00:00.000Z", end: "2026-10-31T17:00:00.000Z", page: 1, housesPage: 1,
+    month: "2026-10", start: "2026-09-30T17:00:00.000Z", end: "2026-10-31T17:00:00.000Z", view: "overview", from: "overview", page: 1, housesPage: 1, agenciesPage: 1, status: "all", search: "", agency: "", agencySearch: "", houseSearch: "", bookingId: "", houseId: "",
   });
   assert.equal(parseDashboardQuery({ month: "2028-02" }).end, "2028-02-29T17:00:00.000Z");
   assert.equal(parseDashboardQuery({ month: "2026-12" }).end, "2026-12-31T17:00:00.000Z");
@@ -74,7 +74,9 @@ test("admin sales count only confirmed bookings, group agencies and flag missing
   const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09" });
   assert.deepEqual(report.sales, { count: 5, amountCents: 153480, missingPrices: 1 });
   assert.equal(report.waitingCount, 1);
-  assert.equal(report.bookingCount, 8);
+  assert.equal(report.bookings.total, 9);
+  assert.equal(report.bookingCount, 9);
+  assert.deepEqual(report.statusCounts, { confirmed: 5, waiting: 1, cancelled: 1, repair: 1, unknown: 1 });
   assert.deepEqual(report.admin?.agencies.map(row => [row.name, row.count, row.amountCents]), [
     ["Agency A", 3, 123460], ["ไม่ระบุเอเจนซี่", 1, 30000], ["Inactive B", 1, 20],
   ]);
@@ -97,6 +99,30 @@ const dbRow = {
   status: "confirmed", price_max: "1234.50", created_at: "2026-09-10T00:00:00Z",
   listing: { id: "listing-a", property_id: 101, title: "House A" },
 };
+
+test("status filtering precedes pagination and never changes monthly sales or counts", async () => {
+  const rows = [booking, ...Array.from({ length: 23 }, (_, i) => ({ ...booking, id: `wait-${i}`, status: "waiting" }))];
+  const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", status: "waiting", page: "2" });
+  assert.equal(report.bookingCount, 24);
+  assert.equal(report.statusCounts.waiting, 23);
+  assert.equal(report.bookings.total, 23);
+  assert.equal(report.bookings.rows.length, 3);
+  assert.ok(report.bookings.rows.every(row => row.status === "waiting"));
+  assert.equal(report.sales.amountCents, 123450);
+});
+
+test("search and agency drilldown preserve totals and owner isolation", async () => {
+  const rows = [booking, { ...booking, id: "2", code: "OTHER", agentId: null, status: null }];
+  const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", search: "other", status: "unknown", agency: "unassigned" });
+  assert.deepEqual(report.bookings.rows.map(row => row.id), ["2"]);
+  assert.equal(report.bookingCount, 2);
+  assert.equal(report.sales.count, 1);
+  const owner = await loadDashboard(repository({ kind: "owner", propertyId: "101" }, rows), "signed-in-user", { month: "2026-09", agency: "foreign" });
+  assert.equal(owner.bookings.total, 2);
+  const dvSearch = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", search: "DV-101" });
+  assert.equal(dvSearch.bookings.total, 2);
+  for (const raw of [{ status: "bogus" }, { status: ["waiting"] }, { search: ["x"] }, { agency: ["x"] }, { search: "x".repeat(201) }]) assert.throws(() => parseDashboardQuery(raw));
+});
 
 test("repository owner reads constrain both house identifiers and omit agency/customer fields", async () => {
   let calls = 0;
@@ -175,9 +201,27 @@ test("dashboard renders month controls and only administrator views include agen
     assert.match(html, /value="2026-09"/);
     assert.match(html, /BK1/);
     assert.match(html, /ติดจอง/);
+    assert.match(html, /ยอดขายจากการจอง/);
+    assert.match(html, /การจองทุกสถานะ/);
+    assert.doesNotMatch(html, /ไม่ใช่เงินรับแล้ว/);
+    assert.match(html, /status=waiting/);
+    assert.match(html, /<details/);
+    if (scope.kind === "admin") {
+      assert.ok(html.indexOf("ยอดขายเอเจนซี่") < html.indexOf('id="bookings"'));
+    }
     assert.equal(html.includes("ยอดขายเอเจนซี่"), scope.kind === "admin");
     assert.equal(html.includes("บ้านที่เพิ่มใหม่"), scope.kind === "admin");
     assert.equal(html.includes("Agency A"), scope.kind === "admin");
     assert.equal(html.includes("New House"), scope.kind === "admin");
   }
+  const empty = await loadDashboard(repository({ kind: "admin" }, []), "signed-in-user", { month: "2026-09" });
+  const emptyHtml = renderToStaticMarkup(createElement(View, { report: empty, query }));
+  assert.match(emptyHtml, /ไม่พบการจองตามตัวกรอง/);
+  assert.match(emptyHtml, /ไม่มียอดขายติดจองในเดือนนี้/);
+  assert.doesNotMatch(emptyHtml, /aria-label="กราฟยอดขายเอเจนซี่/);
+  const missing = await loadDashboard(repository({ kind: "admin" }, [{ ...booking, priceCents: null }]), "signed-in-user", { month: "2026-09" });
+  const missingHtml = renderToStaticMarkup(createElement(View, { report: missing, query }));
+  assert.match(missingHtml, /role="status"/);
+  assert.match(missingHtml, /มูลค่าการจองยังไม่ครบ/);
+  assert.match(missingHtml, /BK1/);
 });
