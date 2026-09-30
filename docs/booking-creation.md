@@ -20,6 +20,10 @@ Past dates are disabled using the Asia/Bangkok calendar day. Server services rej
 
 Statuses: confirmed is โอนแล้ว (red), waiting is รอโอน (green), cancelled remains ยกเลิก and hidden. repair is ปิดซ่อม/ปรับปรุง (gray), requires dates and optional note only, blocks availability, and stores customer_id null and price_max/price_sell/extra_charge zero; deposit_amount remains untouched. Changing a booking to repair clears its customer and editable money values on save. Changing repair back to a booking requires selecting a customer. Migration 20260921100000 extends the existing RPC status allowlists without changing RLS.
 
+## Waiting-payment expiry (2026-09-30)
+
+Waiting bookings have an optional payment deadline shown in Bangkok time. A new waiting booking defaults to ten minutes from creation; changing to any other status clears the deadline. A Cloudflare Cron sweep runs every minute and atomically changes still-waiting bookings whose deadline has passed to cancelled, so their dates become available again. Cron delivery may be delayed slightly, so cancellation is not an exact real-time guarantee. Legacy waiting bookings with no deadline remain active until an operator sets one.
+
 Cancellation is available through the trash icon beside Close on saved records, with a shadcn confirmation dialog. Cancelled is removed from the status selector. The action accepts ID and expected revision only, loads persisted values, checks authorization/house/revision, and sets cancelled without saving unsaved form edits. The record remains stored; the calendar refreshes and shows a toast.
 
 New forms prefill check-in only and leave checkout empty, placing the picker immediately in checkout selection mode. This allows choosing a checkout on the next booking start without first clearing an automatically selected one-night stay.
