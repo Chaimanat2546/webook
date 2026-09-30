@@ -15,9 +15,9 @@ function addIfNonDefault(params: URLSearchParams, key: string, value: string | n
 export function dashboardHref(query: DashboardQuery, changes: DashboardHrefChanges = {}): string {
   const merged: DashboardQuery = { ...query, ...changes };
   const changesMonth = changes.month !== undefined && changes.month !== query.month;
-  const changesBookingFilter = changes.status !== undefined || changes.search !== undefined || changes.agency !== undefined;
-  const changesAgencyFilter = changes.agencySearch !== undefined;
-  const changesHouseFilter = changes.houseSearch !== undefined;
+  const changesBookingFilter = (changes.status !== undefined && changes.status !== query.status) || (changes.search !== undefined && changes.search !== query.search) || (changes.agency !== undefined && changes.agency !== query.agency);
+  const changesAgencyFilter = changes.agencySearch !== undefined && changes.agencySearch !== query.agencySearch;
+  const changesHouseFilter = changes.houseSearch !== undefined && changes.houseSearch !== query.houseSearch;
   if (changesMonth) {
     merged.view = "overview";
     merged.from = "overview";

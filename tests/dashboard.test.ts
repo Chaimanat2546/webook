@@ -15,6 +15,79 @@ const booking: DashboardBookingSource = {
   createdAt: "2026-09-10T00:00:00Z", status: "confirmed", priceCents: 123450, agentId: "agency-a", agentName: "Agency A",
 };
 
+async function dashboardComponent(name: string, file: string) {
+  const bundle = await build({ entryPoints: [fileURLToPath(new URL(file, import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
+  return loaded.exports[name] as ComponentType<Record<string, unknown>>;
+}
+
+test("missing and foreign detail URLs use the same not-found response rather than retry", async () => {
+  const repo = repository({ kind: "owner", propertyId: "101" }, [booking, { ...booking, id: "foreign", propertyId: "202" }]);
+  const bundle = await build({ entryPoints: [fileURLToPath(new URL("../app/admin/dashboard/page.tsx", import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external", plugins: [{ name: "auth-boundary", setup(builder) { builder.onResolve({ filter: /server\/auth\/dashboard$/ }, () => ({ path: "dashboard-auth-fixture", external: true })); } }] });
+  const loaded = { exports: {} as Record<string, unknown> };
+  const require = createRequire(import.meta.url);
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name === "server-only" ? {} : name === "dashboard-auth-fixture" ? { dashboardSession: async () => ({ actorId: "signed-in-user", repository: repo }) } : require(name), loaded, loaded.exports);
+  const Page = loaded.exports.default as (props: { searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
+  for (const bookingId of ["missing", "foreign"]) {
+    await assert.rejects(Page({ searchParams: Promise.resolve({ month: "2026-09", view: "booking", bookingId }) }), /NEXT_HTTP_ERROR_FALLBACK;404/);
+  }
+});
+
+test("booking search preserves active status and agency while resetting the page", async () => {
+  const View = await dashboardComponent("DashboardLists", "../components/admin/dashboard/dashboard-lists.tsx");
+  const raw = { month: "2026-09", view: "bookings", status: "confirmed", agency: "agency-a", page: "2" };
+  const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", raw);
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery(raw) }));
+  assert.match(html, /name="status"/);
+  assert.match(html, /value="confirmed" selected/);
+  assert.match(html, /name="agency"[^>]*value="agency-a"/);
+  assert.doesNotMatch(html, /name="page"/);
+  assert.match(html, /กลับภาพรวม/);
+  assert.match(html, /aria-label="ค้นหาการจอง"/);
+  assert.match(html, /data-dashboard-detail-link/);
+  assert.match(html, /กรองเอเจนซี่: Agency A/);
+  assert.doesNotMatch(html, /รหัสเอเจนซี่/);
+});
+
+test("booking detail exposes operational fields but repair has no monetary amount", async () => {
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const raw = { month: "2026-09", view: "booking", bookingId: "1" };
+  const report = await loadDashboard(repository({ kind: "admin" }, [{ ...booking, status: "repair" }]), "signed-in-user", raw);
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery(raw) }));
+  assert.match(html, /ปิดซ่อม\/ปรับปรุง/);
+  assert.match(html, /เช็กเอาต์/);
+  assert.match(html, /วันที่สร้าง/);
+  assert.match(html, /Agency A/);
+  assert.match(html, /ยอดจอง<\/dt><dd[^>]*>—/);
+  assert.doesNotMatch(html, /1,234/);
+});
+
+test("agency and house details expose the approved drilldown destinations", async () => {
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const raw = { month: "2026-09", view: "agency", agency: "agency-a", from: "agencies", agenciesPage: "2" };
+  const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", raw);
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery(raw) }));
+  assert.match(html, /สัดส่วนยอดขาย/);
+  assert.match(html, /100\.0%/);
+  assert.match(html, /บ้านที่สร้างยอดขาย.*1 หลัง/);
+  assert.match(html, /view=bookings[^"<>]*status=confirmed[^"<>]*agency=agency-a/);
+  const houseRaw = { month: "2026-09", view: "house", houseId: "listing-new" };
+  const house = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", houseRaw);
+  const houseHtml = renderToStaticMarkup(createElement(View, { report: house, query: parseDashboardQuery(houseRaw) }));
+  assert.match(houseHtml, /href="\/admin\/houses\/202"/);
+  assert.match(houseHtml, /07:00/);
+});
+
+test("empty booking lists distinguish empty month from unmatched filters", async () => {
+  const View = await dashboardComponent("DashboardLists", "../components/admin/dashboard/dashboard-lists.tsx");
+  for (const [rows, search, expected] of [[[], "", /ไม่มีการจองในเดือนนี้/], [[booking], "not-found", /ไม่พบการจองที่ตรงกับตัวกรอง/]] as const) {
+    const raw = { month: "2026-09", view: "bookings", search };
+    const report = await loadDashboard(repository({ kind: "admin" }, [...rows]), "signed-in-user", raw);
+    assert.match(renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery(raw) })), expected);
+  }
+});
+
 function repository(scope: DashboardScope | null, rows: DashboardBookingSource[] = [booking]): DashboardRepository {
   return {
     async access(actorId) { assert.equal(actorId, "signed-in-user"); return scope; },

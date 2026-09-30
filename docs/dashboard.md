@@ -17,17 +17,30 @@ Owner responses exclude agency data and new-house history. Customer details and 
 - Booking count includes **all statuses**, including repair, cancelled and unknown legacy values. Status counts partition the full authorized month. Sales and agency sales remain confirmed-only. Status/search/agency filters affect only the detail list, before pagination; they never reduce monthly headline totals.
 - Valid status filters are `all`, `confirmed`, `waiting`, `cancelled`, `repair`, and `unknown`. Search matches house title, DV ID or booking code, case-insensitively. Admin agency drilldown uses the agency ID (`unassigned` for null); owners ignore agency filters and never receive agency data. Invalid/repeated filters are rejected.
 - New houses use `listings.created_at`, including inactive houses. This is creation history of currently existing rows, not a deletion audit log.
-- Full monthly results are explicitly paginated from Supabase before aggregation, including when the configured response cap is below 500. The UI pages booking and house details in groups of 20. An incomplete or failed read shows an error instead of a partial total.
+- Full monthly results are explicitly paginated from Supabase before aggregation, including when the configured response cap is below 500. Every complete list has 10 rows per page after filtering. An incomplete or failed read shows an error instead of a partial total.
 
 ## Architecture and checks
 
-The page authenticates and validates query parameters, the service scopes and aggregates results, and the repository alone issues Supabase reads. Existing Card, Table, Badge, Input, Button, Alert and Skeleton components provide the responsive UI. The shadcn Chart component uses Recharts (approved dependency); its generated import is adapted to the existing `lib/utils` utility.
+The page authenticates and validates query parameters, the service scopes and aggregates results, and the repository alone issues Supabase reads. Existing Card, Badge, Input, Button, Pagination and Skeleton primitives provide the responsive UI. Share bars use directly labelled percentages; the previously approved chart files/dependency are preserved but not imported by this layout.
 
-The compact summary leads with confirmed sales and all-status booking count. Admin agency rows show names, sales, counts and shares directly, with name search and five-row pagination instead of a duplicated chart/table. Expanding an agency exposes a link to its confirmed bookings in the same month. Only aggregated agency data crosses the client boundary. Owners never receive it.
+The overview combines confirmed sales and all-status distribution in one surface. Admin sees three top agencies, three newest houses and their full monthly counts; everyone sees three recent authorized bookings. All previews lead to complete lists or selected-item details. No entire monthly dataset is sent to a client component for filtering.
 
-Booking status counts remain visible; the complete paginated list opens on demand or when a status/search/agency filter is active. Each booking keeps house, stay dates, status and amount visible; a native disclosure reveals code, DV and creation time. New-house history has its own disclosure and pagination. Disclosures retain the current page without navigation; URL filters persist across booking/house pagination. Monetary values reflow on mobile rather than requiring horizontal table scrolling. No speculative growth percentages, profit, occupancy or month-over-month comparisons are shown.
+## Views and navigation
 
-Tests cover denied/owner/admin access, attempted URL scope escalation, owner payload redaction, confirmed-only totals and missing prices, Bangkok month boundaries, and repository pagination/filtering.
+`view` is allowlisted to `overview`, `bookings`, `agencies`, `houses`, `booking`, `agency` and `house`. Bare/month-only URLs open the overview; legacy booking-filter URLs open bookings. Owners cannot enter the agency/history views, including direct URLs. Missing and foreign details use the same not-found response.
+
+- Bookings: GET search by title, numeric/formatted DV or code; status selection; admin agency selection through the agency-sales list/detail and a clear-filter action. Searching retains the active status/agency and resets page one.
+- Agencies: GET name search, sales-ranked rows, counts and percentages of **full-month** sales. Detail shows confirmed totals/share, up to four house contributions grouped by DV, total contributing houses and a link to all confirmed bookings for that agency.
+- Houses: GET title/DV search and newest-first creation history. Detail includes the creation timestamp in Bangkok and a link to the existing house workspace when DV exists.
+- Booking detail: code, title/DV, current status, check-in/out, date-only nights, amount and creation timestamp. Agency name is admin-only. Repair amount is “—”; missing prices are “ไม่ระบุยอด”.
+
+Lists show the visible range and filtered total, with previous/next pagination. Positive out-of-range pages clamp to the last page, and detail links retain that displayed page. Empty-month and no-filter-match messages are distinct. The monthly headline totals do not change with list filters.
+
+Back URLs are built only from allowlisted dashboard fields, retaining month/filter/page. `DashboardNavigationContext` is the small client boundary around server-rendered content. A session entry scoped to authenticated UID, authorized DV/admin scope and month records only source/detail URL, stable origin-row DOM ID, scroll offset and pending-return flag. Explicit Back restores scroll/focus only for the matching source and consumes the state once; changing scope/month clears stale entries. Blocked storage and direct links work as ordinary links. Browser Back uses standard history behavior; arbitrary return URLs are never accepted.
+
+Mobile rows wrap names and keep amounts/status visible. No speculative growth percentages, profit, occupancy or month-over-month comparisons are shown.
+
+Tests cover denied/owner/admin access, direct foreign detail URLs, owner payload redaction, confirmed-only totals and missing prices, Bangkok boundaries, 100-agency pagination, DV-grouped contributions, GET filter retention, detail destinations/fields, repair amount, empty states and return-state matching. Browser QA uses an isolated local fixture harness with the real components/services (120 bookings/100 houses), then live Staging; fixtures are not app routes and do not write to DB.
 
 ## Staging demo data
 

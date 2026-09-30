@@ -130,6 +130,7 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     if (!house) throw new DashboardItemNotFound();
     detail = { kind: "house", house };
   }
+  const selectedAgency = bookingAgency ? agencies.find(row => (row.id ?? "unassigned") === bookingAgency) : null;
   return {
     scope,
     month: query.month,
@@ -139,7 +140,11 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     sales,
     overview,
     bookings,
-    admin: scope.kind === "admin" ? { agencies: paginate(agencyRows, query.agenciesPage), houses: paginate(houseRows, query.housesPage) } : null,
+    admin: scope.kind === "admin" ? {
+      agencies: paginate(agencyRows, query.agenciesPage),
+      houses: paginate(houseRows, query.housesPage),
+      selectedAgency: selectedAgency ? { id: selectedAgency.id, name: selectedAgency.name } : null,
+    } : null,
     detail,
   };
 }

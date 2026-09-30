@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { dashboardSession } from "../../../server/auth/dashboard";
-import { DashboardForbidden, loadDashboard } from "../../../server/services/dashboard";
+import { DashboardForbidden, DashboardItemNotFound, loadDashboard } from "../../../server/services/dashboard";
 import { parseDashboardQuery } from "../../../lib/dashboard";
 import { DashboardHeader, DashboardView } from "../../../components/admin/dashboard/dashboard-view";
 
@@ -19,8 +19,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   try {
     report = await loadDashboard(repository, actorId, raw);
   } catch (error) {
-    if (error instanceof DashboardForbidden) notFound();
+    if (error instanceof DashboardForbidden || error instanceof DashboardItemNotFound) notFound();
     return <div className="space-y-4"><DashboardHeader month={query.month} /><div role="alert" className="rounded-lg border p-6">โหลดข้อมูล Dashboard ไม่สำเร็จ กรุณาลองอีกครั้ง <Link className="underline" href={`/admin/dashboard?month=${query.month}`}>โหลดใหม่</Link></div></div>;
   }
-  return <DashboardView report={report} query={query} />;
+  return <DashboardView report={report} query={query} navigationScopeKey={actorId} />;
 }

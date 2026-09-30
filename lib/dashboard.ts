@@ -125,7 +125,7 @@ export interface DashboardReport {
   sales: DashboardSales;
   overview: DashboardOverview;
   bookings: DashboardPage<DashboardBooking>;
-  admin: { agencies: DashboardPage<DashboardAgency>; houses: DashboardPage<DashboardHouse> } | null;
+  admin: { agencies: DashboardPage<DashboardAgency>; houses: DashboardPage<DashboardHouse>; selectedAgency: { id: string | null; name: string } | null } | null;
   detail: DashboardDetail | null;
 }
 
