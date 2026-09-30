@@ -73,6 +73,42 @@ export interface DashboardAgency extends DashboardSales {
   name: string;
 }
 
+export interface DashboardOverview {
+  recentBookings: DashboardBooking[];
+  topAgencies: DashboardAgency[];
+  recentHouses: DashboardHouse[];
+  agencyCount: number;
+  newHouseCount: number;
+}
+
+export interface DashboardHouseSales {
+  propertyId: string;
+  houseTitle: string;
+  count: number;
+  amountCents: number;
+}
+
+export interface DashboardBookingDetail {
+  kind: "booking";
+  booking: DashboardBooking;
+  agency?: { id: string | null; name: string };
+}
+
+export interface DashboardAgencyDetail {
+  kind: "agency";
+  agency: DashboardAgency;
+  sharePercent: number | null;
+  houseCount: number;
+  topHouses: DashboardHouseSales[];
+}
+
+export interface DashboardHouseDetail {
+  kind: "house";
+  house: DashboardHouse;
+}
+
+export type DashboardDetail = DashboardBookingDetail | DashboardAgencyDetail | DashboardHouseDetail;
+
 export interface DashboardPage<T> {
   rows: T[];
   total: number;
@@ -87,8 +123,10 @@ export interface DashboardReport {
   waitingCount: number;
   statusCounts: Record<DashboardStatus, number>;
   sales: DashboardSales;
+  overview: DashboardOverview;
   bookings: DashboardPage<DashboardBooking>;
-  admin: { agencies: DashboardAgency[]; houses: DashboardPage<DashboardHouse> } | null;
+  admin: { agencies: DashboardPage<DashboardAgency>; houses: DashboardPage<DashboardHouse> } | null;
+  detail: DashboardDetail | null;
 }
 
 export function dashboardPropertyId(value: unknown): string | null {

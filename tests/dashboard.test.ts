@@ -77,7 +77,7 @@ test("admin sales count only confirmed bookings, group agencies and flag missing
   assert.equal(report.bookings.total, 9);
   assert.equal(report.bookingCount, 9);
   assert.deepEqual(report.statusCounts, { confirmed: 5, waiting: 1, cancelled: 1, repair: 1, unknown: 1 });
-  assert.deepEqual(report.admin?.agencies.map(row => [row.name, row.count, row.amountCents]), [
+  assert.deepEqual(report.admin?.agencies.rows.map(row => [row.name, row.count, row.amountCents]), [
     ["Agency A", 3, 123460], ["ไม่ระบุเอเจนซี่", 1, 30000], ["Inactive B", 1, 20],
   ]);
   assert.equal(report.admin?.houses.total, 1);
@@ -90,7 +90,7 @@ test("report boundaries exclude the next month and paginate details without redu
   const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", page: "999" });
   assert.equal(report.sales.amountCents, 2600);
   assert.equal(report.bookings.total, 26);
-  assert.equal(report.bookings.page, 2);
+  assert.equal(report.bookings.page, 3);
   assert.equal(report.bookings.rows.length, 6);
 });
 
@@ -106,7 +106,7 @@ test("status filtering precedes pagination and never changes monthly sales or co
   assert.equal(report.bookingCount, 24);
   assert.equal(report.statusCounts.waiting, 23);
   assert.equal(report.bookings.total, 23);
-  assert.equal(report.bookings.rows.length, 3);
+  assert.equal(report.bookings.rows.length, 10);
   assert.ok(report.bookings.rows.every(row => row.status === "waiting"));
   assert.equal(report.sales.amountCents, 123450);
 });
@@ -122,6 +122,53 @@ test("search and agency drilldown preserve totals and owner isolation", async ()
   const dvSearch = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", search: "DV-101" });
   assert.equal(dvSearch.bookings.total, 2);
   for (const raw of [{ status: "bogus" }, { status: ["waiting"] }, { search: ["x"] }, { agency: ["x"] }, { search: "x".repeat(201) }]) assert.throws(() => parseDashboardQuery(raw));
+});
+
+test("dashboard keeps all monthly status totals while filtering a bounded booking list", async () => {
+  const rows: DashboardBookingSource[] = [
+    ...Array.from({ length: 25 }, (_, index) => ({ ...booking, id: `waiting-${index}`, status: "waiting", createdAt: `2026-09-${String(index % 20 + 1).padStart(2, "0")}T00:00:00Z` })),
+    ...Array.from({ length: 5 }, (_, index) => ({ ...booking, id: `confirmed-${index}`, status: "confirmed", priceCents: 100 })),
+    ...Array.from({ length: 2 }, (_, index) => ({ ...booking, id: `cancelled-${index}`, status: "cancelled" })),
+    { ...booking, id: "repair", status: "repair" },
+    { ...booking, id: "legacy", status: null },
+  ];
+  const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", view: "bookings", status: "waiting", page: "3" });
+  assert.equal(report.bookingCount, 34);
+  assert.deepEqual(report.statusCounts, { confirmed: 5, waiting: 25, cancelled: 2, repair: 1, unknown: 1 });
+  assert.equal(report.sales.amountCents, 500);
+  assert.equal(report.bookings.total, 25);
+  assert.equal(report.bookings.rows.length, 5);
+  assert.ok(report.bookings.rows.every(row => row.status === "waiting"));
+  assert.equal(report.overview.recentBookings.length, 3);
+});
+
+test("dashboard owner detail routes fail closed without leaking foreign or agency data", async () => {
+  const rows = [booking, { ...booking, id: "foreign", propertyId: "202", houseTitle: "Foreign House", agentName: "Foreign Agency" }];
+  const ownerRepository = repository({ kind: "owner", propertyId: "101" }, rows);
+  await assert.rejects(loadDashboard(ownerRepository, "signed-in-user", { month: "2026-09", view: "agency", agency: "agency-a" }));
+  await assert.rejects(loadDashboard(ownerRepository, "signed-in-user", { month: "2026-09", view: "house", houseId: "listing-new" }));
+  await assert.rejects(loadDashboard(ownerRepository, "signed-in-user", { month: "2026-09", view: "booking", bookingId: "foreign" }));
+  const owner = await loadDashboard(ownerRepository, "signed-in-user", { month: "2026-09", view: "bookings" });
+  assert.doesNotMatch(JSON.stringify(owner), /Foreign House|Foreign Agency|agency-a/);
+  assert.deepEqual(owner.overview, { recentBookings: [owner.bookings.rows[0]], topAgencies: [], recentHouses: [], agencyCount: 0, newHouseCount: 0 });
+});
+
+test("dashboard agency lists remain bounded and agency detail reconciles by house DV", async () => {
+  const agencies = Array.from({ length: 100 }, (_, index) => ({ ...booking, id: `agency-${index}`, agentId: `agency-${index}`, agentName: `Agency ${index}`, propertyId: String(1000 + index), houseTitle: index < 5 ? "พูลวิลล่าชื่อซ้ำ" : `House ${index}`, priceCents: index === 99 ? null : (index + 1) * 100 }));
+  const report = await loadDashboard(repository({ kind: "admin" }, agencies), "signed-in-user", { month: "2026-09", view: "agencies", agenciesPage: "999" });
+  assert.equal(report.admin?.agencies.total, 100);
+  assert.equal(report.admin?.agencies.rows.length, 10);
+  assert.equal(report.overview.topAgencies.length, 3);
+  assert.equal(report.sales.count, 100);
+  assert.equal(report.sales.missingPrices, 1);
+  const detailRows = Array.from({ length: 5 }, (_, index) => ({ ...booking, id: `detail-${index}`, agentId: "agency-a", agentName: "Agency A", propertyId: String(200 + index), houseTitle: "พูลวิลล่าชื่อซ้ำ", priceCents: (index + 1) * 100 }));
+  const detailReport = await loadDashboard(repository({ kind: "admin" }, detailRows), "signed-in-user", { month: "2026-09", view: "agency", agency: "agency-a" });
+  assert.equal(detailReport.detail?.kind, "agency");
+  if (detailReport.detail?.kind !== "agency") assert.fail("expected agency detail");
+  assert.equal(detailReport.detail.agency.amountCents, 1500);
+  assert.equal(detailReport.detail.houseCount, 5);
+  assert.equal(detailReport.detail.topHouses.length, 4);
+  assert.deepEqual(detailReport.detail.topHouses.map(house => house.propertyId), ["204", "203", "202", "201"]);
 });
 
 test("repository owner reads constrain both house identifiers and omit agency/customer fields", async () => {
