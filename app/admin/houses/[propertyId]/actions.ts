@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { safeHouseReturnTo } from "../../../../lib/admin-return-to";
 
 import {
   canManageHousePrices,
@@ -31,10 +32,7 @@ function assertCanManageHousePrices(isAllowed: boolean): void {
 }
 
 function getSafeReturnTo(formData: FormData): string | null {
-  const value = formData.get("returnTo");
-  if (typeof value !== "string") return null;
-  if (value === "/admin/houses" || value.startsWith("/admin/houses?")) return value;
-  return null;
+  return safeHouseReturnTo(formData.get("returnTo"));
 }
 
 export async function saveHouseDetailsAction(propertyId: string, formData: FormData): Promise<never> {

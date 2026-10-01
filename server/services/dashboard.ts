@@ -1,5 +1,5 @@
 import "server-only";
-import { dashboardStatus, parseDashboardQuery, type DashboardAgency, type DashboardBooking, type DashboardBookingSource, type DashboardDetail, type DashboardHouse, type DashboardHouseSales, type DashboardOverview, type DashboardPage, type DashboardReport, type DashboardSales } from "../../lib/dashboard.ts";
+import { dashboardStatus, parseDashboardQuery, type DashboardAgency, type DashboardAgencySort, type DashboardBooking, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardDailyBookingCount, type DashboardDetail, type DashboardHouse, type DashboardListQuery, type DashboardOverview, type DashboardOverviewQuery, type DashboardPage, type DashboardReport, type DashboardSales } from "../../lib/dashboard.ts";
 import { dashboardShare } from "../../lib/dashboard-calculations.ts";
 import type { DashboardRepository } from "../repositories/dashboard.ts";
 
@@ -7,6 +7,13 @@ const DASHBOARD_PAGE_SIZE = 10;
 
 export class DashboardForbidden extends Error {}
 export class DashboardItemNotFound extends Error {}
+
+interface DashboardLoadOptions {
+  now?: Date;
+  agencyBookingsPage?: number;
+  agencyBookingsSearch?: string;
+  agencyBookingsSort?: DashboardAgencySort;
+}
 
 function paginate<T>(rows: T[], requestedPage: number): DashboardPage<T> {
   const pages = Math.max(1, Math.ceil(rows.length / DASHBOARD_PAGE_SIZE));
@@ -35,8 +42,13 @@ function sortHouses(rows: DashboardHouse[]): DashboardHouse[] {
   return [...rows].sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id, "en", { numeric: true }));
 }
 
-function publicBooking(row: DashboardBookingSource): DashboardBooking {
-  return { id: row.id, code: row.code, propertyId: row.propertyId, houseTitle: row.houseTitle, checkIn: row.checkIn, checkOut: row.checkOut, createdAt: row.createdAt, status: row.status, priceCents: row.priceCents };
+function publicBooking(row: DashboardBookingSource, includeAgency = false): DashboardBooking {
+  return {
+    id: row.id, code: row.code, propertyId: row.propertyId, houseTitle: row.houseTitle,
+    checkIn: row.checkIn, checkOut: row.checkOut, createdAt: row.createdAt,
+    status: row.status, priceCents: row.priceCents,
+    ...(includeAgency ? { agency: { id: row.agentId, name: agencyLabel(row) } } : {}),
+  };
 }
 
 function matchesText(row: DashboardBookingSource, query: string): boolean {
@@ -60,29 +72,46 @@ function collectAgencies(rows: DashboardBookingSource[]): DashboardAgency[] {
   return [...agencies.values()].sort((left, right) => right.amountCents - left.amountCents || right.count - left.count || compareText(left.name, right.name));
 }
 
-function collectHouseSales(rows: DashboardBookingSource[]): DashboardHouseSales[] {
-  const houses = new Map<string, DashboardHouseSales>();
+function sortAgencyBookings(rows: DashboardBookingSource[], sort: DashboardAgencySort): DashboardBookingSource[] {
+  const direction = sort.endsWith("desc") ? -1 : 1;
+  return [...rows].sort((left, right) => {
+    let comparison = 0;
+    if (sort.startsWith("price")) {
+      if (left.priceCents === null && right.priceCents !== null) return 1;
+      if (left.priceCents !== null && right.priceCents === null) return -1;
+      if (left.priceCents !== null && right.priceCents !== null) comparison = left.priceCents - right.priceCents;
+    } else {
+      comparison = left.checkIn.localeCompare(right.checkIn);
+    }
+    return comparison * direction
+      || right.createdAt.localeCompare(left.createdAt)
+      || right.id.localeCompare(left.id, "en", { numeric: true });
+  });
+}
+
+function confirmedBookingsByDay(rows: DashboardBookingSource[], month: string): DashboardDailyBookingCount[] {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const counts = new Map<string, number>();
   for (const row of rows) {
     if (dashboardStatus(row.status) !== "confirmed") continue;
-    const group = houses.get(row.propertyId) ?? { propertyId: row.propertyId, houseTitle: row.houseTitle, count: 0, amountCents: 0 };
-    group.count++;
-    if (row.priceCents !== null) {
-      group.amountCents += row.priceCents;
-      if (!Number.isSafeInteger(group.amountCents)) throw new Error("dashboard_amount_overflow");
-    }
-    houses.set(row.propertyId, group);
+    const date = new Date(Date.parse(row.createdAt) + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    counts.set(date, (counts.get(date) ?? 0) + 1);
   }
-  return [...houses.values()].sort((left, right) => right.amountCents - left.amountCents || right.count - left.count || compareText(left.houseTitle, right.houseTitle) || left.propertyId.localeCompare(right.propertyId, "en", { numeric: true }));
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const date = `${month}-${String(index + 1).padStart(2, "0")}`;
+    return { date, count: counts.get(date) ?? 0 };
+  });
 }
 
-function emptyOverview(): DashboardOverview {
-  return { recentBookings: [], topAgencies: [], recentHouses: [], agencyCount: 0, newHouseCount: 0 };
+function emptyOverview(month: string): DashboardOverview {
+  return { confirmedBookingsByDay: confirmedBookingsByDay([], month), topAgencies: [], recentHouses: [], agencyCount: 0, newHouseCount: 0 };
 }
 
-export async function loadDashboard(repository: DashboardRepository, actorId: string, raw: Record<string, unknown>, now = new Date()): Promise<DashboardReport> {
+export async function loadDashboard(repository: DashboardRepository, actorId: string, raw: Record<string, unknown>, options: DashboardLoadOptions = {}): Promise<DashboardReport> {
   const scope = await repository.access(actorId);
   if (!scope) throw new DashboardForbidden();
-  const query = parseDashboardQuery(raw, now);
+  const query = parseDashboardQuery(raw, options.now);
   if (scope.kind === "owner" && ["agencies", "houses", "agency", "house"].includes(query.view)) throw new DashboardForbidden();
   const [source, sourceHouses] = await Promise.all([
     repository.bookings(scope, query),
@@ -99,13 +128,14 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     if (status === "confirmed") addSale(sales, row.priceCents);
   }
   const agencies = scope.kind === "admin" ? collectAgencies(rows) : [];
+  const dailyConfirmedBookings = confirmedBookingsByDay(rows, query.month);
   const overview: DashboardOverview = scope.kind === "admin"
-    ? { recentBookings: rows.slice(0, 3).map(publicBooking), topAgencies: agencies.slice(0, 3), recentHouses: houses.slice(0, 3), agencyCount: agencies.length, newHouseCount: houses.length }
-    : { ...emptyOverview(), recentBookings: rows.slice(0, 3).map(publicBooking) };
+    ? { confirmedBookingsByDay: dailyConfirmedBookings, topAgencies: agencies.slice(0, 5), recentHouses: houses.slice(0, 6), agencyCount: agencies.length, newHouseCount: houses.length }
+    : { ...emptyOverview(query.month), confirmedBookingsByDay: dailyConfirmedBookings };
   const bookingAgency = scope.kind === "admin" && query.view === "bookings" ? query.agency : "";
   const bookings = paginate(rows.filter(row => (query.status === "all" || dashboardStatus(row.status) === query.status)
     && (!bookingAgency || (row.agentId ?? "unassigned") === bookingAgency)
-    && matchesText(row, query.search)).map(publicBooking), query.page);
+    && matchesText(row, query.search)).map(row => publicBooking(row, scope.kind === "admin")), query.page);
   const agencyRows = scope.kind === "admin"
     ? agencies.filter(row => !query.agencySearch || row.name.toLocaleLowerCase("th-TH").includes(query.agencySearch.toLocaleLowerCase("th-TH")))
     : [];
@@ -121,9 +151,17 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   if (query.view === "agency") {
     const agency = agencies.find(row => (query.agency === "unassigned" ? row.id === null : row.id === query.agency));
     if (!agency) throw new DashboardItemNotFound();
-    const agencyBookings = rows.filter(row => (query.agency === "unassigned" ? row.agentId === null : row.agentId === query.agency));
-    const houseSales = collectHouseSales(agencyBookings);
-    detail = { kind: "agency", agency, sharePercent: dashboardShare(agency.amountCents, sales.amountCents), houseCount: houseSales.length, topHouses: houseSales.slice(0, 4) };
+    const agencyBookings = rows.filter(row => (query.agency === "unassigned" ? row.agentId === null : row.agentId === query.agency) && dashboardStatus(row.status) === "confirmed");
+    const visibleAgencyBookings = sortAgencyBookings(
+      agencyBookings.filter(row => matchesText(row, options.agencyBookingsSearch ?? "")),
+      options.agencyBookingsSort ?? "date-asc",
+    );
+    detail = {
+      kind: "agency",
+      agency,
+      sharePercent: dashboardShare(agency.amountCents, sales.amountCents),
+      bookings: paginate(visibleAgencyBookings.map(row => publicBooking(row, true)), options.agencyBookingsPage ?? 1),
+    };
   }
   if (query.view === "house") {
     const house = houses.find(row => row.id === query.houseId);
@@ -147,4 +185,59 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     } : null,
     detail,
   };
+}
+
+export async function loadDashboardBookings(repository: DashboardRepository, actorId: string, query: DashboardBookingsQuery): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, {
+    month: query.month,
+    view: "bookings",
+    status: query.status,
+    search: query.search,
+    agency: query.agency,
+    page: String(query.page),
+  });
+}
+
+export async function loadDashboardOverview(repository: DashboardRepository, actorId: string, query: DashboardOverviewQuery): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, { month: query.month, view: "overview" });
+}
+
+export async function loadDashboardAgencies(repository: DashboardRepository, actorId: string, query: DashboardListQuery): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, { month: query.month, view: "agencies", agencySearch: query.search, agenciesPage: String(query.page) });
+}
+
+export async function loadDashboardHouses(repository: DashboardRepository, actorId: string, query: DashboardListQuery): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, { month: query.month, view: "houses", houseSearch: query.search, housesPage: String(query.page) });
+}
+
+export async function loadDashboardBooking(repository: DashboardRepository, actorId: string, query: DashboardBookingsQuery, bookingId: string): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, {
+    month: query.month,
+    view: "booking",
+    bookingId,
+    status: query.status,
+    search: query.search,
+    agency: query.agency,
+    page: String(query.page),
+  });
+}
+
+export async function loadDashboardAgency(repository: DashboardRepository, actorId: string, query: DashboardListQuery, agencyId: string, bookingsPage = 1, bookingsSearch = "", bookingsSort: DashboardAgencySort = "date-asc"): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, {
+    month: query.month,
+    view: "agency",
+    agency: agencyId,
+    agencySearch: query.search,
+    agenciesPage: String(query.page),
+  }, { agencyBookingsPage: bookingsPage, agencyBookingsSearch: bookingsSearch, agencyBookingsSort: bookingsSort });
+}
+
+export async function loadDashboardHouse(repository: DashboardRepository, actorId: string, query: DashboardListQuery, houseId: string): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, {
+    month: query.month,
+    view: "house",
+    houseId,
+    houseSearch: query.search,
+    housesPage: String(query.page),
+  });
 }

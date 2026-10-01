@@ -26,6 +26,32 @@ export interface DashboardQuery extends DashboardMonth {
   houseId: string;
 }
 
+export interface DashboardBookingsQuery {
+  month: string;
+  status: string;
+  search: string;
+  agency: string;
+  page: number;
+}
+
+export interface DashboardOverviewQuery {
+  month: string;
+}
+
+export interface DashboardListQuery {
+  month: string;
+  search: string;
+  page: number;
+}
+
+export const DASHBOARD_AGENCY_SORTS = [
+  { value: "date-asc", label: "วันเข้าพักใกล้สุด" },
+  { value: "date-desc", label: "วันเข้าพักไกลสุด" },
+  { value: "price-desc", label: "ราคาสูงสุด" },
+  { value: "price-asc", label: "ราคาต่ำสุด" },
+] as const;
+export type DashboardAgencySort = typeof DASHBOARD_AGENCY_SORTS[number]["value"];
+
 export const DASHBOARD_STATUSES = [
   { value: "confirmed", label: "ติดจอง" },
   { value: "waiting", label: "รอโอน" },
@@ -38,6 +64,11 @@ export function dashboardStatus(value: string | null): DashboardStatus {
   return DASHBOARD_STATUSES.find(item => item.value === value)?.value ?? "unknown";
 }
 
+export function dashboardAgencyChartLabel(value: string): string {
+  const name = value.replace(/^\[DEMO(?:\s+(?:LARGE|Dashboard))?\s+\d{4}-\d{2}\]\s*/i, "");
+  return name.length > 24 ? `${name.slice(0, 23)}…` : name;
+}
+
 export interface DashboardBooking {
   id: string;
   code: string;
@@ -48,6 +79,7 @@ export interface DashboardBooking {
   createdAt: string;
   status: string | null;
   priceCents: number | null;
+  agency?: { id: string | null; name: string };
 }
 
 export interface DashboardBookingSource extends DashboardBooking {
@@ -60,6 +92,14 @@ export interface DashboardHouse {
   propertyId: string | null;
   title: string;
   createdAt: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  maxGuests: number | null;
+  locationZone: string | null;
+  propertyType: string | null;
+  isActive: boolean | null;
+  checkinTime: string | null;
+  checkoutTime: string | null;
 }
 
 export interface DashboardSales {
@@ -73,19 +113,17 @@ export interface DashboardAgency extends DashboardSales {
   name: string;
 }
 
+export interface DashboardDailyBookingCount {
+  date: string;
+  count: number;
+}
+
 export interface DashboardOverview {
-  recentBookings: DashboardBooking[];
+  confirmedBookingsByDay: DashboardDailyBookingCount[];
   topAgencies: DashboardAgency[];
   recentHouses: DashboardHouse[];
   agencyCount: number;
   newHouseCount: number;
-}
-
-export interface DashboardHouseSales {
-  propertyId: string;
-  houseTitle: string;
-  count: number;
-  amountCents: number;
 }
 
 export interface DashboardBookingDetail {
@@ -98,8 +136,7 @@ export interface DashboardAgencyDetail {
   kind: "agency";
   agency: DashboardAgency;
   sharePercent: number | null;
-  houseCount: number;
-  topHouses: DashboardHouseSales[];
+  bookings: DashboardPage<DashboardBooking>;
 }
 
 export interface DashboardHouseDetail {

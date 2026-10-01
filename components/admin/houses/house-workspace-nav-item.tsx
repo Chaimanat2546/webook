@@ -27,7 +27,7 @@ export const HouseWorkspaceNavItem = forwardRef<HTMLAnchorElement, HouseWorkspac
         aria-current={active ? "page" : props["aria-current"]}
         className={cn(
           "flex min-h-12 min-w-44 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-base lg:min-h-0 lg:text-sm transition-colors hover:bg-muted lg:min-w-0",
-          active && "bg-primary text-primary-foreground hover:bg-primary",
+          active && "bg-muted text-foreground shadow-sm hover:bg-muted",
           className,
         )}
         ref={ref}

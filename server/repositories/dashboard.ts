@@ -22,6 +22,14 @@ function cents(value: unknown): number | null {
   return result;
 }
 
+function nullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function nullableText(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 export function createDashboardRepository(client: SupabaseClient): DashboardRepository {
   return {
     async access(actorId) {
@@ -68,14 +76,20 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
     async newHouses(month) {
       const rows: DashboardHouse[] = [];
       for (let offset = 0; ;) {
-        const { data, count, error } = await client.from("listings").select("id,property_id,title,created_at", { count: "exact" })
+        const { data, count, error } = await client.from("listings").select("id,property_id,title,created_at,bedrooms,bathrooms,max_guests,location_zone,property_type,is_active,checkin_time,checkout_time", { count: "exact" })
           .gte("created_at", month.start).lt("created_at", month.end)
           .order("created_at", { ascending: false }).order("id").range(offset, offset + 499);
         if (error || count === null) throw new Error("dashboard_unavailable");
         const page: unknown[] = data ?? [];
         for (const value of page) {
           const row = record(value);
-          rows.push({ id: text(row.id), propertyId: dashboardPropertyId(row.property_id), title: typeof row.title === "string" ? row.title : "ไม่ระบุชื่อบ้าน", createdAt: text(row.created_at) });
+          rows.push({
+            id: text(row.id), propertyId: dashboardPropertyId(row.property_id), title: typeof row.title === "string" ? row.title : "ไม่ระบุชื่อบ้าน", createdAt: text(row.created_at),
+            bedrooms: nullableNumber(row.bedrooms), bathrooms: nullableNumber(row.bathrooms), maxGuests: nullableNumber(row.max_guests),
+            locationZone: nullableText(row.location_zone), propertyType: nullableText(row.property_type),
+            isActive: typeof row.is_active === "boolean" ? row.is_active : null,
+            checkinTime: nullableText(row.checkin_time), checkoutTime: nullableText(row.checkout_time),
+          });
         }
         offset += page.length;
         if (offset >= count) return rows;

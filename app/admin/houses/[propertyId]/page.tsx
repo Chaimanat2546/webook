@@ -1,6 +1,7 @@
 import { BadgeDollarSign, HouseIcon, SaveIcon, SparklesIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { notFound } from "next/navigation";
+import { safeHouseReturnTo } from "../../../../lib/admin-return-to";
 
 import { Button } from "../../../../components/ui/button";
 import { HouseDetailCombobox } from "../../../../components/admin/houses/house-detail-combobox";
@@ -77,14 +78,6 @@ const sectionIconByKey: Record<HouseDetailSectionKey, LucideIcon> = {
   facilities: SparklesIcon,
 };
 
-function getSafeReturnTo(value?: string): string | null {
-  if (value === "/admin/houses" || value?.startsWith("/admin/houses?")) {
-    return value;
-  }
-
-  return null;
-}
-
 function getSelectedSection(value?: string): HouseDetailSectionKey {
   return HOUSE_DETAIL_SECTIONS.some((section) => section.key === value)
     ? (value as HouseDetailSectionKey)
@@ -160,7 +153,7 @@ export default async function HouseDetailPage({
 }) {
   const { propertyId } = await params;
   const { returnTo, saved, section } = await searchParams;
-  const safeReturnTo = getSafeReturnTo(returnTo);
+  const safeReturnTo = safeHouseReturnTo(returnTo);
   const backHref = safeReturnTo ?? "/admin/houses";
   const selectedSection = getSelectedSection(section);
   const toastTitle = saveToastTitle({ saved, section });
