@@ -12,7 +12,7 @@ import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type Da
 import { safeHouseReturnTo } from "../lib/admin-return-to.ts";
 import { parseThaiMonth, thaiMonthValue } from "../lib/thai-month.ts";
 import { createDashboardRepository, type DashboardRepository } from "../server/repositories/dashboard.ts";
-import { DashboardForbidden, loadDashboard, loadDashboardAgency, loadDashboardBooking, loadDashboardBookingCustomer, loadDashboardBookings } from "../server/services/dashboard.ts";
+import { DashboardForbidden, loadDashboard, loadDashboardAgencies, loadDashboardAgency, loadDashboardBooking, loadDashboardBookingCustomer, loadDashboardBookings } from "../server/services/dashboard.ts";
 import { dashboardBookingsHref, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery } from "../lib/dashboard-routes.ts";
 
 const booking: DashboardBookingSource = {
@@ -241,17 +241,19 @@ test("canonical agency and house pages render their own workflows", async () => 
   const repo = repository({ kind: "admin" });
   const AgenciesPage = await dashboardPageComponent("../app/admin/dashboard/agencies/page.tsx", repo);
   const agenciesHtml = renderToStaticMarkup(await AgenciesPage({ searchParams: Promise.resolve({ month: "2026-09", search: "Agency" }) }) as ReactNode);
+  assert.match(agenciesHtml, /class="mx-auto min-w-0 max-w-7xl space-y-5"/);
   assert.match(agenciesHtml, /<header[^>]*>.*href="\/admin\/dashboard\?month=2026-09"[^>]*>.*กลับไปภาพรวม.*<h1[^>]*>ยอดขายเอเจนซี่<\/h1>/);
   assert.equal((agenciesHtml.match(/ยอดขายเอเจนซี่/g) ?? []).length, 1);
   assert.doesNotMatch(agenciesHtml, /เฉพาะติดจอง · เรียงยอดขายสูงสุดก่อน/);
-  assert.match(agenciesHtml, /action="\/admin\/dashboard\/agencies"/);
+  assert.doesNotMatch(agenciesHtml, /action="\/admin\/dashboard\/agencies"/);
   assert.match(agenciesHtml, /aria-label="ค้นหาเอเจนซี่"/);
-  assert.match(agenciesHtml, /class="relative col-span-2 min-w-0 sm:col-span-1 sm:flex-1 sm:max-w-sm"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาเอเจนซี่"/);
-  assert.match(agenciesHtml, /<input type="month"[^>]*id="agency-month"[^>]*name="month"/);
-  assert.match(agenciesHtml, /class="relative col-span-2 min-w-0 sm:col-span-1 sm:w-48"/);
-  assert.match(agenciesHtml, /class="[^"]*h-11 pl-9" id="agency-month"/);
-  assert.match(agenciesHtml, /class="[^"]*col-span-2[^"]*h-11[^"]*" type="submit"/);
-  assert.doesNotMatch(agenciesHtml, /type="hidden" name="month"/);
+  assert.match(agenciesHtml, /data-thai-month-picker/);
+  assert.match(agenciesHtml, /id="agency-sort"[^>]*role="combobox"/);
+  assert.match(agenciesHtml, /data-slot="select-value"[^>]*>ยอดขายสูงสุด/);
+  assert.match(agenciesHtml, /class="relative w-full"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาเอเจนซี่"/);
+  assert.doesNotMatch(agenciesHtml, /type="month"[^>]*id="agency-month"/);
+  assert.match(agenciesHtml, /class="hidden overflow-hidden rounded-xl border md:block"/);
+  assert.match(agenciesHtml, /class="space-y-3 md:hidden"[\s\S]*rounded-xl border bg-card p-3 shadow-sm/);
   assert.match(agenciesHtml, /<table[^>]*>[\s\S]*<th[^>]*>ชื่อเอเจนซี่<\/th>[\s\S]*<th[^>]*>จำนวนการจอง<\/th>[\s\S]*<th[^>]*>ยอดขาย<\/th>/);
   assert.equal((agenciesHtml.match(/<th /g) ?? []).length, 3);
   assert.match(agenciesHtml, /Agency A[\s\S]*<td[^>]*>1<\/td>[\s\S]*<td[^>]*>฿1,234\.50<\/td>/);
@@ -347,29 +349,28 @@ test("agency detail filters render as a compact mobile-first toolbar", async () 
 
 });
 
-test("agency bookings sort by check-in date or price before pagination", async () => {
+test("agency bookings use booking-list sort options before pagination", async () => {
   const rows = [
     { ...booking, id: "middle", checkIn: "2026-10-02", priceCents: 300 },
     { ...booking, id: "last", checkIn: "2026-10-03", priceCents: 100 },
     { ...booking, id: "first", checkIn: "2026-10-01", priceCents: 200 },
   ];
   const repo = repository({ kind: "admin" }, rows);
-  const load = (sort: "date-asc" | "date-desc" | "price-asc" | "price-desc") => loadDashboardAgency(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "agency-a", 1, "", sort);
+  const load = (sort: "checkin-desc" | "price-asc" | "price-desc") => loadDashboardAgency(repo, "signed-in-user", parseDashboardAgencyDetailQuery({ month: "2026-09", sort }), "agency-a");
   for (const [sort, expected] of [
-    ["date-asc", ["first", "middle", "last"]],
-    ["date-desc", ["last", "middle", "first"]],
+    ["checkin-desc", ["last", "middle", "first"]],
     ["price-asc", ["last", "first", "middle"]],
     ["price-desc", ["middle", "first", "last"]],
   ] as const) {
     const report = await load(sort);
     assert.equal(report.detail?.kind, "agency");
     if (report.detail?.kind !== "agency") assert.fail("expected agency detail");
-    assert.deepEqual(report.detail.bookings.rows.map(row => row.id), expected);
+    assert.deepEqual(report.bookings.rows.map(row => row.id), expected);
   }
 });
 
 test("agency booking search reports when no booking matches", async () => {
-  const report = await loadDashboardAgency(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09", search: "", page: 1 }, "agency-a", 1, "no matching house");
+  const report = await loadDashboardAgency(repository({ kind: "admin" }), "signed-in-user", parseDashboardAgencyDetailQuery({ month: "2026-09", bookingSearch: "no matching house" }), "agency-a");
   const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
   const html = renderToStaticMarkup(createElement(View, {
     report,
@@ -557,6 +558,20 @@ test("booking detail exposes operational fields but repair has no monetary amoun
   assert.doesNotMatch(html, />จำนวน<\/dt>/);
   assert.doesNotMatch(html, />แก้ไข</);
   assert.doesNotMatch(html, /1,234/);
+});
+
+test("agency list sorts aggregate sales, bookings, and names", async () => {
+  const rows = [
+    { ...booking, id: "sales", agentId: "sales", agentName: "Sales", priceCents: 900 },
+    { ...booking, id: "count-1", agentId: "count", agentName: "Count", priceCents: 200 },
+    { ...booking, id: "count-2", agentId: "count", agentName: "Count", priceCents: 200 },
+    { ...booking, id: "alpha", agentId: "alpha", agentName: "Alpha", priceCents: 100 },
+  ];
+  const repo = repository({ kind: "admin" }, rows);
+  const load = (agencySort: "sales-desc" | "count-desc" | "name-asc") => loadDashboardAgencies(repo, "signed-in-user", { month: "2026-09", search: "", page: 1, agencySort });
+  assert.deepEqual((await load("sales-desc")).admin?.agencies.rows.map(agency => agency.name), ["Sales", "Count", "Alpha"]);
+  assert.deepEqual((await load("count-desc")).admin?.agencies.rows.map(agency => agency.name), ["Count", "Sales", "Alpha"]);
+  assert.deepEqual((await load("name-asc")).admin?.agencies.rows.map(agency => agency.name), ["Alpha", "Count", "Sales"]);
 });
 
 test("agency chart labels remove seeded demo prefixes", () => {
@@ -841,7 +856,7 @@ test("dashboard agency lists remain bounded and agency details retain their book
   assert.equal(detailReport.detail.bookings.total, 5);
 });
 
-test("agency detail lists only that agency's confirmed bookings and paginates all of them", async () => {
+test("agency detail keeps its confirmed summary while filtering all booking statuses to the fixed agency", async () => {
   const agencyBookings = Array.from({ length: 12 }, (_, index) => ({
     ...booking,
     id: `agency-booking-${index + 1}`,
@@ -855,27 +870,17 @@ test("agency detail lists only that agency's confirmed bookings and paginates al
     { ...booking, id: "agency-waiting", agentId: "agency-a", status: "waiting", houseTitle: "Waiting House" },
     { ...booking, id: "other-agency", agentId: "agency-b", agentName: "Agency B", houseTitle: "Other Agency House" },
   ];
-  const firstPage = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", view: "agency", agency: "agency-a" });
-  assert.equal(firstPage.detail?.kind, "agency");
-  if (firstPage.detail?.kind !== "agency") assert.fail("expected agency detail");
-  assert.equal(firstPage.detail.bookings.total, 12);
-  assert.equal(firstPage.detail.bookings.rows.length, 10);
-  assert.equal(firstPage.detail.bookings.rows[0].id, "agency-booking-12");
-
-  const secondPage = await loadDashboardAgency(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", search: "", page: 1 }, "agency-a", 2);
-  assert.equal(secondPage.detail?.kind, "agency");
-  if (secondPage.detail?.kind !== "agency") assert.fail("expected agency detail");
-  assert.equal(secondPage.detail.bookings.total, 12);
-  assert.equal(secondPage.detail.bookings.page, 2);
-  assert.deepEqual(secondPage.detail.bookings.rows.map(row => row.id), ["agency-booking-2", "agency-booking-1"]);
-  assert.ok(secondPage.detail.bookings.rows.every(row => row.agency?.id === "agency-a"));
-
-  const filtered = await loadDashboardAgency(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", search: "", page: 1 }, "agency-a", 1, "Agency House 1");
-  assert.equal(filtered.detail?.kind, "agency");
-  if (filtered.detail?.kind !== "agency") assert.fail("expected agency detail");
-  assert.equal(filtered.detail.bookings.total, 4);
-  assert.equal(filtered.detail.bookings.rows.length, 4);
-  assert.deepEqual(filtered.detail.bookings.rows.map(row => row.id), ["agency-booking-12", "agency-booking-11", "agency-booking-10", "agency-booking-1"]);
+  const query = parseDashboardAgencyDetailQuery({ month: "2026-09", status: "all", bookingSearch: "House", sort: "price-desc" });
+  const report = await loadDashboardAgency(repository({ kind: "admin" }, rows), "signed-in-user", query, "agency-a");
+  assert.equal(report.detail?.kind, "agency");
+  if (report.detail?.kind !== "agency") assert.fail("expected agency detail");
+  assert.equal(report.detail.agency.count, 12);
+  assert.equal(report.detail.agency.amountCents, 7800);
+  assert.equal(report.bookings.total, 13);
+  assert.equal(report.bookings.page, 1);
+  assert.equal(report.bookings.rows.length, 9);
+  assert.ok(report.bookings.rows.some(row => row.id === "agency-waiting"));
+  assert.ok(report.bookings.rows.every(row => row.agency?.id === "agency-a"));
 });
 
 test("repository owner reads constrain both house identifiers and select only customer names", async () => {

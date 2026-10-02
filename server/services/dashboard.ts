@@ -1,5 +1,6 @@
 import "server-only";
-import { dashboardStatus, parseDashboardQuery, type DashboardAgency, type DashboardAgencySort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDailyBookingCount, type DashboardDetail, type DashboardHouse, type DashboardListQuery, type DashboardMonth, type DashboardOverview, type DashboardOverviewQuery, type DashboardPage, type DashboardReport, type DashboardSales } from "../../lib/dashboard.ts";
+import { dashboardStatus, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgency, type DashboardAgencyListSort, type DashboardAgencySort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDailyBookingCount, type DashboardDetail, type DashboardHouse, type DashboardListQuery, type DashboardMonth, type DashboardOverview, type DashboardOverviewQuery, type DashboardPage, type DashboardReport, type DashboardSales } from "../../lib/dashboard.ts";
+import type { DashboardAgencyDetailQuery } from "../../lib/dashboard-routes.ts";
 import { dashboardShare } from "../../lib/dashboard-calculations.ts";
 import type { DashboardBookingDateField, DashboardRepository } from "../repositories/dashboard.ts";
 
@@ -24,6 +25,8 @@ interface DashboardLoadOptions {
   includeBookingNote?: boolean;
   bookingListSort?: DashboardBookingSort;
   bookingListSearch?: boolean;
+  bookingAgencyId?: string | null;
+  agencyListSort?: DashboardAgencyListSort;
   agencyBookingsPage?: number;
   agencyBookingsSearch?: string;
   agencyBookingsSort?: DashboardAgencySort;
@@ -108,6 +111,15 @@ function collectAgencies(rows: DashboardBookingSource[]): DashboardAgency[] {
   return [...agencies.values()].sort((left, right) => right.amountCents - left.amountCents || right.count - left.count || compareText(left.name, right.name));
 }
 
+function sortDashboardAgencies(rows: DashboardAgency[], sort: DashboardAgencyListSort = "sales-desc"): DashboardAgency[] {
+  return [...rows].sort((left, right) => {
+    if (sort === "name-asc") return compareText(left.name, right.name) || right.amountCents - left.amountCents || right.count - left.count;
+    const direction = sort.endsWith("desc") ? -1 : 1;
+    const comparison = sort.startsWith("sales") ? left.amountCents - right.amountCents : left.count - right.count;
+    return comparison * direction || right.amountCents - left.amountCents || right.count - left.count || compareText(left.name, right.name);
+  });
+}
+
 function sortAgencyBookings(rows: DashboardBookingSource[], sort: DashboardAgencySort): DashboardBookingSource[] {
   const direction = sort.endsWith("desc") ? -1 : 1;
   return [...rows].sort((left, right) => {
@@ -173,11 +185,12 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   const overview: DashboardOverview = scope.kind === "admin"
     ? { confirmedBookingsByDay: dailyConfirmedBookings, topAgencies: agencies.slice(0, 5), recentHouses: houses.slice(0, 6), agencyCount: agencies.length, newHouseCount: houses.length }
     : { ...emptyOverview(query.month), confirmedBookingsByDay: dailyConfirmedBookings };
-  const bookingRows = rows.filter(row => (query.status === "all" || dashboardStatus(row.status) === query.status)
+  const bookingRows = rows.filter(row => (options.bookingAgencyId === undefined || row.agentId === options.bookingAgencyId)
+    && (query.status === "all" || dashboardStatus(row.status) === query.status)
     && (options.bookingListSearch ? matchesDashboardBookingText(row, query.search) : matchesText(row, query.search)));
   const bookings = paginate((options.bookingListSort ? sortDashboardBookings(bookingRows, options.bookingListSort) : bookingRows).map(row => publicBooking(row, scope.kind === "admin")), query.page, options.bookingListSort ? DASHBOARD_BOOKINGS_PAGE_SIZE : DASHBOARD_PAGE_SIZE);
   const agencyRows = scope.kind === "admin"
-    ? agencies.filter(row => !query.agencySearch || row.name.toLocaleLowerCase("th-TH").includes(query.agencySearch.toLocaleLowerCase("th-TH")))
+    ? sortDashboardAgencies(agencies.filter(row => !query.agencySearch || row.name.toLocaleLowerCase("th-TH").includes(query.agencySearch.toLocaleLowerCase("th-TH"))), options.agencyListSort)
     : [];
   const houseRows = scope.kind === "admin"
     ? houses.filter(row => !query.houseSearch || `${row.title} DV-${row.propertyId ?? ""}`.toLocaleLowerCase("th-TH").includes(query.houseSearch.toLocaleLowerCase("th-TH")))
@@ -251,8 +264,8 @@ export async function loadDashboardOverview(repository: DashboardRepository, act
   return loadDashboard(repository, actorId, { month: query.month, view: "overview" });
 }
 
-export async function loadDashboardAgencies(repository: DashboardRepository, actorId: string, query: DashboardListQuery): Promise<DashboardReport> {
-  return loadDashboard(repository, actorId, { month: query.month, view: "agencies", agencySearch: query.search, agenciesPage: String(query.page) });
+export async function loadDashboardAgencies(repository: DashboardRepository, actorId: string, query: DashboardAgenciesQuery): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, { month: query.month, view: "agencies", agencySearch: query.search, agenciesPage: String(query.page) }, { agencyListSort: query.agencySort });
 }
 
 export async function loadDashboardHouses(repository: DashboardRepository, actorId: string, query: DashboardListQuery): Promise<DashboardReport> {
@@ -270,14 +283,29 @@ export async function loadDashboardBooking(repository: DashboardRepository, acto
   }, { bookingDateField: "updated_at", bookingListSort: query.sort, bookingListSearch: true, includeBookingNote: true });
 }
 
-export async function loadDashboardAgency(repository: DashboardRepository, actorId: string, query: DashboardListQuery, agencyId: string, bookingsPage = 1, bookingsSearch = "", bookingsSort: DashboardAgencySort = "date-asc"): Promise<DashboardReport> {
-  return loadDashboard(repository, actorId, {
+export async function loadDashboardAgency(repository: DashboardRepository, actorId: string, query: DashboardAgencyDetailQuery, agencyId: string): Promise<DashboardReport> {
+  const summary = await loadDashboard(repository, actorId, {
     month: query.month,
     view: "agency",
     agency: agencyId,
     agencySearch: query.search,
     agenciesPage: String(query.page),
-  }, { agencyBookingsPage: bookingsPage, agencyBookingsSearch: bookingsSearch, agencyBookingsSort: bookingsSort });
+  });
+  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
+  const bookingReport = await loadDashboard(repository, actorId, {
+    month: query.month,
+    view: "bookings",
+    status: query.status,
+    search: query.bookingSearch,
+    page: String(query.bookingsPage),
+  }, {
+    bookingDateField: bookingDateRange ? "check_in" : "updated_at",
+    bookingDateRange,
+    bookingListSort: query.sort,
+    bookingListSearch: true,
+    bookingAgencyId: agencyId === "unassigned" ? null : agencyId,
+  });
+  return { ...summary, bookings: bookingReport.bookings };
 }
 
 export async function loadDashboardHouse(repository: DashboardRepository, actorId: string, query: DashboardListQuery, houseId: string): Promise<DashboardReport> {
