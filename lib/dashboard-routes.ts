@@ -21,17 +21,32 @@ export function parseDashboardBookingsQuery(raw: RouteRawQuery): DashboardBookin
   if (typeof status !== "string" || (status !== "all" && !DASHBOARD_STATUSES.some(item => item.value === status))) throw new Error("สถานะไม่ถูกต้อง");
   const sort = raw.sort ?? "updated-desc";
   if (typeof sort !== "string" || !DASHBOARD_BOOKING_SORTS.some(item => item.value === sort)) throw new Error("รูปแบบการเรียงลำดับไม่ถูกต้อง");
-  return { month: query.month, status, search: query.search, sort: sort as DashboardBookingSort, page: query.page };
+  const checkInFrom = bookingDate(raw.checkInFrom);
+  const checkInTo = bookingDate(raw.checkInTo);
+  if ((checkInFrom === undefined) !== (checkInTo === undefined) || (checkInFrom && checkInTo && checkInFrom > checkInTo)) throw new Error("ช่วงวันที่เข้าพักไม่ถูกต้อง");
+  return { month: query.month, status, search: query.search, sort: sort as DashboardBookingSort, page: query.page, ...(checkInFrom && checkInTo ? { checkInFrom, checkInTo } : {}) };
+}
+
+function bookingDate(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("ช่วงวันที่เข้าพักไม่ถูกต้อง");
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error("ช่วงวันที่เข้าพักไม่ถูกต้อง");
+  return value;
 }
 
 export function dashboardBookingsHref(query: DashboardBookingsQuery, changes: Partial<DashboardBookingsQuery> = {}): string {
   const merged = { ...query, ...changes };
-  if (changes.month !== undefined || changes.status !== undefined || changes.search !== undefined || changes.sort !== undefined) {
+  if (changes.month !== undefined || changes.status !== undefined || changes.search !== undefined || changes.sort !== undefined || "checkInFrom" in changes || "checkInTo" in changes) {
     merged.page = 1;
   }
   const params = new URLSearchParams({ month: merged.month });
   params.set("status", merged.status);
   if (merged.search) params.set("search", merged.search);
+  if (merged.checkInFrom && merged.checkInTo) {
+    params.set("checkInFrom", merged.checkInFrom);
+    params.set("checkInTo", merged.checkInTo);
+  }
   params.set("sort", merged.sort);
   if (merged.page !== 1) params.set("page", String(merged.page));
   return `/admin/dashboard/bookings?${params.toString()}`;

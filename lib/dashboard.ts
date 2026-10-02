@@ -28,6 +28,8 @@ export interface DashboardQuery extends DashboardMonth {
 
 export interface DashboardBookingsQuery {
   month: string;
+  checkInFrom?: string;
+  checkInTo?: string;
   status: string;
   search: string;
   sort: DashboardBookingSort;

@@ -9,7 +9,7 @@ export interface DashboardRepository {
   newHouses(month: DashboardMonth): Promise<DashboardHouse[]>;
 }
 
-export type DashboardBookingDateField = "created_at" | "updated_at";
+export type DashboardBookingDateField = "created_at" | "updated_at" | "check_in";
 
 function text(value: unknown): string {
   if (typeof value !== "string") throw new Error("dashboard_invalid_data");

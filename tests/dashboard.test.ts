@@ -37,6 +37,20 @@ test("booking route query allowlists filters and resets pagination on changes", 
   assert.equal(dashboardBookingsHref(query, { page: 2 }), "/admin/dashboard/bookings?month=2026-09&status=waiting&search=%E0%B8%9A%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%B1%E0%B8%81&sort=price-asc&page=2");
 });
 
+test("booking stay range takes priority over the updated month", async () => {
+  const query = parseDashboardBookingsQuery({ month: "2026-09", checkInFrom: "2026-10-01", checkInTo: "2026-10-03" });
+  assert.deepEqual(query, { month: "2026-09", status: "confirmed", search: "", sort: "updated-desc", page: 1, checkInFrom: "2026-10-01", checkInTo: "2026-10-03" });
+  assert.equal(dashboardBookingsHref(query), "/admin/dashboard/bookings?month=2026-09&status=confirmed&checkInFrom=2026-10-01&checkInTo=2026-10-03&sort=updated-desc");
+  assert.equal(dashboardBookingsHref(query, { checkInFrom: undefined, checkInTo: undefined }), "/admin/dashboard/bookings?month=2026-09&status=confirmed&sort=updated-desc");
+
+  const rows = [
+    { ...booking, id: "stay-range", checkIn: "2026-10-02", updatedAt: "2026-08-01T00:00:00Z" },
+    { ...booking, id: "updated-month", checkIn: "2026-09-02", updatedAt: "2026-09-20T00:00:00Z" },
+  ] as DashboardBookingSource[];
+  const report = await loadDashboardBookings(repository({ kind: "admin" }, rows), "signed-in-user", query);
+  assert.deepEqual(report.bookings.rows.map(row => row.id), ["stay-range"]);
+});
+
 test("booking list filters the selected updated month and approved search fields", async () => {
   const rows = [
     { ...booking, id: "updated-house", houseTitle: "บ้านริมทะเล", createdAt: "2026-08-31T23:00:00Z", updatedAt: "2026-09-25T00:00:00Z", customerFirstName: "สมชาย", customerLastName: "ใจดี" },
@@ -117,10 +131,11 @@ test("canonical bookings page renders the booking workflow", async () => {
   assert.match(html, /aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
   assert.match(html, /data-thai-month-picker/);
   assert.doesNotMatch(html, /type="month"[^>]*id="booking-month"/);
-  assert.match(html, /id="booking-sort" name="sort"/);
-  assert.match(html, /value="updated-desc" selected/);
+  assert.match(html, /id="booking-status"[^>]*role="combobox"/);
+  assert.match(html, /id="booking-sort"[^>]*role="combobox"/);
+  assert.match(html, /data-slot="select-value"[^>]*>จองล่าสุด/);
   assert.doesNotMatch(html, /name="agency"/);
-  assert.match(html, /overflow-x-auto/);
+  assert.match(html, /pb-1 md:overflow-x-auto/);
   assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc"/);
 });
 
@@ -271,17 +286,24 @@ test("booking filters use the Thai month picker without an agency dropdown", asy
   const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", raw);
   const query = parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", sort: "updated-desc", page: "2" });
   const html = renderToStaticMarkup(createElement(View, { report, query }));
-  assert.match(html, /name="status"/);
   assert.match(html, /aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
   assert.match(html, /placeholder="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
-  assert.match(html, /data-thai-month-picker/);
+  assert.match(html, /class="[^"]*h-8[^"]*text-sm[^"]*"[^>]*data-thai-month-picker/);
+  assert.match(html, /class="[^"]*flex-1[^"]*min-w-0[^"]*"[^>]*data-thai-month-picker/);
+  assert.doesNotMatch(html, /class="[^"]*min-w-(?:36|44|48)[^"]*"[^>]*data-thai-month-picker/);
   assert.doesNotMatch(html, /type="month"[^>]*id="booking-month"/);
-  assert.match(html, /id="booking-status" name="status" class="[^\"]*h-11/);
-  assert.match(html, /value="confirmed" selected/);
-  assert.match(html, /id="booking-sort" name="sort"/);
-  assert.match(html, /value="updated-desc" selected/);
+  assert.match(html, /id="booking-status"[^>]*data-slot="select-trigger"/);
+  assert.match(html, /id="booking-sort"[^>]*data-slot="select-trigger"/);
+  assert.match(html, /data-slot="sheet-trigger"/);
+  assert.match(html, /data-slot="sheet-trigger"[^>]*class="[^"]*px-2/);
+  assert.match(html, /md:hidden/);
+  assert.match(html, /id="booking-status"[^>]*class="[^"]*data-\[size=default\]:h-8/);
+  assert.match(html, /id="booking-sort"[^>]*class="[^"]*data-\[size=default\]:h-8/);
+  assert.doesNotMatch(html, /id="booking-status"[^>]*class="[^"]*min-w-/);
+  assert.doesNotMatch(html, /id="booking-sort"[^>]*class="[^"]*min-w-/);
+  assert.doesNotMatch(html, /<select/);
   assert.doesNotMatch(html, /name="agency"/);
-  assert.match(html, /overflow-x-auto/);
+  assert.match(html, /pb-1 md:overflow-x-auto/);
   assert.doesNotMatch(html, /name="page"/);
   assert.doesNotMatch(html, /กลับภาพรวม/);
   assert.doesNotMatch(html, /การจองติดจอง/);
@@ -290,12 +312,39 @@ test("booking filters use the Thai month picker without an agency dropdown", asy
   assert.doesNotMatch(html, /รายการ ·/);
   assert.doesNotMatch(html, /ยอดขายเอเจนซี่/);
   assert.match(html, /บ้าน \/ DV/);
+  assert.match(html, /<th[^>]*>สถานะการจอง<\/th>/);
+  assert.equal((html.match(/data-dashboard-booking-status/g) ?? []).length, 2);
   assert.doesNotMatch(html, /บ้าน \/ DV \/ รหัสจอง/);
   assert.match(html, /เอเจนซี่/);
   assert.match(html, /<table/);
   assert.match(html, /฿1,234\.50/);
   assert.doesNotMatch(html, /กดรายการเพื่อดูรายละเอียด/);
   assert.doesNotMatch(html, /รหัสเอเจนซี่/);
+});
+
+test("booking advanced filters keep mobile status and sort controls in the sheet", async () => {
+  const View = await dashboardComponent("DashboardBookingAdvancedFiltersPanel", "../components/admin/dashboard/dashboard-booking-filters.tsx");
+  const html = renderToStaticMarkup(createElement(View, {
+    onClose() {},
+    onFiltersApply() {},
+    query: parseDashboardBookingsQuery({ month: "2026-09" }),
+    showBookingControls: true,
+  }));
+
+  assert.match(html, /ตัวกรองเพิ่มเติม/);
+  assert.ok(html.includes("ช่วงยอดจอง (บาท)"));
+  assert.match(html, /aria-label="ยอดจองต่ำสุด"/);
+  assert.match(html, /aria-label="ยอดจองสูงสุด"/);
+  assert.match(html, /ช่วงวันที่เข้าพัก/);
+  assert.match(html, /aria-label="ช่วงวันที่เข้าพัก"/);
+  assert.match(html, /id="mobile-booking-status"/);
+  assert.match(html, /id="mobile-booking-sort"/);
+  assert.match(html, /สถานะการจอง/);
+  assert.match(html, /เรียงลำดับ/);
+  assert.doesNotMatch(html, /type="date"|type="number"/);
+  assert.match(html, /ล้างค่า/);
+  assert.match(html, /ใช้ตัวกรอง/);
+  assert.doesNotMatch(html, /บ้าน \/ โครงการ|ประเภทบ้าน|ช่องทางการจอง|สถานะการชำระเงิน|จำนวนต่อหน้า|เฉพาะรายการ/);
 });
 
 test("booking pager reports nine rows per page", async () => {

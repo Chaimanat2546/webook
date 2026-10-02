@@ -1,5 +1,5 @@
 import "server-only";
-import { dashboardStatus, parseDashboardQuery, type DashboardAgency, type DashboardAgencySort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardDailyBookingCount, type DashboardDetail, type DashboardHouse, type DashboardListQuery, type DashboardOverview, type DashboardOverviewQuery, type DashboardPage, type DashboardReport, type DashboardSales } from "../../lib/dashboard.ts";
+import { dashboardStatus, parseDashboardQuery, type DashboardAgency, type DashboardAgencySort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardDailyBookingCount, type DashboardDetail, type DashboardHouse, type DashboardListQuery, type DashboardMonth, type DashboardOverview, type DashboardOverviewQuery, type DashboardPage, type DashboardReport, type DashboardSales } from "../../lib/dashboard.ts";
 import { dashboardShare } from "../../lib/dashboard-calculations.ts";
 import type { DashboardBookingDateField, DashboardRepository } from "../repositories/dashboard.ts";
 
@@ -12,6 +12,7 @@ export class DashboardItemNotFound extends Error {}
 interface DashboardLoadOptions {
   now?: Date;
   bookingDateField?: DashboardBookingDateField;
+  bookingDateRange?: DashboardMonth;
   bookingListSort?: DashboardBookingSort;
   bookingListSearch?: boolean;
   agencyBookingsPage?: number;
@@ -141,13 +142,14 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   if (scope.kind === "owner" && ["agencies", "houses", "agency", "house"].includes(query.view)) throw new DashboardForbidden();
   const bookingDateField = options.bookingDateField ?? "created_at";
   const [source, sourceHouses] = await Promise.all([
-    repository.bookings(scope, query, bookingDateField),
+    repository.bookings(scope, options.bookingDateRange ?? query, bookingDateField),
     scope.kind === "admin" ? repository.newHouses(query) : Promise.resolve([]),
   ]);
   const rows = sortBookings(source.filter(row => {
-    const date = bookingDateField === "updated_at" ? row.updatedAt : row.createdAt;
+    const date = bookingDateField === "updated_at" ? row.updatedAt : bookingDateField === "check_in" ? row.checkIn : row.createdAt;
+    const range = options.bookingDateRange ?? query;
     return (scope.kind === "admin" || row.propertyId === scope.propertyId)
-      && Date.parse(date) >= Date.parse(query.start) && Date.parse(date) < Date.parse(query.end);
+      && (bookingDateField === "check_in" ? date >= range.start && date < range.end : Date.parse(date) >= Date.parse(range.start) && Date.parse(date) < Date.parse(range.end));
   }));
   const houses = sortHouses(sourceHouses);
   const sales: DashboardSales = { count: 0, amountCents: 0, missingPrices: 0 };
@@ -216,13 +218,20 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
 }
 
 export async function loadDashboardBookings(repository: DashboardRepository, actorId: string, query: DashboardBookingsQuery): Promise<DashboardReport> {
+  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
   return loadDashboard(repository, actorId, {
     month: query.month,
     view: "bookings",
     status: query.status,
     search: query.search,
     page: String(query.page),
-  }, { bookingDateField: "updated_at", bookingListSort: query.sort, bookingListSearch: true });
+  }, { bookingDateField: bookingDateRange ? "check_in" : "updated_at", bookingDateRange, bookingListSort: query.sort, bookingListSearch: true });
+}
+
+function nextDay(date: string): string {
+  const value = new Date(`${date}T00:00:00.000Z`);
+  value.setUTCDate(value.getUTCDate() + 1);
+  return value.toISOString().slice(0, 10);
 }
 
 export async function loadDashboardOverview(repository: DashboardRepository, actorId: string, query: DashboardOverviewQuery): Promise<DashboardReport> {

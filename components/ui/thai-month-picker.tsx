@@ -4,10 +4,13 @@ import { useState } from "react";
 import { CalendarDaysIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { MAX_GREGORIAN_YEAR, MIN_GREGORIAN_YEAR, parseThaiMonth, THAI_MONTH_NAMES, thaiMonthValue } from "../../lib/thai-month";
+import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./dropdown-menu";
 
 export interface ThaiMonthPickerProps {
+  all?: boolean;
+  className?: string;
   month: string;
   onMonthChange: (month: string) => void;
 }
@@ -15,15 +18,15 @@ export interface ThaiMonthPickerProps {
 const MIN_BUDDHIST_YEAR = MIN_GREGORIAN_YEAR + 543;
 const MAX_BUDDHIST_YEAR = MAX_GREGORIAN_YEAR + 543;
 
-export function ThaiMonthPicker({ month, onMonthChange }: ThaiMonthPickerProps) {
+export function ThaiMonthPicker({ all = false, className, month, onMonthChange }: ThaiMonthPickerProps) {
   const selected = parseThaiMonth(month);
   const [year, setYear] = useState(selected.year);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button aria-label="เลือกเดือน" className="h-11 min-w-48 justify-between px-3 text-base" data-thai-month-picker type="button" variant="outline">
-          <span className="flex items-center gap-2"><CalendarDaysIcon aria-hidden className="size-4" />{THAI_MONTH_NAMES[selected.month - 1]} {selected.year}</span>
+        <Button aria-label="เลือกเดือน" className={cn("h-11 min-w-48 justify-between px-3 text-base", className)} data-thai-month-picker disabled={all} type="button" variant="outline">
+          <span className="flex items-center gap-2"><CalendarDaysIcon aria-hidden className="size-4" />{all ? "ทุกเดือน" : `${THAI_MONTH_NAMES[selected.month - 1]} ${selected.year}`}</span>
           <ChevronDownIcon aria-hidden className="size-4" />
         </Button>
       </DropdownMenuTrigger>
