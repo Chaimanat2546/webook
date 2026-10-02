@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- cover images are stored in tenant-controlled Supabase Storage URLs. */
 import Link from "next/link";
-import { Building2Icon, CalendarDaysIcon, CircleDollarSignIcon, CircleUserRoundIcon, CreditCardIcon, HouseIcon, MapPinIcon, MoonIcon, PhoneIcon, SparklesIcon, StickyNoteIcon, TagIcon, TicketCheckIcon } from "lucide-react";
+import { BarChart3Icon, Building2Icon, CalendarDaysIcon, CircleDollarSignIcon, CircleUserRoundIcon, CreditCardIcon, HouseIcon, MapPinIcon, MoonIcon, PhoneIcon, PieChartIcon, SparklesIcon, StickyNoteIcon, TagIcon, TicketCheckIcon } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
@@ -30,6 +30,11 @@ interface DashboardDetailsProps {
 
 function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return <div className={`min-w-0 ${className ?? ""}`}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium [overflow-wrap:anywhere]">{children}</dd></div>;
+}
+
+function AgencySummaryMetric({ accent, children, description, icon: Icon, label, visual }: { accent: "blue" | "green" | "orange"; children: ReactNode; description: string; icon: LucideIcon; label: string; visual: ReactNode }) {
+  const colors = accent === "blue" ? "bg-blue-50 text-blue-600" : accent === "green" ? "bg-emerald-50 text-emerald-600" : "bg-orange-50 text-orange-500";
+  return <article className="relative min-w-0 overflow-hidden rounded-xl border bg-card p-5 shadow-sm"><div className="relative z-10 flex min-w-0 items-center gap-4"><span className={`grid size-14 shrink-0 place-items-center rounded-full ${colors}`}><Icon aria-hidden className="size-6" /></span><div className="min-w-0"><p className="text-sm font-medium text-muted-foreground">{label}</p><p className="mt-0.5 truncate text-2xl font-bold tracking-tight text-foreground">{children}</p><p className="mt-1 text-xs text-muted-foreground">{description}</p></div></div><div aria-hidden className="absolute right-5 top-1/2 -translate-y-1/2 opacity-25">{visual}</div></article>;
 }
 
 function BookingDetailRow({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
@@ -180,10 +185,12 @@ export function DashboardDetails({
     const agencyId = detail.agency.id ?? "unassigned";
     return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
       <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description="รายละเอียดเอเจนซี่" title={detail.agency.name} />
-      <Card><CardContent className="space-y-4">
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 sm:gap-5"><Field label="ยอดขาย">{dashboardMoney(detail.agency.amountCents)}</Field><Field label="จำนวนการจอง">{detail.agency.count} รายการ</Field><Field label="สัดส่วนยอดขาย">{detail.sharePercent === null ? "—" : `${detail.sharePercent.toFixed(1)}%`}</Field></dl>
-        {detail.agency.missingPrices > 0 && <p role="status" className="text-sm text-muted-foreground">การจองติดจอง {detail.agency.missingPrices} รายการยังไม่ระบุยอด</p>}
-      </CardContent></Card>
+      <section aria-label="สรุปยอดเอเจนซี่" className="grid gap-3 md:grid-cols-3">
+        <AgencySummaryMetric accent="blue" description="จากการจองทั้งหมดของเดือนนี้" icon={BarChart3Icon} label="ยอดขาย" visual={<svg className="size-20" viewBox="0 0 80 48" fill="none"><path d="M2 42C18 40 20 17 35 27S53 43 76 6" stroke="currentColor" strokeWidth="2" /><path d="M69 6h7v7" stroke="currentColor" strokeWidth="2" /></svg>}>{dashboardMoney(detail.agency.amountCents)}</AgencySummaryMetric>
+        <AgencySummaryMetric accent="green" description="รายการจองทั้งหมด" icon={CalendarDaysIcon} label="จำนวนการจอง" visual={<div className="flex h-10 items-end gap-1"><i className="h-3 w-2 rounded bg-current" /><i className="h-5 w-2 rounded bg-current" /><i className="h-7 w-2 rounded bg-current" /><i className="h-10 w-2 rounded bg-current" /></div>}>{detail.agency.count} รายการ</AgencySummaryMetric>
+        <AgencySummaryMetric accent="orange" description="ของยอดขายทั้งหมด" icon={PieChartIcon} label="สัดส่วนยอดขาย" visual={<div className="size-12 rounded-full bg-current [clip-path:polygon(50%_50%,50%_0,100%_0,100%_50%)]" />}>{detail.sharePercent === null ? "—" : `${detail.sharePercent.toFixed(1)}%`}</AgencySummaryMetric>
+        {detail.agency.missingPrices > 0 && <p role="status" className="md:col-span-3 text-sm text-muted-foreground">การจองติดจอง {detail.agency.missingPrices} รายการยังไม่ระบุยอด</p>}
+      </section>
       <section className="space-y-3"><h2 className="font-medium">รายการจอง</h2><BookingsList bookingHref={bookingId => dashboardAgencyBookingDetailHref(agencyListQuery, agencyId, bookingId)} href={changes => dashboardAgencyDetailHref(agencyListQuery, agencyId, changes)} query={dashboardAgencyDetailBookingQuery(agencyListQuery)} report={report} /></section>
     </div>;
   }
