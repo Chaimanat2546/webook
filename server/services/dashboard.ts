@@ -273,6 +273,7 @@ export async function loadDashboardHouses(repository: DashboardRepository, actor
 }
 
 export async function loadDashboardBooking(repository: DashboardRepository, actorId: string, query: DashboardBookingsQuery, bookingId: string): Promise<DashboardReport> {
+  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
   return loadDashboard(repository, actorId, {
     month: query.month,
     view: "booking",
@@ -280,7 +281,7 @@ export async function loadDashboardBooking(repository: DashboardRepository, acto
     status: query.status,
     search: query.search,
     page: String(query.page),
-  }, { bookingDateField: "updated_at", bookingListSort: query.sort, bookingListSearch: true, includeBookingNote: true });
+  }, { bookingDateField: bookingDateRange ? "check_in" : "updated_at", bookingDateRange, bookingListSort: query.sort, bookingListSearch: true, includeBookingNote: true });
 }
 
 export async function loadDashboardAgency(repository: DashboardRepository, actorId: string, query: DashboardAgencyDetailQuery, agencyId: string): Promise<DashboardReport> {

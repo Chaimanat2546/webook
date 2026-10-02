@@ -68,6 +68,15 @@ test("booking detail includes its saved internal note without exposing it to the
   assert.equal("note" in (report.bookings.rows[0] ?? {}), false);
 });
 
+test("booking detail resolves a booking reached through its check-in range", async () => {
+  const row = { ...booking, id: "check-in-range", updatedAt: "2026-10-01T00:00:00Z", checkIn: "2026-09-15", checkOut: "2026-09-17" };
+  const query = parseDashboardBookingsQuery({ month: "2026-09", status: "all", checkInFrom: "2026-09-01", checkInTo: "2026-09-30", sort: "updated-desc" });
+  const report = await loadDashboardBooking(repository({ kind: "admin" }, [row]), "signed-in-user", query, row.id);
+  assert.equal(report.detail?.kind, "booking");
+  if (report.detail?.kind !== "booking") assert.fail("expected booking detail");
+  assert.equal(report.detail.booking.id, row.id);
+});
+
 test("booking detail exposes its saved cost snapshot", async () => {
   const source = {
     ...booking,
