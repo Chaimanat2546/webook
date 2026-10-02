@@ -24,8 +24,8 @@ export function HouseWorkspaceShell({
   sidebarTitle,
 }: HouseWorkspaceShellProps) {
   return (
-    <div className="grid overflow-hidden rounded-lg border lg:min-h-0 lg:flex-1 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside className="min-w-0 border-b bg-muted/20 lg:border-b-0 lg:border-r">
+    <div className="grid overflow-hidden rounded-xl border bg-card shadow-sm lg:min-h-0 lg:flex-1 lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside className="min-w-0 border-b bg-background lg:border-b-0 lg:border-r">
         <div className="hidden border-b px-4 py-3 lg:block">
           <h2 className="text-sm font-semibold">{sidebarTitle}</h2>
         </div>
@@ -35,14 +35,14 @@ export function HouseWorkspaceShell({
       <section className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
         <header
           className={cn(
-            "border-b bg-muted/20 px-4 py-3",
+            "border-b bg-background px-4 py-3",
             contentActions
               ? "flex flex-wrap items-center justify-between gap-3"
               : "hidden lg:flex lg:items-center lg:justify-between lg:gap-3",
           )}
         >
           <div className="hidden min-w-0 items-center gap-3 lg:flex">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground [&>svg]:size-4">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-foreground [&>svg]:size-4">
               {contentIcon}
             </span>
             <div className="min-w-0">

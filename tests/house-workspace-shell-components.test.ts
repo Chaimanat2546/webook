@@ -34,9 +34,12 @@ describe("house workspace shared components", () => {
     assert.match(source, /contentMeta\?: ReactNode/);
     assert.match(source, /contentActions\?: ReactNode/);
     assert.match(source, /contentClassName\?: string/);
-    assert.match(source, /rounded-lg border/);
+    assert.match(source, /rounded-xl border bg-card shadow-sm/);
     assert.match(source, /lg:grid-cols-\[16rem_minmax\(0,1fr\)\]/);
     assert.match(source, /hidden border-b px-4 py-3 lg:block/);
+    assert.match(source, /border-b bg-background lg:border-b-0 lg:border-r/);
+    assert.match(source, /border-b bg-background px-4 py-3/);
+    assert.match(source, /rounded-md bg-muted text-foreground/);
     assert.match(source, /grid min-h-0 min-w-0 grid-rows-\[auto_minmax\(0,1fr\)\]/);
   });
 
@@ -51,7 +54,7 @@ describe("house workspace shared components", () => {
     assert.match(source, /icon: ReactNode/);
     assert.match(source, /label: ReactNode/);
     assert.match(source, /min-w-44/);
-    assert.match(source, /bg-primary text-primary-foreground/);
+    assert.match(source, /bg-muted text-foreground shadow-sm hover:bg-muted/);
     assert.match(source, /hidden shrink-0 lg:inline-flex/);
   });
 });

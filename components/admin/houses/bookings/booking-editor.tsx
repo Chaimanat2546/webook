@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { BOOKING_STATUSES, nightsBetween, parseBookingCreate, parseBookingUpdate, type Booking, type BookingAgency, type BookingUpdate } from "@/lib/house-bookings";
+import { BOOKING_STATUSES, nextBookingDate, nightsBetween, parseBookingCreate, parseBookingUpdate, type Booking, type BookingAgency, type BookingUpdate } from "@/lib/house-bookings";
+import { defaultPaymentExpiry, paymentExpiryFromBangkokLocal, paymentExpiryToBangkokLocal } from "@/lib/booking-payment-expiry";
 import { bookingAgencyChoices } from "@/lib/booking-agency";
 import { cancelHouseBookingAction, createHouseBookingAction, getHouseBookingAction, listBookingAgenciesAction, saveHouseBookingAction } from "@/app/admin/houses/[propertyId]/bookings/actions";
 
@@ -166,9 +167,10 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
       {form.status !== "repair" && <section className="space-y-3 border-t pt-4">
         <BookingCustomerPicker propertyId={propertyId} customer={customer} onBusy={busy => { setCustomerBusy(busy); onSaving(busy); }} onSelect={next => { setCustomer(next); change("customer_id", next.id); }} />
       </section>}
-      <div className="grid grid-cols-2 gap-3"><label className="space-y-1">สถานะ<select className="h-8 w-full rounded-lg border bg-background px-2" value={form.status} onChange={e => change("status", e.target.value)}>
+      <div className="grid grid-cols-2 gap-3"><label className="space-y-1">สถานะ<select className="h-8 w-full rounded-lg border bg-background px-2" value={form.status} onChange={e => setForm(previous => ({ ...previous, status: e.target.value, payment_expires_at: e.target.value === "waiting" ? previous.payment_expires_at ?? defaultPaymentExpiry(new Date()) : null }))}>
       {!supportedStatus && <option value={form.status} disabled>{form.status} (สถานะเดิม)</option>}{BOOKING_STATUSES.filter(status => status.value !== "cancelled").map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
       </select></label><label className="space-y-1">จำนวนคืน<Input readOnly aria-label="จำนวนคืน" value={nights > 0 ? nights : ""} /></label></div>
+      {form.status === "waiting" && <label className="space-y-1"><span>หมดอายุการชำระเงิน</span><Input type="datetime-local" value={paymentExpiryToBangkokLocal(form.payment_expires_at)} onChange={event => { try { change("payment_expires_at", event.target.value ? paymentExpiryFromBangkokLocal(event.target.value) : null); setError(""); } catch (cause) { setError(cause instanceof Error ? cause.message : "วันเวลาหมดอายุไม่ถูกต้อง"); } }} /><span className="block text-xs text-muted-foreground">ระบบจะยกเลิกการจองอัตโนมัติหลังเวลานี้</span></label>}
       {booking && booking.status !== "repair" && form.status === "repair" && <p className="text-xs text-amber-800">เมื่อบันทึกเป็นปิดซ่อม จะล้างลูกค้าและยอดเงินของรายการนี้</p>}
       {!supportedStatus && <p className="text-xs text-amber-800">กรุณาเลือกสถานะที่รองรับก่อนบันทึก</p>}
       {form.status !== "repair" && <BookingHouseInformation key={propertyId} propertyId={propertyId} loadDefaults={!booking} values={{ extra_person: form.extra_person, insurance: form.insurance, checkin_time: form.checkin_time, checkout_time: form.checkout_time }} onChange={value => setForm(previous => ({ ...previous, ...value }))} />}
@@ -186,10 +188,10 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
 type BookingDraft = Omit<BookingUpdate, "id" | "updated_at">;
 
 function newDraft(date: string): BookingDraft {
-  return { check_in: date, check_out: "", customer_id: null, agent_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null };
+  return { check_in: date, check_out: date ? nextBookingDate(date) : "", customer_id: null, agent_id: null, status: "waiting", quantity: 0, price_sell: 0, price_max: null, extra_charge: 0, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null, payment_expires_at: defaultPaymentExpiry(new Date()) };
 }
 
 function parseInitial(booking: Booking): BookingDraft {
-  const { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time } = booking;
-  return { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time };
+  const { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time, payment_expires_at } = booking;
+  return { check_in, check_out, customer_id, agent_id, status, quantity, price_sell, price_max, extra_charge, note, extra_person, insurance, checkin_time, checkout_time, payment_expires_at };
 }

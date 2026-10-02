@@ -63,6 +63,14 @@ test("gallery editor reuses one booking form with Sheet and centred Dialog prese
   assert.match(gallery(), /<BookingGalleryEditorDialog/);
 });
 
+test("booking editor shows a Bangkok payment deadline only for waiting bookings", () => {
+  const source = editor();
+  assert.match(source, /form\.status === "waiting"/);
+  assert.match(source, /หมดอายุการชำระเงิน/);
+  assert.match(source, /type="datetime-local"/);
+  assert.match(source, /defaultPaymentExpiry/);
+});
+
 test("gallery returns focus to the card trigger or search and invalidates the saved house", () => {
   const source = gallery();
   assert.match(source, /triggerRef=\{trigger\}/);

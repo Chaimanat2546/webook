@@ -13,6 +13,7 @@ import { ConnectionStatus } from "../pwa/connection-status";
 import { AdminMobileContent, AdminMobileHeader, AdminMobileNavigation } from "./admin-mobile-navigation";
 
 export function AdminShell({
+  canUseDashboard = false,
   canAccessHouses,
   canManageCentralUsers,
   canManageWebookUsers,
@@ -22,6 +23,7 @@ export function AdminShell({
   children,
   defaultSidebarOpen = true,
 }: {
+  canUseDashboard?: boolean;
   canAccessHouses: boolean;
   canManageCentralUsers: boolean;
   canManageWebookUsers: boolean;
@@ -34,6 +36,7 @@ export function AdminShell({
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <AdminDesktopSidebar
+        canUseDashboard={canUseDashboard}
         canAccessHouses={canAccessHouses}
         canManageCentralUsers={canManageCentralUsers}
         canManageWebookUsers={canManageWebookUsers}

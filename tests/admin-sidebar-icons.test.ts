@@ -6,7 +6,7 @@ const source = readFileSync(new URL("../components/layout/admin-desktop-sidebar.
 
 describe("admin sidebar icons", () => {
   it("uses the approved Lucide icons for each admin menu", () => {
-    assert.match(source, /import \{ CalendarDays, Contact, Files, FileText, House, LogOutIcon, Megaphone, ShieldUser, Users \} from "lucide-react"/);
+    assert.match(source, /import \{ CalendarDays, Contact, Files, FileText, House, LayoutDashboard, LogOutIcon, Megaphone, ShieldUser, Users \} from "lucide-react"/);
     assert.match(source, /<House data-icon="inline-start" \/>[\s\S]*?<span>บ้านพัก<\/span>/);
     assert.match(source, /<CalendarDays data-icon="inline-start" \/>[\s\S]*?<span>การจอง<\/span>/);
     assert.match(source, /<Megaphone data-icon="inline-start" \/>[\s\S]*?<span>โฆษณา<\/span>/);

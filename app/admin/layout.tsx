@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import { AdminShell } from "../../components/layout/admin-shell";
 import { requireBookingAdmin } from "../../server/auth/bookings";
+import { canOpenDashboard } from "../../server/auth/dashboard";
 import { bookingResult } from "../../server/services/house-bookings";
 import {
   canAccessHouses,
@@ -26,6 +27,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <AdminShell
+      canUseDashboard={await canOpenDashboard()}
       canAccessHouses={canAccessHouses(adminUser)}
       canManageCentralUsers={canManageCentralUsers(adminUser)}
       canManageWebookUsers={canManageWebookUsers(adminUser)}

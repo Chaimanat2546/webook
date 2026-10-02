@@ -17,7 +17,8 @@ describe("Cloudflare deployment boundary", () => {
     const config = JSON.parse(readFileSync(configPath, "utf8"));
     assert.equal(config.name, "webook-admin");
     assert.equal(config.account_id, "7c1d945e149fc6fad2124176124d8f33");
-    assert.equal(config.main, ".open-next/worker.js");
+    assert.equal(config.main, "worker.ts");
+    assert.deepEqual(config.triggers, { crons: ["* * * * *"] });
     assert.deepEqual(config.assets, {
       directory: ".open-next/assets",
       binding: "ASSETS",

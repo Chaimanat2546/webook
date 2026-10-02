@@ -63,6 +63,17 @@ describe("house detail shell UI", () => {
     assert.match(navSource, /HouseWorkspaceNavItem/);
   });
 
+  it("preserves safe dashboard detail destinations from the house workspace", () => {
+    const source = readFileSync(pageUrl, "utf8");
+    const actionUrl = new URL("../app/admin/houses/[propertyId]/actions.ts", import.meta.url);
+    const actionSource = readFileSync(actionUrl, "utf8");
+
+    assert.match(source, /safeHouseReturnTo\(returnTo\)/);
+    assert.match(source, /returnTo=\{safeReturnTo\}/);
+    assert.match(actionSource, /safeHouseReturnTo\(formData\.get\("returnTo"\)\)/);
+    assert.match(actionSource, /params\.set\("returnTo", returnTo\)/);
+  });
+
   it("keeps the mobile house detail shell compact", () => {
     const source = readFileSync(pageUrl, "utf8");
 

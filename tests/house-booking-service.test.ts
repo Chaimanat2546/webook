@@ -4,7 +4,7 @@ import type { Booking } from "../lib/house-bookings.ts";
 import type { HouseBookingsRepository } from "../server/repositories/house-bookings.ts";
 import { cancelHouseBooking, createHouseBooking, saveHouseBooking, getHouseBooking, listHouseBookings, bookingError } from "../server/services/house-bookings.ts";
 
-const row: Booking = { id: "1", booking_code: "BK1", listing_id: "listing1", houseid: "1024", agent_id: null, customer_id: null, customer: null, check_in: "2026-09-28", check_out: "2026-10-03", status: "confirmed", booking_type: "booking", price_sell: 15000, price_max: 0, deposit_amount: 5000, extra_charge: 0, quantity: 1, details: null, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null, updated_at: "2026-09-18T00:00:00Z" };
+const row: Booking = { id: "1", booking_code: "BK1", listing_id: "listing1", houseid: "1024", agent_id: null, customer_id: null, customer: null, check_in: "2026-09-28", check_out: "2026-10-03", status: "confirmed", booking_type: "booking", price_sell: 15000, price_max: 0, deposit_amount: 5000, extra_charge: 0, quantity: 1, details: null, note: null, extra_person: null, insurance: null, checkin_time: null, checkout_time: null, payment_expires_at: null, updated_at: "2026-09-18T00:00:00Z" };
 function memory() {
   let saved = { ...row };
   const repository: HouseBookingsRepository = {

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseBookingCreate, parseBookingUpdate, nightsBetween, parseBookingRange, bookingEvent } from "../lib/house-bookings.ts";
+import { parseBookingCreate, parseBookingUpdate, nightsBetween, nextBookingDate, parseBookingRange, bookingEvent } from "../lib/house-bookings.ts";
+import { defaultPaymentExpiry, paymentExpiryFromBangkokLocal, paymentExpiryToBangkokLocal } from "../lib/booking-payment-expiry.ts";
 import { canUseBooking, canAccessHouses } from "../server/auth/admin.ts";
 
-const input = { id: "17", updated_at: "2026-09-18T10:00:00+00:00", check_in: "2026-09-28", check_out: "2026-10-03", customer_id: null, status: "confirmed", quantity: 1, price_max: 6900, price_sell: 3900, deposit_amount: 5000, extra_charge: 0, note: "", extra_person: null, insurance: null, checkin_time: null, checkout_time: null };
+const input = { id: "17", updated_at: "2026-09-18T10:00:00+00:00", check_in: "2026-09-28", check_out: "2026-10-03", customer_id: null, status: "confirmed", quantity: 1, price_max: 6900, price_sell: 3900, deposit_amount: 5000, extra_charge: 0, note: "", extra_person: null, insurance: null, checkin_time: null, checkout_time: null, payment_expires_at: null };
 test("changing dates preserves one total rather than multiplying by nights", () => {
   const result = parseBookingUpdate({ ...input, check_out: "2026-10-04", extra_charge: 725 });
   assert.equal(result.price_max, 6900);
@@ -15,6 +16,11 @@ test("rejects nonexistent dates and nonpositive stays", () => {
   for (const dates of [{ check_in: "2026-02-30" }, { check_out: input.check_in }, { check_out: "2026-09-01" }]) {
     assert.throws(() => parseBookingUpdate({ ...input, ...dates }));
   }
+});
+test("new bookings default checkout to the next calendar day", () => {
+  assert.equal(nextBookingDate("2026-09-30"), "2026-10-01");
+  assert.equal(nextBookingDate("2028-02-28"), "2028-02-29");
+  assert.equal(nextBookingDate("2026-12-31"), "2027-01-01");
 });
 test("rejects invalid money, IDs, revisions and status", () => {
   for (const patch of [{ price_sell: Infinity }, { price_max: -1 }, { id: "17 OR 1=1" }, { customer_id: "bad" }, { status: "paid" }, { updated_at: "" }]) {
@@ -28,6 +34,7 @@ test("query ranges accept month spillover and reject unlimited ranges", () => {
 test("calendar event uses exclusive checkout, stable identity and confirmed red", () => {
   const event = bookingEvent({ ...input, booking_code: "BK17", customer: null, booking_type: "booking", price_max: 0, details: null, listing_id: "house", houseid: "1024", agent_id: null });
   assert.equal(event.id, "17");
+  assert.match(event.title, /ติดจอง/);
   assert.equal(event.start, "2026-09-28");
   assert.equal(event.end, "2026-10-03");
   assert.equal(event.allDay, true);
@@ -66,6 +73,15 @@ test("creation requires an existing customer reference, full price and stable re
   for (const patch of [{ customer_id: null }, { price_max: null }, { request_id: "bad" }, { status: "cancelled" }]) {
     assert.throws(() => parseBookingCreate({ ...draft, ...patch }));
   }
+});
+
+test("waiting bookings retain a payment deadline while other statuses clear it", () => {
+  const deadline = "2026-10-01T03:10:00.000Z";
+  assert.equal(parseBookingUpdate({ ...input, status: "waiting", payment_expires_at: deadline }).payment_expires_at, deadline);
+  assert.equal(parseBookingUpdate({ ...input, status: "confirmed", payment_expires_at: deadline }).payment_expires_at, null);
+  assert.equal(defaultPaymentExpiry(new Date("2026-10-01T03:00:00.000Z")), deadline);
+  assert.equal(paymentExpiryFromBangkokLocal("2026-10-01T10:10"), deadline);
+  assert.equal(paymentExpiryToBangkokLocal(deadline), "2026-10-01T10:10");
 });
 
 test("repair needs only dates and note and clears customer/money payload", () => {

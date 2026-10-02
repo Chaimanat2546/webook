@@ -80,7 +80,7 @@ export function BookingDateRange({ propertyId, excludeId, start, end, revision, 
       <button type="button" disabled={!start} className={`rounded-xl border p-3 text-left ${pickingEnd ? "border-blue-600 bg-blue-50 text-blue-950" : ""}`} onClick={() => onChange(start, "")}><span className="block text-xs">2 · เช็กเอาต์</span><strong>{displayDate(end)}</strong></button>
     </div>
     <p className="text-sm font-medium" role="status">{loading ? "กำลังโหลดวันว่าง…" : error ? "ยังตรวจสอบวันว่างไม่ได้" : pickingEnd ? "เลือกวันเช็กเอาต์" : start && end ? `${displayDate(start)} – ${displayDate(end)} · ${nightsBetween(start, end)} คืน` : "เลือกวันเช็กอิน"}</p>
-    <div className="flex flex-wrap gap-3 text-xs"><span className="text-red-700">● โอนแล้ว</span><span className="text-green-700">● รอโอน</span><span className="text-gray-600">● ปิดซ่อม</span><span className="text-blue-700">● ช่วงที่เลือก</span></div>
+    <div className="flex flex-wrap gap-3 text-xs"><span className="text-red-700">● ติดจอง</span><span className="text-green-700">● รอโอน</span><span className="text-gray-600">● ปิดซ่อม</span><span className="text-blue-700">● ช่วงที่เลือก</span></div>
     {error && <div role="alert" className="text-sm text-destructive">{error}<Button type="button" variant="outline" size="sm" onClick={() => setRetry(value => value + 1)}>ลองอีกครั้ง</Button></div>}
     {past && <p role="alert" className="text-sm text-destructive">เลือกวันเข้าพักตั้งแต่วันนี้เป็นต้นไป</p>}
     {ready && conflict && <p role="alert" className="text-sm text-destructive">ช่วงนี้ติดจอง {conflict.check_in} ถึง {conflict.check_out} กรุณาเลือกช่วงใหม่</p>}
@@ -102,7 +102,7 @@ export function BookingDateRange({ propertyId, excludeId, start, end, revision, 
         const canEnd = pickingEnd && day > start && !bookingConflict(rows, start, day, excludeId);
         const blocked = day < today || !ready || (!!occupied && !canEnd);
         const selected = day === start || day === end || (!!end && day > start && day < end);
-        const label = occupied ? occupied.status === "repair" ? "ปิดซ่อม" : occupied.status === "waiting" ? "รอโอน" : "โอนแล้ว" : "ว่าง";
+        const label = occupied ? occupied.status === "repair" ? "ปิดซ่อม" : occupied.status === "waiting" ? "รอโอน" : "ติดจอง" : "ว่าง";
         const caption = day === start ? "เข้า" : day === end ? "ออก" : occupied && canEnd ? "ออกได้" : occupied ? label : "";
         const reason = day < today ? "วันที่ผ่านมาแล้ว" : !ready ? "กำลังโหลดวันว่าง" : blocked ? `${displayDate(day)} ${label} เลือกเข้าพักไม่ได้` : pickingEnd && !canEnd ? "เลือกวันเช็กอิน" : canEnd ? "เลือกวันเช็กเอาต์" : "เลือกวันเช็กอิน";
         return <button type="button" disabled={blocked} title={reason} aria-label={`${day} ${label} ${reason}`} aria-pressed={selected}
