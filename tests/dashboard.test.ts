@@ -990,6 +990,24 @@ test("repository routes a legacy S3 cover image through the image proxy", async 
   );
 });
 
+test("repository uses the house cover zone before card-cover selections", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    const url = new URL(new Request(input, init).url);
+    assert.equal(url.pathname, "/rest/v1/images");
+    assert.equal(url.searchParams.get("image_zone"), "eq.cover");
+    assert.equal(url.searchParams.get("order"), "image_move.asc,id.asc");
+    return new Response(JSON.stringify({
+      image_name: "cover-zone.jpg",
+      image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover-zone.jpg",
+    }), { headers: { "Content-Type": "application/json" } });
+  } } });
+
+  assert.equal(
+    await createDashboardRepository(client).coverImageUrl({ kind: "admin" }, "9"),
+    "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/cover-zone.jpg",
+  );
+});
+
 test("repository discards mismatched or foreign house joins even if supplied by a data source", async () => {
   const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => new Response(JSON.stringify([
     dbRow,

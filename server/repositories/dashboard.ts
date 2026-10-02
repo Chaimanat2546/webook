@@ -116,6 +116,18 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
     },
     async coverImageUrl(scope, propertyId) {
       if (scope.kind === "owner" && scope.propertyId !== propertyId) return null;
+      const { data: zoneCover, error: zoneCoverError } = await client.from("images")
+        .select("image_name,image_url")
+        .eq("property_id", propertyId)
+        .eq("image_zone", "cover")
+        .order("image_move")
+        .order("id")
+        .limit(1)
+        .maybeSingle();
+      if (zoneCoverError) throw new Error("dashboard_unavailable");
+      const zoneCoverImageUrl = buildHouseImageDisplayUrl({ imageName: nullableText(zoneCover?.image_name), imageUrl: nullableText(zoneCover?.image_url) });
+      if (zoneCoverImageUrl) return zoneCoverImageUrl;
+
       const { data, error } = await client.from("images")
         .select("image_name,image_url")
         .eq("property_id", propertyId)
