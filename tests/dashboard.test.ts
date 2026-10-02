@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createClient } from "@supabase/supabase-js";
 import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type DashboardBookingSource, type DashboardHouse, type DashboardScope } from "../lib/dashboard.ts";
 import { safeHouseReturnTo } from "../lib/admin-return-to.ts";
+import { parseThaiMonth, thaiMonthValue } from "../lib/thai-month.ts";
 import { createDashboardRepository, type DashboardRepository } from "../server/repositories/dashboard.ts";
 import { DashboardForbidden, loadDashboard, loadDashboardAgency, loadDashboardBookings } from "../server/services/dashboard.ts";
 import { parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery } from "../lib/dashboard-routes.ts";
@@ -27,7 +28,8 @@ test("booking loader accepts only the booking route contract", async () => {
 async function dashboardComponent(name: string, file: string) {
   const bundle = await build({ entryPoints: [fileURLToPath(new URL(file, import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
   const loaded = { exports: {} as Record<string, unknown> };
-  new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
+  const require = createRequire(import.meta.url);
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name === "next/navigation" ? { useRouter: () => ({ push() {} }) } : require(name), loaded, loaded.exports);
   return loaded.exports[name] as ComponentType<Record<string, unknown>>;
 }
 
@@ -336,6 +338,15 @@ test("dashboard months use Bangkok midnight, including year change and leap Febr
   for (const raw of [{ month: "2026-13" }, { month: ["2026-09"] }, { month: "" }, { page: "0" }, { housesPage: "-1" }, { month: "2026-9" }]) assert.throws(() => parseDashboardQuery(raw));
 });
 
+test("shared Thai month picker uses Buddhist Era values", async () => {
+  assert.deepEqual(parseThaiMonth("2026-10"), { month: 10, year: 2569 });
+  assert.equal(thaiMonthValue({ month: 10, year: 2569 }), "2026-10");
+  const ThaiMonthPicker = await dashboardComponent("ThaiMonthPicker", "../components/ui/thai-month-picker.tsx");
+  assert.match(renderToStaticMarkup(createElement(ThaiMonthPicker, { month: "2026-10", onMonthChange() {} })), /ตุลาคม 2569/);
+  assert.throws(() => parseThaiMonth("2026-13"));
+  assert.throws(() => thaiMonthValue({ month: 10, year: 2568.5 }));
+});
+
 test("denied dashboard identities cannot read any booking or new-house data", async () => {
   const repo = repository(null);
   repo.bookings = async () => { assert.fail("denied identity queried bookings"); };
@@ -613,14 +624,18 @@ test("failed or incomplete reads reject rather than displaying partial totals", 
 test("dashboard renders month controls and only administrator views include agency and house history", async () => {
   const bundle = await build({ entryPoints: [fileURLToPath(new URL("../components/admin/dashboard/dashboard-view.tsx", import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
   const loaded = { exports: {} as Record<string, unknown> };
-  new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
+  const require = createRequire(import.meta.url);
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name === "next/navigation" ? { useRouter: () => ({ push() {} }) } : require(name), loaded, loaded.exports);
   const View = loaded.exports.DashboardView as ComponentType<Record<string, unknown>>;
   const query = parseDashboardQuery({ month: "2026-09" });
   for (const scope of [{ kind: "admin" }, { kind: "owner", propertyId: "101" }] as const) {
     const report = await loadDashboard(repository(scope), "signed-in-user", { month: "2026-09" });
     const html = renderToStaticMarkup(createElement(View, { report, query }));
-    assert.match(html, /name="month"/);
-    assert.match(html, /value="2026-09"/);
+    assert.match(html, /data-thai-month-picker/);
+    assert.match(html, /aria-label="เลือกเดือน"/);
+    assert.match(html, /กันยายน 2569/);
+    assert.doesNotMatch(html, /<select/);
+    assert.doesNotMatch(html, /ดูข้อมูล/);
     assert.match(html, /ติดจอง/);
     assert.equal((html.match(/<span class="block text-xl font-semibold tabular-nums">1<\/span>/g) ?? []).length, 1);
     assert.match(html, /ยอดขายจากการจอง/);
