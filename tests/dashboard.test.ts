@@ -610,7 +610,7 @@ test("agency booking links retain the selected booking-list month", async () => 
   const raw = { month: "2026-09", view: "agency", agency: "agency-a" };
   const report = await loadDashboard(repository({ kind: "admin" }, [{ ...booking, updatedAt: "2026-10-01T00:00:00Z" }]), "signed-in-user", raw);
   const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery(raw) }));
-  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc"/);
+  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc&amp;fromAgency=agency-a&amp;bookingSearch="/);
 });
 
 test("agency detail shows only its booking list and house details expose manage destinations", async () => {
@@ -624,7 +624,7 @@ test("agency detail shows only its booking list and house details expose manage 
   assert.match(html, /รายการจอง/);
   assert.match(html, /จำนวนการจอง/);
   assert.doesNotMatch(html, /บ้านยอดขายสูงสุด|section=houses/);
-  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc"/);
+  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc&amp;fromAgency=agency-a&amp;agencyPage=2&amp;bookingSearch="/);
   const houseRaw = { month: "2026-09", view: "house", houseId: "listing-new" };
   const house = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", houseRaw);
   const houseHtml = renderToStaticMarkup(createElement(View, { report: house, query: parseDashboardQuery(houseRaw) }));
