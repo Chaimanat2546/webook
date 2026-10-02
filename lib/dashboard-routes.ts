@@ -188,7 +188,7 @@ export function parseDashboardBookingOrigin(raw: RouteRawQuery): { agencyId: str
   if (typeof fromAgency !== "string" || !/^(unassigned|[a-zA-Z0-9-]{1,128})$/.test(fromAgency)) throw new Error("ต้นทางการจองไม่ถูกต้อง");
   const { fromAgency: _fromAgency, agencySearch, agencySort, agencyPage, bookingSearch, bookingsPage, ...bookingRaw } = raw;
   const bookings = parseDashboardBookingsQuery(bookingRaw);
-  const query = parseDashboardAgencyDetailQuery({ ...bookingRaw, search: agencySearch, agencySort, page: agencyPage, bookingSearch: bookingSearch ?? bookings.search, bookingsPage: bookingsPage ?? bookings.page });
+  const query = parseDashboardAgencyDetailQuery({ ...bookingRaw, search: agencySearch, agencySort, page: agencyPage, bookingSearch: bookingSearch ?? bookings.search, bookingsPage: bookingsPage ?? String(bookings.page) });
   return { agencyId: fromAgency, query };
 }
 
