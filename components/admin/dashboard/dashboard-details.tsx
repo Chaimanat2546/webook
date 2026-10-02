@@ -25,6 +25,10 @@ function Field({ label, children, className }: { label: string; children: ReactN
   return <div className={`min-w-0 ${className ?? ""}`}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium [overflow-wrap:anywhere]">{children}</dd></div>;
 }
 
+function dashboardBookingMonth(value: string): string {
+  return new Date(new Date(value).getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 7);
+}
+
 export function DashboardDetails({
   backHref,
   backLabel = "กลับไปหน้าก่อนหน้า",
@@ -81,8 +85,8 @@ export function DashboardDetails({
           <Button className="col-span-2 h-11 w-full px-3 sm:col-span-1 sm:w-auto" type="submit"><SearchIcon aria-hidden className="size-4" />ค้นหา</Button>
         </form>
         {detail.bookings.total === 0 ? <p role="status" className="rounded-xl border px-4 py-8 text-center text-sm text-muted-foreground">{agencyListQuery.bookingSearch ? "ไม่พบการจองที่ตรงกับคำค้นหา" : "ไม่มีรายการจองในเดือนนี้"}</p> : <>
-            <div className="hidden md:block"><Table className="table-fixed overflow-hidden rounded-xl border"><TableHeader><TableRow><TableHead className="w-[42%]">บ้านพัก</TableHead><TableHead className="w-[38%]">วันเข้าพัก</TableHead><TableHead className="w-[20%] text-right">ยอดจอง</TableHead></TableRow></TableHeader><TableBody>{detail.bookings.rows.map(booking => <DashboardBookingTableRow key={booking.id} booking={booking} showAgency={false} href={dashboardBookingDetailHref({ month: query.month, status: "confirmed", search: "", agency: agencyId, page: 1 }, booking.id)} />)}</TableBody></Table></div>
-            <div className="divide-y overflow-hidden rounded-xl border md:hidden">{detail.bookings.rows.map(booking => <DashboardBookingRow key={booking.id} booking={booking} showAgency={false} href={dashboardBookingDetailHref({ month: query.month, status: "confirmed", search: "", agency: agencyId, page: 1 }, booking.id)} />)}</div>
+            <div className="hidden md:block"><Table className="table-fixed overflow-hidden rounded-xl border"><TableHeader><TableRow><TableHead className="w-[42%]">บ้านพัก</TableHead><TableHead className="w-[38%]">วันเข้าพัก</TableHead><TableHead className="w-[20%] text-right">ยอดจอง</TableHead></TableRow></TableHeader><TableBody>{detail.bookings.rows.map(booking => <DashboardBookingTableRow key={booking.id} booking={booking} showAgency={false} href={dashboardBookingDetailHref({ month: dashboardBookingMonth(booking.updatedAt), status: "confirmed", search: "", sort: "updated-desc", page: 1 }, booking.id)} />)}</TableBody></Table></div>
+            <div className="divide-y overflow-hidden rounded-xl border md:hidden">{detail.bookings.rows.map(booking => <DashboardBookingRow key={booking.id} booking={booking} showAgency={false} href={dashboardBookingDetailHref({ month: dashboardBookingMonth(booking.updatedAt), status: "confirmed", search: "", sort: "updated-desc", page: 1 }, booking.id)} />)}</div>
             <DashboardPager {...detail.bookings} href={page => dashboardAgencyDetailHref(agencyListQuery, agencyId, { bookingsPage: page })} />
         </>}
       </section>

@@ -6,10 +6,11 @@ import { dashboardNights, dashboardShare } from "../lib/dashboard-calculations.t
 import { dashboardAgenciesHref, dashboardAgencyDetailHref, dashboardBookingDetailHref, dashboardHousesHref, dashboardBookingsHref, parseDashboardAgenciesQuery, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery, parseDashboardHousesQuery } from "../lib/dashboard-routes.ts";
 
 test("dashboard booking routes retain only booking filters", () => {
-  const query = parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", search: "DV-101", agency: "agency-a", page: "2" });
-  assert.deepEqual(query, { month: "2026-09", status: "confirmed", search: "DV-101", agency: "agency-a", page: 2 });
-  assert.equal(dashboardBookingsHref(query, { month: "2026-10" }), "/admin/dashboard/bookings?month=2026-10");
-  assert.equal(dashboardBookingDetailHref(query, "booking/1"), "/admin/dashboard/bookings/booking%2F1?month=2026-09&status=confirmed&search=DV-101&agency=agency-a&page=2");
+  const query = parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", search: "DV-101", sort: "price-desc", page: "2" });
+  assert.deepEqual(query, { month: "2026-09", status: "confirmed", search: "DV-101", sort: "price-desc", page: 2 });
+  assert.equal(dashboardBookingsHref(query, { month: "2026-10" }), "/admin/dashboard/bookings?month=2026-10&status=confirmed&search=DV-101&sort=price-desc");
+  assert.equal(dashboardBookingDetailHref(query, "booking/1"), "/admin/dashboard/bookings/booking%2F1?month=2026-09&status=confirmed&search=DV-101&sort=price-desc&page=2");
+  assert.throws(() => parseDashboardBookingsQuery({ month: "2026-09", agency: "agency-a" }));
   assert.throws(() => parseDashboardBookingsQuery({ month: "2026-09", housesPage: "2" }));
 });
 test("dashboard agency and house routes reject booking state", () => {

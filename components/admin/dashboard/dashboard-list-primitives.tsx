@@ -18,9 +18,9 @@ export function DashboardSearchFilter({ ariaLabel, name, placeholder, value }: {
   </div>;
 }
 
-export function DashboardPager({ page, pages, total, href }: { page: number; pages: number; total: number; href: (next: number) => string }) {
+export function DashboardPager({ page, pages, total, href, pageSize = 10 }: { page: number; pages: number; total: number; href: (next: number) => string; pageSize?: number }) {
   return <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm text-muted-foreground">
-    <span>{total ? `${(page - 1) * 10 + 1}–${Math.min(page * 10, total)} จาก ${total} รายการ` : "0 รายการ"}</span>
+    <span>{total ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} จาก ${total} รายการ` : "0 รายการ"}</span>
     <Pagination className="mx-0 w-auto" aria-label="แบ่งหน้ารายการ"><PaginationContent>
       {page > 1 && <PaginationItem><PaginationPrevious className="min-h-11 min-w-11" text="ก่อนหน้า" aria-label="หน้าก่อนหน้า" href={href(page - 1)} /></PaginationItem>}
       <PaginationItem><span className="px-2" aria-current="page">{page} / {pages}</span></PaginationItem>

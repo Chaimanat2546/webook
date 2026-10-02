@@ -5,9 +5,11 @@ import { record } from "../../lib/house-bookings.ts";
 
 export interface DashboardRepository {
   access(actorId: string): Promise<DashboardScope | null>;
-  bookings(scope: DashboardScope, month: DashboardMonth): Promise<DashboardBookingSource[]>;
+  bookings(scope: DashboardScope, month: DashboardMonth, dateField?: DashboardBookingDateField): Promise<DashboardBookingSource[]>;
   newHouses(month: DashboardMonth): Promise<DashboardHouse[]>;
 }
+
+export type DashboardBookingDateField = "created_at" | "updated_at";
 
 function text(value: unknown): string {
   if (typeof value !== "string") throw new Error("dashboard_invalid_data");
@@ -37,15 +39,15 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
       if (error) throw new Error("dashboard_unavailable");
       return dashboardScope(data);
     },
-    async bookings(scope, month) {
+    async bookings(scope, month, dateField = "created_at") {
       const rows: DashboardBookingSource[] = [];
       // Read all pages, even when PostgREST's configured cap is below 500.
       for (let offset = 0; ;) {
         const agencyFields = scope.kind === "admin" ? ",agent_id,agent:agents(id,name)" : "";
         let query = client.from("bookings")
-          .select(`id,booking_code,listing_id,houseid,check_in,check_out,status,price_max,created_at,listing:listings!inner(id,property_id,title)${agencyFields}`, { count: "exact" })
-          .gte("created_at", month.start).lt("created_at", month.end)
-          .order("created_at", { ascending: false }).order("id", { ascending: false })
+          .select(`id,booking_code,listing_id,houseid,check_in,check_out,status,price_max,created_at,updated_at,customer:customers(first_name,last_name),listing:listings!inner(id,property_id,title)${agencyFields}`, { count: "exact" })
+          .gte(dateField, month.start).lt(dateField, month.end)
+          .order(dateField, { ascending: false }).order("id", { ascending: false })
           .range(offset, offset + 499);
         if (scope.kind === "owner") {
           query = query.eq("houseid", scope.propertyId).eq("listing.property_id", scope.propertyId);
@@ -60,10 +62,13 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
           if (!propertyId || propertyId !== dashboardPropertyId(house.property_id) || row.listing_id !== house.id) continue;
           if (scope.kind === "owner" && propertyId !== scope.propertyId) continue;
           const agent = scope.kind === "admin" && row.agent ? record(row.agent) : null;
+          const customer = row.customer ? record(row.customer) : null;
           rows.push({
             id: String(row.id), code: text(row.booking_code), propertyId, houseTitle: typeof house.title === "string" ? house.title : `DV-${propertyId}`,
             checkIn: text(row.check_in), checkOut: text(row.check_out), status: typeof row.status === "string" ? row.status : null,
-            createdAt: text(row.created_at), priceCents: cents(row.price_max),
+            createdAt: text(row.created_at), updatedAt: text(row.updated_at), priceCents: cents(row.price_max),
+            customerFirstName: customer && typeof customer.first_name === "string" ? customer.first_name : null,
+            customerLastName: customer && typeof customer.last_name === "string" ? customer.last_name : null,
             agentId: scope.kind === "admin" && typeof row.agent_id === "string" ? row.agent_id : null,
             agentName: agent && agent.id === row.agent_id && typeof agent.name === "string" ? agent.name : null,
           });

@@ -18,6 +18,6 @@ export default async function DashboardBookingDetailPage({ params, searchParams 
     if (error instanceof DashboardForbidden || error instanceof DashboardItemNotFound) notFound();
     notFound();
   }
-  const query = parseDashboardQuery({ month: routeQuery.month, view: "booking", from: "bookings", bookingId, status: routeQuery.status, search: routeQuery.search, agency: routeQuery.agency, page: String(routeQuery.page) });
+  const query = parseDashboardQuery({ month: routeQuery.month, view: "booking", from: "bookings", bookingId, status: routeQuery.status, search: routeQuery.search, page: String(routeQuery.page) });
   return <DashboardDetails backHref={dashboardBookingsHref(routeQuery)} backLabel="กลับไปการจอง" query={query} report={report} />;
 }

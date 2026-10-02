@@ -30,7 +30,7 @@ export interface DashboardBookingsQuery {
   month: string;
   status: string;
   search: string;
-  agency: string;
+  sort: DashboardBookingSort;
   page: number;
 }
 
@@ -51,6 +51,14 @@ export const DASHBOARD_AGENCY_SORTS = [
   { value: "price-asc", label: "ราคาต่ำสุด" },
 ] as const;
 export type DashboardAgencySort = typeof DASHBOARD_AGENCY_SORTS[number]["value"];
+
+export const DASHBOARD_BOOKING_SORTS = [
+  { value: "checkin-desc", label: "วันที่เข้าพักล่าสุด" },
+  { value: "price-desc", label: "ยอดจองสูงสุด" },
+  { value: "price-asc", label: "ยอดจองต่ำสุด" },
+  { value: "updated-desc", label: "จองล่าสุด" },
+] as const;
+export type DashboardBookingSort = typeof DASHBOARD_BOOKING_SORTS[number]["value"];
 
 export const DASHBOARD_STATUSES = [
   { value: "confirmed", label: "ติดจอง" },
@@ -77,12 +85,15 @@ export interface DashboardBooking {
   checkIn: string;
   checkOut: string;
   createdAt: string;
+  updatedAt: string;
   status: string | null;
   priceCents: number | null;
   agency?: { id: string | null; name: string };
 }
 
 export interface DashboardBookingSource extends DashboardBooking {
+  customerFirstName: string | null;
+  customerLastName: string | null;
   agentId: string | null;
   agentName: string | null;
 }

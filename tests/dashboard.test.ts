@@ -11,18 +11,63 @@ import { safeHouseReturnTo } from "../lib/admin-return-to.ts";
 import { parseThaiMonth, thaiMonthValue } from "../lib/thai-month.ts";
 import { createDashboardRepository, type DashboardRepository } from "../server/repositories/dashboard.ts";
 import { DashboardForbidden, loadDashboard, loadDashboardAgency, loadDashboardBookings } from "../server/services/dashboard.ts";
-import { parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery } from "../lib/dashboard-routes.ts";
+import { dashboardBookingsHref, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery } from "../lib/dashboard-routes.ts";
 
 const booking: DashboardBookingSource = {
   id: "1", code: "BK1", propertyId: "101", houseTitle: "House A", checkIn: "2026-11-01", checkOut: "2026-11-03",
-  createdAt: "2026-09-10T00:00:00Z", status: "confirmed", priceCents: 123450, agentId: "agency-a", agentName: "Agency A",
+  createdAt: "2026-09-10T00:00:00Z", updatedAt: "2026-09-10T00:00:00Z", customerFirstName: null, customerLastName: null,
+  status: "confirmed", priceCents: 123450, agentId: "agency-a", agentName: "Agency A",
 };
 
-test("booking loader accepts only the booking route contract", async () => {
-  const query = parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", agency: "agency-a" });
+test("booking loader defaults to confirmed bookings sorted by latest update", async () => {
+  const query = parseDashboardBookingsQuery({ month: "2026-09" });
   const report = await loadDashboardBookings(repository({ kind: "admin" }), "signed-in-user", query);
+  assert.equal(query.status, "confirmed");
+  assert.equal(query.sort, "updated-desc");
   assert.equal(report.bookings.total, 1);
   assert.deepEqual(report.bookings.rows[0].agency, { id: "agency-a", name: "Agency A" });
+});
+
+test("booking route query allowlists filters and resets pagination on changes", () => {
+  const query = parseDashboardBookingsQuery({ month: "2026-09", status: "waiting", search: "  บ้านพัก  ", sort: "price-asc", page: "3" });
+  assert.deepEqual(query, { month: "2026-09", status: "waiting", search: "บ้านพัก", sort: "price-asc", page: 3 });
+  assert.throws(() => parseDashboardBookingsQuery({ month: "2026-09", agency: "agency-a" }));
+  assert.throws(() => parseDashboardBookingsQuery({ month: "2026-09", sort: "date-asc" }));
+  assert.equal(dashboardBookingsHref(query, { search: "วิลล่า" }), "/admin/dashboard/bookings?month=2026-09&status=waiting&search=%E0%B8%A7%E0%B8%B4%E0%B8%A5%E0%B8%A5%E0%B9%88%E0%B8%B2&sort=price-asc");
+  assert.equal(dashboardBookingsHref(query, { page: 2 }), "/admin/dashboard/bookings?month=2026-09&status=waiting&search=%E0%B8%9A%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%B1%E0%B8%81&sort=price-asc&page=2");
+});
+
+test("booking list filters the selected updated month and approved search fields", async () => {
+  const rows = [
+    { ...booking, id: "updated-house", houseTitle: "บ้านริมทะเล", createdAt: "2026-08-31T23:00:00Z", updatedAt: "2026-09-25T00:00:00Z", customerFirstName: "สมชาย", customerLastName: "ใจดี" },
+    { ...booking, id: "updated-customer", houseTitle: "Villa B", createdAt: "2026-08-31T23:00:00Z", updatedAt: "2026-09-20T00:00:00Z", customerFirstName: "สายใจ", customerLastName: "สุขใจ" },
+    { ...booking, id: "updated-agency", houseTitle: "Villa C", createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-09-15T00:00:00Z", customerFirstName: null, customerLastName: null, agentName: "Agency North" },
+    { ...booking, id: "outside-updated-month", houseTitle: "Villa D", createdAt: "2026-09-10T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z", customerFirstName: "เดือน", customerLastName: "ถัดไป" },
+  ] as unknown as DashboardBookingSource[];
+  const repo = repository({ kind: "admin" }, rows);
+  for (const [search, expected] of [["บ้านริม", ["updated-house"]], ["DV-101", ["updated-house", "updated-customer", "updated-agency"]], ["สายใจ สุขใจ", ["updated-customer"]], ["agency north", ["updated-agency"]]] as const) {
+    const report = await loadDashboardBookings(repo, "signed-in-user", parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", search }));
+    assert.deepEqual(report.bookings.rows.map(row => row.id), expected);
+  }
+});
+
+test("booking list sorts the selected confirmed rows with unpriced rows last", async () => {
+  const rows = [
+    { ...booking, id: "updated", checkIn: "2026-11-01", priceCents: 200, updatedAt: "2026-09-20T00:00:00Z", customerFirstName: null, customerLastName: null },
+    { ...booking, id: "checkin", checkIn: "2026-12-01", priceCents: 500, updatedAt: "2026-09-10T00:00:00Z", customerFirstName: null, customerLastName: null },
+    { ...booking, id: "cheap", checkIn: "2026-10-01", priceCents: 100, updatedAt: "2026-09-05T00:00:00Z", customerFirstName: null, customerLastName: null },
+    { ...booking, id: "unpriced", checkIn: "2026-12-02", priceCents: null, updatedAt: "2026-09-25T00:00:00Z", customerFirstName: null, customerLastName: null },
+  ] as unknown as DashboardBookingSource[];
+  const repo = repository({ kind: "admin" }, rows);
+  for (const [sort, expected] of [
+    ["updated-desc", ["unpriced", "updated", "checkin", "cheap"]],
+    ["checkin-desc", ["unpriced", "checkin", "updated", "cheap"]],
+    ["price-desc", ["checkin", "updated", "cheap", "unpriced"]],
+    ["price-asc", ["cheap", "updated", "checkin", "unpriced"]],
+  ] as const) {
+    const report = await loadDashboardBookings(repo, "signed-in-user", parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", sort }));
+    assert.deepEqual(report.bookings.rows.map(row => row.id), expected);
+  }
 });
 
 async function dashboardComponent(name: string, file: string) {
@@ -37,7 +82,7 @@ async function dashboardPageComponent(file: string, repo: DashboardRepository) {
   const bundle = await build({ entryPoints: [fileURLToPath(new URL(file, import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external", plugins: [{ name: "auth-boundary", setup(builder) { builder.onResolve({ filter: /server\/auth\/dashboard$/ }, () => ({ path: "dashboard-auth-fixture", external: true })); } }] });
   const loaded = { exports: {} as Record<string, unknown> };
   const require = createRequire(import.meta.url);
-  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name === "server-only" ? {} : name === "dashboard-auth-fixture" ? { dashboardSession: async () => ({ actorId: "signed-in-user", repository: repo }) } : require(name), loaded, loaded.exports);
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name === "server-only" ? {} : name === "dashboard-auth-fixture" ? { dashboardSession: async () => ({ actorId: "signed-in-user", repository: repo }) } : name === "next/navigation" ? { ...require(name), useRouter: () => ({ push() {} }) } : require(name), loaded, loaded.exports);
   return loaded.exports.default as (props: { searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
 }
 
@@ -57,17 +102,26 @@ test("canonical bookings page renders the booking workflow", async () => {
   const repo = repository({ kind: "admin" });
   const Page = await dashboardPageComponent("../app/admin/dashboard/bookings/page.tsx", repo);
   const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ month: "2026-09", status: "confirmed" }) }) as ReactNode);
-  assert.match(html, /<h1[^>]*>.*การจอง<\/h1>/);
+  assert.match(html, /<h1[^>]*>.*รายการจอง<\/h1>/);
   assert.match(html, /ตรวจสอบและจัดการรายการจอง/);
   assert.match(html, /href="\/admin\/dashboard\?month=2026-09"[^>]*>.*data-icon="inline-start".*กลับไปภาพรวม/);
   assert.match(html, /<header[^>]*>.*กลับไปภาพรวม.*<h1[^>]*>.*การจอง<\/h1>/);
+  assert.match(html, /class="mx-auto w-full max-w-7xl"/);
   assert.doesNotMatch(html, /1 รายการ · ฿1,234\.50/);
   assert.doesNotMatch(html, /การจองติดจอง/);
   assert.match(html, /overflow-hidden rounded-xl border/);
+  assert.match(html, /hidden overflow-hidden rounded-xl border md:block/);
+  assert.match(html, /space-y-3 md:hidden/);
+  assert.match(html, /rounded-xl border bg-card p-3 shadow-sm/);
   assert.doesNotMatch(html, /ยอดขายเอเจนซี่/);
-  assert.ok(html.indexOf('aria-label="ค้นหาการจอง"') < html.indexOf('id="booking-month"'));
-  assert.match(html, /action="\/admin\/dashboard\/bookings"/);
-  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed"/);
+  assert.match(html, /aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
+  assert.match(html, /data-thai-month-picker/);
+  assert.doesNotMatch(html, /type="month"[^>]*id="booking-month"/);
+  assert.match(html, /id="booking-sort" name="sort"/);
+  assert.match(html, /value="updated-desc" selected/);
+  assert.doesNotMatch(html, /name="agency"/);
+  assert.match(html, /overflow-x-auto/);
+  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc"/);
 });
 
 test("canonical agency and house pages render their own workflows", async () => {
@@ -119,7 +173,7 @@ test("canonical detail pages use their list return headers", async () => {
   const repo = repository({ kind: "admin" });
   const BookingPage = await dashboardPageComponent("../app/admin/dashboard/bookings/[bookingId]/page.tsx", repo) as (props: { params: Promise<{ bookingId: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
   const bookingHtml = renderToStaticMarkup(await BookingPage({ params: Promise.resolve({ bookingId: "1" }), searchParams: Promise.resolve({ month: "2026-09", status: "confirmed" }) }) as ReactNode);
-  assert.match(bookingHtml, /<header[^>]*>.*href="\/admin\/dashboard\/bookings\?month=2026-09&amp;status=confirmed"[^>]*>.*กลับไปการจอง.*<h1[^>]*>รายละเอียดการจอง<\/h1>/);
+  assert.match(bookingHtml, /<header[^>]*>.*href="\/admin\/dashboard\/bookings\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc"[^>]*>.*กลับไปการจอง.*<h1[^>]*>รายละเอียดการจอง<\/h1>/);
   assert.equal((bookingHtml.match(/House A · DV-101/g) ?? []).length, 1);
 
   const AgencyPage = await dashboardPageComponent("../app/admin/dashboard/agencies/[agencyId]/page.tsx", repo) as (props: { params: Promise<{ agencyId: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
@@ -211,27 +265,28 @@ test("agency booking search reports when no booking matches", async () => {
   assert.match(html, /name="bookingSearch"[^>]*value="no matching house"/);
 });
 
-test("booking list keeps its workflow in a compact toolbar", async () => {
+test("booking filters use the Thai month picker without an agency dropdown", async () => {
   const View = await dashboardComponent("BookingsList", "../components/admin/dashboard/bookings-list.tsx");
-  const raw = { month: "2026-09", view: "bookings", status: "confirmed", agency: "agency-a", page: "2" };
+  const raw = { month: "2026-09", view: "bookings", status: "confirmed", page: "2" };
   const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", raw);
-  const query = parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", agency: "agency-a", page: "2" });
+  const query = parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", sort: "updated-desc", page: "2" });
   const html = renderToStaticMarkup(createElement(View, { report, query }));
   assert.match(html, /name="status"/);
-  assert.match(html, /grid min-w-0 grid-cols-2 gap-2/);
-  assert.match(html, /class="relative col-span-2 min-w-0 sm:col-span-1 sm:flex-1 sm:max-w-sm"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาการจอง"/);
-  assert.match(html, /class="relative col-span-1 min-w-0 sm:col-span-1 sm:w-48"[\s\S]*id="booking-month"/);
-  assert.match(html, /class="[^"]*col-span-2[^"]*h-11[^"]*" type="submit"/);
-  assert.match(html, /class="[^\"]*h-11[^\"]*" id="booking-month"/);
+  assert.match(html, /aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
+  assert.match(html, /placeholder="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
+  assert.match(html, /data-thai-month-picker/);
+  assert.doesNotMatch(html, /type="month"[^>]*id="booking-month"/);
   assert.match(html, /id="booking-status" name="status" class="[^\"]*h-11/);
   assert.match(html, /value="confirmed" selected/);
-  assert.match(html, /name="agency"[^>]*value="agency-a"/);
+  assert.match(html, /id="booking-sort" name="sort"/);
+  assert.match(html, /value="updated-desc" selected/);
+  assert.doesNotMatch(html, /name="agency"/);
+  assert.match(html, /overflow-x-auto/);
   assert.doesNotMatch(html, /name="page"/);
   assert.doesNotMatch(html, /กลับภาพรวม/);
   assert.doesNotMatch(html, /การจองติดจอง/);
-  assert.match(html, /aria-label="ค้นหาการจอง"/);
   assert.match(html, /data-dashboard-detail-link/);
-  assert.match(html, /เอเจนซี่: Agency A/);
+  assert.doesNotMatch(html, /เอเจนซี่: Agency A/);
   assert.doesNotMatch(html, /รายการ ·/);
   assert.doesNotMatch(html, /ยอดขายเอเจนซี่/);
   assert.match(html, /บ้าน \/ DV/);
@@ -241,6 +296,19 @@ test("booking list keeps its workflow in a compact toolbar", async () => {
   assert.match(html, /฿1,234\.50/);
   assert.doesNotMatch(html, /กดรายการเพื่อดูรายละเอียด/);
   assert.doesNotMatch(html, /รหัสเอเจนซี่/);
+});
+
+test("booking pager reports nine rows per page", async () => {
+  const DashboardPager = await dashboardComponent("DashboardPager", "../components/admin/dashboard/dashboard-list-primitives.tsx");
+  const html = renderToStaticMarkup(createElement(DashboardPager, {
+    page: 1,
+    pages: 2,
+    total: 10,
+    pageSize: 9,
+    href: () => "#",
+  }));
+
+  assert.match(html, /1–9 จาก 10 รายการ/);
 });
 
 test("booking detail exposes operational fields but repair has no monetary amount", async () => {
@@ -272,6 +340,14 @@ test("house workspace return links allow dashboard detail routes and reject exte
   assert.equal(safeHouseReturnTo("/admin/dashboard/houses/id/extra"), null);
 });
 
+test("agency booking links use the booking updated month for the detail route", async () => {
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const raw = { month: "2026-09", view: "agency", agency: "agency-a" };
+  const report = await loadDashboard(repository({ kind: "admin" }, [{ ...booking, updatedAt: "2026-10-01T00:00:00Z" }]), "signed-in-user", raw);
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery(raw) }));
+  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-10&amp;status=confirmed&amp;sort=updated-desc"/);
+});
+
 test("agency detail shows only its booking list and house details expose manage destinations", async () => {
   const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
   const raw = { month: "2026-09", view: "agency", agency: "agency-a", from: "agencies", agenciesPage: "2" };
@@ -283,7 +359,7 @@ test("agency detail shows only its booking list and house details expose manage 
   assert.match(html, /รายการจอง/);
   assert.match(html, /จำนวนการจอง/);
   assert.doesNotMatch(html, /บ้านยอดขายสูงสุด|section=houses/);
-  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;agency=agency-a"/);
+  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc"/);
   const houseRaw = { month: "2026-09", view: "house", houseId: "listing-new" };
   const house = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", houseRaw);
   const houseHtml = renderToStaticMarkup(createElement(View, { report: house, query: parseDashboardQuery(houseRaw) }));
@@ -400,9 +476,19 @@ test("report boundaries exclude the next month and paginate details without redu
   assert.equal(report.bookings.rows.length, 6);
 });
 
+test("dashboard booking module shows nine bookings per page", async () => {
+  const rows = Array.from({ length: 10 }, (_, index) => ({ ...booking, id: `booking-page-${index + 1}` }));
+  const firstPage = await loadDashboardBookings(repository({ kind: "admin" }, rows), "signed-in-user", parseDashboardBookingsQuery({ month: "2026-09", page: "1" }));
+  const secondPage = await loadDashboardBookings(repository({ kind: "admin" }, rows), "signed-in-user", parseDashboardBookingsQuery({ month: "2026-09", page: "2" }));
+
+  assert.equal(firstPage.bookings.pages, 2);
+  assert.equal(firstPage.bookings.rows.length, 9);
+  assert.equal(secondPage.bookings.rows.length, 1);
+});
+
 const dbRow = {
   id: 1, booking_code: "BK1", listing_id: "listing-a", houseid: 101, check_in: "2026-11-01", check_out: "2026-11-03",
-  status: "confirmed", price_max: "1234.50", created_at: "2026-09-10T00:00:00Z",
+  status: "confirmed", price_max: "1234.50", created_at: "2026-09-10T00:00:00Z", updated_at: "2026-09-10T00:00:00Z",
   listing: { id: "listing-a", property_id: 101, title: "House A" },
 };
 
@@ -552,14 +638,15 @@ test("agency detail lists only that agency's confirmed bookings and paginates al
   assert.deepEqual(filtered.detail.bookings.rows.map(row => row.id), ["agency-booking-12", "agency-booking-11", "agency-booking-10", "agency-booking-1"]);
 });
 
-test("repository owner reads constrain both house identifiers and omit agency/customer fields", async () => {
+test("repository owner reads constrain both house identifiers and select only customer names", async () => {
   let calls = 0;
   const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
     const request = new Request(input, init), url = new URL(request.url);
     assert.equal(url.searchParams.get("houseid"), "eq.101");
     assert.equal(url.searchParams.get("listing.property_id"), "eq.101");
     assert.deepEqual(url.searchParams.getAll("created_at"), ["gte.2026-08-31T17:00:00.000Z", "lt.2026-09-30T17:00:00.000Z"]);
-    assert.doesNotMatch(url.searchParams.get("select") ?? "", /agent|customer|note|phone/);
+    assert.match(url.searchParams.get("select") ?? "", /customer:customers\(first_name,last_name\)/);
+    assert.doesNotMatch(url.searchParams.get("select") ?? "", /agent|note|phone/);
     assert.equal(url.searchParams.get("offset"), String(calls));
     calls++;
     // Simulate a server cap of one row despite our requested batch of 500.
@@ -570,6 +657,17 @@ test("repository owner reads constrain both house identifiers and omit agency/cu
   assert.equal(rows.length, 2);
   assert.equal(rows[0].priceCents, 123450);
   assert.equal(rows[0].agentId, null);
+});
+
+test("repository can bound dashboard bookings by updated_at", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    const url = new URL(new Request(input, init).url);
+    assert.deepEqual(url.searchParams.getAll("updated_at"), ["gte.2026-08-31T17:00:00.000Z", "lt.2026-09-30T17:00:00.000Z"]);
+    assert.equal(url.searchParams.get("order"), "updated_at.desc,id.desc");
+    return new Response(JSON.stringify([dbRow]), { headers: { "Content-Type": "application/json", "Content-Range": "0-0/1" } });
+  } } });
+  const rows = await createDashboardRepository(client).bookings({ kind: "admin" }, parseDashboardQuery({ month: "2026-09" }), "updated_at");
+  assert.equal(rows[0].updatedAt, "2026-09-10T00:00:00Z");
 });
 
 test("repository discards mismatched or foreign house joins even if supplied by a data source", async () => {

@@ -19,8 +19,8 @@ export default async function DashboardBookingsPage({ searchParams }: { searchPa
     notFound();
   }
   return (
-    <div>
-      <DashboardTaskHeader backHref={`/admin/dashboard?month=${routeQuery.month}`} backLabel="กลับไปภาพรวม" description="ตรวจสอบและจัดการรายการจอง" title="การจอง" />
+    <div className="mx-auto w-full max-w-7xl">
+      <DashboardTaskHeader backHref={`/admin/dashboard?month=${routeQuery.month}`} backLabel="กลับไปภาพรวม" description="ตรวจสอบและจัดการรายการจอง" title="รายการจอง" />
       <BookingsList report={report} query={routeQuery} />
     </div>
   );
