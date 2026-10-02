@@ -16,6 +16,9 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "../../ui/tab
 import { DashboardBookingRow, DashboardBookingStatusBadge, DashboardBookingTableRow } from "./dashboard-rows";
 import { DashboardMonthFilter, DashboardPager, DashboardSearchFilter } from "./dashboard-list-primitives";
 import { DashboardTaskHeader } from "./dashboard-task-header";
+import { DashboardDetailLayout } from "./dashboard-detail-layout";
+import { DashboardSummaryCard } from "./dashboard-summary-card";
+import { DashboardTabs } from "./dashboard-tabs";
 
 interface DashboardDetailsProps {
   backHref?: string;
@@ -153,15 +156,14 @@ export function DashboardDetails({
       : customerError
         ? <p role="status" className="py-3 text-sm text-destructive">ไม่สามารถโหลดข้อมูลลูกค้าได้</p>
         : <BookingCustomerDetailContent customer={customer} mobile={false} />;
-    return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
+    const tabs = [{ label: "ข้อมูลการจอง", icon: TicketCheckIcon, value: "booking" as const }, { label: "ข้อมูลลูกค้า", icon: CircleUserRoundIcon, value: "customer" as const }, { label: "ค่าใช้จ่าย", icon: CreditCardIcon, value: "costs" as const }];
+    return <DashboardDetailLayout>
       <header className="space-y-1 lg:hidden"><div className="flex items-center justify-between gap-3"><Link className="inline-flex min-h-11 items-center gap-1 text-sm font-medium" href={resolvedBackHref}><span aria-hidden>←</span>{backLabel}</Link><DashboardBookingStatusBadge status={status} /></div><h1 className="text-xl font-semibold">รายละเอียดการจอง</h1><p className="text-sm font-medium text-muted-foreground">{booking.houseTitle}</p><p className="text-xs text-muted-foreground">DV-{booking.propertyId}</p></header>
       <div className="hidden lg:block"><DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description={`${booking.houseTitle} · DV-${booking.propertyId}`} title="รายละเอียดการจอง" /></div>
-      <nav aria-label="ส่วนของรายละเอียดการจอง" className="hidden gap-1 overflow-x-auto border-b pb-px lg:flex" role="tablist">
-        {[{ label: "ข้อมูลการจอง", icon: TicketCheckIcon, value: "booking" as const }, { label: "ข้อมูลลูกค้า", icon: CircleUserRoundIcon, value: "customer" as const }, { label: "ค่าใช้จ่าย", icon: CreditCardIcon, value: "costs" as const }].map(({ label, icon: Icon, value }) => <button aria-selected={value === bookingTab} className="inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground aria-selected:border-primary aria-selected:text-primary" key={label} onClick={() => selectBookingTab(value)} role="tab" type="button"><Icon aria-hidden className="size-4" />{label}</button>)}
-      </nav>
+      <DashboardTabs ariaLabel="ส่วนของรายละเอียดการจอง" className="hidden lg:flex" onValueChange={selectBookingTab} tabs={tabs} value={bookingTab} />
       <div className="space-y-4 lg:hidden" data-dashboard-booking-mobile-summary><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} /><div><nav aria-label="ส่วนของรายละเอียดการจองบนมือถือ" className="flex gap-1 overflow-x-auto border-b pb-px" data-dashboard-booking-mobile-tabs role="tablist">{[{ label: "ข้อมูลการจอง", icon: TicketCheckIcon, value: "booking" as const }, { label: "ข้อมูลลูกค้า", icon: CircleUserRoundIcon, value: "customer" as const }, { label: "ค่าใช้จ่าย", icon: CreditCardIcon, value: "costs" as const }].map(({ label, icon: Icon, value }) => <button aria-selected={value === bookingTab} className="inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground aria-selected:border-primary aria-selected:text-primary" key={label} onClick={() => selectBookingTab(value)} role="tab" type="button"><Icon aria-hidden className="size-4" />{label}</button>)}</nav><div className="pt-4"><div className={bookingTab === "booking" ? "" : "hidden"}><dl data-dashboard-booking-mobile-timestamps><BookingDetailRow icon={TicketCheckIcon} label="รหัสจอง">{booking.code}</BookingDetailRow><BookingDetailRow icon={CalendarDaysIcon} label="วันที่สร้าง">{dashboardDate(booking.createdAt, true)}</BookingDetailRow><BookingDetailRow icon={CalendarDaysIcon} label="อัปเดตล่าสุด">{dashboardDate(booking.updatedAt, true)}</BookingDetailRow><BookingDetailRow icon={CircleUserRoundIcon} label="ผู้บันทึก">{detail.createdByName ?? "ไม่ระบุผู้บันทึก"}</BookingDetailRow><BookingDetailRow icon={Building2Icon} label="เอเจนซี่">{agency}</BookingDetailRow><BookingDetailRow icon={HouseIcon} label="บ้าน / โครงการ">{booking.houseTitle}</BookingDetailRow><BookingDetailRow icon={TagIcon} label="สถานะ"><DashboardBookingStatusBadge status={status} /></BookingDetailRow><BookingDetailRow icon={TicketCheckIcon} label="ช่องทางการจอง">{channel}</BookingDetailRow></dl></div><div className={bookingTab === "customer" ? "" : "hidden"}>{customer === undefined ? <BookingCustomerLoading /> : customerError ? <p role="status" className="py-3 text-sm text-destructive">ไม่สามารถโหลดข้อมูลลูกค้าได้</p> : <BookingCustomerDetailContent customer={customer} mobile />}</div><div className={bookingTab === "costs" ? "" : "hidden"}><BookingCostsContent costs={detail.costs} mobile status={status} /></div></div></div></div>
       <div className="hidden gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card className="order-last" size="sm"><CardHeader className="!flex items-center justify-between pb-0"><CardTitle className="font-semibold">สรุปการจอง</CardTitle><DashboardBookingStatusBadge status={status} /></CardHeader><CardContent className="space-y-4"><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} /></CardContent></Card>
+        <DashboardSummaryCard status={<DashboardBookingStatusBadge status={status} />} title="สรุปการจอง"><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} /></DashboardSummaryCard>
         <div className="order-first">
           <div className={bookingTab === "booking" ? "space-y-4" : "hidden"}><Card size="sm"><CardHeader className="border-b"><CardTitle className="font-semibold">ข้อมูลการจอง</CardTitle></CardHeader><CardContent><dl>
             <BookingDetailRow icon={TicketCheckIcon} label="รหัสจอง">{booking.code}</BookingDetailRow>
@@ -175,7 +177,7 @@ export function DashboardDetails({
           {detail.note && <Card className="bg-primary/5" size="sm"><CardHeader><CardTitle className="font-semibold">หมายเหตุ</CardTitle></CardHeader><CardContent><p className="whitespace-pre-line text-sm">{detail.note}</p></CardContent></Card>}</div><div className={bookingTab === "customer" ? "" : "hidden"}>{customerContent}</div><div className={bookingTab === "costs" ? "" : "hidden"}><BookingCostsContent costs={detail.costs} status={status} /></div>
         </div>
       </div>
-    </div>;
+    </DashboardDetailLayout>;
   }
 
   if (detail.kind === "agency") {

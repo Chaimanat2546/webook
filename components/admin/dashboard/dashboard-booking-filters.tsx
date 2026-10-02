@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Sheet, SheetContent, SheetTrigger } from "../../ui/sheet";
 import { ThaiDateRangePicker } from "../../ui/thai-date-range-picker";
 import { ThaiMonthPicker } from "../../ui/thai-month-picker";
+import { DashboardListToolbar } from "./dashboard-list-toolbar";
 
 interface DashboardBookingFiltersProps {
   query: DashboardBookingsQuery;
@@ -101,7 +102,7 @@ export function DashboardBookingFilters({ query }: DashboardBookingFiltersProps)
     navigate({ search: search.trim() });
   }
 
-  return <form className="mb-4 space-y-2" onSubmit={submit}>
+  return <DashboardListToolbar onSubmit={submit}>
     <div className="relative w-full">
       <SearchIcon aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่" className="h-11 pl-9 pr-11" name="search" onChange={event => setSearch(event.target.value)} placeholder="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่" type="search" value={search} />
@@ -137,7 +138,7 @@ export function DashboardBookingFilters({ query }: DashboardBookingFiltersProps)
         </Sheet></div>
       </div>
     </div>
-  </form>;
+  </DashboardListToolbar>;
 }
 
 function localDate(value: string): Date {

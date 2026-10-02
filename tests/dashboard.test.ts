@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient } from "@supabase/supabase-js";
+import { CircleUserRoundIcon, CreditCardIcon, TicketCheckIcon } from "lucide-react";
 import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type DashboardBookingSource, type DashboardHouse, type DashboardScope } from "../lib/dashboard.ts";
 import { safeHouseReturnTo } from "../lib/admin-return-to.ts";
 import { parseThaiMonth, thaiMonthValue } from "../lib/thai-month.ts";
@@ -457,6 +458,58 @@ test("booking pager reports nine rows per page", async () => {
   }));
 
   assert.match(html, /1–9 จาก 10 รายการ/);
+});
+
+test("dashboard detail primitives preserve responsive slots and summary framing", async () => {
+  const DashboardDetailLayout = await dashboardComponent("DashboardDetailLayout", "../components/admin/dashboard/dashboard-detail-layout.tsx");
+  const DashboardSummaryCard = await dashboardComponent("DashboardSummaryCard", "../components/admin/dashboard/dashboard-summary-card.tsx");
+  const summary = createElement(DashboardSummaryCard, { title: "สรุปตัวอย่าง", status: createElement("span", null, "ติดจอง") }, "ข้อมูลสรุป");
+  const html = renderToStaticMarkup(createElement(DashboardDetailLayout, {
+    desktopContent: createElement("p", null, "เนื้อหา desktop"),
+    desktopHeader: createElement("p", null, "หัวข้อ desktop"),
+    desktopSummary: summary,
+    mobileContent: createElement("p", null, "เนื้อหา mobile"),
+    mobileHeader: createElement("p", null, "หัวข้อ mobile"),
+    mobileSummary: createElement("p", null, "สรุป mobile"),
+    tabs: createElement("p", null, "แท็บตัวอย่าง"),
+  }));
+  assert.match(html, /mx-auto min-w-0 max-w-7xl space-y-5/);
+  assert.match(html, /หัวข้อ mobile[\s\S]*สรุป mobile[\s\S]*แท็บตัวอย่าง[\s\S]*เนื้อหา mobile/);
+  assert.match(html, /หัวข้อ desktop[\s\S]*แท็บตัวอย่าง[\s\S]*เนื้อหา desktop[\s\S]*สรุปตัวอย่าง[\s\S]*ติดจอง[\s\S]*ข้อมูลสรุป/);
+});
+
+test("dashboard tabs render only enabled selectable sections", async () => {
+  const DashboardTabs = await dashboardComponent("DashboardTabs", "../components/admin/dashboard/dashboard-tabs.tsx");
+  const html = renderToStaticMarkup(createElement(DashboardTabs, {
+    ariaLabel: "แท็บตัวอย่าง",
+    onValueChange() {},
+    tabs: [
+      { icon: TicketCheckIcon, label: "ข้อมูลการจอง", value: "booking" },
+      { icon: CircleUserRoundIcon, label: "ข้อมูลลูกค้า", value: "customer" },
+      { icon: CreditCardIcon, label: "ค่าใช้จ่าย", value: "costs" },
+    ],
+    value: "customer",
+  }));
+  assert.equal((html.match(/role="tab"/g) ?? []).length, 3);
+  assert.match(html, /ข้อมูลการจอง/);
+  assert.match(html, /ข้อมูลลูกค้า/);
+  assert.match(html, /ค่าใช้จ่าย/);
+  assert.match(html, /aria-selected="true"[^>]*>.*ข้อมูลลูกค้า/);
+  assert.doesNotMatch(html, /disabled=""|เอกสาร|ประวัติการเปลี่ยนแปลง/);
+});
+
+test("booking detail composes the shared dashboard primitives", () => {
+  const source = readFileSync(fileURLToPath(new URL("../components/admin/dashboard/dashboard-details.tsx", import.meta.url)), "utf8");
+  assert.match(source, /import \{ DashboardDetailLayout \} from "\.\/dashboard-detail-layout"/);
+  assert.match(source, /import \{ DashboardSummaryCard \} from "\.\/dashboard-summary-card"/);
+  assert.match(source, /import \{ DashboardTabs \} from "\.\/dashboard-tabs"/);
+  assert.match(source, /<DashboardDetailLayout/);
+});
+
+test("booking filters compose the shared dashboard list toolbar", () => {
+  const source = readFileSync(fileURLToPath(new URL("../components/admin/dashboard/dashboard-booking-filters.tsx", import.meta.url)), "utf8");
+  assert.match(source, /import \{ DashboardListToolbar \} from "\.\/dashboard-list-toolbar"/);
+  assert.match(source, /<DashboardListToolbar onSubmit=\{submit\}>/);
 });
 
 test("booking detail exposes operational fields but repair has no monetary amount", async () => {
