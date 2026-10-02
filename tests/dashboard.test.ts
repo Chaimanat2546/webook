@@ -377,8 +377,9 @@ test("agency booking search reports when no booking matches", async () => {
     query: parseDashboardQuery({ month: "2026-09", view: "agency", agency: "agency-a" }),
     agencyQuery: parseDashboardAgencyDetailQuery({ month: "2026-09", bookingSearch: "no matching house" }),
   }));
-  assert.match(html, /role="status"[^>]*>ไม่พบการจองที่ตรงกับคำค้นหา<\/p>/);
-  assert.match(html, /name="bookingSearch"[^>]*value="no matching house"/);
+  assert.match(html, /role="status"[^>]*>ไม่พบการจองที่ตรงกับตัวกรอง<\/p>/);
+  assert.match(html, /name="search"[^>]*value="no matching house"/);
+  assert.ok(html.indexOf("ยอดขาย") < html.indexOf("ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"));
 });
 
 test("booking filters use the Thai month picker without an agency dropdown", async () => {

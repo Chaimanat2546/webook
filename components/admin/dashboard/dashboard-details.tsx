@@ -2,23 +2,22 @@
 
 /* eslint-disable @next/next/no-img-element -- cover images are stored in tenant-controlled Supabase Storage URLs. */
 import Link from "next/link";
-import { Building2Icon, CalendarDaysIcon, CircleDollarSignIcon, CircleUserRoundIcon, CreditCardIcon, HouseIcon, MapPinIcon, MoonIcon, PhoneIcon, SearchIcon, SparklesIcon, StickyNoteIcon, TagIcon, TicketCheckIcon } from "lucide-react";
+import { Building2Icon, CalendarDaysIcon, CircleDollarSignIcon, CircleUserRoundIcon, CreditCardIcon, HouseIcon, MapPinIcon, MoonIcon, PhoneIcon, SparklesIcon, StickyNoteIcon, TagIcon, TicketCheckIcon } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { dashboardBackHref } from "../../../lib/dashboard-navigation";
-import { dashboardAgencyDetailHref, dashboardBookingDetailHref, dashboardHouseDetailHref, type DashboardAgencyDetailQuery } from "../../../lib/dashboard-routes";
-import { DASHBOARD_AGENCY_SORTS, dashboardDate, dashboardMoney, dashboardStatus, type DashboardCustomer, type DashboardQuery, type DashboardReport } from "../../../lib/dashboard";
+import { dashboardAgencyBookingDetailHref, dashboardAgencyDetailBookingQuery, dashboardAgencyDetailHref, dashboardHouseDetailHref, type DashboardAgencyDetailQuery } from "../../../lib/dashboard-routes";
+import { dashboardDate, dashboardMoney, dashboardStatus, type DashboardCustomer, type DashboardQuery, type DashboardReport } from "../../../lib/dashboard";
 import { dashboardNights } from "../../../lib/dashboard-calculations";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { DashboardBookingRow, DashboardBookingStatusBadge, DashboardBookingTableRow } from "./dashboard-rows";
-import { DashboardMonthFilter, DashboardPager, DashboardSearchFilter } from "./dashboard-list-primitives";
+import { DashboardBookingStatusBadge } from "./dashboard-rows";
 import { DashboardTaskHeader } from "./dashboard-task-header";
 import { DashboardDetailLayout } from "./dashboard-detail-layout";
 import { DashboardSummaryCard } from "./dashboard-summary-card";
 import { DashboardTabs } from "./dashboard-tabs";
+import { BookingsList } from "./bookings-list";
 
 interface DashboardDetailsProps {
   backHref?: string;
@@ -109,10 +108,6 @@ function BookingCustomerLoading() {
   return <div aria-busy className="space-y-4" data-dashboard-booking-customer-loading><div className="h-5 w-32 animate-pulse rounded bg-muted" /><div className="grid grid-cols-2 gap-4"><div className="h-14 animate-pulse rounded bg-muted" /><div className="h-14 animate-pulse rounded bg-muted" /></div><div className="h-5 w-36 animate-pulse rounded bg-muted" /><div className="h-24 animate-pulse rounded bg-muted" /></div>;
 }
 
-function dashboardBookingMonth(value: string): string {
-  return new Date(new Date(value).getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 7);
-}
-
 export function DashboardDetails({
   backHref,
   backLabel = "กลับไปหน้าก่อนหน้า",
@@ -181,7 +176,7 @@ export function DashboardDetails({
   }
 
   if (detail.kind === "agency") {
-    const agencyListQuery = agencyQuery ?? { month: query.month, search: query.agencySearch, page: query.agenciesPage, bookingSearch: "", bookingsPage: 1, sort: "date-asc" as const };
+    const agencyListQuery = agencyQuery ?? { month: query.month, search: query.agencySearch, page: query.agenciesPage, status: "confirmed", bookingSearch: "", bookingsPage: 1, sort: "updated-desc" as const };
     const agencyId = detail.agency.id ?? "unassigned";
     return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
       <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description="รายละเอียดเอเจนซี่" title={detail.agency.name} />
@@ -189,27 +184,7 @@ export function DashboardDetails({
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 sm:gap-5"><Field label="ยอดขาย">{dashboardMoney(detail.agency.amountCents)}</Field><Field label="จำนวนการจอง">{detail.agency.count} รายการ</Field><Field label="สัดส่วนยอดขาย">{detail.sharePercent === null ? "—" : `${detail.sharePercent.toFixed(1)}%`}</Field></dl>
         {detail.agency.missingPrices > 0 && <p role="status" className="text-sm text-muted-foreground">การจองติดจอง {detail.agency.missingPrices} รายการยังไม่ระบุยอด</p>}
       </CardContent></Card>
-      <section className="space-y-3">
-        <h2 className="font-medium">รายการจอง</h2>
-        <form action={`/admin/dashboard/agencies/${encodeURIComponent(agencyId)}`} method="get" className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-          <input type="hidden" name="search" value={agencyListQuery.search} />
-          <input type="hidden" name="page" value={agencyListQuery.page} />
-          <DashboardSearchFilter ariaLabel="ค้นหาการจองเอเจนซี่" name="bookingSearch" value={agencyListQuery.bookingSearch} placeholder="ค้นหาบ้านพัก..." />
-          <DashboardMonthFilter id="agency-detail-month" month={agencyListQuery.month} width="half" />
-          <div className="col-span-1 min-w-0 sm:w-48">
-            <label className="sr-only" htmlFor="agency-detail-sort">เรียงตาม</label>
-            <select id="agency-detail-sort" name="sort" aria-label="เรียงตาม" defaultValue={agencyListQuery.sort} className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm">
-              {DASHBOARD_AGENCY_SORTS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </div>
-          <Button className="col-span-2 h-11 w-full px-3 sm:col-span-1 sm:w-auto" type="submit"><SearchIcon aria-hidden className="size-4" />ค้นหา</Button>
-        </form>
-        {detail.bookings.total === 0 ? <p role="status" className="rounded-xl border px-4 py-8 text-center text-sm text-muted-foreground">{agencyListQuery.bookingSearch ? "ไม่พบการจองที่ตรงกับคำค้นหา" : "ไม่มีรายการจองในเดือนนี้"}</p> : <>
-            <div className="hidden md:block"><Table className="table-fixed overflow-hidden rounded-xl border"><TableHeader><TableRow><TableHead className="w-[42%]">บ้านพัก</TableHead><TableHead className="w-[38%]">วันเข้าพัก</TableHead><TableHead className="w-[20%] text-right">ยอดจอง</TableHead></TableRow></TableHeader><TableBody>{detail.bookings.rows.map(booking => <DashboardBookingTableRow key={booking.id} booking={booking} showAgency={false} href={dashboardBookingDetailHref({ month: dashboardBookingMonth(booking.updatedAt), status: "confirmed", search: "", sort: "updated-desc", page: 1 }, booking.id)} />)}</TableBody></Table></div>
-            <div className="divide-y overflow-hidden rounded-xl border md:hidden">{detail.bookings.rows.map(booking => <DashboardBookingRow key={booking.id} booking={booking} showAgency={false} href={dashboardBookingDetailHref({ month: dashboardBookingMonth(booking.updatedAt), status: "confirmed", search: "", sort: "updated-desc", page: 1 }, booking.id)} />)}</div>
-            <DashboardPager {...detail.bookings} href={page => dashboardAgencyDetailHref(agencyListQuery, agencyId, { bookingsPage: page })} />
-        </>}
-      </section>
+      <section className="space-y-3"><h2 className="font-medium">รายการจอง</h2><BookingsList bookingHref={bookingId => dashboardAgencyBookingDetailHref(agencyListQuery, agencyId, bookingId)} href={changes => dashboardAgencyDetailHref(agencyListQuery, agencyId, changes)} query={dashboardAgencyDetailBookingQuery(agencyListQuery)} report={report} /></section>
     </div>;
   }
 

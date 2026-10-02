@@ -18,6 +18,7 @@ import { DashboardListToolbar } from "./dashboard-list-toolbar";
 
 interface DashboardBookingFiltersProps {
   query: DashboardBookingsQuery;
+  href?: (changes: Partial<DashboardBookingsQuery>) => string;
 }
 
 const bookingStatusOptions = [{ value: "all", label: "ทุกสถานะ" }, ...DASHBOARD_STATUSES];
@@ -89,13 +90,13 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
   </div>;
 }
 
-export function DashboardBookingFilters({ query }: DashboardBookingFiltersProps) {
+export function DashboardBookingFilters({ query, href }: DashboardBookingFiltersProps) {
   const router = useRouter();
   const [desktopAdvancedFiltersOpen, setDesktopAdvancedFiltersOpen] = useState(false);
   const [mobileAdvancedFiltersOpen, setMobileAdvancedFiltersOpen] = useState(false);
   const [mobileSheetContent, setMobileSheetContent] = useState<HTMLDivElement | null>(null);
   const [search, setSearch] = useState(query.search);
-  const navigate = (changes: Partial<DashboardBookingsQuery>) => router.push(dashboardBookingsHref(query, changes));
+  const navigate = (changes: Partial<DashboardBookingsQuery>) => router.push(href ? href(changes) : dashboardBookingsHref(query, changes));
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
