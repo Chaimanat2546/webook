@@ -170,7 +170,26 @@ export function dashboardAgencyDetailHref(query: DashboardAgenciesQuery | Dashbo
 }
 
 export function dashboardAgencyBookingDetailHref(query: DashboardAgencyDetailQuery, _agencyId: string, bookingId: string): string {
-  return dashboardBookingDetailHref(dashboardAgencyDetailBookingQuery(query), bookingId);
+  const href = dashboardBookingDetailHref(dashboardAgencyDetailBookingQuery(query), bookingId);
+  const [path, search = ""] = href.split("?");
+  const params = new URLSearchParams(search);
+  params.set("fromAgency", _agencyId);
+  if (query.search) params.set("agencySearch", query.search);
+  if (query.agencySort) params.set("agencySort", query.agencySort);
+  if (query.page !== 1) params.set("agencyPage", String(query.page));
+  params.set("bookingSearch", query.bookingSearch);
+  if (query.bookingsPage !== 1) params.set("bookingsPage", String(query.bookingsPage));
+  return `${path}?${params.toString()}`;
+}
+
+export function parseDashboardBookingOrigin(raw: RouteRawQuery): { agencyId: string; query: DashboardAgencyDetailQuery } | null {
+  const fromAgency = raw.fromAgency;
+  if (fromAgency === undefined) return null;
+  if (typeof fromAgency !== "string" || !/^(unassigned|[a-zA-Z0-9-]{1,128})$/.test(fromAgency)) throw new Error("ต้นทางการจองไม่ถูกต้อง");
+  const { fromAgency: _fromAgency, agencySearch, agencySort, agencyPage, bookingSearch, bookingsPage, ...bookingRaw } = raw;
+  const bookings = parseDashboardBookingsQuery(bookingRaw);
+  const query = parseDashboardAgencyDetailQuery({ ...bookingRaw, search: agencySearch, agencySort, page: agencyPage, bookingSearch: bookingSearch ?? bookings.search, bookingsPage: bookingsPage ?? bookings.page });
+  return { agencyId: fromAgency, query };
 }
 
 export function parseDashboardAgencyDetailQuery(raw: RouteRawQuery): DashboardAgencyDetailQuery {

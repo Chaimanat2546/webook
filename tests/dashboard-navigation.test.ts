@@ -32,7 +32,7 @@ test("agency detail separates parent state from complete booking filters", () =>
   assert.deepEqual(dashboardAgencyDetailBookingQuery(query), { month: "2026-09", status: "waiting", search: "DV-201", checkInFrom: "2026-09-03", checkInTo: "2026-09-05", sort: "price-asc", page: 3 });
   assert.equal(dashboardAgencyDetailHref(query, "agency-a", { search: "Villa" }), "/admin/dashboard/agencies/agency-a?month=2026-09&search=trip&agencySort=count-asc&page=2&status=waiting&bookingSearch=Villa&checkInFrom=2026-09-03&checkInTo=2026-09-05&sort=price-asc");
   assert.equal(dashboardAgencyDetailHref(query, "agency-a", { page: 4 }), "/admin/dashboard/agencies/agency-a?month=2026-09&search=trip&agencySort=count-asc&page=2&status=waiting&bookingSearch=DV-201&checkInFrom=2026-09-03&checkInTo=2026-09-05&sort=price-asc&bookingsPage=4");
-  assert.equal(dashboardAgencyBookingDetailHref(query, "agency-a", "booking/1"), "/admin/dashboard/bookings/booking%2F1?month=2026-09&status=waiting&search=DV-201&checkInFrom=2026-09-03&checkInTo=2026-09-05&sort=price-asc&page=3");
+  assert.equal(dashboardAgencyBookingDetailHref(query, "agency-a", "booking/1"), "/admin/dashboard/bookings/booking%2F1?month=2026-09&status=waiting&search=DV-201&checkInFrom=2026-09-03&checkInTo=2026-09-05&sort=price-asc&page=3&fromAgency=agency-a&agencySearch=trip&agencySort=count-asc&agencyPage=2&bookingSearch=DV-201&bookingsPage=3");
 });
 
 test("agency detail defaults booking filters and rejects foreign state", () => {
