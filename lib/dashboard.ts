@@ -34,6 +34,8 @@ export interface DashboardBookingsQuery {
   search: string;
   sort: DashboardBookingSort;
   page: number;
+  amountFromCents?: number;
+  amountToCents?: number;
 }
 
 export interface DashboardOverviewQuery {
@@ -44,6 +46,19 @@ export interface DashboardListQuery {
   month: string;
   search: string;
   page: number;
+}
+
+export const DASHBOARD_AGENCY_LIST_SORTS = [
+  { value: "sales-desc", label: "ยอดขายสูงสุด" },
+  { value: "sales-asc", label: "ยอดขายต่ำสุด" },
+  { value: "count-desc", label: "จำนวนจองมากสุด" },
+  { value: "count-asc", label: "จำนวนจองน้อยสุด" },
+  { value: "name-asc", label: "ชื่อเอเจนซี่ ก-ฮ" },
+] as const;
+export type DashboardAgencyListSort = typeof DASHBOARD_AGENCY_LIST_SORTS[number]["value"];
+
+export interface DashboardAgenciesQuery extends DashboardListQuery {
+  agencySort?: DashboardAgencyListSort;
 }
 
 export const DASHBOARD_AGENCY_SORTS = [

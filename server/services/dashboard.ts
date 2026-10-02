@@ -26,6 +26,8 @@ interface DashboardLoadOptions {
   bookingListSort?: DashboardBookingSort;
   bookingListSearch?: boolean;
   bookingAgencyId?: string | null;
+  bookingAmountFromCents?: number;
+  bookingAmountToCents?: number;
   agencyListSort?: DashboardAgencyListSort;
   agencyBookingsPage?: number;
   agencyBookingsSearch?: string;
@@ -187,6 +189,8 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     : { ...emptyOverview(query.month), confirmedBookingsByDay: dailyConfirmedBookings };
   const bookingRows = rows.filter(row => (options.bookingAgencyId === undefined || row.agentId === options.bookingAgencyId)
     && (query.status === "all" || dashboardStatus(row.status) === query.status)
+    && (options.bookingAmountFromCents === undefined || (row.priceCents !== null && row.priceCents >= options.bookingAmountFromCents))
+    && (options.bookingAmountToCents === undefined || (row.priceCents !== null && row.priceCents <= options.bookingAmountToCents))
     && (options.bookingListSearch ? matchesDashboardBookingText(row, query.search) : matchesText(row, query.search)));
   const bookings = paginate((options.bookingListSort ? sortDashboardBookings(bookingRows, options.bookingListSort) : bookingRows).map(row => publicBooking(row, scope.kind === "admin")), query.page, options.bookingListSort ? DASHBOARD_BOOKINGS_PAGE_SIZE : DASHBOARD_PAGE_SIZE);
   const agencyRows = scope.kind === "admin"
@@ -251,7 +255,7 @@ export async function loadDashboardBookings(repository: DashboardRepository, act
     status: query.status,
     search: query.search,
     page: String(query.page),
-  }, { bookingDateField: bookingDateRange ? "check_in" : "updated_at", bookingDateRange, bookingListSort: query.sort, bookingListSearch: true });
+  }, { bookingDateField: bookingDateRange ? "check_in" : "updated_at", bookingDateRange, bookingListSort: query.sort, bookingListSearch: true, bookingAmountFromCents: query.amountFromCents, bookingAmountToCents: query.amountToCents });
 }
 
 function nextDay(date: string): string {
@@ -281,7 +285,7 @@ export async function loadDashboardBooking(repository: DashboardRepository, acto
     status: query.status,
     search: query.search,
     page: String(query.page),
-  }, { bookingDateField: bookingDateRange ? "check_in" : "updated_at", bookingDateRange, bookingListSort: query.sort, bookingListSearch: true, includeBookingNote: true });
+  }, { bookingDateField: bookingDateRange ? "check_in" : "updated_at", bookingDateRange, bookingListSort: query.sort, bookingListSearch: true, includeBookingNote: true, bookingAmountFromCents: query.amountFromCents, bookingAmountToCents: query.amountToCents });
 }
 
 export async function loadDashboardAgency(repository: DashboardRepository, actorId: string, query: DashboardAgencyDetailQuery, agencyId: string): Promise<DashboardReport> {
@@ -305,6 +309,8 @@ export async function loadDashboardAgency(repository: DashboardRepository, actor
     bookingListSort: query.sort,
     bookingListSearch: true,
     bookingAgencyId: agencyId === "unassigned" ? null : agencyId,
+    bookingAmountFromCents: query.amountFromCents,
+    bookingAmountToCents: query.amountToCents,
   });
   return { ...summary, bookings: bookingReport.bookings };
 }

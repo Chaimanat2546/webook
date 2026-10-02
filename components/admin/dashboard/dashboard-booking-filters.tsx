@@ -32,8 +32,8 @@ interface DashboardBookingAdvancedFiltersPanelProps {
 }
 
 export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer, query, onFiltersApply, onClose, showBookingControls = false }: DashboardBookingAdvancedFiltersPanelProps) {
-  const [amountFrom, setAmountFrom] = useState("");
-  const [amountTo, setAmountTo] = useState("");
+  const [amountFrom, setAmountFrom] = useState(() => amountValue(query?.amountFromCents));
+  const [amountTo, setAmountTo] = useState(() => amountValue(query?.amountToCents));
   const [checkInRange, setCheckInRange] = useState<DateRange | undefined>(() => query?.checkInFrom && query.checkInTo ? { from: localDate(query.checkInFrom), to: localDate(query.checkInTo) } : undefined);
   const [status, setStatus] = useState<DashboardBookingsQuery["status"]>(query?.status ?? "confirmed");
   const [sort, setSort] = useState<DashboardBookingsQuery["sort"]>(query?.sort ?? "updated-desc");
@@ -49,6 +49,8 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
   function apply() {
     onFiltersApply?.({
       ...dateRangeChanges(checkInRange?.from && checkInRange.to ? checkInRange : undefined),
+      amountFromCents: amountCents(amountFrom),
+      amountToCents: amountCents(amountTo),
       ...(showBookingControls ? { status, sort } : {}),
     });
     onClose();
@@ -156,4 +158,15 @@ function dateValue(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function amountCents(value: string): number | undefined {
+  if (!/^\d+(?:\.\d{1,2})?$/.test(value)) return undefined;
+  const [baht, satang = ""] = value.split(".");
+  return Number(baht) * 100 + Number(satang.padEnd(2, "0"));
+}
+
+function amountValue(cents: number | undefined): string {
+  if (cents === undefined) return "";
+  return cents % 100 === 0 ? String(cents / 100) : `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, "0")}`;
 }

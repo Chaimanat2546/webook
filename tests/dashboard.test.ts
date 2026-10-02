@@ -46,6 +46,15 @@ test("booking route query allowlists filters and resets pagination on changes", 
   assert.equal(dashboardBookingsHref(query, { page: 2 }), "/admin/dashboard/bookings?month=2026-09&status=waiting&search=%E0%B8%9A%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%B1%E0%B8%81&sort=price-asc&page=2");
 });
 
+test("booking amount filters parse baht values and exclude missing prices", async () => {
+  const query = parseDashboardBookingsQuery({ month: "2026-09", amountFrom: "100.50", amountTo: "200" });
+  assert.deepEqual(query, { month: "2026-09", status: "confirmed", search: "", sort: "updated-desc", page: 1, amountFromCents: 10050, amountToCents: 20000 });
+  assert.throws(() => parseDashboardBookingsQuery({ month: "2026-09", amountFrom: "201", amountTo: "200" }));
+  const rows = [{ ...booking, id: "low", priceCents: 10049 }, { ...booking, id: "inside", priceCents: 15000 }, { ...booking, id: "missing", priceCents: null }];
+  const report = await loadDashboardBookings(repository({ kind: "admin" }, rows), "signed-in-user", query);
+  assert.deepEqual(report.bookings.rows.map(row => row.id), ["inside"]);
+});
+
 test("booking stay range takes priority over the updated month", async () => {
   const query = parseDashboardBookingsQuery({ month: "2026-09", checkInFrom: "2026-10-01", checkInTo: "2026-10-03" });
   assert.deepEqual(query, { month: "2026-09", status: "confirmed", search: "", sort: "updated-desc", page: 1, checkInFrom: "2026-10-01", checkInTo: "2026-10-03" });

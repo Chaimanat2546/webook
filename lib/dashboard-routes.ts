@@ -8,6 +8,8 @@ export interface DashboardAgencyDetailQuery extends DashboardAgenciesQuery {
   status: DashboardBookingsQuery["status"];
   checkInFrom?: string;
   checkInTo?: string;
+  amountFromCents?: number;
+  amountToCents?: number;
   sort: DashboardBookingSort;
 }
 
@@ -26,8 +28,25 @@ export function parseDashboardBookingsQuery(raw: RouteRawQuery): DashboardBookin
   if (typeof sort !== "string" || !DASHBOARD_BOOKING_SORTS.some(item => item.value === sort)) throw new Error("รูปแบบการเรียงลำดับไม่ถูกต้อง");
   const checkInFrom = bookingDate(raw.checkInFrom);
   const checkInTo = bookingDate(raw.checkInTo);
+  const amountFromCents = bookingAmount(raw.amountFrom);
+  const amountToCents = bookingAmount(raw.amountTo);
   if ((checkInFrom === undefined) !== (checkInTo === undefined) || (checkInFrom && checkInTo && checkInFrom > checkInTo)) throw new Error("ช่วงวันที่เข้าพักไม่ถูกต้อง");
-  return { month: query.month, status, search: query.search, sort: sort as DashboardBookingSort, page: query.page, ...(checkInFrom && checkInTo ? { checkInFrom, checkInTo } : {}) };
+  if (amountFromCents !== undefined && amountToCents !== undefined && amountFromCents > amountToCents) throw new Error("ช่วงยอดจองไม่ถูกต้อง");
+  return { month: query.month, status, search: query.search, sort: sort as DashboardBookingSort, page: query.page, ...(checkInFrom && checkInTo ? { checkInFrom, checkInTo } : {}), ...(amountFromCents !== undefined ? { amountFromCents } : {}), ...(amountToCents !== undefined ? { amountToCents } : {}) };
+}
+
+function bookingAmount(value: unknown): number | undefined {
+  if (value === undefined || value === "") return undefined;
+  if (typeof value !== "string" || !/^\d+(?:\.\d{1,2})?$/.test(value)) throw new Error("ช่วงยอดจองไม่ถูกต้อง");
+  const [baht, satang = ""] = value.split(".");
+  const cents = Number(baht) * 100 + Number(satang.padEnd(2, "0"));
+  if (!Number.isSafeInteger(cents)) throw new Error("ช่วงยอดจองไม่ถูกต้อง");
+  return cents;
+}
+
+function bookingAmountValue(cents: number | undefined): string | undefined {
+  if (cents === undefined) return undefined;
+  return cents % 100 === 0 ? String(cents / 100) : `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, "0")}`;
 }
 
 function bookingDate(value: unknown): string | undefined {
@@ -40,7 +59,7 @@ function bookingDate(value: unknown): string | undefined {
 
 export function dashboardBookingsHref(query: DashboardBookingsQuery, changes: Partial<DashboardBookingsQuery> = {}): string {
   const merged = { ...query, ...changes };
-  if (changes.month !== undefined || changes.status !== undefined || changes.search !== undefined || changes.sort !== undefined || "checkInFrom" in changes || "checkInTo" in changes) {
+  if (changes.month !== undefined || changes.status !== undefined || changes.search !== undefined || changes.sort !== undefined || "checkInFrom" in changes || "checkInTo" in changes || "amountFromCents" in changes || "amountToCents" in changes) {
     merged.page = 1;
   }
   const params = new URLSearchParams({ month: merged.month });
@@ -50,6 +69,9 @@ export function dashboardBookingsHref(query: DashboardBookingsQuery, changes: Pa
     params.set("checkInFrom", merged.checkInFrom);
     params.set("checkInTo", merged.checkInTo);
   }
+  const amountFrom = bookingAmountValue(merged.amountFromCents), amountTo = bookingAmountValue(merged.amountToCents);
+  if (amountFrom) params.set("amountFrom", amountFrom);
+  if (amountTo) params.set("amountTo", amountTo);
   params.set("sort", merged.sort);
   if (merged.page !== 1) params.set("page", String(merged.page));
   return `/admin/dashboard/bookings?${params.toString()}`;
@@ -115,6 +137,8 @@ export function dashboardAgencyDetailBookingQuery(query: DashboardAgencyDetailQu
     sort: query.sort,
     page: query.bookingsPage,
     ...(query.checkInFrom && query.checkInTo ? { checkInFrom: query.checkInFrom, checkInTo: query.checkInTo } : {}),
+    ...(query.amountFromCents !== undefined ? { amountFromCents: query.amountFromCents } : {}),
+    ...(query.amountToCents !== undefined ? { amountToCents: query.amountToCents } : {}),
   };
 }
 
@@ -137,6 +161,9 @@ export function dashboardAgencyDetailHref(query: DashboardAgenciesQuery | Dashbo
     detail.set("checkInFrom", merged.checkInFrom);
     detail.set("checkInTo", merged.checkInTo);
   }
+  const amountFrom = bookingAmountValue(merged.amountFromCents), amountTo = bookingAmountValue(merged.amountToCents);
+  if (amountFrom) detail.set("amountFrom", amountFrom);
+  if (amountTo) detail.set("amountTo", amountTo);
   detail.set("sort", merged.sort);
   if (merged.page > 1) detail.set("bookingsPage", String(merged.page));
   return `${path}/${encodeURIComponent(agencyId)}?${detail.toString()}`;
@@ -147,9 +174,9 @@ export function dashboardAgencyBookingDetailHref(query: DashboardAgencyDetailQue
 }
 
 export function parseDashboardAgencyDetailQuery(raw: RouteRawQuery): DashboardAgencyDetailQuery {
-  const { bookingSearch: rawBookingSearch, bookingsPage, status, checkInFrom, checkInTo, sort, ...listRaw } = raw;
+  const { bookingSearch: rawBookingSearch, bookingsPage, status, checkInFrom, checkInTo, amountFrom, amountTo, sort, ...listRaw } = raw;
   const list = parseDashboardAgenciesQuery(listRaw);
-  const bookings = parseDashboardBookingsQuery({ month: list.month, status, search: rawBookingSearch, checkInFrom, checkInTo, sort, page: bookingsPage });
+  const bookings = parseDashboardBookingsQuery({ month: list.month, status, search: rawBookingSearch, checkInFrom, checkInTo, amountFrom, amountTo, sort, page: bookingsPage });
   return {
     ...list,
     status: bookings.status,
@@ -157,6 +184,8 @@ export function parseDashboardAgencyDetailQuery(raw: RouteRawQuery): DashboardAg
     bookingsPage: bookings.page,
     sort: bookings.sort,
     ...(bookings.checkInFrom && bookings.checkInTo ? { checkInFrom: bookings.checkInFrom, checkInTo: bookings.checkInTo } : {}),
+    ...(bookings.amountFromCents !== undefined ? { amountFromCents: bookings.amountFromCents } : {}),
+    ...(bookings.amountToCents !== undefined ? { amountToCents: bookings.amountToCents } : {}),
   };
 }
 
