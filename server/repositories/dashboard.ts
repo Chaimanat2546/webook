@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildHouseImageDisplayUrl } from "../../lib/house-image-display-url.ts";
 import { dashboardPropertyId, dashboardScope, type DashboardScope, type DashboardMonth, type DashboardBookingSource, type DashboardCustomer, type DashboardHouse } from "../../lib/dashboard.ts";
 import { record } from "../../lib/house-bookings.ts";
 
@@ -116,7 +117,7 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
     async coverImageUrl(scope, propertyId) {
       if (scope.kind === "owner" && scope.propertyId !== propertyId) return null;
       const { data, error } = await client.from("images")
-        .select("image_url")
+        .select("image_name,image_url")
         .eq("property_id", propertyId)
         .gte("cover_select", 1)
         .lte("cover_select", 10)
@@ -125,17 +126,17 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
         .limit(1)
         .maybeSingle();
       if (error) throw new Error("dashboard_unavailable");
-      const coverImageUrl = nullableText(data?.image_url);
+      const coverImageUrl = buildHouseImageDisplayUrl({ imageName: nullableText(data?.image_name), imageUrl: nullableText(data?.image_url) });
       if (coverImageUrl) return coverImageUrl;
       const { data: fallback, error: fallbackError } = await client.from("images")
-        .select("image_url")
+        .select("image_name,image_url")
         .eq("property_id", propertyId)
         .order("image_move")
         .order("id")
         .limit(1)
         .maybeSingle();
       if (fallbackError) throw new Error("dashboard_unavailable");
-      return nullableText(fallback?.image_url);
+      return buildHouseImageDisplayUrl({ imageName: nullableText(fallback?.image_name), imageUrl: nullableText(fallback?.image_url) });
     },
     async creatorName(creatorId) {
       const { data, error } = await client.from("users").select("name").eq("uid", creatorId).maybeSingle();

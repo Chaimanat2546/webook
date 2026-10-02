@@ -26,7 +26,7 @@ import { useRouter } from "next/navigation";
 import { type ChangeEvent, type ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { buildAwsImageUrl } from "../../../lib/aws-image-url";
+import { buildHouseImageDisplayUrl } from "../../../lib/house-image-display-url";
 import {
   resizeHouseImageFile,
   type ResizedHouseImage,
@@ -106,18 +106,7 @@ interface BulkDeleteQueueItem {
 }
 
 function displayUrl(image: HouseImageItem): string | null {
-  const provider = getHouseImageStorageProvider(image.image_url);
-  if (provider === "r2" && image.image_url) {
-    return image.image_url;
-  }
-
-  if (!image.image_name) return null;
-
-  try {
-    return buildAwsImageUrl(image.image_name);
-  } catch {
-    return null;
-  }
+  return buildHouseImageDisplayUrl({ imageName: image.image_name, imageUrl: image.image_url });
 }
 
 function imageZoneHref(propertyId: string, zone: string, returnTo?: string): string {

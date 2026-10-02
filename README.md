@@ -83,7 +83,7 @@ verification details.
 
 ## House Image Storage Policy
 
-- Existing imported house images may continue to display through the current AWS/S3-backed image source.
+- Existing imported AWS/S3 house images must render through the legacy Lambda image URL built from the validated `images.image_name`; their stored direct S3 `image_url` is not public. R2 house images under the `houses/` key prefix continue to render from their stored Worker URL.
 - New or replaced house image files must be managed in Cloudflare R2 through server-side code.
 - AWS/S3-backed house images can be displayed through the legacy Lambda image URL and deleted after confirmation through signed server-side S3 `DELETE` requests. Keep provider detection, but do not upload, replace, or edit physical house image files in AWS/S3.
 - Use `images.image_url` to distinguish AWS/S3 legacy images from Cloudflare R2 images; do not add a provider column.

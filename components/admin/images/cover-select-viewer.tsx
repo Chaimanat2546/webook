@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { buildAwsImageUrl } from "../../../lib/aws-image-url";
+import { buildHouseImageDisplayUrl } from "../../../lib/house-image-display-url";
 import { scrollActiveItemToStart } from "../../../lib/scroll-active-item";
 import { cn } from "../../../lib/utils";
 import {
@@ -73,15 +73,7 @@ function ZoneIcon({ icon }: { icon: ImageZoneIconName }) {
 }
 
 function displayUrl(image: HouseImageItem): string | null {
-  const provider = getHouseImageStorageProvider(image.image_url);
-  if (provider === "r2" && image.image_url) return image.image_url;
-  if (!image.image_name) return null;
-
-  try {
-    return buildAwsImageUrl(image.image_name);
-  } catch {
-    return null;
-  }
+  return buildHouseImageDisplayUrl({ imageName: image.image_name, imageUrl: image.image_url });
 }
 
 function coverSelectHref(propertyId: string, zone?: string, returnTo?: string): string {

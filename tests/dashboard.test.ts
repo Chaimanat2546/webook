@@ -963,11 +963,31 @@ test("repository falls back to the first house image when no cover is selected",
       return new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } });
     }
     assert.equal(url.searchParams.get("order"), "image_move.asc,id.asc");
-    return new Response(JSON.stringify({ image_url: "https://images.example/first-house-image.jpg" }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({
+      image_name: "first-house-image.jpg",
+      image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/first-house-image.jpg",
+    }), { headers: { "Content-Type": "application/json" } });
   } } });
   const imageUrl = await createDashboardRepository(client).coverImageUrl({ kind: "admin" }, "101");
-  assert.equal(imageUrl, "https://images.example/first-house-image.jpg");
+  assert.equal(imageUrl, "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/first-house-image.jpg");
   assert.equal(calls, 2);
+});
+
+test("repository routes a legacy S3 cover image through the image proxy", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    const url = new URL(new Request(input, init).url);
+    assert.equal(url.pathname, "/rest/v1/images");
+    assert.match(url.searchParams.get("select") ?? "", /image_name/);
+    return new Response(JSON.stringify({
+      image_name: "legacy-cover.webp",
+      image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/legacy-cover.webp",
+    }), { headers: { "Content-Type": "application/json" } });
+  } } });
+
+  assert.equal(
+    await createDashboardRepository(client).coverImageUrl({ kind: "admin" }, "101"),
+    "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/legacy-cover.webp",
+  );
 });
 
 test("repository discards mismatched or foreign house joins even if supplied by a data source", async () => {

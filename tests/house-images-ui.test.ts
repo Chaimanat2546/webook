@@ -436,9 +436,7 @@ describe("house image mobile UI", () => {
     assert.doesNotMatch(source, /Global Order/);
   });
 
-  it("uses image_url only for R2 display and keeps AWS/S3 display on the Lambda path", () => {
-    assert.match(source, /provider === "r2" && image\.image_url/);
-    assert.doesNotMatch(source, /provider === "aws-s3" \|\| provider === "r2"/);
-    assert.match(source, /buildAwsImageUrl\(image\.image_name\)/);
+  it("delegates every existing image URL to the shared display resolver", () => {
+    assert.match(source, /buildHouseImageDisplayUrl\(\{ imageName: image\.image_name, imageUrl: image\.image_url \}\)/);
   });
 });
