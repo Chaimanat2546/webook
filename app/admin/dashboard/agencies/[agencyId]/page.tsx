@@ -13,7 +13,7 @@ export default async function DashboardAgencyDetailPage({ params, searchParams }
   let report;
   try {
     routeQuery = parseDashboardAgencyDetailQuery(raw);
-    report = await loadDashboardAgency(repository, actorId, routeQuery, agencyId, routeQuery.bookingsPage, routeQuery.bookingSearch, routeQuery.sort);
+    report = await loadDashboardAgency(repository, actorId, routeQuery, agencyId);
   } catch (error) {
     if (error instanceof DashboardForbidden || error instanceof DashboardItemNotFound) notFound();
     notFound();

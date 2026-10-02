@@ -28,10 +28,14 @@ export interface DashboardQuery extends DashboardMonth {
 
 export interface DashboardBookingsQuery {
   month: string;
+  checkInFrom?: string;
+  checkInTo?: string;
   status: string;
   search: string;
   sort: DashboardBookingSort;
   page: number;
+  amountFromCents?: number;
+  amountToCents?: number;
 }
 
 export interface DashboardOverviewQuery {
@@ -42,6 +46,19 @@ export interface DashboardListQuery {
   month: string;
   search: string;
   page: number;
+}
+
+export const DASHBOARD_AGENCY_LIST_SORTS = [
+  { value: "sales-desc", label: "ยอดขายสูงสุด" },
+  { value: "sales-asc", label: "ยอดขายต่ำสุด" },
+  { value: "count-desc", label: "จำนวนจองมากสุด" },
+  { value: "count-asc", label: "จำนวนจองน้อยสุด" },
+  { value: "name-asc", label: "ชื่อเอเจนซี่ ก-ฮ" },
+] as const;
+export type DashboardAgencyListSort = typeof DASHBOARD_AGENCY_LIST_SORTS[number]["value"];
+
+export interface DashboardAgenciesQuery extends DashboardListQuery {
+  agencySort?: DashboardAgencyListSort;
 }
 
 export const DASHBOARD_AGENCY_SORTS = [
@@ -92,10 +109,48 @@ export interface DashboardBooking {
 }
 
 export interface DashboardBookingSource extends DashboardBooking {
+  note?: string | null;
+  depositCents?: number | null;
+  extraChargeCents?: number | null;
+  insuranceCents?: number | null;
+  paymentExpiresAt?: string | null;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  createdById?: string | null;
+  customerId: string | null;
   customerFirstName: string | null;
   customerLastName: string | null;
   agentId: string | null;
   agentName: string | null;
+}
+
+export interface DashboardBookingCosts {
+  fullPriceCents: number | null;
+  depositCents: number | null;
+  extraChargeCents: number | null;
+  insuranceCents: number | null;
+  paymentExpiresAt: string | null;
+}
+
+export interface DashboardCustomer {
+  firstName: string;
+  lastName: string | null;
+  title: string | null;
+  nationality: string | null;
+  preferredLanguage: string | null;
+  vipStatus: boolean | null;
+  phone: string;
+  secondaryPhone: string | null;
+  email: string | null;
+  lineId: string | null;
+  address: string | null;
+  subDistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
+  country: string | null;
+  specialRequests: string | null;
+  notes: string | null;
 }
 
 export interface DashboardHouse {
@@ -140,6 +195,13 @@ export interface DashboardOverview {
 export interface DashboardBookingDetail {
   kind: "booking";
   booking: DashboardBooking;
+  note: string | null;
+  coverImageUrl: string | null;
+  createdByName: string | null;
+  customer: DashboardCustomer | null;
+  costs: DashboardBookingCosts;
+  checkInTime: string | null;
+  checkOutTime: string | null;
   agency?: { id: string | null; name: string };
 }
 

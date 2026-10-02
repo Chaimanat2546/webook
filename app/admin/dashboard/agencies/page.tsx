@@ -3,6 +3,7 @@ import { parseDashboardAgenciesQuery } from "../../../../lib/dashboard-routes";
 import { dashboardSession } from "../../../../server/auth/dashboard";
 import { DashboardForbidden, loadDashboardAgencies } from "../../../../server/services/dashboard";
 import { AgenciesList } from "../../../../components/admin/dashboard/agencies-list";
+import { DashboardDetailLayout } from "../../../../components/admin/dashboard/dashboard-detail-layout";
 import { DashboardTaskHeader } from "../../../../components/admin/dashboard/dashboard-task-header";
 
 export default async function DashboardAgenciesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -18,5 +19,5 @@ export default async function DashboardAgenciesPage({ searchParams }: { searchPa
     if (error instanceof DashboardForbidden) notFound();
     notFound();
   }
-  return <div><DashboardTaskHeader backHref={`/admin/dashboard?month=${routeQuery.month}`} backLabel="กลับไปภาพรวม" description="ตรวจสอบยอดขายตามเอเจนซี่" title="ยอดขายเอเจนซี่" /><AgenciesList report={report} query={routeQuery} /></div>;
+  return <DashboardDetailLayout><DashboardTaskHeader backHref={`/admin/dashboard?month=${routeQuery.month}`} backLabel="กลับไปภาพรวม" description="ตรวจสอบยอดขายตามเอเจนซี่" title="ยอดขายเอเจนซี่" /><AgenciesList report={report} query={routeQuery} /></DashboardDetailLayout>;
 }

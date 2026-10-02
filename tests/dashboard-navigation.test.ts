@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { parseDashboardQuery } from "../lib/dashboard.ts";
 import { dashboardBackHref, dashboardHref } from "../lib/dashboard-navigation.ts";
 import { dashboardNights, dashboardShare } from "../lib/dashboard-calculations.ts";
-import { dashboardAgenciesHref, dashboardAgencyDetailHref, dashboardBookingDetailHref, dashboardHousesHref, dashboardBookingsHref, parseDashboardAgenciesQuery, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery, parseDashboardHousesQuery } from "../lib/dashboard-routes.ts";
+import { dashboardAgenciesHref, dashboardAgencyBookingDetailHref, dashboardAgencyDetailBookingQuery, dashboardAgencyDetailHref, dashboardBookingDetailHref, dashboardHousesHref, dashboardBookingsHref, parseDashboardAgenciesQuery, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery, parseDashboardHousesQuery } from "../lib/dashboard-routes.ts";
 
 test("dashboard booking routes retain only booking filters", () => {
   const query = parseDashboardBookingsQuery({ month: "2026-09", status: "confirmed", search: "DV-101", sort: "price-desc", page: "2" });
@@ -13,27 +13,41 @@ test("dashboard booking routes retain only booking filters", () => {
   assert.throws(() => parseDashboardBookingsQuery({ month: "2026-09", agency: "agency-a" }));
   assert.throws(() => parseDashboardBookingsQuery({ month: "2026-09", housesPage: "2" }));
 });
-test("dashboard agency and house routes reject booking state", () => {
-  assert.deepEqual(parseDashboardAgenciesQuery({ month: "2026-09", search: "trip", page: "2" }), { month: "2026-09", search: "trip", page: 2 });
+test("dashboard agency routes retain only agency filters and reset pages", () => {
+  const agencyQuery = parseDashboardAgenciesQuery({ month: "2026-09", search: "trip", agencySort: "count-asc", page: "2" });
+  assert.deepEqual(agencyQuery, { month: "2026-09", search: "trip", agencySort: "count-asc", page: 2 });
   assert.deepEqual(parseDashboardHousesQuery({ month: "2026-09", search: "sea", page: "3" }), { month: "2026-09", search: "sea", page: 3 });
-  assert.equal(dashboardAgenciesHref({ month: "2026-09", search: "trip", page: 2 }, { search: "" }), "/admin/dashboard/agencies?month=2026-09");
+  assert.equal(dashboardAgenciesHref(agencyQuery, { search: "" }), "/admin/dashboard/agencies?month=2026-09&agencySort=count-asc");
+  assert.equal(dashboardAgenciesHref(agencyQuery, { agencySort: "sales-asc" }), "/admin/dashboard/agencies?month=2026-09&search=trip&agencySort=sales-asc");
   assert.equal(dashboardHousesHref({ month: "2026-09", search: "sea", page: 3 }, { month: "2026-10" }), "/admin/dashboard/houses?month=2026-10");
   assert.throws(() => parseDashboardAgenciesQuery({ month: "2026-09", status: "confirmed" }));
+  assert.throws(() => parseDashboardAgenciesQuery({ month: "2026-09", agencySort: "price-desc" }));
   assert.throws(() => parseDashboardAgenciesQuery({ month: "2026-09", bookingSearch: "DV-101" }));
   assert.throws(() => parseDashboardHousesQuery({ month: "2026-09", agency: "agency-a" }));
 });
 
-test("agency detail retains month, sort, search, and booking pagination", () => {
-  const query = parseDashboardAgencyDetailQuery({ month: "2026-09", search: "trip", page: "2", bookingSearch: "DV-201", bookingsPage: "3", sort: "price-asc" });
-  assert.deepEqual(query, { month: "2026-09", search: "trip", page: 2, bookingSearch: "DV-201", bookingsPage: 3, sort: "price-asc" });
-  assert.equal(dashboardAgencyDetailHref(query, "agency-a", { bookingsPage: 4 }), "/admin/dashboard/agencies/agency-a?month=2026-09&search=trip&page=2&bookingSearch=DV-201&sort=price-asc&bookingsPage=4");
-  assert.equal(dashboardAgencyDetailHref({ ...query, month: "2026-10", sort: "date-asc", bookingsPage: 1 }, "agency-a"), "/admin/dashboard/agencies/agency-a?month=2026-10&search=trip&page=2&bookingSearch=DV-201");
+test("agency detail separates parent state from complete booking filters", () => {
+  const query = parseDashboardAgencyDetailQuery({ month: "2026-09", search: "trip", agencySort: "count-asc", page: "2", status: "waiting", bookingSearch: "DV-201", checkInFrom: "2026-09-03", checkInTo: "2026-09-05", bookingsPage: "3", sort: "price-asc" });
+  assert.deepEqual(query, { month: "2026-09", search: "trip", agencySort: "count-asc", page: 2, status: "waiting", bookingSearch: "DV-201", checkInFrom: "2026-09-03", checkInTo: "2026-09-05", bookingsPage: 3, sort: "price-asc" });
+  assert.deepEqual(dashboardAgencyDetailBookingQuery(query), { month: "2026-09", status: "waiting", search: "DV-201", checkInFrom: "2026-09-03", checkInTo: "2026-09-05", sort: "price-asc", page: 3 });
+  assert.equal(dashboardAgencyDetailHref(query, "agency-a", { search: "Villa" }), "/admin/dashboard/agencies/agency-a?month=2026-09&search=trip&agencySort=count-asc&page=2&status=waiting&bookingSearch=Villa&checkInFrom=2026-09-03&checkInTo=2026-09-05&sort=price-asc");
+  assert.equal(dashboardAgencyDetailHref(query, "agency-a", { page: 4 }), "/admin/dashboard/agencies/agency-a?month=2026-09&search=trip&agencySort=count-asc&page=2&status=waiting&bookingSearch=DV-201&checkInFrom=2026-09-03&checkInTo=2026-09-05&sort=price-asc&bookingsPage=4");
+  assert.equal(dashboardAgencyBookingDetailHref(query, "agency-a", "booking/1"), "/admin/dashboard/bookings/booking%2F1?month=2026-09&status=waiting&search=DV-201&checkInFrom=2026-09-03&checkInTo=2026-09-05&sort=price-asc&page=3&fromAgency=agency-a&agencySearch=trip&agencySort=count-asc&agencyPage=2&bookingSearch=DV-201&bookingsPage=3");
+});
+
+test("agency detail defaults booking filters and rejects foreign state", () => {
+  const defaults = parseDashboardAgencyDetailQuery({ month: "2026-09" });
+  assert.deepEqual(dashboardAgencyDetailBookingQuery(defaults), { month: "2026-09", status: "confirmed", search: "", sort: "updated-desc", page: 1 });
+  assert.equal(dashboardAgencyDetailHref(defaults, "agency-a"), "/admin/dashboard/agencies/agency-a?month=2026-09&status=confirmed&sort=updated-desc");
   assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", bookingsPage: "0" }));
   assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", bookingsPage: ["2", "3"] }));
   assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", bookingSearch: ["DV-1"] }));
   assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", bookingSearch: "x".repeat(201) }));
   assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", sort: "amount" }));
-  assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", section: "houses" }));
+  assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", checkInFrom: "2026-09-03" }));
+  assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", agency: "agency-b" }));
+  assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", view: "bookings" }));
+  assert.throws(() => parseDashboardAgencyDetailQuery({ month: "2026-09", bookingId: "booking-a" }));
   assert.throws(() => parseDashboardAgenciesQuery({ month: "2026-09", bookingsPage: "2" }));
 });
 
