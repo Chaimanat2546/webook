@@ -94,10 +94,48 @@ export interface DashboardBooking {
 }
 
 export interface DashboardBookingSource extends DashboardBooking {
+  note?: string | null;
+  depositCents?: number | null;
+  extraChargeCents?: number | null;
+  insuranceCents?: number | null;
+  paymentExpiresAt?: string | null;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  createdById?: string | null;
+  customerId: string | null;
   customerFirstName: string | null;
   customerLastName: string | null;
   agentId: string | null;
   agentName: string | null;
+}
+
+export interface DashboardBookingCosts {
+  fullPriceCents: number | null;
+  depositCents: number | null;
+  extraChargeCents: number | null;
+  insuranceCents: number | null;
+  paymentExpiresAt: string | null;
+}
+
+export interface DashboardCustomer {
+  firstName: string;
+  lastName: string | null;
+  title: string | null;
+  nationality: string | null;
+  preferredLanguage: string | null;
+  vipStatus: boolean | null;
+  phone: string;
+  secondaryPhone: string | null;
+  email: string | null;
+  lineId: string | null;
+  address: string | null;
+  subDistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
+  country: string | null;
+  specialRequests: string | null;
+  notes: string | null;
 }
 
 export interface DashboardHouse {
@@ -142,6 +180,13 @@ export interface DashboardOverview {
 export interface DashboardBookingDetail {
   kind: "booking";
   booking: DashboardBooking;
+  note: string | null;
+  coverImageUrl: string | null;
+  createdByName: string | null;
+  customer: DashboardCustomer | null;
+  costs: DashboardBookingCosts;
+  checkInTime: string | null;
+  checkOutTime: string | null;
   agency?: { id: string | null; name: string };
 }
 

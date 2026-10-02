@@ -35,7 +35,7 @@ export function DashboardBookingTableRow({ booking, href, showAgency }: { bookin
   </TableRow>;
 }
 
-function DashboardBookingStatusBadge({ className, status }: { className?: string; status: ReturnType<typeof dashboardStatus> }) {
+export function DashboardBookingStatusBadge({ className, status }: { className?: string; status: ReturnType<typeof dashboardStatus> }) {
   const label = DASHBOARD_STATUSES.find(item => item.value === status)?.label ?? "ไม่ทราบสถานะ";
   const colorClass = status === "confirmed" ? "bg-red-700/10 text-red-700 dark:text-red-300" : status === "waiting" ? "bg-green-700/10 text-green-700 dark:text-green-300" : status === "cancelled" ? "bg-destructive/10 text-destructive" : status === "repair" ? "bg-gray-500/10 text-gray-700 dark:text-gray-300" : "bg-slate-300 text-slate-900 dark:bg-slate-300 dark:text-slate-900";
   return <Badge data-dashboard-booking-status className={`${className ?? ""} ${colorClass}`} variant="secondary">{label}</Badge>;

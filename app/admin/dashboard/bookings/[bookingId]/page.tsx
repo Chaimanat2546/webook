@@ -4,6 +4,7 @@ import { dashboardBookingsHref, parseDashboardBookingsQuery } from "../../../../
 import { dashboardSession } from "../../../../../server/auth/dashboard";
 import { DashboardForbidden, DashboardItemNotFound, loadDashboardBooking } from "../../../../../server/services/dashboard";
 import { DashboardDetails } from "../../../../../components/admin/dashboard/dashboard-details";
+import { loadDashboardBookingCustomerAction } from "../../actions";
 
 export default async function DashboardBookingDetailPage({ params, searchParams }: { params: Promise<{ bookingId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { bookingId } = await params;
@@ -19,5 +20,5 @@ export default async function DashboardBookingDetailPage({ params, searchParams 
     notFound();
   }
   const query = parseDashboardQuery({ month: routeQuery.month, view: "booking", from: "bookings", bookingId, status: routeQuery.status, search: routeQuery.search, page: String(routeQuery.page) });
-  return <DashboardDetails backHref={dashboardBookingsHref(routeQuery)} backLabel="กลับไปการจอง" query={query} report={report} />;
+  return <DashboardDetails backHref={dashboardBookingsHref(routeQuery)} backLabel="กลับไปการจอง" loadBookingCustomer={loadDashboardBookingCustomerAction} query={query} report={report} />;
 }

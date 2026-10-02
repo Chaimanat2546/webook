@@ -1,15 +1,19 @@
+"use client";
+
+/* eslint-disable @next/next/no-img-element -- cover images are stored in tenant-controlled Supabase Storage URLs. */
 import Link from "next/link";
-import { SearchIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { Building2Icon, CalendarDaysIcon, CircleDollarSignIcon, CircleUserRoundIcon, CreditCardIcon, HouseIcon, MapPinIcon, MoonIcon, PhoneIcon, SearchIcon, SparklesIcon, StickyNoteIcon, TagIcon, TicketCheckIcon } from "lucide-react";
+import { useState, useTransition, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 
 import { dashboardBackHref } from "../../../lib/dashboard-navigation";
 import { dashboardAgencyDetailHref, dashboardBookingDetailHref, dashboardHouseDetailHref, type DashboardAgencyDetailQuery } from "../../../lib/dashboard-routes";
-import { DASHBOARD_AGENCY_SORTS, DASHBOARD_STATUSES, dashboardDate, dashboardMoney, dashboardStatus, type DashboardQuery, type DashboardReport } from "../../../lib/dashboard";
+import { DASHBOARD_AGENCY_SORTS, dashboardDate, dashboardMoney, dashboardStatus, type DashboardCustomer, type DashboardQuery, type DashboardReport } from "../../../lib/dashboard";
 import { dashboardNights } from "../../../lib/dashboard-calculations";
 import { Button } from "../../ui/button";
-import { Card, CardContent } from "../../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { DashboardBookingRow, DashboardBookingTableRow } from "./dashboard-rows";
+import { DashboardBookingRow, DashboardBookingStatusBadge, DashboardBookingTableRow } from "./dashboard-rows";
 import { DashboardMonthFilter, DashboardPager, DashboardSearchFilter } from "./dashboard-list-primitives";
 import { DashboardTaskHeader } from "./dashboard-task-header";
 
@@ -19,10 +23,87 @@ interface DashboardDetailsProps {
   agencyQuery?: DashboardAgencyDetailQuery;
   query: DashboardQuery;
   report: DashboardReport;
+  loadBookingCustomer?: (bookingId: string) => Promise<{ ok: true; customer: DashboardCustomer | null } | { ok: false; customer: null }>;
 }
 
 function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return <div className={`min-w-0 ${className ?? ""}`}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium [overflow-wrap:anywhere]">{children}</dd></div>;
+}
+
+function BookingDetailRow({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
+  return <div className="grid grid-cols-[1.25rem_minmax(6.5rem,9rem)_minmax(0,1fr)] items-center gap-x-3 border-b py-3 text-sm last:border-b-0">
+    <Icon aria-hidden className="size-4 text-primary" />
+    <dt className="text-muted-foreground">{label}</dt>
+    <dd className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{children}</dd>
+  </div>;
+}
+
+function BookingTimestampsRow({ createdAt, updatedAt }: { createdAt: string; updatedAt: string }) {
+  return <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 border-b py-3 text-sm">
+    <CalendarDaysIcon aria-hidden className="mt-0.5 size-4 text-primary" />
+    <div className="flex min-w-0 flex-wrap items-center justify-start gap-x-6 gap-y-1">
+      <div className="flex min-w-0 items-center gap-2"><dt className="shrink-0 text-muted-foreground">วันที่สร้าง</dt><dd className="break-words font-medium">{dashboardDate(createdAt, true)}</dd></div>
+      <div className="flex min-w-0 items-center gap-2"><dt className="shrink-0 text-muted-foreground">อัปเดตล่าสุด</dt><dd className="break-words font-medium">{dashboardDate(updatedAt, true)}</dd></div>
+    </div>
+  </div>;
+}
+
+type BookingDashboardDetail = Extract<NonNullable<DashboardReport["detail"]>, { kind: "booking" }>;
+
+function BookingSummaryContent({
+  booking,
+  checkInTime,
+  checkOutTime,
+  amount,
+  coverImageUrl,
+}: {
+  booking: BookingDashboardDetail["booking"];
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  amount: string;
+  coverImageUrl: string | null;
+}) {
+  const time = (value: string | null) => value?.slice(0, 5) ?? "—";
+  const dateWithTime = (date: string, value: string | null) => value ? `${dashboardDate(date)} · ${time(value)}` : dashboardDate(date);
+  return <>
+    {coverImageUrl ? <img alt={`รูปบ้าน ${booking.houseTitle}`} className="aspect-video w-full rounded-lg object-cover" data-dashboard-booking-cover loading="lazy" src={coverImageUrl} /> : <div aria-hidden className="flex aspect-video w-full items-center justify-center rounded-lg bg-muted text-muted-foreground"><Building2Icon className="size-10" /></div>}
+    <div className="-mt-1"><p className="break-words font-semibold">{booking.houseTitle}</p><p className="text-xs text-muted-foreground">DV-{booking.propertyId}</p></div>
+    <dl className="divide-y text-sm"><div className="flex items-center justify-between gap-4 py-2"><dt className="flex items-center gap-2 text-muted-foreground"><CalendarDaysIcon aria-hidden className="size-4" />เข้าพัก</dt><dd>{dateWithTime(booking.checkIn, checkInTime)}</dd></div><div className="flex items-center justify-between gap-4 py-2"><dt className="flex items-center gap-2 text-muted-foreground"><CalendarDaysIcon aria-hidden className="size-4" />เช็กเอาต์</dt><dd>{dateWithTime(booking.checkOut, checkOutTime)}</dd></div><div className="flex items-center justify-between gap-4 py-2"><dt className="flex items-center gap-2 text-muted-foreground"><MoonIcon aria-hidden className="size-4" />จำนวนคืน</dt><dd>{dashboardNights(booking.checkIn, booking.checkOut) ?? "—"}</dd></div><div className="flex items-center justify-between gap-4 py-3"><dt className="flex items-center gap-2 font-medium"><CircleDollarSignIcon aria-hidden className="size-4" />ยอดจอง</dt><dd className="font-semibold tabular-nums text-primary">{amount}</dd></div></dl>
+    <Button asChild className="w-full" variant="secondary"><Link href={`/admin/houses/${encodeURIComponent(booking.propertyId)}`}><HouseIcon aria-hidden className="size-4" />ดูข้อมูลบ้าน / โครงการ</Link></Button>
+  </>;
+}
+
+function CustomerFact({ children, label }: { children: ReactNode; label: string }) {
+  return <div><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium [overflow-wrap:anywhere]">{children}</dd></div>;
+}
+
+function BookingCustomerDetailContent({ customer, mobile = false }: { customer: BookingDashboardDetail["customer"]; mobile?: boolean }) {
+  if (!customer) return <p className="py-3 text-sm text-muted-foreground">ยังไม่มีข้อมูลลูกค้าที่ผูกกับการจองนี้</p>;
+  const language = customer.preferredLanguage === "th" ? "ไทย" : customer.preferredLanguage === "en" ? "English" : customer.preferredLanguage ?? "—";
+  const fullName = [customer.title, customer.firstName, customer.lastName].filter((value): value is string => Boolean(value)).join(" ") || "—";
+  const address = [customer.address, customer.subDistrict, customer.district, customer.province, customer.postalCode, customer.country].filter((value): value is string => Boolean(value)).join(" ") || "—";
+  const sectionClass = mobile ? "border-b pb-5 last:border-b-0 last:pb-0" : "overflow-hidden rounded-xl border";
+  const headingClass = mobile ? "flex items-center gap-2 border-b pb-3 font-heading text-sm leading-snug font-medium" : "flex items-center gap-2 border-b px-4 py-3 font-heading text-sm leading-snug font-medium";
+  const factGridClass = mobile ? "grid grid-cols-2 gap-x-4 gap-y-4 pt-4 text-sm" : "grid grid-cols-2 text-sm [&>div]:min-w-0 [&>div]:p-4 [&>div:nth-child(odd)]:border-r [&>div:nth-child(-n+2)]:border-b";
+  const bodyClass = mobile ? "pt-4" : "p-4";
+  return <div className={mobile ? "space-y-4" : "grid gap-4 md:grid-cols-2"}>
+    <section className={sectionClass}><h3 className={headingClass}><CircleUserRoundIcon aria-hidden className="size-5 text-primary" />ข้อมูลส่วนตัว</h3><dl className={factGridClass}><CustomerFact label="ชื่อ - นามสกุล">{fullName}</CustomerFact><CustomerFact label="สัญชาติ">{customer.nationality ?? "—"}</CustomerFact><CustomerFact label="ภาษาที่ใช้">{language}</CustomerFact><CustomerFact label="สถานะ VIP">{customer.vipStatus ? <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">VIP</span> : "ทั่วไป"}</CustomerFact></dl></section>
+    <section className={sectionClass}><h3 className={headingClass}><PhoneIcon aria-hidden className="size-5 text-primary" />ช่องทางติดต่อ</h3><dl className={factGridClass}><CustomerFact label="เบอร์โทรหลัก">{customer.phone || "—"}</CustomerFact><CustomerFact label="เบอร์สำรอง">{customer.secondaryPhone ?? "—"}</CustomerFact><CustomerFact label="อีเมล"><span className="block min-w-0 break-all">{customer.email ?? "—"}</span></CustomerFact><CustomerFact label="LINE ID"><span className="block min-w-0 break-all">{customer.lineId ?? "—"}</span></CustomerFact></dl></section>
+    <section className={sectionClass}><h3 className={headingClass}><MapPinIcon aria-hidden className="size-5 text-primary" />ที่อยู่</h3><div className={bodyClass}><p className="rounded-lg bg-muted/50 p-3 whitespace-pre-line text-sm leading-6">{address}</p></div></section>
+    <section className={sectionClass}><h3 className={headingClass}><SparklesIcon aria-hidden className="size-5 text-primary" />ความต้องการพิเศษ</h3><div className={bodyClass}><p className="rounded-lg bg-muted/50 p-3 whitespace-pre-line text-sm leading-6">{customer.specialRequests ?? "—"}</p></div></section>
+    {mobile ? <section className={sectionClass}><h3 className={headingClass}><StickyNoteIcon aria-hidden className="size-5 text-primary" />หมายเหตุลูกค้า</h3><div className={bodyClass}><p className="rounded-lg bg-muted/50 p-3 whitespace-pre-line text-sm leading-6">{customer.notes ?? "—"}</p></div></section> : <Card className="md:col-span-2 bg-primary/5" size="sm"><CardHeader><CardTitle className="font-semibold">หมายเหตุลูกค้า</CardTitle></CardHeader><CardContent><p className="whitespace-pre-line text-sm">{customer.notes ?? "—"}</p></CardContent></Card>}
+  </div>;
+}
+
+function BookingCostsContent({ costs, mobile = false, status }: { costs: BookingDashboardDetail["costs"]; mobile?: boolean; status: string }) {
+  const value = (cents: number | null) => status === "repair" ? "—" : cents === null ? "ไม่ระบุยอด" : dashboardMoney(cents);
+  const row = (label: string, content: ReactNode) => <div className="flex items-center justify-between gap-4 border-b py-3 text-sm last:border-b-0"><dt className="text-muted-foreground">{label}</dt><dd className="min-w-0 break-words text-right font-medium [overflow-wrap:anywhere]">{content}</dd></div>;
+  const rows = <dl>{row("ค่าบ้านเต็มจำนวน", value(costs.fullPriceCents))}{row("มัดจำที่ต้องชำระ", value(costs.depositCents))}{row("ค่าใช้จ่ายเพิ่ม", value(costs.extraChargeCents))}{row("ประกันที่พัก", value(costs.insuranceCents))}{status === "waiting" && row("หมดอายุการชำระ", costs.paymentExpiresAt ? dashboardDate(costs.paymentExpiresAt, true) : "—")}</dl>;
+  return mobile ? rows : <Card size="sm"><CardHeader className="border-b"><CardTitle className="font-semibold">สรุปค่าใช้จ่าย</CardTitle></CardHeader><CardContent>{rows}</CardContent></Card>;
+}
+
+function BookingCustomerLoading() {
+  return <div aria-busy className="space-y-4" data-dashboard-booking-customer-loading><div className="h-5 w-32 animate-pulse rounded bg-muted" /><div className="grid grid-cols-2 gap-4"><div className="h-14 animate-pulse rounded bg-muted" /><div className="h-14 animate-pulse rounded bg-muted" /></div><div className="h-5 w-36 animate-pulse rounded bg-muted" /><div className="h-24 animate-pulse rounded bg-muted" /></div>;
 }
 
 function dashboardBookingMonth(value: string): string {
@@ -35,7 +116,12 @@ export function DashboardDetails({
   agencyQuery,
   query,
   report,
+  loadBookingCustomer,
 }: DashboardDetailsProps) {
+  const [bookingTab, setBookingTab] = useState<"booking" | "customer" | "costs">("booking");
+  const [customer, setCustomer] = useState<BookingDashboardDetail["customer"] | undefined>(undefined);
+  const [customerError, setCustomerError] = useState(false);
+  const [isCustomerPending, startCustomerTransition] = useTransition();
   const detail = report.detail;
   if (!detail) return null;
 
@@ -44,26 +130,58 @@ export function DashboardDetails({
   if (detail.kind === "booking") {
     const booking = detail.booking;
     const status = dashboardStatus(booking.status);
-    return <div className="space-y-4">
-      <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description={`${booking.houseTitle} · DV-${booking.propertyId}`} title="รายละเอียดการจอง" />
-      <Card><CardContent>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-5 lg:grid-cols-3">
-          <Field className="col-span-2" label="รหัสจอง">{booking.code}</Field>
-          <Field label="สถานะปัจจุบัน">{DASHBOARD_STATUSES.find(item => item.value === status)?.label}</Field>
-          <Field label="เข้าพัก">{dashboardDate(booking.checkIn)}</Field><Field label="เช็กเอาต์">{dashboardDate(booking.checkOut)}</Field>
-          <Field label="จำนวนคืน">{dashboardNights(booking.checkIn, booking.checkOut) ?? "—"}</Field>
-          <Field label="ยอดจอง">{status === "repair" ? "—" : booking.priceCents === null ? "ไม่ระบุยอด" : dashboardMoney(booking.priceCents)}</Field>
-          <Field label="วันที่สร้าง">{dashboardDate(booking.createdAt, true)}</Field>
-          {detail.agency && <Field label="เอเจนซี่">{detail.agency.name}</Field>}
-        </dl>
-      </CardContent></Card>
+    const amount = status === "repair" ? "—" : booking.priceCents === null ? "ไม่ระบุยอด" : dashboardMoney(booking.priceCents);
+    const agency = detail.agency?.name ?? "ไม่ระบุเอเจนซี่";
+    const channel = detail.agency?.id ? "เอเจนซี่" : "ไม่ระบุ";
+    const selectBookingTab = (next: typeof bookingTab | undefined) => {
+      if (!next) return;
+      setBookingTab(next);
+      if (next !== "customer" || customer !== undefined || isCustomerPending) return;
+      setCustomerError(false);
+      startCustomerTransition(async () => {
+        if (!loadBookingCustomer) {
+          setCustomerError(true);
+          return;
+        }
+        const result = await loadBookingCustomer(booking.id);
+        if (result.ok) setCustomer(result.customer);
+        else setCustomerError(true);
+      });
+    };
+    const customerContent = customer === undefined
+      ? <BookingCustomerLoading />
+      : customerError
+        ? <p role="status" className="py-3 text-sm text-destructive">ไม่สามารถโหลดข้อมูลลูกค้าได้</p>
+        : <BookingCustomerDetailContent customer={customer} mobile={false} />;
+    return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
+      <header className="space-y-1 lg:hidden"><div className="flex items-center justify-between gap-3"><Link className="inline-flex min-h-11 items-center gap-1 text-sm font-medium" href={resolvedBackHref}><span aria-hidden>←</span>{backLabel}</Link><DashboardBookingStatusBadge status={status} /></div><h1 className="text-xl font-semibold">รายละเอียดการจอง</h1><p className="text-sm font-medium text-muted-foreground">{booking.houseTitle}</p><p className="text-xs text-muted-foreground">DV-{booking.propertyId}</p></header>
+      <div className="hidden lg:block"><DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description={`${booking.houseTitle} · DV-${booking.propertyId}`} title="รายละเอียดการจอง" /></div>
+      <nav aria-label="ส่วนของรายละเอียดการจอง" className="hidden gap-1 overflow-x-auto border-b pb-px lg:flex" role="tablist">
+        {[{ label: "ข้อมูลการจอง", icon: TicketCheckIcon, value: "booking" as const }, { label: "ข้อมูลลูกค้า", icon: CircleUserRoundIcon, value: "customer" as const }, { label: "ค่าใช้จ่าย", icon: CreditCardIcon, value: "costs" as const }].map(({ label, icon: Icon, value }) => <button aria-selected={value === bookingTab} className="inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground aria-selected:border-primary aria-selected:text-primary" key={label} onClick={() => selectBookingTab(value)} role="tab" type="button"><Icon aria-hidden className="size-4" />{label}</button>)}
+      </nav>
+      <div className="space-y-4 lg:hidden" data-dashboard-booking-mobile-summary><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} /><div><nav aria-label="ส่วนของรายละเอียดการจองบนมือถือ" className="flex gap-1 overflow-x-auto border-b pb-px" data-dashboard-booking-mobile-tabs role="tablist">{[{ label: "ข้อมูลการจอง", icon: TicketCheckIcon, value: "booking" as const }, { label: "ข้อมูลลูกค้า", icon: CircleUserRoundIcon, value: "customer" as const }, { label: "ค่าใช้จ่าย", icon: CreditCardIcon, value: "costs" as const }].map(({ label, icon: Icon, value }) => <button aria-selected={value === bookingTab} className="inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground aria-selected:border-primary aria-selected:text-primary" key={label} onClick={() => selectBookingTab(value)} role="tab" type="button"><Icon aria-hidden className="size-4" />{label}</button>)}</nav><div className="pt-4"><div className={bookingTab === "booking" ? "" : "hidden"}><dl data-dashboard-booking-mobile-timestamps><BookingDetailRow icon={TicketCheckIcon} label="รหัสจอง">{booking.code}</BookingDetailRow><BookingDetailRow icon={CalendarDaysIcon} label="วันที่สร้าง">{dashboardDate(booking.createdAt, true)}</BookingDetailRow><BookingDetailRow icon={CalendarDaysIcon} label="อัปเดตล่าสุด">{dashboardDate(booking.updatedAt, true)}</BookingDetailRow><BookingDetailRow icon={CircleUserRoundIcon} label="ผู้บันทึก">{detail.createdByName ?? "ไม่ระบุผู้บันทึก"}</BookingDetailRow><BookingDetailRow icon={Building2Icon} label="เอเจนซี่">{agency}</BookingDetailRow><BookingDetailRow icon={HouseIcon} label="บ้าน / โครงการ">{booking.houseTitle}</BookingDetailRow><BookingDetailRow icon={TagIcon} label="สถานะ"><DashboardBookingStatusBadge status={status} /></BookingDetailRow><BookingDetailRow icon={TicketCheckIcon} label="ช่องทางการจอง">{channel}</BookingDetailRow></dl></div><div className={bookingTab === "customer" ? "" : "hidden"}>{customer === undefined ? <BookingCustomerLoading /> : customerError ? <p role="status" className="py-3 text-sm text-destructive">ไม่สามารถโหลดข้อมูลลูกค้าได้</p> : <BookingCustomerDetailContent customer={customer} mobile />}</div><div className={bookingTab === "costs" ? "" : "hidden"}><BookingCostsContent costs={detail.costs} mobile status={status} /></div></div></div></div>
+      <div className="hidden gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <Card className="order-last" size="sm"><CardHeader className="!flex items-center justify-between pb-0"><CardTitle className="font-semibold">สรุปการจอง</CardTitle><DashboardBookingStatusBadge status={status} /></CardHeader><CardContent className="space-y-4"><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} /></CardContent></Card>
+        <div className="order-first">
+          <div className={bookingTab === "booking" ? "space-y-4" : "hidden"}><Card size="sm"><CardHeader className="border-b"><CardTitle className="font-semibold">ข้อมูลการจอง</CardTitle></CardHeader><CardContent><dl>
+            <BookingDetailRow icon={TicketCheckIcon} label="รหัสจอง">{booking.code}</BookingDetailRow>
+            <BookingTimestampsRow createdAt={booking.createdAt} updatedAt={booking.updatedAt} />
+            <BookingDetailRow icon={CircleUserRoundIcon} label="ผู้บันทึก">{detail.createdByName ?? "ไม่ระบุผู้บันทึก"}</BookingDetailRow>
+            <BookingDetailRow icon={Building2Icon} label="เอเจนซี่">{agency}</BookingDetailRow>
+            <BookingDetailRow icon={HouseIcon} label="บ้าน / โครงการ">{booking.houseTitle}</BookingDetailRow>
+            <BookingDetailRow icon={TagIcon} label="สถานะ"><DashboardBookingStatusBadge status={status} /></BookingDetailRow>
+            <BookingDetailRow icon={TicketCheckIcon} label="ช่องทางการจอง">{channel}</BookingDetailRow>
+          </dl></CardContent></Card>
+          {detail.note && <Card className="bg-primary/5" size="sm"><CardHeader><CardTitle className="font-semibold">หมายเหตุ</CardTitle></CardHeader><CardContent><p className="whitespace-pre-line text-sm">{detail.note}</p></CardContent></Card>}</div><div className={bookingTab === "customer" ? "" : "hidden"}>{customerContent}</div><div className={bookingTab === "costs" ? "" : "hidden"}><BookingCostsContent costs={detail.costs} status={status} /></div>
+        </div>
+      </div>
     </div>;
   }
 
   if (detail.kind === "agency") {
     const agencyListQuery = agencyQuery ?? { month: query.month, search: query.agencySearch, page: query.agenciesPage, bookingSearch: "", bookingsPage: 1, sort: "date-asc" as const };
     const agencyId = detail.agency.id ?? "unassigned";
-    return <div className="space-y-4">
+    return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
       <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description="รายละเอียดเอเจนซี่" title={detail.agency.name} />
       <Card><CardContent className="space-y-4">
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 sm:gap-5"><Field label="ยอดขาย">{dashboardMoney(detail.agency.amountCents)}</Field><Field label="จำนวนการจอง">{detail.agency.count} รายการ</Field><Field label="สัดส่วนยอดขาย">{detail.sharePercent === null ? "—" : `${detail.sharePercent.toFixed(1)}%`}</Field></dl>
@@ -98,7 +216,7 @@ export function DashboardDetails({
   const time = (value: string | null) => value?.slice(0, 5) ?? "—";
   const returnTo = dashboardHouseDetailHref({ month: query.month, search: query.houseSearch, page: query.housesPage }, house.id);
   const manageParams = new URLSearchParams({ returnTo });
-  return <div className="space-y-4">
+  return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
     <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description="รายละเอียดบ้านใหม่" title={house.title} />
     <Card><CardContent className="space-y-6">
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-5 lg:grid-cols-4">

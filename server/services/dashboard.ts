@@ -1,5 +1,5 @@
 import "server-only";
-import { dashboardStatus, parseDashboardQuery, type DashboardAgency, type DashboardAgencySort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardDailyBookingCount, type DashboardDetail, type DashboardHouse, type DashboardListQuery, type DashboardMonth, type DashboardOverview, type DashboardOverviewQuery, type DashboardPage, type DashboardReport, type DashboardSales } from "../../lib/dashboard.ts";
+import { dashboardStatus, parseDashboardQuery, type DashboardAgency, type DashboardAgencySort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDailyBookingCount, type DashboardDetail, type DashboardHouse, type DashboardListQuery, type DashboardMonth, type DashboardOverview, type DashboardOverviewQuery, type DashboardPage, type DashboardReport, type DashboardSales } from "../../lib/dashboard.ts";
 import { dashboardShare } from "../../lib/dashboard-calculations.ts";
 import type { DashboardBookingDateField, DashboardRepository } from "../repositories/dashboard.ts";
 
@@ -9,10 +9,19 @@ const DASHBOARD_BOOKINGS_PAGE_SIZE = 9;
 export class DashboardForbidden extends Error {}
 export class DashboardItemNotFound extends Error {}
 
+export async function loadDashboardBookingCustomer(repository: DashboardRepository, actorId: string, bookingId: string): Promise<DashboardCustomer | null> {
+  const scope = await repository.access(actorId);
+  if (!scope) throw new DashboardForbidden();
+  const booking = await repository.bookingCustomer(scope, bookingId);
+  if (!booking) throw new DashboardItemNotFound();
+  return booking.customerId ? repository.customerDetail(scope, booking.propertyId, booking.customerId) : null;
+}
+
 interface DashboardLoadOptions {
   now?: Date;
   bookingDateField?: DashboardBookingDateField;
   bookingDateRange?: DashboardMonth;
+  includeBookingNote?: boolean;
   bookingListSort?: DashboardBookingSort;
   bookingListSearch?: boolean;
   agencyBookingsPage?: number;
@@ -142,7 +151,7 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   if (scope.kind === "owner" && ["agencies", "houses", "agency", "house"].includes(query.view)) throw new DashboardForbidden();
   const bookingDateField = options.bookingDateField ?? "created_at";
   const [source, sourceHouses] = await Promise.all([
-    repository.bookings(scope, options.bookingDateRange ?? query, bookingDateField),
+    repository.bookings(scope, options.bookingDateRange ?? query, bookingDateField, options.includeBookingNote),
     scope.kind === "admin" ? repository.newHouses(query) : Promise.resolve([]),
   ]);
   const rows = sortBookings(source.filter(row => {
@@ -177,7 +186,11 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   if (query.view === "booking") {
     const booking = rows.find(row => row.id === query.bookingId);
     if (!booking) throw new DashboardItemNotFound();
-    detail = { kind: "booking", booking: publicBooking(booking), ...(scope.kind === "admin" ? { agency: { id: booking.agentId, name: agencyLabel(booking) } } : {}) };
+    const [coverImageUrl, createdByName] = await Promise.all([
+      repository.coverImageUrl(scope, booking.propertyId),
+      booking.createdById ? repository.creatorName(booking.createdById) : Promise.resolve(null),
+    ]);
+    detail = { kind: "booking", booking: publicBooking(booking), note: booking.note ?? null, coverImageUrl, createdByName, customer: null, costs: { fullPriceCents: booking.priceCents, depositCents: booking.depositCents ?? null, extraChargeCents: booking.extraChargeCents ?? null, insuranceCents: booking.insuranceCents ?? null, paymentExpiresAt: booking.paymentExpiresAt ?? null }, checkInTime: booking.checkInTime ?? null, checkOutTime: booking.checkOutTime ?? null, ...(scope.kind === "admin" ? { agency: { id: booking.agentId, name: agencyLabel(booking) } } : {}) };
   }
   if (query.view === "agency") {
     const agency = agencies.find(row => (query.agency === "unassigned" ? row.id === null : row.id === query.agency));
@@ -254,7 +267,7 @@ export async function loadDashboardBooking(repository: DashboardRepository, acto
     status: query.status,
     search: query.search,
     page: String(query.page),
-  }, { bookingDateField: "updated_at", bookingListSort: query.sort, bookingListSearch: true });
+  }, { bookingDateField: "updated_at", bookingListSort: query.sort, bookingListSearch: true, includeBookingNote: true });
 }
 
 export async function loadDashboardAgency(repository: DashboardRepository, actorId: string, query: DashboardListQuery, agencyId: string, bookingsPage = 1, bookingsSearch = "", bookingsSort: DashboardAgencySort = "date-asc"): Promise<DashboardReport> {
