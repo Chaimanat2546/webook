@@ -34,6 +34,7 @@ interface DashboardBookingAdvancedFiltersPanelProps {
 export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer, query, onFiltersApply, onClose, showBookingControls = false }: DashboardBookingAdvancedFiltersPanelProps) {
   const [amountFrom, setAmountFrom] = useState(() => amountValue(query?.amountFromCents));
   const [amountTo, setAmountTo] = useState(() => amountValue(query?.amountToCents));
+  const [amountError, setAmountError] = useState(false);
   const [checkInRange, setCheckInRange] = useState<DateRange | undefined>(() => query?.checkInFrom && query.checkInTo ? { from: localDate(query.checkInFrom), to: localDate(query.checkInTo) } : undefined);
   const [status, setStatus] = useState<DashboardBookingsQuery["status"]>(query?.status ?? "confirmed");
   const [sort, setSort] = useState<DashboardBookingsQuery["sort"]>(query?.sort ?? "updated-desc");
@@ -41,16 +42,23 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
   function clear() {
     setAmountFrom("");
     setAmountTo("");
+    setAmountError(false);
     setCheckInRange(undefined);
     setStatus("confirmed");
     setSort("updated-desc");
   }
 
   function apply() {
+    const from = amountCents(amountFrom), to = amountCents(amountTo);
+    if (from !== undefined && to !== undefined && from > to) {
+      setAmountError(true);
+      return;
+    }
+    setAmountError(false);
     onFiltersApply?.({
       ...dateRangeChanges(checkInRange?.from && checkInRange.to ? checkInRange : undefined),
-      amountFromCents: amountCents(amountFrom),
-      amountToCents: amountCents(amountTo),
+      amountFromCents: from,
+      amountToCents: to,
       ...(showBookingControls ? { status, sort } : {}),
     });
     onClose();
@@ -86,7 +94,7 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
         </Select>
       </div>
     </div> : null}
-    <fieldset className="space-y-2"><legend className="text-sm font-medium">ช่วงยอดจอง (บาท)</legend><div className="flex items-center gap-2"><Input aria-label="ยอดจองต่ำสุด" inputMode="decimal" onChange={event => setAmountFrom(event.target.value)} placeholder="ขั้นต่ำ" type="text" value={amountFrom} /><span aria-hidden className="text-muted-foreground">–</span><Input aria-label="ยอดจองสูงสุด" inputMode="decimal" onChange={event => setAmountTo(event.target.value)} placeholder="สูงสุด" type="text" value={amountTo} /></div></fieldset>
+    <fieldset className="space-y-2"><legend className="text-sm font-medium">ช่วงยอดจอง (บาท)</legend><div className="flex items-center gap-2"><Input aria-invalid={amountError} aria-label="ยอดจองต่ำสุด" inputMode="decimal" onChange={event => { setAmountFrom(event.target.value); setAmountError(false); }} placeholder="ขั้นต่ำ" type="text" value={amountFrom} /><span aria-hidden className="text-muted-foreground">–</span><Input aria-invalid={amountError} aria-label="ยอดจองสูงสุด" inputMode="decimal" onChange={event => { setAmountTo(event.target.value); setAmountError(false); }} placeholder="สูงสุด" type="text" value={amountTo} /></div>{amountError ? <p role="alert" className="text-sm text-destructive">ยอดสูงสุดต้องไม่น้อยกว่ายอดต่ำสุด</p> : null}</fieldset>
     <fieldset className="space-y-2"><legend className="text-sm font-medium">ช่วงวันที่เข้าพัก</legend><ThaiDateRangePicker onChange={setCheckInRange} portalContainer={datePickerPortalContainer} value={checkInRange} /></fieldset>
     <Button className="w-full" onClick={apply} type="button">ใช้ตัวกรอง</Button>
   </div>;
