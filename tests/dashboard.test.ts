@@ -259,7 +259,7 @@ test("canonical agency and house pages render their own workflows", async () => 
   assert.match(agenciesHtml, /Agency A[\s\S]*<td[^>]*>1<\/td>[\s\S]*<td[^>]*>฿1,234\.50<\/td>/);
   assert.doesNotMatch(agenciesHtml, /100\.0%|ของยอดขาย|h-1\.5 overflow-hidden rounded-full/);
   assert.ok(agenciesHtml.indexOf('aria-label="ค้นหาเอเจนซี่"') < agenciesHtml.indexOf("overflow-hidden rounded-xl border"));
-  assert.match(agenciesHtml, /href="\/admin\/dashboard\/agencies\/agency-a\?month=2026-09&amp;search=Agency"/);
+  assert.match(agenciesHtml, /href="\/admin\/dashboard\/agencies\/agency-a\?month=2026-09&amp;search=Agency&amp;status=confirmed&amp;sort=updated-desc"/);
 
   const HousesPage = await dashboardPageComponent("../app/admin/dashboard/houses/page.tsx", repo);
   const housesHtml = renderToStaticMarkup(await HousesPage({ searchParams: Promise.resolve({ month: "2026-09" }) }) as ReactNode);
@@ -295,7 +295,7 @@ test("canonical detail pages use their list return headers", async () => {
   const agencyHtml = renderToStaticMarkup(await AgencyPage({ params: Promise.resolve({ agencyId: "agency-a" }), searchParams: Promise.resolve({ month: "2026-09" }) }) as ReactNode);
   assert.match(agencyHtml, /<header[^>]*>.*href="\/admin\/dashboard\/agencies\?month=2026-09"[^>]*>.*กลับไปเอเจนซี่.*<h1[^>]*>Agency A<\/h1>/);
   assert.match(agencyHtml, /<h2[^>]*>รายการจอง<\/h2>/);
-  assert.match(agencyHtml, /บ้านพัก.*วันเข้าพัก.*ยอดจอง/);
+  assert.match(agencyHtml, /บ้าน \/ DV.*วันเข้าพัก.*สถานะการจอง.*เอเจนซี่.*ยอดจอง/);
   assert.doesNotMatch(agencyHtml, /ดูการจองทั้งหมด/);
 
   const HousePage = await dashboardPageComponent("../app/admin/dashboard/houses/[id]/page.tsx", repo) as (props: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
@@ -326,7 +326,7 @@ test("dashboard mobile layouts keep house metadata grouped and details compact",
   assert.match(houseHtml, /เวลาเช็กอิน/);
 });
 
-test("agency detail filters render as a compact mobile-first toolbar", async () => {
+test("agency detail reuses the booking toolbar and responsive list", async () => {
   const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09", view: "agency", agency: "agency-a" });
   const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
   const baseQuery = parseDashboardQuery({ month: "2026-09", view: "agency", agency: "agency-a" });
@@ -335,14 +335,13 @@ test("agency detail filters render as a compact mobile-first toolbar", async () 
     query: baseQuery,
     agencyQuery: parseDashboardAgencyDetailQuery({ month: "2026-09", bookingSearch: "villa", search: "Agency", page: "2", sort: "price-desc" }),
   }));
-  assert.match(bookingsHtml, /name="bookingSearch"[^>]*value="villa"/);
-  assert.match(bookingsHtml, /type="hidden" name="search" value="Agency"/);
-  assert.match(bookingsHtml, /type="hidden" name="page" value="2"/);
-  assert.match(bookingsHtml, /type="month"[^>]*id="agency-detail-month"[^>]*name="month"/);
-  assert.match(bookingsHtml, /value="price-desc" selected/);
+  assert.match(bookingsHtml, /name="search"[^>]*value="villa"/);
+  assert.match(bookingsHtml, /aria-label="สถานะการจอง"/);
+  assert.match(bookingsHtml, /aria-label="เรียงลำดับ"/);
+  assert.match(bookingsHtml, /data-thai-month-picker/);
   assert.doesNotMatch(bookingsHtml, /การจอง \(1\)|บ้านยอดขายสูงสุด/);
-  assert.match(bookingsHtml, /hidden md:block[\s\S]*<table[\s\S]*md:hidden/);
-  assert.match(bookingsHtml, /class="grid min-h-14 grid-cols-\[minmax\(0,1fr\)_auto\][^"]*md:grid-cols-3"/);
+  assert.match(bookingsHtml, /hidden overflow-hidden rounded-xl border md:block[\s\S]*<table[\s\S]*space-y-3 md:hidden/);
+  assert.match(bookingsHtml, /rounded-xl border bg-card p-3 shadow-sm/);
   assert.match(bookingsHtml, /House A/);
   assert.match(bookingsHtml, /1 พ\.ย\. 2569/);
   assert.match(bookingsHtml, /฿1,234\.50/);
@@ -588,12 +587,12 @@ test("house workspace return links allow dashboard detail routes and reject exte
   assert.equal(safeHouseReturnTo("/admin/dashboard/houses/id/extra"), null);
 });
 
-test("agency booking links use the booking updated month for the detail route", async () => {
+test("agency booking links retain the selected booking-list month", async () => {
   const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
   const raw = { month: "2026-09", view: "agency", agency: "agency-a" };
   const report = await loadDashboard(repository({ kind: "admin" }, [{ ...booking, updatedAt: "2026-10-01T00:00:00Z" }]), "signed-in-user", raw);
   const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery(raw) }));
-  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-10&amp;status=confirmed&amp;sort=updated-desc"/);
+  assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc"/);
 });
 
 test("agency detail shows only its booking list and house details expose manage destinations", async () => {
