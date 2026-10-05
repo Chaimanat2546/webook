@@ -1,4 +1,4 @@
-import { DASHBOARD_AGENCY_LIST_SORTS, DASHBOARD_BOOKING_SORTS, DASHBOARD_STATUSES, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardBookingsQuery, type DashboardBookingSort, type DashboardListQuery, type DashboardQuery } from "./dashboard.ts";
+import { DASHBOARD_AGENCY_LIST_SORTS, DASHBOARD_BOOKING_SORTS, DASHBOARD_HOUSE_LIST_SORTS, DASHBOARD_STATUSES, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardBookingsQuery, type DashboardBookingSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardQuery } from "./dashboard.ts";
 
 type RouteRawQuery = Record<string, unknown>;
 
@@ -85,23 +85,11 @@ export function dashboardBookingDetailHref(query: DashboardBookingsQuery, bookin
 
 function parseDashboardListQuery(raw: RouteRawQuery, view: "agencies" | "houses"): DashboardListQuery {
   const foreign = view === "agencies"
-    ? ["view", "from", "status", "agency", "housesPage", "agenciesPage", "houseSearch", "bookingId", "houseId", "bookingsPage", "bookingSearch", "section", "sort"]
+    ? ["view", "from", "status", "agency", "housesPage", "agenciesPage", "houseSearch", "houseSort", "bookingId", "houseId", "bookingsPage", "bookingSearch", "section", "sort"]
     : ["view", "from", "status", "agency", "housesPage", "agenciesPage", "agencySearch", "bookingId", "houseId"];
   if (foreign.some(key => key in raw)) throw new Error("ตัวกรองไม่ถูกต้อง");
   const query = parseDashboardQuery({ ...raw, view, ...(view === "agencies" ? { agencySearch: raw.search, agenciesPage: raw.page } : { houseSearch: raw.search, housesPage: raw.page }) });
   return { month: query.month, search: view === "agencies" ? query.agencySearch : query.houseSearch, page: view === "agencies" ? query.agenciesPage : query.housesPage };
-}
-
-function dashboardListHref(path: "/admin/dashboard/agencies" | "/admin/dashboard/houses", query: DashboardListQuery, changes: Partial<DashboardListQuery>): string {
-  const merged = { ...query, ...changes };
-  if (changes.month !== undefined && changes.month !== query.month) {
-    merged.search = "";
-    merged.page = 1;
-  } else if (changes.search !== undefined) merged.page = 1;
-  const params = new URLSearchParams({ month: merged.month });
-  if (merged.search) params.set("search", merged.search);
-  if (merged.page !== 1) params.set("page", String(merged.page));
-  return `${path}?${params.toString()}`;
 }
 
 export function parseDashboardAgenciesQuery(raw: RouteRawQuery): DashboardAgenciesQuery {
@@ -112,8 +100,12 @@ export function parseDashboardAgenciesQuery(raw: RouteRawQuery): DashboardAgenci
   return { ...list, agencySort: agencySort as DashboardAgenciesQuery["agencySort"] };
 }
 
-export function parseDashboardHousesQuery(raw: RouteRawQuery): DashboardListQuery {
-  return parseDashboardListQuery(raw, "houses");
+export function parseDashboardHousesQuery(raw: RouteRawQuery): DashboardHousesQuery {
+  const list = parseDashboardListQuery(raw, "houses");
+  const houseSort = raw.houseSort;
+  if (houseSort === undefined) return list;
+  if (typeof houseSort !== "string" || !DASHBOARD_HOUSE_LIST_SORTS.some(item => item.value === houseSort)) throw new Error("การเรียงบ้านไม่ถูกต้อง");
+  return { ...list, houseSort: houseSort as DashboardHousesQuery["houseSort"] };
 }
 
 export function dashboardAgenciesHref(query: DashboardAgenciesQuery, changes: Partial<DashboardAgenciesQuery> = {}): string {
@@ -208,11 +200,20 @@ export function parseDashboardAgencyDetailQuery(raw: RouteRawQuery): DashboardAg
   };
 }
 
-export function dashboardHousesHref(query: DashboardListQuery, changes: Partial<DashboardListQuery> = {}): string {
-  return dashboardListHref("/admin/dashboard/houses", query, changes);
+export function dashboardHousesHref(query: DashboardHousesQuery, changes: Partial<DashboardHousesQuery> = {}): string {
+  const merged = { ...query, ...changes };
+  if (changes.month !== undefined && changes.month !== query.month) {
+    merged.search = "";
+    merged.page = 1;
+  } else if (changes.search !== undefined || changes.houseSort !== undefined) merged.page = 1;
+  const params = new URLSearchParams({ month: merged.month });
+  if (merged.search) params.set("search", merged.search);
+  if (merged.houseSort && merged.houseSort !== "created-desc") params.set("houseSort", merged.houseSort);
+  if (merged.page !== 1) params.set("page", String(merged.page));
+  return `/admin/dashboard/houses?${params.toString()}`;
 }
 
-export function dashboardHouseDetailHref(query: DashboardListQuery, houseId: string): string {
+export function dashboardHouseDetailHref(query: DashboardHousesQuery, houseId: string): string {
   const href = dashboardHousesHref(query);
   const [path, search = ""] = href.split("?");
   return `${path}/${encodeURIComponent(houseId)}?${search}`;

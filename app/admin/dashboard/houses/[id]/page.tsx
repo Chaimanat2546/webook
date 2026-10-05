@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { parseDashboardQuery } from "../../../../../lib/dashboard";
-import { dashboardHousesHref, parseDashboardHousesQuery } from "../../../../../lib/dashboard-routes";
+import { dashboardHouseDetailHref, dashboardHousesHref, parseDashboardHousesQuery } from "../../../../../lib/dashboard-routes";
 import { dashboardSession } from "../../../../../server/auth/dashboard";
 import { DashboardForbidden, DashboardItemNotFound, loadDashboardHouse } from "../../../../../server/services/dashboard";
 import { DashboardDetails } from "../../../../../components/admin/dashboard/dashboard-details";
@@ -19,5 +19,5 @@ export default async function DashboardHouseDetailPage({ params, searchParams }:
     notFound();
   }
   const query = parseDashboardQuery({ month: routeQuery.month, view: "house", from: "houses", houseId: id, houseSearch: routeQuery.search, housesPage: String(routeQuery.page) });
-  return <DashboardDetails backHref={dashboardHousesHref(routeQuery)} backLabel="กลับไปบ้านใหม่" query={query} report={report} />;
+  return <DashboardDetails backHref={dashboardHousesHref(routeQuery)} backLabel="กลับไปบ้านใหม่" houseDetailReturnTo={dashboardHouseDetailHref(routeQuery, id)} query={query} report={report} />;
 }

@@ -44,7 +44,7 @@ test("card styles distinguish confirmed, waiting, repair and free days without i
 test("route mounts the gallery after the existing server authorization", () => {
   const source = readFileSync(new URL("../app/admin/bookings/page.tsx", import.meta.url), "utf8");
   assert.match(source, /await requireBookingAdmin\(\)/);
-  assert.match(source, /<BookingCalendarGallery\s*\/>/);
+  assert.match(source, /<BookingCalendarGallery\s+initialSearch=\{initialSearch\}\s+initialSearchMode=\{initialSearchMode\}\s*\/>/);
 });
 
 test("gallery editor reuses one booking form with Sheet and centred Dialog presentations", () => {

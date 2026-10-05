@@ -7,7 +7,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { dashboardBackHref } from "../../../lib/dashboard-navigation";
-import { dashboardAgencyBookingDetailHref, dashboardAgencyDetailBookingQuery, dashboardAgencyDetailHref, dashboardHouseDetailHref, type DashboardAgencyDetailQuery } from "../../../lib/dashboard-routes";
+import { dashboardAgencyBookingDetailHref, dashboardAgencyDetailBookingQuery, dashboardAgencyDetailHref, dashboardBookingDetailHref, type DashboardAgencyDetailQuery } from "../../../lib/dashboard-routes";
 import { dashboardDate, dashboardMoney, dashboardStatus, type DashboardCustomer, type DashboardQuery, type DashboardReport } from "../../../lib/dashboard";
 import { dashboardNights } from "../../../lib/dashboard-calculations";
 import { Button } from "../../ui/button";
@@ -18,23 +18,25 @@ import { DashboardDetailLayout } from "./dashboard-detail-layout";
 import { DashboardSummaryCard } from "./dashboard-summary-card";
 import { DashboardTabs } from "./dashboard-tabs";
 import { BookingsList } from "./bookings-list";
+import { DashboardHouseDetailView } from "./dashboard-house-detail";
 
 interface DashboardDetailsProps {
   backHref?: string;
   backLabel?: string;
   agencyQuery?: DashboardAgencyDetailQuery;
+  houseReturnTo?: string;
+  houseDetailReturnTo?: string;
   query: DashboardQuery;
   report: DashboardReport;
   loadBookingCustomer?: (bookingId: string) => Promise<{ ok: true; customer: DashboardCustomer | null } | { ok: false; customer: null }>;
 }
 
-function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
-  return <div className={`min-w-0 ${className ?? ""}`}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium [overflow-wrap:anywhere]">{children}</dd></div>;
-}
-
-function AgencySummaryMetric({ accent, children, description, icon: Icon, label, visual }: { accent: "blue" | "green" | "orange"; children: ReactNode; description: string; icon: LucideIcon; label: string; visual: ReactNode }) {
+function AgencySummaryMetric({ accent, children, className, compactMobile = false, description, icon: Icon, label, visual }: { accent: "blue" | "green" | "orange"; children: ReactNode; className?: string; compactMobile?: boolean; description: string; icon: LucideIcon; label: string; visual: ReactNode }) {
   const colors = accent === "blue" ? "bg-blue-50 text-blue-600" : accent === "green" ? "bg-emerald-50 text-emerald-600" : "bg-orange-50 text-orange-500";
-  return <article className="relative min-w-0 overflow-hidden rounded-xl border bg-card p-5 shadow-sm"><div className="relative z-10 flex min-w-0 items-center gap-4"><span className={`grid size-14 shrink-0 place-items-center rounded-full ${colors}`}><Icon aria-hidden className="size-6" /></span><div className="min-w-0"><p className="text-sm font-medium text-muted-foreground">{label}</p><p className="mt-0.5 truncate text-2xl font-bold tracking-tight text-foreground">{children}</p><p className="mt-1 text-xs text-muted-foreground">{description}</p></div></div><div aria-hidden className="absolute right-5 top-1/2 -translate-y-1/2 opacity-25">{visual}</div></article>;
+  const mobileSpacing = compactMobile ? "p-4 md:p-5" : "p-5";
+  const iconSize = compactMobile ? "size-11 md:size-14" : "size-14";
+  const valueSize = compactMobile ? "text-xl md:text-2xl" : "text-2xl";
+  return <article className={`relative min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm ${mobileSpacing} ${className ?? ""}`}><div className="relative z-10 flex min-w-0 items-center gap-3 md:gap-4"><span className={`grid shrink-0 place-items-center rounded-full ${iconSize} ${colors}`}><Icon aria-hidden className="size-5 md:size-6" /></span><div className="min-w-0"><p className="text-sm font-medium text-muted-foreground">{label}</p><p className={`mt-0.5 truncate font-bold tracking-tight text-foreground ${valueSize}`}>{children}</p><p className={`mt-1 text-xs text-muted-foreground ${compactMobile ? "hidden md:block" : ""}`}>{description}</p></div></div><div aria-hidden className="absolute right-5 top-1/2 hidden -translate-y-1/2 opacity-25 md:block">{visual}</div></article>;
 }
 
 function BookingDetailRow({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
@@ -63,12 +65,14 @@ function BookingSummaryContent({
   checkOutTime,
   amount,
   coverImageUrl,
+  houseHref,
 }: {
   booking: BookingDashboardDetail["booking"];
   checkInTime: string | null;
   checkOutTime: string | null;
   amount: string;
   coverImageUrl: string | null;
+  houseHref: string;
 }) {
   const time = (value: string | null) => value?.slice(0, 5) ?? "—";
   const dateWithTime = (date: string, value: string | null) => value ? `${dashboardDate(date)} · ${time(value)}` : dashboardDate(date);
@@ -76,7 +80,7 @@ function BookingSummaryContent({
     {coverImageUrl ? <img alt={`รูปบ้าน ${booking.houseTitle}`} className="aspect-video w-full rounded-lg object-cover" data-dashboard-booking-cover loading="lazy" src={coverImageUrl} /> : <div aria-hidden className="flex aspect-video w-full items-center justify-center rounded-lg bg-muted text-muted-foreground"><Building2Icon className="size-10" /></div>}
     <div className="-mt-1"><p className="break-words font-semibold">{booking.houseTitle}</p><p className="text-xs text-muted-foreground">DV-{booking.propertyId}</p></div>
     <dl className="divide-y text-sm"><div className="flex items-center justify-between gap-4 py-2"><dt className="flex items-center gap-2 text-muted-foreground"><CalendarDaysIcon aria-hidden className="size-4" />เข้าพัก</dt><dd>{dateWithTime(booking.checkIn, checkInTime)}</dd></div><div className="flex items-center justify-between gap-4 py-2"><dt className="flex items-center gap-2 text-muted-foreground"><CalendarDaysIcon aria-hidden className="size-4" />เช็กเอาต์</dt><dd>{dateWithTime(booking.checkOut, checkOutTime)}</dd></div><div className="flex items-center justify-between gap-4 py-2"><dt className="flex items-center gap-2 text-muted-foreground"><MoonIcon aria-hidden className="size-4" />จำนวนคืน</dt><dd>{dashboardNights(booking.checkIn, booking.checkOut) ?? "—"}</dd></div><div className="flex items-center justify-between gap-4 py-3"><dt className="flex items-center gap-2 font-medium"><CircleDollarSignIcon aria-hidden className="size-4" />ยอดจอง</dt><dd className="font-semibold tabular-nums text-primary">{amount}</dd></div></dl>
-    <Button asChild className="w-full" variant="secondary"><Link href={`/admin/houses/${encodeURIComponent(booking.propertyId)}`}><HouseIcon aria-hidden className="size-4" />ดูข้อมูลบ้าน / โครงการ</Link></Button>
+    <Button asChild className="w-full" variant="secondary"><Link href={houseHref}><HouseIcon aria-hidden className="size-4" />ดูข้อมูลบ้าน</Link></Button>
   </>;
 }
 
@@ -117,6 +121,8 @@ export function DashboardDetails({
   backHref,
   backLabel = "กลับไปหน้าก่อนหน้า",
   agencyQuery,
+  houseReturnTo,
+  houseDetailReturnTo,
   query,
   report,
   loadBookingCustomer,
@@ -136,6 +142,8 @@ export function DashboardDetails({
     const amount = status === "repair" ? "—" : booking.priceCents === null ? "ไม่ระบุยอด" : dashboardMoney(booking.priceCents);
     const agency = detail.agency?.name ?? "ไม่ระบุเอเจนซี่";
     const channel = detail.agency?.id ? "เอเจนซี่" : "ไม่ระบุ";
+    const bookingReturnTo = houseReturnTo ?? dashboardBookingDetailHref({ month: query.month, status: query.status, search: query.search, sort: "updated-desc", page: query.page }, booking.id);
+    const houseHref = `/admin/houses/${encodeURIComponent(booking.propertyId)}?returnTo=${encodeURIComponent(bookingReturnTo)}`;
     const selectBookingTab = (next: typeof bookingTab | undefined) => {
       if (!next) return;
       setBookingTab(next);
@@ -161,9 +169,9 @@ export function DashboardDetails({
       <header className="space-y-1 lg:hidden"><div className="flex items-center justify-between gap-3"><Link className="inline-flex min-h-11 items-center gap-1 text-sm font-medium" href={resolvedBackHref}><span aria-hidden>←</span>{backLabel}</Link><DashboardBookingStatusBadge status={status} /></div><h1 className="text-xl font-semibold">รายละเอียดการจอง</h1><p className="text-sm font-medium text-muted-foreground">{booking.houseTitle}</p><p className="text-xs text-muted-foreground">DV-{booking.propertyId}</p></header>
       <div className="hidden lg:block"><DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description={`${booking.houseTitle} · DV-${booking.propertyId}`} title="รายละเอียดการจอง" /></div>
       <DashboardTabs ariaLabel="ส่วนของรายละเอียดการจอง" className="hidden lg:flex" onValueChange={selectBookingTab} tabs={tabs} value={bookingTab} />
-      <div className="space-y-4 lg:hidden" data-dashboard-booking-mobile-summary><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} /><div><nav aria-label="ส่วนของรายละเอียดการจองบนมือถือ" className="flex gap-1 overflow-x-auto border-b pb-px" data-dashboard-booking-mobile-tabs role="tablist">{[{ label: "ข้อมูลการจอง", icon: TicketCheckIcon, value: "booking" as const }, { label: "ข้อมูลลูกค้า", icon: CircleUserRoundIcon, value: "customer" as const }, { label: "ค่าใช้จ่าย", icon: CreditCardIcon, value: "costs" as const }].map(({ label, icon: Icon, value }) => <button aria-selected={value === bookingTab} className="inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground aria-selected:border-primary aria-selected:text-primary" key={label} onClick={() => selectBookingTab(value)} role="tab" type="button"><Icon aria-hidden className="size-4" />{label}</button>)}</nav><div className="pt-4"><div className={bookingTab === "booking" ? "" : "hidden"}><dl data-dashboard-booking-mobile-timestamps><BookingDetailRow icon={TicketCheckIcon} label="รหัสจอง">{booking.code}</BookingDetailRow><BookingDetailRow icon={CalendarDaysIcon} label="วันที่สร้าง">{dashboardDate(booking.createdAt, true)}</BookingDetailRow><BookingDetailRow icon={CalendarDaysIcon} label="อัปเดตล่าสุด">{dashboardDate(booking.updatedAt, true)}</BookingDetailRow><BookingDetailRow icon={CircleUserRoundIcon} label="ผู้บันทึก">{detail.createdByName ?? "ไม่ระบุผู้บันทึก"}</BookingDetailRow><BookingDetailRow icon={Building2Icon} label="เอเจนซี่">{agency}</BookingDetailRow><BookingDetailRow icon={HouseIcon} label="บ้าน / โครงการ">{booking.houseTitle}</BookingDetailRow><BookingDetailRow icon={TagIcon} label="สถานะ"><DashboardBookingStatusBadge status={status} /></BookingDetailRow><BookingDetailRow icon={TicketCheckIcon} label="ช่องทางการจอง">{channel}</BookingDetailRow></dl></div><div className={bookingTab === "customer" ? "" : "hidden"}>{customer === undefined ? <BookingCustomerLoading /> : customerError ? <p role="status" className="py-3 text-sm text-destructive">ไม่สามารถโหลดข้อมูลลูกค้าได้</p> : <BookingCustomerDetailContent customer={customer} mobile />}</div><div className={bookingTab === "costs" ? "" : "hidden"}><BookingCostsContent costs={detail.costs} mobile status={status} /></div></div></div></div>
+      <div className="space-y-4 lg:hidden" data-dashboard-booking-mobile-summary><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} houseHref={houseHref} /><div><nav aria-label="ส่วนของรายละเอียดการจองบนมือถือ" className="flex gap-1 overflow-x-auto border-b pb-px" data-dashboard-booking-mobile-tabs role="tablist">{[{ label: "ข้อมูลการจอง", icon: TicketCheckIcon, value: "booking" as const }, { label: "ข้อมูลลูกค้า", icon: CircleUserRoundIcon, value: "customer" as const }, { label: "ค่าใช้จ่าย", icon: CreditCardIcon, value: "costs" as const }].map(({ label, icon: Icon, value }) => <button aria-selected={value === bookingTab} className="inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground aria-selected:border-primary aria-selected:text-primary" key={label} onClick={() => selectBookingTab(value)} role="tab" type="button"><Icon aria-hidden className="size-4" />{label}</button>)}</nav><div className="pt-4"><div className={bookingTab === "booking" ? "" : "hidden"}><dl data-dashboard-booking-mobile-timestamps><BookingDetailRow icon={TicketCheckIcon} label="รหัสจอง">{booking.code}</BookingDetailRow><BookingDetailRow icon={CalendarDaysIcon} label="วันที่สร้าง">{dashboardDate(booking.createdAt, true)}</BookingDetailRow><BookingDetailRow icon={CalendarDaysIcon} label="อัปเดตล่าสุด">{dashboardDate(booking.updatedAt, true)}</BookingDetailRow><BookingDetailRow icon={CircleUserRoundIcon} label="ผู้บันทึก">{detail.createdByName ?? "ไม่ระบุผู้บันทึก"}</BookingDetailRow><BookingDetailRow icon={Building2Icon} label="เอเจนซี่">{agency}</BookingDetailRow><BookingDetailRow icon={HouseIcon} label="บ้าน / โครงการ">{booking.houseTitle}</BookingDetailRow><BookingDetailRow icon={TagIcon} label="สถานะ"><DashboardBookingStatusBadge status={status} /></BookingDetailRow><BookingDetailRow icon={TicketCheckIcon} label="ช่องทางการจอง">{channel}</BookingDetailRow></dl></div><div className={bookingTab === "customer" ? "" : "hidden"}>{customer === undefined ? <BookingCustomerLoading /> : customerError ? <p role="status" className="py-3 text-sm text-destructive">ไม่สามารถโหลดข้อมูลลูกค้าได้</p> : <BookingCustomerDetailContent customer={customer} mobile />}</div><div className={bookingTab === "costs" ? "" : "hidden"}><BookingCostsContent costs={detail.costs} mobile status={status} /></div></div></div></div>
       <div className="hidden gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <DashboardSummaryCard status={<DashboardBookingStatusBadge status={status} />} title="สรุปการจอง"><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} /></DashboardSummaryCard>
+        <DashboardSummaryCard status={<DashboardBookingStatusBadge status={status} />} title="สรุปการจอง"><BookingSummaryContent amount={amount} booking={booking} checkInTime={detail.checkInTime} checkOutTime={detail.checkOutTime} coverImageUrl={detail.coverImageUrl} houseHref={houseHref} /></DashboardSummaryCard>
         <div className="order-first">
           <div className={bookingTab === "booking" ? "space-y-4" : "hidden"}><Card size="sm"><CardHeader className="border-b"><CardTitle className="font-semibold">ข้อมูลการจอง</CardTitle></CardHeader><CardContent><dl>
             <BookingDetailRow icon={TicketCheckIcon} label="รหัสจอง">{booking.code}</BookingDetailRow>
@@ -185,37 +193,15 @@ export function DashboardDetails({
     const agencyId = detail.agency.id ?? "unassigned";
     return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
       <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description="รายละเอียดเอเจนซี่" title={detail.agency.name} />
-      <section aria-label="สรุปยอดเอเจนซี่" className="grid gap-3 md:grid-cols-3">
-        <AgencySummaryMetric accent="blue" description="จากการจองทั้งหมดของเดือนนี้" icon={BarChart3Icon} label="ยอดขาย" visual={<svg className="size-20" viewBox="0 0 80 48" fill="none"><path d="M2 42C18 40 20 17 35 27S53 43 76 6" stroke="currentColor" strokeWidth="2" /><path d="M69 6h7v7" stroke="currentColor" strokeWidth="2" /></svg>}>{dashboardMoney(detail.agency.amountCents)}</AgencySummaryMetric>
-        <AgencySummaryMetric accent="green" description="รายการจองทั้งหมด" icon={CalendarDaysIcon} label="จำนวนการจอง" visual={<div className="flex h-10 items-end gap-1"><i className="h-3 w-2 rounded bg-current" /><i className="h-5 w-2 rounded bg-current" /><i className="h-7 w-2 rounded bg-current" /><i className="h-10 w-2 rounded bg-current" /></div>}>{detail.agency.count} รายการ</AgencySummaryMetric>
-        <AgencySummaryMetric accent="orange" description="ของยอดขายทั้งหมด" icon={PieChartIcon} label="สัดส่วนยอดขาย" visual={<div className="size-12 rounded-full bg-current [clip-path:polygon(50%_50%,50%_0,100%_0,100%_50%)]" />}>{detail.sharePercent === null ? "—" : `${detail.sharePercent.toFixed(1)}%`}</AgencySummaryMetric>
+      <section aria-label="สรุปยอดเอเจนซี่" className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <AgencySummaryMetric accent="blue" className="col-span-2 md:col-span-1" description="รายการติดจองในช่วงที่เลือก" icon={BarChart3Icon} label="ยอดขาย" visual={<svg className="size-20" viewBox="0 0 80 48" fill="none"><path d="M2 42C18 40 20 17 35 27S53 43 76 6" stroke="currentColor" strokeWidth="2" /><path d="M69 6h7v7" stroke="currentColor" strokeWidth="2" /></svg>}>{dashboardMoney(detail.agency.amountCents)}</AgencySummaryMetric>
+        <AgencySummaryMetric accent="green" compactMobile description="เฉพาะรายการติดจองในช่วงที่เลือก ก่อนกรองรายการ" icon={CalendarDaysIcon} label="จำนวนการจองติดจอง" visual={<div className="flex h-10 items-end gap-1"><i className="h-3 w-2 rounded bg-current" /><i className="h-5 w-2 rounded bg-current" /><i className="h-7 w-2 rounded bg-current" /><i className="h-10 w-2 rounded bg-current" /></div>}>{detail.agency.count} รายการ</AgencySummaryMetric>
+        <AgencySummaryMetric accent="orange" compactMobile description="เทียบยอดขายติดจองทั้งหมดในช่วงเดียวกัน" icon={PieChartIcon} label="สัดส่วนยอดขาย" visual={<div className="size-12 rounded-full bg-current [clip-path:polygon(50%_50%,50%_0,100%_0,100%_50%)]" />}>{detail.sharePercent === null ? "—" : `${detail.sharePercent.toFixed(1)}%`}</AgencySummaryMetric>
         {detail.agency.missingPrices > 0 && <p role="status" className="md:col-span-3 text-sm text-muted-foreground">การจองติดจอง {detail.agency.missingPrices} รายการยังไม่ระบุยอด</p>}
       </section>
       <section className="space-y-3"><h2 className="font-medium">รายการจอง</h2><BookingsList bookingHref={bookingId => dashboardAgencyBookingDetailHref(agencyListQuery, agencyId, bookingId)} href={changes => dashboardAgencyDetailHref(agencyListQuery, agencyId, changes)} query={dashboardAgencyDetailBookingQuery(agencyListQuery)} report={report} /></section>
     </div>;
   }
 
-  const house = detail.house;
-  const propertyType = house.propertyType === "poolvilla" ? "พูลวิลล่า" : house.propertyType === "condo" ? "คอนโด" : house.propertyType ?? "—";
-  const time = (value: string | null) => value?.slice(0, 5) ?? "—";
-  const returnTo = dashboardHouseDetailHref({ month: query.month, search: query.houseSearch, page: query.housesPage }, house.id);
-  const manageParams = new URLSearchParams({ returnTo });
-  return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
-    <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description="รายละเอียดบ้านใหม่" title={house.title} />
-    <Card><CardContent className="space-y-6">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-5 lg:grid-cols-4">
-        <Field label="เลขบ้าน">{house.propertyId ? `DV-${house.propertyId}` : "ยังไม่ระบุ DV"}</Field>
-        <Field label="วันที่เพิ่มเข้าระบบ">{dashboardDate(house.createdAt, true)}</Field>
-        <Field label="ประเภทบ้าน">{propertyType}</Field>
-        <Field label="โซน">{house.locationZone ?? "—"}</Field>
-        <Field label="ห้องนอน">{house.bedrooms ?? "—"}</Field>
-        <Field label="ห้องน้ำ">{house.bathrooms ?? "—"}</Field>
-        <Field label="ผู้เข้าพักสูงสุด">{house.maxGuests === null ? "—" : `${house.maxGuests} คน`}</Field>
-        <Field label="สถานะบ้าน">{house.isActive === null ? "ไม่ระบุ" : house.isActive ? "เปิดใช้งาน" : "ปิดใช้งาน"}</Field>
-        <Field label="เวลาเช็กอิน">{time(house.checkinTime)}</Field>
-        <Field label="เวลาเช็กเอาต์">{time(house.checkoutTime)}</Field>
-      </dl>
-      {house.propertyId && <Button asChild variant="outline" className="min-h-11"><Link href={`/admin/houses/${encodeURIComponent(house.propertyId)}?${manageParams.toString()}`}>จัดการบ้าน</Link></Button>}
-    </CardContent></Card>
-  </div>;
+  return <DashboardHouseDetailView backHref={resolvedBackHref} backLabel={backLabel} detail={detail} houseDetailReturnTo={houseDetailReturnTo} query={query} />;
 }

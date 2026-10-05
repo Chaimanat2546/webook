@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { dashboardReportFixture } from "./helpers/dashboard-report-fixture.ts";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -8,12 +9,12 @@ import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient } from "@supabase/supabase-js";
 import { CircleUserRoundIcon, CreditCardIcon, TicketCheckIcon } from "lucide-react";
-import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type DashboardBookingSource, type DashboardHouse, type DashboardScope } from "../lib/dashboard.ts";
+import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type DashboardBookingSource, type DashboardHouse, type DashboardHouseDetailData, type DashboardScope } from "../lib/dashboard.ts";
 import { safeHouseReturnTo } from "../lib/admin-return-to.ts";
 import { parseThaiMonth, thaiMonthValue } from "../lib/thai-month.ts";
 import { createDashboardRepository, type DashboardRepository } from "../server/repositories/dashboard.ts";
-import { DashboardForbidden, loadDashboard, loadDashboardAgencies, loadDashboardAgency, loadDashboardBooking, loadDashboardBookingCustomer, loadDashboardBookings } from "../server/services/dashboard.ts";
-import { dashboardBookingsHref, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery } from "../lib/dashboard-routes.ts";
+import { DashboardForbidden, DashboardItemNotFound, loadDashboard, loadDashboardAgencies, loadDashboardAgency, loadDashboardBooking, loadDashboardBookingCustomer, loadDashboardBookings, loadDashboardHouse, loadDashboardHouses } from "../server/services/dashboard.ts";
+import { dashboardBookingsHref, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery, parseDashboardHousesQuery } from "../lib/dashboard-routes.ts";
 
 const booking: DashboardBookingSource = {
   id: "1", code: "BK1", propertyId: "101", houseTitle: "House A", checkIn: "2026-11-01", checkOut: "2026-11-03",
@@ -272,7 +273,7 @@ test("canonical agency and house pages render their own workflows", async () => 
   assert.doesNotMatch(agenciesHtml, /type="month"[^>]*id="agency-month"/);
   assert.match(agenciesHtml, /class="hidden overflow-hidden rounded-xl border md:block"/);
   assert.match(agenciesHtml, /class="space-y-3 md:hidden"[\s\S]*rounded-xl border bg-card p-3 shadow-sm/);
-  assert.match(agenciesHtml, /<table[^>]*>[\s\S]*<th[^>]*>ชื่อเอเจนซี่<\/th>[\s\S]*<th[^>]*>จำนวนการจอง<\/th>[\s\S]*<th[^>]*>ยอดขาย<\/th>/);
+  assert.match(agenciesHtml, /<table[^>]*>[\s\S]*<th[^>]*>ชื่อเอเจนซี่<\/th>[\s\S]*<th[^>]*>จำนวนการจองติดจอง<\/th>[\s\S]*<th[^>]*>ยอดขาย<\/th>/);
   assert.equal((agenciesHtml.match(/<th /g) ?? []).length, 3);
   assert.match(agenciesHtml, /Agency A[\s\S]*<td[^>]*>1<\/td>[\s\S]*<td[^>]*>฿1,234\.50<\/td>/);
   assert.doesNotMatch(agenciesHtml, /100\.0%|ของยอดขาย|h-1\.5 overflow-hidden rounded-full/);
@@ -281,17 +282,20 @@ test("canonical agency and house pages render their own workflows", async () => 
 
   const HousesPage = await dashboardPageComponent("../app/admin/dashboard/houses/page.tsx", repo);
   const housesHtml = renderToStaticMarkup(await HousesPage({ searchParams: Promise.resolve({ month: "2026-09" }) }) as ReactNode);
+  assert.match(housesHtml, /class="mx-auto min-w-0 max-w-7xl space-y-5"/);
   assert.match(housesHtml, /<header[^>]*>.*href="\/admin\/dashboard\?month=2026-09"[^>]*>.*กลับไปภาพรวม.*<h1[^>]*>บ้านใหม่<\/h1>/);
   assert.equal((housesHtml.match(/บ้านใหม่/g) ?? []).length, 1);
   assert.doesNotMatch(housesHtml, /ประวัติบ้านเพิ่มใหม่|บ้านที่สร้างรายการในเดือนที่เลือก/);
-  assert.match(housesHtml, /action="\/admin\/dashboard\/houses"/);
+  assert.doesNotMatch(housesHtml, /action="\/admin\/dashboard\/houses"/);
   assert.match(housesHtml, /aria-label="ค้นหาบ้าน"/);
-  assert.match(housesHtml, /class="relative col-span-2 min-w-0 sm:col-span-1 sm:flex-1 sm:max-w-sm"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาบ้าน"/);
-  assert.match(housesHtml, /<input type="month"[^>]*id="houses-month"[^>]*name="month"/);
-  assert.match(housesHtml, /class="relative col-span-2 min-w-0 sm:col-span-1 sm:w-48"/);
-  assert.match(housesHtml, /class="[^"]*h-11 pl-9" id="houses-month"/);
-  assert.match(housesHtml, /class="[^"]*col-span-2[^"]*h-11[^"]*" type="submit"/);
-  assert.doesNotMatch(housesHtml, /type="hidden" name="month"/);
+  assert.match(housesHtml, /class="relative w-full"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาบ้าน"/);
+  assert.match(housesHtml, /aria-label="ค้นหา"[^>]*type="submit"/);
+  assert.match(housesHtml, /data-thai-month-picker/);
+  assert.match(housesHtml, /กันยายน 2569/);
+  assert.match(housesHtml, /id="house-sort"/);
+  assert.match(housesHtml, /aria-label="เรียงลำดับบ้าน"/);
+  assert.match(housesHtml, /เพิ่มล่าสุด/);
+  assert.doesNotMatch(housesHtml, /type="month"/);
   assert.ok(housesHtml.indexOf('aria-label="ค้นหาบ้าน"') < housesHtml.indexOf("overflow-hidden rounded-xl border"));
   assert.match(housesHtml, /href="\/admin\/dashboard\/houses\/listing-new\?month=2026-09"/);
 });
@@ -317,8 +321,19 @@ test("canonical detail pages use their list return headers", async () => {
   assert.doesNotMatch(agencyHtml, /ดูการจองทั้งหมด/);
 
   const HousePage = await dashboardPageComponent("../app/admin/dashboard/houses/[id]/page.tsx", repo) as (props: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
-  const houseHtml = renderToStaticMarkup(await HousePage({ params: Promise.resolve({ id: "listing-new" }), searchParams: Promise.resolve({ month: "2026-09", search: "villa", page: "2" }) }) as ReactNode);
-  assert.match(houseHtml, /<header[^>]*>.*href="\/admin\/dashboard\/houses\?month=2026-09&amp;search=villa&amp;page=2"[^>]*>.*กลับไปบ้านใหม่.*<h1[^>]*>New House<\/h1>/);
+  const houseHtml = renderToStaticMarkup(await HousePage({ params: Promise.resolve({ id: "listing-new" }), searchParams: Promise.resolve({ month: "2026-09", search: "villa", houseSort: "name-asc", page: "2" }) }) as ReactNode);
+  assert.match(houseHtml, /href="\/admin\/dashboard\/houses\?month=2026-09&amp;search=villa&amp;houseSort=name-asc&amp;page=2"[^>]*>.*กลับไปบ้านใหม่/);
+  assert.match(houseHtml, /returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09%26search%3Dvilla%26houseSort%3Dname-asc%26page%3D2/);
+  assert.match(houseHtml, /<h1[^>]*>New House<\/h1>/);
+});
+
+test("booking house links retain the full agency-origin booking detail URL", async () => {
+  const BookingPage = await dashboardPageComponent("../app/admin/dashboard/bookings/[bookingId]/page.tsx", repository({ kind: "admin" })) as (props: { params: Promise<{ bookingId: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
+  const html = renderToStaticMarkup(await BookingPage({
+    params: Promise.resolve({ bookingId: "1" }),
+    searchParams: Promise.resolve({ month: "2026-09", status: "confirmed", sort: "price-asc", checkInFrom: "2026-11-01", checkInTo: "2026-11-03", amountFrom: "1000", amountTo: "2000", fromAgency: "agency-a", agencySearch: "Agency", agencySort: "count-desc", agencyPage: "2", bookingSearch: "House", bookingsPage: "3" }),
+  }) as ReactNode);
+  assert.match(html, /href="\/admin\/houses\/101\?returnTo=%2Fadmin%2Fdashboard%2Fbookings%2F1%3Fmonth%3D2026-09%26status%3Dconfirmed%26search%3DHouse%26checkInFrom%3D2026-11-01%26checkInTo%3D2026-11-03%26amountFrom%3D1000%26amountTo%3D2000%26sort%3Dprice-asc%26page%3D3%26fromAgency%3Dagency-a%26agencySearch%3DAgency%26agencySort%3Dcount-desc%26agencyPage%3D2%26bookingSearch%3DHouse%26bookingsPage%3D3"/);
 });
 
 test("dashboard mobile layouts keep house metadata grouped and details compact", async () => {
@@ -335,13 +350,20 @@ test("dashboard mobile layouts keep house metadata grouped and details compact",
   assert.match(bookingHtml, /grid-cols-\[1\.25rem_minmax\(6\.5rem,9rem\)_minmax\(0,1fr\)\]/);
   assert.match(bookingHtml, /รหัสจอง/);
   assert.match(bookingHtml, /Agency A/);
-  assert.match(bookingHtml, /ดูข้อมูลบ้าน \/ โครงการ/);
+  assert.match(bookingHtml, /ดูข้อมูลบ้าน/);
+  assert.match(bookingHtml, /href="\/admin\/houses\/101\?returnTo=%2Fadmin%2Fdashboard%2Fbookings%2F1%3Fmonth%3D2026-09%26status%3Dall%26sort%3Dupdated-desc"/);
 
   const houseReport = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09", view: "house", houseId: "listing-new" });
   const houseHtml = renderToStaticMarkup(createElement(await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx"), { report: houseReport, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
-  assert.match(houseHtml, /grid grid-cols-2 gap-x-4 gap-y-3/);
-  assert.match(houseHtml, /ผู้เข้าพักสูงสุด/);
-  assert.match(houseHtml, /เวลาเช็กอิน/);
+  assert.match(houseHtml, /grid grid-cols-5 divide-x rounded-xl border/);
+  assert.match(houseHtml, /รองรับสูงสุด/);
+  assert.match(houseHtml, /เช็กอิน/);
+  assert.match(houseHtml, /data-dashboard-house-mobile-sections/);
+  assert.match(houseHtml, /ดูปฏิทินบ้าน/);
+  assert.match(houseHtml, /จัดการบ้าน/);
+  const houseDetailSource = readFileSync(fileURLToPath(new URL("../components/admin/dashboard/dashboard-house-detail.tsx", import.meta.url)), "utf8");
+  assert.match(houseDetailSource, /open=\{open\} onToggle=\{event => onOpenChange\(id, event\.currentTarget\.open\)\}/);
+  assert.match(houseDetailSource, /setOpenMobileSection\(current => current === id \? null : current\)/);
 });
 
 test("agency detail reuses the booking toolbar and responsive list", async () => {
@@ -364,6 +386,21 @@ test("agency detail reuses the booking toolbar and responsive list", async () =>
   assert.match(bookingsHtml, /1 พ\.ย\. 2569/);
   assert.match(bookingsHtml, /฿1,234\.50/);
 
+});
+
+test("agency detail prioritizes sales while keeping secondary summary metrics compact on mobile", async () => {
+  const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09", view: "agency", agency: "agency-a" });
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, {
+    report,
+    query: parseDashboardQuery({ month: "2026-09", view: "agency", agency: "agency-a" }),
+  }));
+
+  assert.match(html, /aria-label="สรุปยอดเอเจนซี่" class="grid grid-cols-2 gap-3 md:grid-cols-3"/);
+  assert.match(html, /col-span-2 md:col-span-1/);
+  assert.match(html, /ยอดขาย[\s\S]*>รายการติดจองในช่วงที่เลือก<\/p>/);
+  assert.match(html, /จำนวนการจองติดจอง[\s\S]*hidden md:block/);
+  assert.match(html, /สัดส่วนยอดขาย[\s\S]*hidden md:block/);
 });
 
 test("agency bookings use booking-list sort options before pagination", async () => {
@@ -479,6 +516,52 @@ test("booking pager reports nine rows per page", async () => {
   assert.match(html, /1–9 จาก 10 รายการ/);
 });
 
+test("new house list uses a table on desktop and cards on mobile", async () => {
+  const NewHousesList = await dashboardComponent("NewHousesList", "../components/admin/dashboard/new-houses-list.tsx");
+  const query = parseDashboardHousesQuery({ month: "2026-09" });
+  const report = await loadDashboardHouses(repository({ kind: "admin" }), "signed-in-user", query);
+  const html = renderToStaticMarkup(createElement(NewHousesList, { report, query }));
+
+  assert.match(html, /aria-label="ค้นหาบ้าน"[^>]*placeholder="ค้นหาบ้าน\.\.\."/);
+  assert.match(html, /aria-label="ค้นหา"[^>]*type="submit"/);
+  assert.match(html, /data-thai-month-picker/);
+  assert.match(html, /กันยายน 2569/);
+  assert.doesNotMatch(html, /type="month"/);
+  assert.match(html, /hidden overflow-hidden rounded-xl border md:block/);
+  assert.match(html, /<th[^>]*>บ้าน \/ DV<\/th>/);
+  assert.match(html, /<th[^>]*>วันที่เพิ่ม<\/th>/);
+  assert.match(html, /<td[^>]*whitespace-normal[^>]*>[\s\S]*break-words[^>]*>New House/);
+  assert.match(html, /space-y-3 md:hidden/);
+  assert.match(html, /rounded-xl border bg-card p-3 shadow-sm/);
+  assert.equal((html.match(/New House/g) ?? []).length, 2);
+  assert.equal((html.match(/DV-202/g) ?? []).length, 2);
+  assert.equal((html.match(/12 ก\.ย\. 2569/g) ?? []).length, 2);
+  assert.match(html, /data-dashboard-detail-link/);
+});
+
+test("new house history sorts before pagination", async () => {
+  const base = repository({ kind: "admin" });
+  const example = (await base.newHouses({ month: "2026-09", start: "2026-08-31T17:00:00Z", end: "2026-09-30T17:00:00Z" }))[0];
+  if (!example) assert.fail("missing house fixture");
+  const houses = Array.from({ length: 11 }, (_, index) => ({
+    ...example,
+    id: `house-${index + 1}`,
+    propertyId: String(index + 1),
+    title: index === 0 ? "ฮาวส์" : index === 10 ? "กาญจน์" : `บ้าน ${index + 1}`,
+    createdAt: `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
+  }));
+  const repo = repository({ kind: "admin" }, [booking], houses);
+  const newest = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09" }));
+  const oldestPageTwo = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", houseSort: "created-asc", page: "2" }));
+  const byName = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", houseSort: "name-asc" }));
+  const byNamePageTwo = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", houseSort: "name-asc", page: "2" }));
+
+  assert.deepEqual(newest.admin?.houses.rows.map(house => house.id), ["house-11", "house-10", "house-9", "house-8", "house-7", "house-6", "house-5", "house-4", "house-3", "house-2"]);
+  assert.deepEqual(oldestPageTwo.admin?.houses.rows.map(house => house.id), ["house-11"]);
+  assert.equal(byName.admin?.houses.rows[0]?.id, "house-11");
+  assert.deepEqual(byNamePageTwo.admin?.houses.rows.map(house => house.id), ["house-1"]);
+});
+
 test("dashboard detail primitives preserve responsive slots and summary framing", async () => {
   const DashboardDetailLayout = await dashboardComponent("DashboardDetailLayout", "../components/admin/dashboard/dashboard-detail-layout.tsx");
   const DashboardSummaryCard = await dashboardComponent("DashboardSummaryCard", "../components/admin/dashboard/dashboard-summary-card.tsx");
@@ -565,8 +648,8 @@ test("booking detail exposes operational fields but repair has no monetary amoun
   assert.match(html, /3 พ\.ย\. 2569 · 11:00/);
   assert.match(html, /!flex items-center justify-between/);
   assert.match(html, /data-dashboard-booking-cover/);
-  assert.match(html, /ดูข้อมูลบ้าน \/ โครงการ/);
-  assert.match(html, /href="\/admin\/houses\/101"/);
+  assert.match(html, /ดูข้อมูลบ้าน/);
+  assert.match(html, /href="\/admin\/houses\/101\?returnTo=/);
   assert.match(html, /lg:grid-cols-\[minmax\(0,1fr\)_20rem\]/);
   assert.match(html, /หมายเหตุ/);
   assert.match(html, /data-dashboard-booking-customer-loading/);
@@ -588,7 +671,7 @@ test("agency list sorts aggregate sales, bookings, and names", async () => {
   const repo = repository({ kind: "admin" }, rows);
   const load = (agencySort: "sales-desc" | "count-desc" | "name-asc") => loadDashboardAgencies(repo, "signed-in-user", { month: "2026-09", search: "", page: 1, agencySort });
   assert.deepEqual((await load("sales-desc")).admin?.agencies.rows.map(agency => agency.name), ["Sales", "Count", "Alpha"]);
-  assert.deepEqual((await load("count-desc")).admin?.agencies.rows.map(agency => agency.name), ["Count", "Sales", "Alpha"]);
+  assert.deepEqual((await load("count-desc")).admin?.agencies.rows.map(agency => agency.name), ["Count", "Alpha", "Sales"]);
   assert.deepEqual((await load("name-asc")).admin?.agencies.rows.map(agency => agency.name), ["Alpha", "Count", "Sales"]);
 });
 
@@ -599,6 +682,7 @@ test("agency chart labels remove seeded demo prefixes", () => {
 
 test("house workspace return links allow dashboard detail routes and reject external destinations", () => {
   assert.equal(safeHouseReturnTo("/admin/dashboard/houses/listing-new?month=2026-09&search=villa&page=2"), "/admin/dashboard/houses/listing-new?month=2026-09&search=villa&page=2");
+  assert.equal(safeHouseReturnTo("/admin/dashboard/bookings/1?month=2026-09&status=confirmed&sort=updated-desc"), "/admin/dashboard/bookings/1?month=2026-09&status=confirmed&sort=updated-desc");
   assert.equal(safeHouseReturnTo("/admin/houses?page=2&q=villa"), "/admin/houses?page=2&q=villa");
   assert.equal(safeHouseReturnTo("https://evil.example"), null);
   assert.equal(safeHouseReturnTo("//evil.example/admin/dashboard/houses/listing-new"), null);
@@ -608,7 +692,7 @@ test("house workspace return links allow dashboard detail routes and reject exte
 test("agency booking links retain the selected booking-list month", async () => {
   const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
   const raw = { month: "2026-09", view: "agency", agency: "agency-a" };
-  const report = await loadDashboard(repository({ kind: "admin" }, [{ ...booking, updatedAt: "2026-10-01T00:00:00Z" }]), "signed-in-user", raw);
+  const report = await loadDashboard(repository({ kind: "admin" }, [{ ...booking, createdAt: "2026-08-01T00:00:00Z" }]), "signed-in-user", raw);
   const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery(raw) }));
   assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc&amp;fromAgency=agency-a&amp;bookingSearch="/);
 });
@@ -628,14 +712,140 @@ test("agency detail shows only its booking list and house details expose manage 
   const houseRaw = { month: "2026-09", view: "house", houseId: "listing-new" };
   const house = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", houseRaw);
   const houseHtml = renderToStaticMarkup(createElement(View, { report: house, query: parseDashboardQuery(houseRaw) }));
-  assert.match(houseHtml, /href="\/admin\/houses\/202\?returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09"/);
+  assert.match(houseHtml, /href="\/admin\/houses\/202\?section=details&amp;returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09"/);
   assert.match(houseHtml, /07:00/);
   assert.match(houseHtml, /ห้องนอน/);
   assert.match(houseHtml, /ห้องน้ำ/);
-  assert.match(houseHtml, /ผู้เข้าพักสูงสุด/);
-  assert.match(houseHtml, /โซน/);
-  assert.match(houseHtml, /ประเภทบ้าน/);
+  assert.match(houseHtml, /รองรับสูงสุด/);
+  assert.match(houseHtml, /พัทยาเหนือ/);
+  assert.match(houseHtml, /พูลวิลล่า/);
   assert.match(houseHtml, /เปิดใช้งาน/);
+});
+
+test("dashboard house detail loads rich data only after admin month membership succeeds", async () => {
+  const repo = repository({ kind: "admin" });
+  const calls: string[] = [];
+  const richRepository = repo;
+  richRepository.newHouses = async month => {
+    calls.push(`houses:${month.month}`);
+    return [{ id: "listing-new", propertyId: "202", title: "New House", createdAt: "2026-09-12T00:00:00Z", bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00" }];
+  };
+  richRepository.houseDetail = async propertyId => {
+    calls.push(`detail:${propertyId}`);
+    return { propertyId, title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", insuranceFee: 5000, sortOrder: 1, updatedAt: null, extraBedPrice: 500, notes: null, createdAt: "2026-09-12T00:00:00Z", images: [], prices: [], facilities: [] };
+  };
+
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+
+  assert.deepEqual(calls, ["houses:2026-09", "detail:202"]);
+  assert.equal(report.detail?.kind, "house");
+  assert.equal(report.detail?.kind === "house" ? report.detail.data.insuranceFee : null, 5000);
+});
+
+test("dashboard house detail refuses unapproved scopes and out-of-month IDs before rich reads", async () => {
+  const ownerRepository = repository({ kind: "owner", propertyId: "101" });
+  ownerRepository.newHouses = async () => assert.fail("owner queried new houses");
+  await assert.rejects(
+    loadDashboardHouse(ownerRepository, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new"),
+    DashboardForbidden,
+  );
+
+  const adminRepository = repository({ kind: "admin" }, [booking], []);
+  let richReads = 0;
+  adminRepository.houseDetail = async () => {
+    richReads++;
+    return null;
+  };
+  await assert.rejects(
+    loadDashboardHouse(adminRepository, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "outside-month"),
+    DashboardItemNotFound,
+  );
+  assert.equal(richReads, 0);
+});
+
+test("dashboard house detail renders real gallery prices facilities and internal operations without fabricated profile data", async () => {
+  const repo = repository({ kind: "admin" });
+  const data: DashboardHouseDetailData = {
+    propertyId: "202", title: "New House", description: "พูลวิลล่าสำหรับครอบครัว", propertyTags: ["ครอบครัว", "สัตว์เลี้ยงได้"], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00:00", checkoutTime: "11:00:00", extraBedPrice: 500, insuranceFee: 5000, sortOrder: 2, notes: "เตรียมผ้าเช็ดตัว", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z",
+    images: [{ id: "cover", url: "https://example.com/cover.jpg", zone: "cover", order: 1, isCover: true }, { id: "inside", url: "https://example.com/inside.jpg", zone: "inside", order: 2, isCover: false }],
+    prices: Array.from({ length: 7 }, (_, dayOfWeek) => ({ dayOfWeek, baseGuests: 6, devillePrice: 5000 + dayOfWeek * 100, agencyPrice: 4500 + dayOfWeek * 100, note: dayOfWeek === 0 ? "วันธรรมดา" : null })),
+    facilities: [{ id: "wifi", name: "wifi", title: "Wi-Fi", message: "300 Mbps" }, { id: "pool", name: "private_pool", title: "สระว่ายน้ำส่วนตัว", message: null }],
+  };
+  repo.houseDetail = async () => data;
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /แกลเลอรีรูปภาพ/);
+  assert.match(html, /1 \/ 2/);
+  assert.match(html, /aria-label="เปิดรูปที่ 2 จาก 2"/);
+  assert.match(html, /พูลวิลล่าสำหรับครอบครัว/);
+  assert.match(html, /ครอบครัว/);
+  assert.match(html, /ราคา/);
+  assert.match(html, /฿5,000\.00/);
+  assert.match(html, /วันธรรมดา/);
+  assert.match(html, /สิ่งอำนวยความสะดวก/);
+  assert.match(html, /Wi-Fi/);
+  assert.match(html, /ข้อมูลการจัดการ/);
+  assert.match(html, /ค่าประกัน/);
+  assert.match(html, /ราคาเตียงเสริม/);
+  assert.match(html, /เตรียมผ้าเช็ดตัว/);
+  assert.match(html, /data-dashboard-house-mobile-sections/);
+  assert.equal((html.match(/data-dashboard-house-mobile-section(?:\s|=|>)/g) ?? []).length, 4);
+  assert.match(html, /ข้อมูลพื้นฐาน/);
+  assert.match(html, /รูปภาพ/);
+  assert.match(html, /ดูปฏิทินบ้าน/);
+  assert.match(html, /จัดการบ้าน/);
+  assert.match(html, /href="\/admin\/houses\/202\?section=details&amp;returnTo=/);
+  assert.doesNotMatch(html, /รีวิว|H-030|2 เตียง/);
+});
+
+test("dashboard house mobile management summary shows owner and configured rating when present", async () => {
+  const repo = repository({ kind: "admin" });
+  repo.houseDetail = async () => ({ propertyId: "202", title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", ownerName: "ภู", rating: 4, extraBedPrice: 500, insuranceFee: 5000, sortOrder: null, notes: null, createdAt: "2026-09-12T00:00:00Z", updatedAt: null, images: [], prices: [], facilities: [] });
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /เจ้าของบ้าน/);
+  assert.match(html, /ภู/);
+  assert.match(html, /เรตติ้ง/);
+  assert.match(html, /ส่งได้ต่อราคาง่าย/);
+});
+
+test("house gallery prioritizes the cover zone and the +N thumbnail opens image management", async () => {
+  const repo = repository({ kind: "admin" });
+  repo.houseDetail = async () => ({ propertyId: "202", title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", ownerName: null, rating: null, extraBedPrice: null, insuranceFee: null, sortOrder: null, notes: null, createdAt: "2026-09-12T00:00:00Z", updatedAt: null, imageCount: 12,
+    images: [
+      { id: "inside-1", url: "https://example.com/inside-1.jpg", zone: "inside", order: 1, isCover: false },
+      { id: "inside-2", url: "https://example.com/inside-2.jpg", zone: "inside", order: 2, isCover: false },
+      { id: "inside-3", url: "https://example.com/inside-3.jpg", zone: "inside", order: 3, isCover: false },
+      { id: "inside-4", url: "https://example.com/inside-4.jpg", zone: "inside", order: 4, isCover: false },
+      { id: "cover", url: "https://example.com/cover.jpg", zone: "cover", order: 5, isCover: true },
+    ], prices: [], facilities: [],
+  });
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /รูปบ้าน New House ภาพที่ 1[\s\S]*src="https:\/\/example\.com\/cover\.jpg"/);
+  assert.match(html, /href="\/admin\/houses\/202\/images\?returnTo=/);
+  assert.match(html, /มีรูปที่เหลืออีก 8 รูป/);
+  assert.match(html, /\+8<\/a>/);
+});
+
+test("dashboard house detail renders empty states without optional or broken media", async () => {
+  const repo = repository({ kind: "admin" });
+  repo.houseDetail = async () => ({ propertyId: "202", title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", extraBedPrice: null, insuranceFee: null, sortOrder: null, notes: null, createdAt: "2026-09-12T00:00:00Z", updatedAt: null, images: [], prices: [], facilities: [] });
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /ยังไม่มีรูปภาพบ้าน/);
+  assert.match(html, /ยังไม่ได้กำหนดราคา/);
+  assert.match(html, /ยังไม่มีสิ่งอำนวยความสะดวกที่เปิดใช้งาน/);
+  assert.doesNotMatch(html, /<img/);
+  assert.doesNotMatch(html, /คำอธิบายบ้าน|แท็กบ้าน/);
 });
 
 test("empty booking lists distinguish empty month from unmatched filters", async () => {
@@ -654,7 +864,7 @@ function repository(
 ): DashboardRepository {
   return {
     async access(actorId) { assert.equal(actorId, "signed-in-user"); return scope; },
-    async bookings(actualScope) { assert.deepEqual(actualScope, scope); return rows; },
+    async report(_actor, query) { assert.ok(scope); return dashboardReportFixture(scope, rows, query); },
     async bookingCustomer(actualScope, bookingId) {
       assert.deepEqual(actualScope, scope);
       const row = rows.find(candidate => candidate.id === bookingId);
@@ -664,6 +874,11 @@ function repository(
     async creatorName() { return null; },
     async customerDetail() { return null; },
     async newHouses() { return houses; },
+    async houseDetail(propertyId) {
+      const house = houses.find(candidate => candidate.propertyId === propertyId);
+      if (!house) return null;
+      return { propertyId: house.propertyId, title: house.title, description: null, propertyTags: [], bedrooms: house.bedrooms, bathrooms: house.bathrooms, maxGuests: house.maxGuests, locationZone: house.locationZone, propertyType: house.propertyType, isActive: house.isActive, checkinTime: house.checkinTime, checkoutTime: house.checkoutTime, extraBedPrice: null, insuranceFee: null, sortOrder: null, notes: null, createdAt: house.createdAt, updatedAt: null, images: [], prices: [], facilities: [] };
+    },
   };
 }
 
@@ -698,7 +913,7 @@ test("shared Thai month picker uses Buddhist Era values", async () => {
 
 test("denied dashboard identities cannot read any booking or new-house data", async () => {
   const repo = repository(null);
-  repo.bookings = async () => { assert.fail("denied identity queried bookings"); };
+  repo.report = async () => { assert.fail("denied identity queried bookings"); };
   repo.newHouses = async () => { assert.fail("denied identity queried new houses"); };
   await assert.rejects(loadDashboard(repo, "signed-in-user", { month: "2026-09", role_id: 1, dv_id: "101" }), DashboardForbidden);
 });
@@ -740,13 +955,13 @@ test("admin sales count only confirmed bookings, group agencies and flag missing
 
 test("report boundaries exclude the next month and paginate details without reducing totals", async () => {
   const rows = Array.from({ length: 25 }, (_, i) => ({ ...booking, id: String(i + 1), priceCents: 100 }));
-  rows.push({ ...booking, id: "26", createdAt: "2026-08-31T17:00:00Z", priceCents: 100 });
-  rows.push({ ...booking, id: "27", createdAt: "2026-09-30T17:00:00Z", priceCents: 99999 });
+  rows.push({ ...booking, id: "26", updatedAt: "2026-08-31T17:00:00Z", priceCents: 100 });
+  rows.push({ ...booking, id: "27", updatedAt: "2026-09-30T17:00:00Z", priceCents: 99999 });
   const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", page: "999" });
   assert.equal(report.sales.amountCents, 2600);
   assert.equal(report.bookings.total, 26);
   assert.equal(report.bookings.page, 3);
-  assert.equal(report.bookings.rows.length, 6);
+  assert.equal(report.bookings.rows.length, 8);
 });
 
 test("dashboard booking module shows nine bookings per page", async () => {
@@ -759,25 +974,19 @@ test("dashboard booking module shows nine bookings per page", async () => {
   assert.equal(secondPage.bookings.rows.length, 1);
 });
 
-const dbRow = {
-  id: 1, booking_code: "BK1", listing_id: "listing-a", houseid: 101, check_in: "2026-11-01", check_out: "2026-11-03",
-  status: "confirmed", price_max: "1234.50", created_at: "2026-09-10T00:00:00Z", updated_at: "2026-09-10T00:00:00Z",
-  listing: { id: "listing-a", property_id: 101, title: "House A" },
-};
-
 test("status filtering precedes pagination and never changes monthly sales or counts", async () => {
   const rows = [booking, ...Array.from({ length: 23 }, (_, i) => ({ ...booking, id: `wait-${i}`, status: "waiting" }))];
   const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", status: "waiting", page: "2" });
   assert.equal(report.bookingCount, 24);
   assert.equal(report.statusCounts.waiting, 23);
   assert.equal(report.bookings.total, 23);
-  assert.equal(report.bookings.rows.length, 10);
+  assert.equal(report.bookings.rows.length, 9);
   assert.ok(report.bookings.rows.every(row => row.status === "waiting"));
   assert.equal(report.sales.amountCents, 123450);
 });
 
 test("search and agency drilldown preserve totals and owner isolation", async () => {
-  const rows = [booking, { ...booking, id: "2", code: "OTHER", agentId: null, status: null }];
+  const rows = [booking, { ...booking, id: "2", houseTitle: "OTHER", agentId: null, status: null }];
   const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", search: "other", status: "unknown", agency: "unassigned" });
   assert.deepEqual(report.bookings.rows.map(row => row.id), ["2"]);
   assert.equal(report.bookingCount, 2);
@@ -802,7 +1011,7 @@ test("dashboard keeps all monthly status totals while filtering a bounded bookin
   assert.deepEqual(report.statusCounts, { confirmed: 5, waiting: 25, cancelled: 2, repair: 1, unknown: 1 });
   assert.equal(report.sales.amountCents, 500);
   assert.equal(report.bookings.total, 25);
-  assert.equal(report.bookings.rows.length, 5);
+  assert.equal(report.bookings.rows.length, 7);
   assert.ok(report.bookings.rows.every(row => row.status === "waiting"));
   assert.equal(report.overview.confirmedBookingsByDay.length, 30);
 });
@@ -811,7 +1020,7 @@ test("dashboard provides one confirmed-booking chart point for every day in the 
   const rows: DashboardBookingSource[] = Array.from({ length: 30 }, (_, index) => ({
     ...booking,
     id: `daily-${index + 1}`,
-    createdAt: `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
+    updatedAt: `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
     status: index % 3 === 0 ? "confirmed" : "waiting",
   }));
   const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09" });
@@ -874,7 +1083,7 @@ test("dashboard agency lists remain bounded and agency details retain their book
   assert.equal(detailReport.detail.bookings.total, 5);
 });
 
-test("agency detail keeps its confirmed summary while filtering all booking statuses to the fixed agency", async () => {
+test("agency detail shows confirmed counts and sales while filtering the fixed agency", async () => {
   const agencyBookings = Array.from({ length: 12 }, (_, index) => ({
     ...booking,
     id: `agency-booking-${index + 1}`,
@@ -901,27 +1110,6 @@ test("agency detail keeps its confirmed summary while filtering all booking stat
   assert.ok(report.bookings.rows.every(row => row.agency?.id === "agency-a"));
 });
 
-test("repository owner reads constrain both house identifiers and select only customer names", async () => {
-  let calls = 0;
-  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
-    const request = new Request(input, init), url = new URL(request.url);
-    assert.equal(url.searchParams.get("houseid"), "eq.101");
-    assert.equal(url.searchParams.get("listing.property_id"), "eq.101");
-    assert.deepEqual(url.searchParams.getAll("created_at"), ["gte.2026-08-31T17:00:00.000Z", "lt.2026-09-30T17:00:00.000Z"]);
-    assert.match(url.searchParams.get("select") ?? "", /customer:customers\(first_name,last_name\)/);
-    assert.doesNotMatch(url.searchParams.get("select") ?? "", /agent|note|phone/);
-    assert.equal(url.searchParams.get("offset"), String(calls));
-    calls++;
-    // Simulate a server cap of one row despite our requested batch of 500.
-    return new Response(JSON.stringify([{ ...dbRow, id: calls }]), { headers: { "Content-Type": "application/json", "Content-Range": `${calls - 1}-${calls - 1}/2` } });
-  } } });
-  const rows = await createDashboardRepository(client).bookings({ kind: "owner", propertyId: "101" }, parseDashboardQuery({ month: "2026-09" }));
-  assert.equal(calls, 2);
-  assert.equal(rows.length, 2);
-  assert.equal(rows[0].priceCents, 123450);
-  assert.equal(rows[0].agentId, null);
-});
-
 test("repository reads dashboard customer details only for the booking house and excludes sensitive identifiers", async () => {
   let calls = 0;
   const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
@@ -938,17 +1126,6 @@ test("repository reads dashboard customer details only for the booking house and
   assert.equal(customer?.firstName, "สมชาย");
   assert.equal(await repository.customerDetail({ kind: "owner", propertyId: "101" }, "202", "22"), null);
   assert.equal(calls, 1);
-});
-
-test("repository can bound dashboard bookings by updated_at", async () => {
-  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
-    const url = new URL(new Request(input, init).url);
-    assert.deepEqual(url.searchParams.getAll("updated_at"), ["gte.2026-08-31T17:00:00.000Z", "lt.2026-09-30T17:00:00.000Z"]);
-    assert.equal(url.searchParams.get("order"), "updated_at.desc,id.desc");
-    return new Response(JSON.stringify([dbRow]), { headers: { "Content-Type": "application/json", "Content-Range": "0-0/1" } });
-  } } });
-  const rows = await createDashboardRepository(client).bookings({ kind: "admin" }, parseDashboardQuery({ month: "2026-09" }), "updated_at");
-  assert.equal(rows[0].updatedAt, "2026-09-10T00:00:00Z");
 });
 
 test("repository falls back to the first house image when no cover is selected", async () => {
@@ -1008,17 +1185,6 @@ test("repository uses the house cover zone before card-cover selections", async 
   );
 });
 
-test("repository discards mismatched or foreign house joins even if supplied by a data source", async () => {
-  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => new Response(JSON.stringify([
-    dbRow,
-    { ...dbRow, id: 2, listing: { ...dbRow.listing, property_id: 202 } },
-    { ...dbRow, id: 3, houseid: 202, listing: { ...dbRow.listing, property_id: 202 } },
-    { ...dbRow, id: 4, listing_id: "foreign-listing" },
-  ]), { headers: { "Content-Type": "application/json", "Content-Range": "0-3/4" } }) } });
-  const rows = await createDashboardRepository(client).bookings({ kind: "owner", propertyId: "101" }, parseDashboardQuery({ month: "2026-09" }));
-  assert.deepEqual(rows.map(row => row.id), ["1"]);
-});
-
 test("repository resolves access by authenticated UID and never by email or request DV ID", async () => {
   const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
     const url = new URL(new Request(input, init).url);
@@ -1050,10 +1216,55 @@ test("new-house history paginates beyond the server response cap using the selec
   assert.equal(calls, 2);
 });
 
+test("repository maps a dashboard house detail from listing media prices and enabled facilities", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    const url = new URL(new Request(input, init).url);
+    if (url.pathname === "/rest/v1/listings") {
+      assert.equal(url.searchParams.get("property_id"), "eq.101");
+      const select = url.searchParams.get("select") ?? "";
+      for (const field of ["description", "property_tags", "extra_beds", "insurance_fee", "sort_order", "notes", "owner_id", "rating", "updated_at"]) assert.match(select, new RegExp(`(?:^|,)${field}(?:,|$)`));
+      return new Response(JSON.stringify({ id: "listing-101", property_id: 101, title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", property_tags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, max_guests: 12, location_zone: "พัทยา", property_type: "poolvilla", is_active: true, checkin_time: "14:00:00", checkout_time: "11:00:00", extra_beds: 500, insurance_fee: 5000, sort_order: 2, notes: "โน้ตภายใน", owner_id: 42, rating: 4, created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-13T00:00:00Z" }), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/rest/v1/images") {
+      assert.equal(url.searchParams.get("property_id"), "eq.101");
+      if (url.searchParams.get("image_zone") === "eq.cover") {
+        return new Response(JSON.stringify({ id: 1, image_name: "cover.jpg", image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover.jpg", image_zone: "cover", image_move: 1, cover_select: 0 }), { headers: { "Content-Type": "application/json" } });
+      }
+      assert.equal(url.searchParams.get("limit"), "4");
+      return new Response(JSON.stringify([{ id: 1, image_name: "cover.jpg", image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover.jpg", image_zone: "cover", image_move: 1, cover_select: 0 }]), { headers: { "Content-Type": "application/json", "Content-Range": "0-0/1" } });
+    }
+    if (url.pathname === "/rest/v1/listing_prices") {
+      assert.equal(url.searchParams.get("listing_id"), "eq.listing-101");
+      return new Response(JSON.stringify([{ day_of_week: 0, base_guests: 10, deville_price: 5000, agency_price: 4500, notes: "วันธรรมดา" }]), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/rest/v1/listing_facilities") {
+      assert.equal(url.searchParams.get("listing_id"), "eq.listing-101");
+      return new Response(JSON.stringify([{ facility_id: "wifi", value_boolean: true, message: "300 Mbps" }, { facility_id: "pool", value_boolean: false, message: null }]), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/rest/v1/facilities") {
+      return new Response(JSON.stringify([{ id: "wifi", name: "wifi", title: "Wi-Fi" }, { id: "pool", name: "private_pool", title: "สระว่ายน้ำ" }]), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/rest/v1/users") {
+      assert.equal(url.searchParams.get("dv_id"), "eq.42");
+      return new Response(JSON.stringify({ name: "เจ้าของตัวอย่าง" }), { headers: { "Content-Type": "application/json" } });
+    }
+    assert.fail(`unexpected request ${url.pathname}`);
+  } } });
+
+  const detail = await createDashboardRepository(client).houseDetail("101");
+
+  assert.deepEqual(detail, {
+    propertyId: "101", title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", propertyTags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, maxGuests: 12, locationZone: "พัทยา", propertyType: "poolvilla", isActive: true, ownerName: "เจ้าของตัวอย่าง", rating: 4, checkinTime: "14:00:00", checkoutTime: "11:00:00", extraBedPrice: 500, insuranceFee: 5000, sortOrder: 2, notes: "โน้ตภายใน", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z", imageCount: 1,
+    images: [{ id: "1", url: "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/cover.jpg", zone: "cover", order: 1, isCover: true }],
+    prices: [{ dayOfWeek: 0, baseGuests: 10, devillePrice: 5000, agencyPrice: 4500, note: "วันธรรมดา" }],
+    facilities: [{ id: "wifi", name: "wifi", title: "Wi-Fi", message: "300 Mbps" }],
+  });
+});
+
 test("failed or incomplete reads reject rather than displaying partial totals", async () => {
   for (const response of [new Response("{}", { status: 500 }), new Response("[]", { headers: { "Content-Type": "application/json", "Content-Range": "*/3" } })]) {
     const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => response.clone() } });
-    await assert.rejects(createDashboardRepository(client).bookings({ kind: "admin" }, parseDashboardQuery({ month: "2026-09" })));
+    await assert.rejects(createDashboardRepository(client).report("signed-in-user", { month: "2026-09" }));
   }
 });
 
@@ -1076,7 +1287,7 @@ test("dashboard renders month controls and only administrator views include agen
     assert.equal((html.match(/<span class="block text-xl font-semibold tabular-nums">1<\/span>/g) ?? []).length, 1);
     assert.match(html, /ยอดขายจากการจอง/);
     assert.match(html, /สถานะการจอง/);
-    assert.match(html, /จำนวนการจอง/);
+    assert.match(html, /จำนวนการจองเดือนนี้/);
     assert.match(html, /aria-label="กราฟจำนวนการจองติดจองรายวัน"/);
     assert.match(html, /aria-label="กราฟจำนวนการจองติดจองรายวัน" class="w-full"/);
     assert.match(html, /--color-count: var\(--primary\)/);
@@ -1088,8 +1299,8 @@ test("dashboard renders month controls and only administrator views include agen
     assert.doesNotMatch(html, /ตามวันที่สร้างรายการ/);
     assert.doesNotMatch(html, /วิธีคำนวณยอดขาย/);
     if (scope.kind === "admin") assert.match(html, /ดูทั้งหมด/);
-    assert.equal(html.includes("ยอดขายเอเจนซี่"), scope.kind === "admin");
-    assert.equal(html.includes("บ้านใหม่"), scope.kind === "admin");
+    assert.equal(html.includes("ยอดขายเอเจนซี่สูงสุด 5 อันดับ"), scope.kind === "admin");
+    assert.equal(html.includes("บ้านใหม่เดือนนี้"), scope.kind === "admin");
     assert.equal(html.includes("New House"), scope.kind === "admin");
     assert.equal(html.includes("กราฟยอดขายเอเจนซี่ 5 อันดับแรก"), scope.kind === "admin");
     if (scope.kind === "admin") {

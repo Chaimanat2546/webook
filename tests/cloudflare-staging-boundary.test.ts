@@ -24,4 +24,14 @@ describe("WeBooks Staging Cloudflare boundary", () => {
     assert.match(guard, /Object\.hasOwn\(config, "services"\)/);
     assert.match(runner, /\[command, "-c", "wrangler\.staging\.jsonc", "--keep-vars"\]/);
   });
+
+  it("runs Staging migrations only after linking the fixed CI project", () => {
+    const runner = readFileSync(new URL("../scripts/run-staging-supabase-migrations.mjs", import.meta.url), "utf8");
+    assert.match(runner, /SUPABASE_ACCESS_TOKEN/);
+    assert.match(runner, /SUPABASE_DB_PASSWORD/);
+    assert.match(runner, /assertStagingProjectRef/);
+    assert.match(runner, /runSupabase\(\["link", "--project-ref", STAGING_SUPABASE_PROJECT_REF\]\)/);
+    assert.match(runner, /"db", "push", "--dry-run"/);
+    assert.doesNotMatch(runner, /--db-url/);
+  });
 });

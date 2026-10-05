@@ -133,6 +133,29 @@ describe("Cloudflare deployment boundary", () => {
     assert.match(productionWorkflow, /npm run deploy:cf/);
   });
 
+  it("deploys staging only after environment approval and migration", () => {
+    const workflow = readFileSync(new URL("../.github/workflows/deploy-staging.yml", import.meta.url), "utf8");
+    assert.match(workflow, /branches:\s*\n\s*- staging/);
+    assert.match(workflow, /environment:\s*\n\s*name: staging/);
+    assert.match(workflow, /needs: validate/);
+    assert.match(workflow, /node scripts\/run-staging-supabase-migrations\.mjs[\s\S]*npm run deploy:cf:staging/);
+    assert.match(workflow, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
+    assert.match(workflow, /SUPABASE_DB_PASSWORD: \$\{\{ secrets\.SUPABASE_DB_PASSWORD \}\}/);
+    assert.match(workflow, /grep --recursive --quiet --binary-files=text "sxvkhzhqtrpxgzumsswl" \.open-next/);
+    assert.match(workflow, /! grep --recursive --quiet --binary-files=text/);
+    assert.match(workflow, /rqizfiayvcbozlzuvbok/);
+    assert.doesNotMatch(workflow, /\brg\b/);
+  });
+
+  it("blocks deploys on runtime audit findings and tracks development audit findings separately", () => {
+    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+    const workflow = readFileSync(new URL("../.github/workflows/audit-dev-dependencies.yml", import.meta.url), "utf8");
+    assert.equal(packageJson.scripts["audit:security"], "npm audit --omit=dev --audit-level=moderate");
+    assert.match(workflow, /schedule:/);
+    assert.match(workflow, /workflow_dispatch:/);
+    assert.match(workflow, /npm audit --include=dev --audit-level=moderate/);
+  });
+
   it("keeps the image media Worker deploy config separate", () => {
     const configPath = new URL("../workers/media/wrangler.jsonc", import.meta.url);
 
