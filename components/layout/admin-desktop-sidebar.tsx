@@ -82,8 +82,8 @@ export function AdminDesktopSidebar({
             <SidebarGroupContent>
               <SidebarMenu>
                 {canUseDashboard && <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/dashboard")} tooltip="Dashboard">
-                    <Link href="/admin/dashboard" onClick={closeMobileSidebar}><LayoutDashboard data-icon="inline-start" /><span>Dashboard</span></Link>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/dashboard")} tooltip="แดชบอร์ด">
+                    <Link href="/admin/dashboard" onClick={closeMobileSidebar}><LayoutDashboard data-icon="inline-start" /><span>แดชบอร์ด</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>}
                 {canUseBooking && !isMobile ? (

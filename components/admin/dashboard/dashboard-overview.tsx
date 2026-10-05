@@ -45,7 +45,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
       <Card className="min-h-[21rem] gap-2">
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-3">
-            <h2>จำนวนการจอง</h2>
+            <h2>จำนวนการจองเดือนนี้</h2>
             <Link
               href={`/admin/dashboard/bookings?month=${encodeURIComponent(query.month)}&status=confirmed`}
               className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"
@@ -78,7 +78,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
           <Card className="min-h-[20rem] h-full gap-2">
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-3">
-                <h2>ยอดขายเอเจนซี่</h2>
+                <h2>ยอดขายเอเจนซี่สูงสุด 5 อันดับ</h2>
                 <Link
                   href={`/admin/dashboard/agencies?month=${encodeURIComponent(query.month)}`}
                   className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"
@@ -103,7 +103,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
           <Card className="min-h-[20rem] h-full gap-2">
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-3">
-                <h2>บ้านใหม่</h2>
+                <h2>บ้านใหม่เดือนนี้</h2>
                 <Link
                   href={`/admin/dashboard/houses?month=${encodeURIComponent(query.month)}`}
                   className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"

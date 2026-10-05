@@ -133,6 +133,16 @@ describe("Cloudflare deployment boundary", () => {
     assert.match(productionWorkflow, /npm run deploy:cf/);
   });
 
+  it("deploys staging only after environment approval and migration", () => {
+    const workflow = readFileSync(new URL("../.github/workflows/deploy-staging.yml", import.meta.url), "utf8");
+    assert.match(workflow, /branches:\s*\n\s*- staging/);
+    assert.match(workflow, /environment:\s*\n\s*name: staging/);
+    assert.match(workflow, /needs: validate/);
+    assert.match(workflow, /node scripts\/run-staging-supabase-migrations\.mjs[\s\S]*npm run deploy:cf:staging/);
+    assert.match(workflow, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
+    assert.match(workflow, /SUPABASE_DB_PASSWORD: \$\{\{ secrets\.SUPABASE_DB_PASSWORD \}\}/);
+  });
+
   it("keeps the image media Worker deploy config separate", () => {
     const configPath = new URL("../workers/media/wrangler.jsonc", import.meta.url);
 

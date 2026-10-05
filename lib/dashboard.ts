@@ -6,6 +6,40 @@ export interface DashboardMonth {
   end: string;
 }
 
+/** RPC request: monthly reporting always uses updated_at; stay dates are inclusive. */
+export interface DashboardReportingQuery {
+  month: string;
+  view?: DashboardViewName;
+  checkInFrom?: string;
+  checkInTo?: string;
+  agency?: string;
+  status?: string;
+  search?: string;
+  sort?: DashboardBookingSort | DashboardAgencySort;
+  page?: number;
+  pageSize?: number;
+  amountFromCents?: number;
+  amountToCents?: number;
+  agencySearch?: string;
+  agencySort?: DashboardAgencyListSort;
+  agenciesPage?: number;
+  bookingId?: string;
+}
+
+export interface DashboardReportingResult {
+  bookingCount: number;
+  statusCounts: Record<DashboardStatus, number>;
+  sales: DashboardSales;
+  totalSalesCents: number;
+  daily: DashboardDailyBookingCount[];
+  bookings: DashboardPage<DashboardBookingSource>;
+  bookingDetail: DashboardBookingSource | null;
+  agencies: DashboardPage<DashboardAgency>;
+  selectedAgency: DashboardAgency | null;
+  agencyCount: number;
+  topAgencies: DashboardAgency[];
+}
+
 export const DASHBOARD_VIEWS = ["overview", "bookings", "agencies", "houses", "booking", "agency", "house"] as const;
 export type DashboardViewName = typeof DASHBOARD_VIEWS[number];
 export const DASHBOARD_SOURCE_VIEWS = ["overview", "bookings", "agencies", "houses"] as const;

@@ -15,6 +15,7 @@ describe("admin sidebar icons", () => {
     assert.match(source, /<Contact aria-hidden \/>[\s\S]*?<span>ข้อมูลลูกค้า<\/span>/);
     assert.match(source, /<Users data-icon="inline-start" \/>[\s\S]*?<span>ผู้ใช้เว็บไซต์<\/span>/);
     assert.match(source, /<ShieldUser data-icon="inline-start" \/>[\s\S]*?<span>ผู้ใช้ WeBooks<\/span>/);
+    assert.match(source, /<LayoutDashboard data-icon="inline-start" \/>[\s\S]*?<span>แดชบอร์ด<\/span>/);
   });
   it("offers the top-level booking destination only to booking operators", () => {
     assert.match(source, /\{canUseBooking && !isMobile \? \([\s\S]*?<Link href="\/admin\/bookings"/);
