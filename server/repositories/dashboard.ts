@@ -181,7 +181,7 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
         images: (imageData ?? []).flatMap(value => {
           const image = record(value);
           const url = buildHouseImageDisplayUrl({ imageName: nullableText(image.image_name), imageUrl: nullableText(image.image_url) });
-          const id = nullableText(image.id);
+          const id = dashboardPropertyId(image.id);
           if (!url || !id) return [];
           const zone = nullableText(image.image_zone);
           const coverSelect = nullableNumber(image.cover_select);

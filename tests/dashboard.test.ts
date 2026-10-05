@@ -739,6 +739,7 @@ test("dashboard house detail renders real gallery prices facilities and internal
 
   assert.match(html, /แกลเลอรีรูปภาพ/);
   assert.match(html, /2 รูป/);
+  assert.match(html, /aria-label="เปิดรูปที่ 2 จาก 2"/);
   assert.match(html, /พูลวิลล่าสำหรับครอบครัว/);
   assert.match(html, /ครอบครัว/);
   assert.match(html, /ราคา/);
@@ -1147,7 +1148,7 @@ test("repository maps a dashboard house detail from listing media prices and ena
     }
     if (url.pathname === "/rest/v1/images") {
       assert.equal(url.searchParams.get("property_id"), "eq.101");
-      return new Response(JSON.stringify([{ id: "image-1", image_name: "cover.jpg", image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover.jpg", image_zone: "cover", image_move: 1, cover_select: 0 }]), { headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify([{ id: 1, image_name: "cover.jpg", image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover.jpg", image_zone: "cover", image_move: 1, cover_select: 0 }]), { headers: { "Content-Type": "application/json" } });
     }
     if (url.pathname === "/rest/v1/listing_prices") {
       assert.equal(url.searchParams.get("listing_id"), "eq.listing-101");
@@ -1167,7 +1168,7 @@ test("repository maps a dashboard house detail from listing media prices and ena
 
   assert.deepEqual(detail, {
     propertyId: "101", title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", propertyTags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, maxGuests: 12, locationZone: "พัทยา", propertyType: "poolvilla", isActive: true, checkinTime: "14:00:00", checkoutTime: "11:00:00", extraBedPrice: 500, insuranceFee: 5000, sortOrder: 2, notes: "โน้ตภายใน", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z",
-    images: [{ id: "image-1", url: "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/cover.jpg", zone: "cover", order: 1, isCover: true }],
+    images: [{ id: "1", url: "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/cover.jpg", zone: "cover", order: 1, isCover: true }],
     prices: [{ dayOfWeek: 0, baseGuests: 10, devillePrice: 5000, agencyPrice: 4500, note: "วันธรรมดา" }],
     facilities: [{ id: "wifi", name: "wifi", title: "Wi-Fi", message: "300 Mbps" }],
   });
