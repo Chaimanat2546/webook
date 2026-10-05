@@ -15,7 +15,7 @@ export function dashboardReportFixture(scope: DashboardScope, source: DashboardB
   const label = (row: DashboardBookingSource) => row.agentName ?? (row.agentId ? "เอเจนซี่ที่ไม่มีชื่อในระบบ" : "ไม่ระบุเอเจนซี่");
   const groups: DashboardAgency[] = scope.kind === "admin" ? [...new Set(base.map(row => row.agentId))].map(id => {
     const rows = base.filter(row => row.agentId === id);
-    return { id, name: label(rows[0]), ...salesFor(confirmed(rows)), count: rows.length };
+    return { id, name: label(rows[0]), ...salesFor(confirmed(rows)), count: confirmed(rows).length };
   }) : [];
   groups.sort((a,b) => b.amountCents-a.amountCents || b.count-a.count || a.name.localeCompare(b.name,"th"));
   const agencyRows = groups.filter(row => row.name.toLowerCase().includes((query.agencySearch ?? "").toLowerCase()));

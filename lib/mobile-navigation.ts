@@ -62,7 +62,7 @@ export function isMobileWorkspace(pathname: string): boolean {
 
 export function mobileTitle(pathname: string): string {
   const titles: Record<string, string> = {
-    "/admin/dashboard": "Dashboard",
+    "/admin/dashboard": "แดชบอร์ด",
     "/admin/houses": "บ้านพัก",
     "/admin/bookings": "การจอง",
     "/admin/quotations": "ใบเสนอราคา",

@@ -9,7 +9,9 @@ import { parseDashboardAgencyDetailQuery } from "../lib/dashboard-routes.ts";
 
 const migration = new URL("../supabase/migrations/20261002110000_scalable_dashboard_reporting.sql", import.meta.url);
 const orderingMigration = new URL("../supabase/migrations/20261005120000_dashboard_json_ordering.sql", import.meta.url);
+const confirmedAgencyCountsMigration = new URL("../supabase/migrations/20261005130000_dashboard_confirmed_agency_counts.sql", import.meta.url);
 it("dashboard reporting migration is available for deployment", () => assert.ok(existsSync(migration)));
+it("dashboard confirmed agency counts migration is available for deployment", () => assert.ok(existsSync(confirmedAgencyCountsMigration)));
 
 describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASHBOARD_DB_TESTS !== "1" }, () => {
   const container = `webook-dashboard-test-${process.pid}`;
@@ -80,6 +82,7 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
              (7,'BK7','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',999,'2026-09-10','2026-09-30T17:00:00Z');`);
     sql(readFileSync(migration, "utf8"));
     sql(readFileSync(orderingMigration, "utf8"));
+    sql(readFileSync(confirmedAgencyCountsMigration, "utf8"));
   });
   after(() => { spawnSync("docker", ["rm", "-f", container]); });
   it("uses Bangkok updated-month boundaries, all-status counts and confirmed sales", () => {
@@ -94,7 +97,7 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
   it("agency metrics precede status/search/amount filters and use global confirmed denominator", () => {
     const r = report({ agency, status: "waiting", search: "House A", amountFromCents: 10000, amountToCents: 10000 });
     assert.equal(r.bookingCount, 5);
-    assert.deepEqual(r.selectedAgency, { id: agency, name: "Agency A", count: 5, amountCents: 10000, missingPrices: 1 });
+    assert.deepEqual(r.selectedAgency, { id: agency, name: "Agency A", count: 2, amountCents: 10000, missingPrices: 1 });
     assert.equal(r.totalSalesCents, 40000);
     assert.equal(r.bookings.total, 1);
     assert.equal(r.bookings.rows[0].id, "2");
@@ -117,7 +120,7 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     assert.equal(result.bookings.rows[0].id, "2");
     assert.equal(result.detail?.kind, "agency");
     if (result.detail?.kind !== "agency") assert.fail();
-    assert.equal(result.detail.agency.count, 5);
+    assert.equal(result.detail.agency.count, 2);
     assert.equal(result.detail.sharePercent, 25);
     assert.equal(result.detail.agency.amountCents, 10000);
   });

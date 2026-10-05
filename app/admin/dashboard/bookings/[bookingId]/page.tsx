@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { parseDashboardQuery } from "../../../../../lib/dashboard";
-import { dashboardAgenciesHref, dashboardAgencyDetailHref, dashboardBookingsHref, parseDashboardBookingOrigin, parseDashboardBookingsQuery } from "../../../../../lib/dashboard-routes";
+import { dashboardAgencyBookingDetailHref, dashboardAgenciesHref, dashboardAgencyDetailHref, dashboardBookingDetailHref, dashboardBookingsHref, parseDashboardBookingOrigin, parseDashboardBookingsQuery } from "../../../../../lib/dashboard-routes";
 import { dashboardSession } from "../../../../../server/auth/dashboard";
 import { DashboardForbidden, DashboardItemNotFound, loadDashboardBooking } from "../../../../../server/services/dashboard";
 import { DashboardDetails } from "../../../../../components/admin/dashboard/dashboard-details";
@@ -24,5 +24,6 @@ export default async function DashboardBookingDetailPage({ params, searchParams 
   }
   const query = parseDashboardQuery({ month: routeQuery.month, view: "booking", from: "bookings", bookingId, status: routeQuery.status, search: routeQuery.search, page: String(routeQuery.page) });
   const backHref = origin ? dashboardAgencyDetailHref(origin.query, origin.agencyId) : dashboardBookingsHref(routeQuery);
-  return <DashboardDetails backHref={backHref} backLabel={origin ? "กลับไปเอเจนซี่" : "กลับไปการจอง"} loadBookingCustomer={loadDashboardBookingCustomerAction} query={query} report={report} />;
+  const houseReturnTo = origin ? dashboardAgencyBookingDetailHref(origin.query, origin.agencyId, bookingId) : dashboardBookingDetailHref(routeQuery, bookingId);
+  return <DashboardDetails backHref={backHref} backLabel={origin ? "กลับไปเอเจนซี่" : "กลับไปการจอง"} houseReturnTo={houseReturnTo} loadBookingCustomer={loadDashboardBookingCustomerAction} query={query} report={report} />;
 }

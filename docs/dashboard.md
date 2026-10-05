@@ -12,9 +12,9 @@ Owner responses exclude agency data and new-house history. Customer details are 
 
 - The month picker defaults to the current Asia/Bangkok month and applies to all report sections. Query dates use an inclusive start and exclusive next-month start at Bangkok midnight.
 - Bookings, sales, agency summaries and daily overview points use **updated_at**. Explicit stay ranges use inclusive **check_in** dates for both summaries and lists. Status is current: edits can move a booking between monthly reports; these reports are not an immutable revenue ledger.
-- Agency sales count only `confirmed` (ติดจอง). Sum `price_max`, the full stay price, once per booking. Do not multiply by nights, add deposits, include additional charges or treat sales as payments received.
+- Agency booking counts and sales count only `confirmed` (ติดจอง). Sales sum `price_max`, the full stay price, once per booking. Do not multiply by nights, add deposits, include additional charges or treat sales as payments received.
 - Missing prices contribute to the booking count and show a missing-price notice; they do not contribute money. Totals use integer satang. Unassigned bookings are shown separately as “ไม่ระบุเอเจนซี่”; inactive agencies retain their sales.
-- Booking count includes **all statuses**, including repair, cancelled and unknown legacy values. Status counts partition the full authorized month. Sales and agency sales remain confirmed-only. Status/search/amount filters affect only list rows and filtered pagination; they never reduce date-scoped headline totals. Agency detail fixes the agency scope for counts, status totals and sales, while share uses all authorized agencies in the same date scope as denominator.
+- General booking count includes **all statuses**, including repair, cancelled and unknown legacy values. Status counts partition the full authorized month. Sales, agency booking counts and agency sales remain confirmed-only. Status/search/amount filters affect only list rows and filtered pagination; they never reduce date-scoped headline totals. Agency detail fixes the agency scope for its confirmed count, status totals and sales, while share uses all authorized agencies in the same date scope as denominator.
 - Valid status filters are `all`, `confirmed`, `waiting`, `cancelled`, `repair`, and `unknown`. Search matches house title, formatted DV ID, customer full name and (admin only) agency name, case-insensitively. Admin agency drilldown uses the agency ID (`unassigned` for null); owners ignore agency filters and never receive agency data. Invalid/repeated filters are rejected.
 - New houses use `listings.created_at`, including inactive houses. This is creation history of currently existing rows, not a deletion audit log.
 - PostgreSQL aggregates the scoped dataset, then returns only the requested page: 9 booking rows or 10 agency rows. No complete booking dataset enters Next.js. Malformed, overflowing or failed RPC results show an error instead of partial totals. House creation history retains its independent repository path.
@@ -32,9 +32,9 @@ The canonical dashboard routes separate each operational task: `/admin/dashboard
 The former `view`, `from`, `housesPage`, and `agenciesPage` URLs are compatibility inputs only: they redirect to the equivalent canonical route, retaining only relevant filters. Dashboard navigation uses normal URL/browser history; it does not retain session-storage return state.
 
 - Bookings: GET search by title, formatted DV, customer or agency name; status/sort/stay-range/amount controls. Agency selection is fixed by the agency detail route. The page is headed “การจอง”; its compact toolbar is followed by a one-line full-month confirmed count and sales amount, then the list. Desktop rows have house/DV, stay dates, admin-only agency, and amount columns; mobile rows preserve the same fields in a compact card. Searching retains the active filters and resets page one.
-- Agencies: search by name and sort aggregate rows by sales, booking count, or Thai agency name; `agencySort` is separate from the detail page's booking `sort`. The list table has only agency name, booking count and sales columns; selecting the name opens that agency's details. Detail keeps its all-status booking count and confirmed sales/share above the exact shared booking-list toolbar, table, mobile cards, empty states, pager, and booking links. The route ID is the fixed server-side agency filter; users can use every booking filter, defaulting to `confirmed`. Detail booking rows use `updated_at` for a selected month or `check_in` for an explicit date range, and the summary uses that exact same date scope before status/search/amount filters. `bookingSearch` matches the normal booking-list fields without replacing the agency-list `search`; booking filter changes reset only `bookingsPage`. The former top-house-sales section and section toggle are not part of the agency detail workflow.
+- Agencies: search by name and sort aggregate rows by sales, confirmed booking count, or Thai agency name; `agencySort` is separate from the detail page's booking `sort`. The list table has only agency name, confirmed booking count and sales columns; selecting the name opens that agency's details. Detail keeps its confirmed booking count and confirmed sales/share above the exact shared booking-list toolbar, table, mobile cards, empty states, pager, and booking links. The route ID is the fixed server-side agency filter; users can use every booking filter, defaulting to `confirmed`. Detail booking rows use `updated_at` for a selected month or `check_in` for an explicit date range, and the summary uses that exact same date scope before status/search/amount filters. `bookingSearch` matches the normal booking-list fields without replacing the agency-list `search`; booking filter changes reset only `bookingsPage`. The former top-house-sales section and section toggle are not part of the agency detail workflow.
 - Houses: GET title/DV search and newest-first creation history. Detail includes the creation timestamp in Bangkok, property type, zone, bedroom/bathroom counts, maximum guests, active status, and check-in/out times when present. Its house-workspace link carries the exact detail URL (including list filters/page) as a safe return destination; workspace navigation and saves preserve that destination.
-- Booking detail: code, title/DV, current status, check-in/out, date-only nights, amount and creation timestamp. Agency name is admin-only. Repair amount is “—”; missing prices are “ไม่ระบุยอด”.
+- Booking detail: code, title/DV, current status, check-in/out, date-only nights, amount and creation timestamp. Agency name is admin-only. Repair amount is “—”; missing prices are “ไม่ระบุยอด”. Its house-workspace link carries the exact booking-detail URL as an allowlisted return destination, including agency-origin state when applicable.
 
 Lists show the visible range and filtered total, with previous/next pagination. Positive out-of-range pages clamp to the last page, and detail links retain that displayed page. Empty-month and no-filter-match messages are distinct. The monthly headline totals do not change with list filters.
 
@@ -102,17 +102,16 @@ Remove-Item Env:RUN_DASHBOARD_DB_TESTS
 
 Docker must be running. The suite creates and removes only its own test
 container; it never loads environment credentials or contacts Supabase.
-It covers Bangkok date boundaries, confirmed-only money and missing prices,
-all-status agency counts, owner isolation, filters, pagination, grants and
+It covers Bangkok date boundaries, confirmed-only agency counts, money and missing prices,
+owner isolation, filters, pagination, grants and
 30,000-row fixtures with EXPLAIN ANALYZE/BUFFERS. Timing is local evidence,
 not a production latency guarantee. Regular UI/service unit tests use an
 explicit test-only RPC double; database semantics are verified by this suite.
 
 For arbitrary stay ranges, summary/list scope follows the entire range;
 daily chart points remain bounded to the selected month (the chart is shown
-only on the monthly overview). Agency count means all statuses, not just
-confirmed bookings. Sales still mean confirmed full booking prices, not cash
-received.
+only on the monthly overview). Agency count means confirmed bookings only.
+Sales still mean confirmed full booking prices, not cash received.
 
 ## Internal RPC plan inspection (local, 2026-10-05)
 

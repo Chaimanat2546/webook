@@ -273,7 +273,7 @@ test("canonical agency and house pages render their own workflows", async () => 
   assert.doesNotMatch(agenciesHtml, /type="month"[^>]*id="agency-month"/);
   assert.match(agenciesHtml, /class="hidden overflow-hidden rounded-xl border md:block"/);
   assert.match(agenciesHtml, /class="space-y-3 md:hidden"[\s\S]*rounded-xl border bg-card p-3 shadow-sm/);
-  assert.match(agenciesHtml, /<table[^>]*>[\s\S]*<th[^>]*>ชื่อเอเจนซี่<\/th>[\s\S]*<th[^>]*>จำนวนการจอง<\/th>[\s\S]*<th[^>]*>ยอดขาย<\/th>/);
+  assert.match(agenciesHtml, /<table[^>]*>[\s\S]*<th[^>]*>ชื่อเอเจนซี่<\/th>[\s\S]*<th[^>]*>จำนวนการจองติดจอง<\/th>[\s\S]*<th[^>]*>ยอดขาย<\/th>/);
   assert.equal((agenciesHtml.match(/<th /g) ?? []).length, 3);
   assert.match(agenciesHtml, /Agency A[\s\S]*<td[^>]*>1<\/td>[\s\S]*<td[^>]*>฿1,234\.50<\/td>/);
   assert.doesNotMatch(agenciesHtml, /100\.0%|ของยอดขาย|h-1\.5 overflow-hidden rounded-full/);
@@ -322,6 +322,15 @@ test("canonical detail pages use their list return headers", async () => {
   assert.match(houseHtml, /<header[^>]*>.*href="\/admin\/dashboard\/houses\?month=2026-09&amp;search=villa&amp;page=2"[^>]*>.*กลับไปบ้านใหม่.*<h1[^>]*>New House<\/h1>/);
 });
 
+test("booking house links retain the full agency-origin booking detail URL", async () => {
+  const BookingPage = await dashboardPageComponent("../app/admin/dashboard/bookings/[bookingId]/page.tsx", repository({ kind: "admin" })) as (props: { params: Promise<{ bookingId: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
+  const html = renderToStaticMarkup(await BookingPage({
+    params: Promise.resolve({ bookingId: "1" }),
+    searchParams: Promise.resolve({ month: "2026-09", status: "confirmed", sort: "price-asc", checkInFrom: "2026-11-01", checkInTo: "2026-11-03", amountFrom: "1000", amountTo: "2000", fromAgency: "agency-a", agencySearch: "Agency", agencySort: "count-desc", agencyPage: "2", bookingSearch: "House", bookingsPage: "3" }),
+  }) as ReactNode);
+  assert.match(html, /href="\/admin\/houses\/101\?returnTo=%2Fadmin%2Fdashboard%2Fbookings%2F1%3Fmonth%3D2026-09%26status%3Dconfirmed%26search%3DHouse%26checkInFrom%3D2026-11-01%26checkInTo%3D2026-11-03%26amountFrom%3D1000%26amountTo%3D2000%26sort%3Dprice-asc%26page%3D3%26fromAgency%3Dagency-a%26agencySearch%3DAgency%26agencySort%3Dcount-desc%26agencyPage%3D2%26bookingSearch%3DHouse%26bookingsPage%3D3"/);
+});
+
 test("dashboard mobile layouts keep house metadata grouped and details compact", async () => {
   const HouseRow = await dashboardComponent("DashboardHouseRow", "../components/admin/dashboard/dashboard-rows.tsx");
   const house = { id: "house-long", propertyId: "900260912", title: "[DEMO LARGE 2026-09] บ้านตัวอย่าง 13", createdAt: "2026-09-01T00:00:00Z", bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00" };
@@ -336,7 +345,8 @@ test("dashboard mobile layouts keep house metadata grouped and details compact",
   assert.match(bookingHtml, /grid-cols-\[1\.25rem_minmax\(6\.5rem,9rem\)_minmax\(0,1fr\)\]/);
   assert.match(bookingHtml, /รหัสจอง/);
   assert.match(bookingHtml, /Agency A/);
-  assert.match(bookingHtml, /ดูข้อมูลบ้าน \/ โครงการ/);
+  assert.match(bookingHtml, /ดูข้อมูลบ้าน/);
+  assert.match(bookingHtml, /href="\/admin\/houses\/101\?returnTo=%2Fadmin%2Fdashboard%2Fbookings%2F1%3Fmonth%3D2026-09%26status%3Dall%26sort%3Dupdated-desc"/);
 
   const houseReport = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09", view: "house", houseId: "listing-new" });
   const houseHtml = renderToStaticMarkup(createElement(await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx"), { report: houseReport, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
@@ -566,8 +576,8 @@ test("booking detail exposes operational fields but repair has no monetary amoun
   assert.match(html, /3 พ\.ย\. 2569 · 11:00/);
   assert.match(html, /!flex items-center justify-between/);
   assert.match(html, /data-dashboard-booking-cover/);
-  assert.match(html, /ดูข้อมูลบ้าน \/ โครงการ/);
-  assert.match(html, /href="\/admin\/houses\/101"/);
+  assert.match(html, /ดูข้อมูลบ้าน/);
+  assert.match(html, /href="\/admin\/houses\/101\?returnTo=/);
   assert.match(html, /lg:grid-cols-\[minmax\(0,1fr\)_20rem\]/);
   assert.match(html, /หมายเหตุ/);
   assert.match(html, /data-dashboard-booking-customer-loading/);
@@ -600,6 +610,7 @@ test("agency chart labels remove seeded demo prefixes", () => {
 
 test("house workspace return links allow dashboard detail routes and reject external destinations", () => {
   assert.equal(safeHouseReturnTo("/admin/dashboard/houses/listing-new?month=2026-09&search=villa&page=2"), "/admin/dashboard/houses/listing-new?month=2026-09&search=villa&page=2");
+  assert.equal(safeHouseReturnTo("/admin/dashboard/bookings/1?month=2026-09&status=confirmed&sort=updated-desc"), "/admin/dashboard/bookings/1?month=2026-09&status=confirmed&sort=updated-desc");
   assert.equal(safeHouseReturnTo("/admin/houses?page=2&q=villa"), "/admin/houses?page=2&q=villa");
   assert.equal(safeHouseReturnTo("https://evil.example"), null);
   assert.equal(safeHouseReturnTo("//evil.example/admin/dashboard/houses/listing-new"), null);
@@ -733,7 +744,7 @@ test("admin sales count only confirmed bookings, group agencies and flag missing
   assert.equal(report.bookingCount, 9);
   assert.deepEqual(report.statusCounts, { confirmed: 5, waiting: 1, cancelled: 1, repair: 1, unknown: 1 });
   assert.deepEqual(report.admin?.agencies.rows.map(row => [row.name, row.count, row.amountCents]), [
-    ["Agency A", 7, 123460], ["ไม่ระบุเอเจนซี่", 1, 30000], ["Inactive B", 1, 20],
+    ["Agency A", 3, 123460], ["ไม่ระบุเอเจนซี่", 1, 30000], ["Inactive B", 1, 20],
   ]);
   assert.equal(report.admin?.houses.total, 1);
   assert.deepEqual(report.bookings.rows[0].agency, { id: "agency-a", name: "Agency A" });
@@ -869,7 +880,7 @@ test("dashboard agency lists remain bounded and agency details retain their book
   assert.equal(detailReport.detail.bookings.total, 5);
 });
 
-test("agency detail shows all-status counts and confirmed sales while filtering the fixed agency", async () => {
+test("agency detail shows confirmed counts and sales while filtering the fixed agency", async () => {
   const agencyBookings = Array.from({ length: 12 }, (_, index) => ({
     ...booking,
     id: `agency-booking-${index + 1}`,
@@ -887,7 +898,7 @@ test("agency detail shows all-status counts and confirmed sales while filtering 
   const report = await loadDashboardAgency(repository({ kind: "admin" }, rows), "signed-in-user", query, "agency-a");
   assert.equal(report.detail?.kind, "agency");
   if (report.detail?.kind !== "agency") assert.fail("expected agency detail");
-  assert.equal(report.detail.agency.count, 13);
+  assert.equal(report.detail.agency.count, 12);
   assert.equal(report.detail.agency.amountCents, 7800);
   assert.equal(report.bookings.total, 13);
   assert.equal(report.bookings.page, 1);
@@ -1028,7 +1039,7 @@ test("dashboard renders month controls and only administrator views include agen
     assert.equal((html.match(/<span class="block text-xl font-semibold tabular-nums">1<\/span>/g) ?? []).length, 1);
     assert.match(html, /ยอดขายจากการจอง/);
     assert.match(html, /สถานะการจอง/);
-    assert.match(html, /จำนวนการจอง/);
+    assert.match(html, /จำนวนการจองเดือนนี้/);
     assert.match(html, /aria-label="กราฟจำนวนการจองติดจองรายวัน"/);
     assert.match(html, /aria-label="กราฟจำนวนการจองติดจองรายวัน" class="w-full"/);
     assert.match(html, /--color-count: var\(--primary\)/);
@@ -1040,8 +1051,8 @@ test("dashboard renders month controls and only administrator views include agen
     assert.doesNotMatch(html, /ตามวันที่สร้างรายการ/);
     assert.doesNotMatch(html, /วิธีคำนวณยอดขาย/);
     if (scope.kind === "admin") assert.match(html, /ดูทั้งหมด/);
-    assert.equal(html.includes("ยอดขายเอเจนซี่"), scope.kind === "admin");
-    assert.equal(html.includes("บ้านใหม่"), scope.kind === "admin");
+    assert.equal(html.includes("ยอดขายเอเจนซี่สูงสุด 5 อันดับ"), scope.kind === "admin");
+    assert.equal(html.includes("บ้านใหม่เดือนนี้"), scope.kind === "admin");
     assert.equal(html.includes("New House"), scope.kind === "admin");
     assert.equal(html.includes("กราฟยอดขายเอเจนซี่ 5 อันดับแรก"), scope.kind === "admin");
     if (scope.kind === "admin") {

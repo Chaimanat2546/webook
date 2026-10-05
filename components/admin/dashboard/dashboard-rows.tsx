@@ -52,7 +52,7 @@ export function DashboardAgencyTableRow({ agency, href }: { agency: DashboardAge
 export function DashboardAgencyRow({ agency, href }: { agency: DashboardAgency; href: string }) {
   return <Link id={`dashboard-agency-${agency.id ?? "unassigned"}`} data-dashboard-detail-link href={href} className="block rounded-xl border bg-card p-3 shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-2">
     <span className="flex min-w-0 items-start justify-between gap-3"><span className="break-words font-semibold [overflow-wrap:anywhere]">{agency.name}</span><ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" /></span>
-    <span className="mt-3 grid grid-cols-2 gap-3 text-sm"><span><span className="block text-xs text-muted-foreground">จำนวนการจอง</span><span className="mt-1 block font-medium tabular-nums">{agency.count.toLocaleString("th-TH")} รายการ</span></span><span className="text-right"><span className="block text-xs text-muted-foreground">ยอดขาย</span><span className="mt-1 block font-semibold tabular-nums text-primary">{dashboardMoney(agency.amountCents)}</span></span></span>
+    <span className="mt-3 grid grid-cols-2 gap-3 text-sm"><span><span className="block text-xs text-muted-foreground">จำนวนการจองติดจอง</span><span className="mt-1 block font-medium tabular-nums">{agency.count.toLocaleString("th-TH")} รายการ</span></span><span className="text-right"><span className="block text-xs text-muted-foreground">ยอดขาย</span><span className="mt-1 block font-semibold tabular-nums text-primary">{dashboardMoney(agency.amountCents)}</span></span></span>
   </Link>;
 }
 

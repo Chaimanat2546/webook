@@ -11,8 +11,8 @@ export const reportFixture = {
   sales: { count: 15000, amountCents: 1234500, missingPrices: 2 }, totalSalesCents: 2469000,
   daily: [{ date: "2026-09-10", count: 15000 }],
   bookings: { rows: [{ id: "238", code: "BK238", propertyId: "101", houseTitle: "House A", checkIn: "2026-11-01", checkOut: "2026-11-02", createdAt: "2026-08-01T00:00:00Z", updatedAt: "2026-09-10T00:00:00Z", status: "confirmed", priceCents: 123450, agentId: null, agentName: "ไม่ระบุเอเจนซี่" }], total: 1, page: 1, pages: 1 },
-  bookingDetail: null, agencies: { rows: [{ id: null, name: "ไม่ระบุเอเจนซี่", count: 20000, amountCents: 1234500, missingPrices: 2 }], total: 1, page: 1, pages: 1 },
-  selectedAgency: null, agencyCount: 1, topAgencies: [{ id: null, name: "ไม่ระบุเอเจนซี่", count: 20000, amountCents: 1234500, missingPrices: 2 }],
+  bookingDetail: null, agencies: { rows: [{ id: null, name: "ไม่ระบุเอเจนซี่", count: 15000, amountCents: 1234500, missingPrices: 2 }], total: 1, page: 1, pages: 1 },
+  selectedAgency: null, agencyCount: 1, topAgencies: [{ id: null, name: "ไม่ระบุเอเจนซี่", count: 15000, amountCents: 1234500, missingPrices: 2 }],
 };
 test("repository requests one bounded RPC and preserves pre-filter metrics", async () => {
   let calls = 0;
@@ -28,7 +28,7 @@ test("repository requests one bounded RPC and preserves pre-filter metrics", asy
   assert.equal(result.bookingCount, 20000);
   assert.equal(result.bookings.rows[0].priceCents, 123450);
   assert.deepEqual(result.sales, { count: 15000, amountCents: 1234500, missingPrices: 2 });
-  assert.equal(result.agencies.rows[0].count, 20000);
+  assert.equal(result.agencies.rows[0].count, 15000);
   assert.equal(result.daily[0].count, 15000);
 });
 test("repository rejects malformed, overflowing or unbounded RPC results", async () => {
@@ -75,7 +75,7 @@ test("agency detail uses one fixed-agency request for filtered page and unfilter
   assert.equal(calls, 1);
   assert.equal(result.detail?.kind, "agency");
   if (result.detail?.kind !== "agency") assert.fail();
-  assert.equal(result.detail.agency.count, 20000);
+  assert.equal(result.detail.agency.count, 15000);
   assert.equal(result.detail.sharePercent, 50);
   assert.equal(result.detail.bookings.total, result.bookings.total);
 });
