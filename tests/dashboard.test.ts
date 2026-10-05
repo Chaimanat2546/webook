@@ -760,12 +760,6 @@ test("dashboard booking module shows nine bookings per page", async () => {
   assert.equal(secondPage.bookings.rows.length, 1);
 });
 
-const dbRow = {
-  id: 1, booking_code: "BK1", listing_id: "listing-a", houseid: 101, check_in: "2026-11-01", check_out: "2026-11-03",
-  status: "confirmed", price_max: "1234.50", created_at: "2026-09-10T00:00:00Z", updated_at: "2026-09-10T00:00:00Z",
-  listing: { id: "listing-a", property_id: 101, title: "House A" },
-};
-
 test("status filtering precedes pagination and never changes monthly sales or counts", async () => {
   const rows = [booking, ...Array.from({ length: 23 }, (_, i) => ({ ...booking, id: `wait-${i}`, status: "waiting" }))];
   const report = await loadDashboard(repository({ kind: "admin" }, rows), "signed-in-user", { month: "2026-09", status: "waiting", page: "2" });

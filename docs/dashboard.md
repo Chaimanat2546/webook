@@ -80,7 +80,8 @@ OpenNext generates its Worker module.
 
 Apply `20261002110000_scalable_dashboard_reporting.sql` before deploying the
 application revision that calls the RPC. It creates date/agency/owner indexes
-and a read-only, fixed-search-path function. No browser role gets execution
+and a read-only, fixed-search-path function. Thai name sorting uses an ICU Thai
+collation (the target PostgreSQL installation must support ICU). No browser role gets execution
 permission. Migration and app rollout have not been performed by the local
 test command.
 
@@ -105,4 +106,3 @@ daily chart points remain bounded to the selected month (the chart is shown
 only on the monthly overview). Agency count means all statuses, not just
 confirmed bookings. Sales still mean confirmed full booking prices, not cash
 received.
-

@@ -5,6 +5,7 @@ create index if not exists bookings_dashboard_agent_updated_idx on public.bookin
 create index if not exists bookings_dashboard_agent_checkin_idx on public.bookings(agent_id, check_in, id);
 create index if not exists bookings_dashboard_house_updated_idx on public.bookings(houseid, updated_at, id);
 create index if not exists bookings_dashboard_checkin_idx on public.bookings(check_in, id);
+create collation if not exists public.dashboard_thai (provider = icu, locale = 'th', deterministic = true);
 
 create or replace function public.dashboard_report(p_actor uuid, p_query jsonb)
 returns jsonb
@@ -103,7 +104,7 @@ begin
       case when v_agency_sort='sales-asc' then "amountCents" end asc,
       case when v_agency_sort='count-desc' then count end desc,
       case when v_agency_sort='count-asc' then count end asc,
-      name collate "C", id nulls last
+      name collate public.dashboard_thai, id nulls last
     limit 10 offset (select (page-1)*10 from agency_meta)
   ), filtered as materialized (
     select * from scoped where (v_status='all' or status_key=v_status)
@@ -153,9 +154,13 @@ begin
     'bookings',jsonb_build_object('rows',(select coalesce(jsonb_agg(data),'[]'::jsonb) from payloads where not is_detail),'total',m.total,'pages',m.pages,'page',m.page),
     'bookingDetail',(select data from payloads where is_detail),
     'agencies',jsonb_build_object('rows',(select coalesce(jsonb_agg(to_jsonb(a)),'[]'::jsonb) from agency_page a),'total',am.total,'page',am.page,'pages',am.pages),
-    'selectedAgency',(select to_jsonb(g) from groups g where (v_agency='unassigned' and g.id is null) or g.id::text=v_agency),
+    'selectedAgency',coalesce(
+      (select to_jsonb(g) from groups g where (v_agency='unassigned' and g.id is null) or g.id::text=v_agency),
+      case when v_admin and v_agency='unassigned' then jsonb_build_object('id',null,'name','ไม่ระบุเอเจนซี่','count',0,'amountCents',0,'missingPrices',0)
+        when v_admin then (select jsonb_build_object('id',a.id,'name',a.name,'count',0,'amountCents',0,'missingPrices',0) from public.agents a where a.id::text=v_agency)
+        else null end),
     'agencyCount',(select count(*) from groups),
-    'topAgencies',(select coalesce(jsonb_agg(to_jsonb(g)),'[]'::jsonb) from (select * from groups order by "amountCents" desc,count desc,name collate "C",id nulls last limit 5) g)
+    'topAgencies',(select coalesce(jsonb_agg(to_jsonb(g)),'[]'::jsonb) from (select * from groups order by "amountCents" desc,count desc,name collate public.dashboard_thai,id nulls last limit 5) g)
   ) into v_result from stats s cross join meta m cross join agency_meta am;
   return v_result;
 exception when invalid_text_representation or datetime_field_overflow or invalid_datetime_format or numeric_value_out_of_range then

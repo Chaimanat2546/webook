@@ -121,6 +121,21 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     assert.deepEqual(second.bookings.rows.map((row: { id: string }) => row.id), ["2", "1"]);
     assert.deepEqual(last.bookings.rows.map((row: { id: string }) => row.id), ["6", "5"]);
   });
+  it("keeps an existing agency accessible when its selected scope has no bookings", () => {
+    const r = report({ agency, checkInFrom: "2027-01-01", checkInTo: "2027-01-02" });
+    assert.deepEqual(r.selectedAgency, { id: agency, name: "Agency A", count: 0, amountCents: 0, missingPrices: 0 });
+    assert.equal(r.bookings.total, 0);
+    assert.equal(report({ agency: "00000000-0000-4000-8000-000000000099" }).selectedAgency, null);
+    assert.deepEqual(report({ agency: "unassigned", month: "2027-01" }).selectedAgency, { id: null, name: "ไม่ระบุเอเจนซี่", count: 0, amountCents: 0, missingPrices: 0 });
+  });
+  it("uses Thai dictionary name order including leading vowels", () => {
+    sql(`insert into agents values ('00000000-0000-4000-8000-000000000011','เก่ง'),('00000000-0000-4000-8000-000000000012','ขวัญ');
+      insert into bookings(id,booking_code,listing_id,houseid,agent_id,check_in,check_out,status,price_max,created_at,updated_at)
+      select 10+n,'THAI'||n,'00000000-0000-4000-8000-000000000101',101,
+        ('00000000-0000-4000-8000-'||lpad((10+n)::text,12,'0'))::uuid,'2026-01-01','2026-01-02','confirmed',100,'2026-01-01','2026-01-01' from generate_series(1,2) n;`);
+    const r = report({ month: "2026-01", agencySort: "name-asc" });
+    assert.deepEqual(r.agencies.rows.map((row: { name: string }) => row.name), ["เก่ง", "ขวัญ"]);
+  });
   it("validates inputs and grants only the server role with a fixed search path", () => {
     for (const input of [{ month: "2026-99" }, { sort: "sql" }, { status: "sql" }, { page: 0 }, { pageSize: 10000 }, { amountFromCents: 2, amountToCents: 1 }, { checkInFrom: "2026-11-02", checkInTo: "2026-11-01" }]) {
       assert.match(sql(`select dashboard_report('${admin}','${JSON.stringify({ month: "2026-09", ...input })}');`, false), /dashboard_invalid_query/);
