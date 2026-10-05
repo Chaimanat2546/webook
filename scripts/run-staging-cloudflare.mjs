@@ -1,14 +1,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { CommandExitError, withProductionEnvironmentExcluded } from "./staging-build-environment.mjs";
 
-const command = process.argv[2];
-if (command !== "deploy" && command !== "upload") {
-  throw new Error("Usage: node scripts/run-staging-cloudflare.mjs <deploy|upload>");
-}
-
-function stagingPublicEnvironment() {
+export function stagingPublicEnvironment(environment = process.env) {
+  const fromEnvironment = {
+    NEXT_PUBLIC_SUPABASE_URL: environment.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: environment.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
+  if (fromEnvironment.NEXT_PUBLIC_SUPABASE_URL && fromEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY) return fromEnvironment;
   const path = join(process.cwd(), ".env.staging");
   if (!existsSync(path)) throw new Error("Missing .env.staging for Staging build");
   const values = {};
@@ -38,21 +39,20 @@ function run(executable, args, env) {
   if (result.status !== 0) throw new CommandExitError(result.status ?? 1, `${executable} exited with status ${result.status ?? 1}`);
 }
 
-const env = {
-  ...process.env,
-  ...stagingPublicEnvironment(),
-  // OpenNext otherwise starts Miniflare before a deploy, which is unstable on Windows.
-  OPEN_NEXT_DEPLOY: "true",
-};
-const openNextCli = join(process.cwd(), "node_modules", "@opennextjs", "cloudflare", "dist", "cli", "index.js");
-const wranglerCli = join(process.cwd(), "node_modules", ".bin", process.platform === "win32" ? "wrangler.cmd" : "wrangler");
-
-try {
-  await withProductionEnvironmentExcluded(process.cwd(), async () => {
-    run(process.execPath, [openNextCli, "build"], env);
-  });
-  run(wranglerCli, [command, "-c", "wrangler.staging.jsonc", "--keep-vars"], env);
-} catch (error) {
-  if (error instanceof CommandExitError) process.exitCode = error.exitCode;
-  else throw error;
+export async function runStagingCloudflare(command) {
+  if (command !== "deploy" && command !== "upload") throw new Error("Usage: node scripts/run-staging-cloudflare.mjs <deploy|upload>");
+  const env = { ...process.env, ...stagingPublicEnvironment(), OPEN_NEXT_DEPLOY: "true" };
+  const openNextCli = join(process.cwd(), "node_modules", "@opennextjs", "cloudflare", "dist", "cli", "index.js");
+  const wranglerCli = join(process.cwd(), "node_modules", ".bin", process.platform === "win32" ? "wrangler.cmd" : "wrangler");
+  try {
+    await withProductionEnvironmentExcluded(process.cwd(), async () => {
+      run(process.execPath, [openNextCli, "build"], env);
+    });
+    run(wranglerCli, [command, "-c", "wrangler.staging.jsonc", "--keep-vars"], env);
+  } catch (error) {
+    if (error instanceof CommandExitError) process.exitCode = error.exitCode;
+    else throw error;
+  }
 }
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) await runStagingCloudflare(process.argv[2]);
