@@ -8,6 +8,7 @@ import { loadDashboardAgency } from "../server/services/dashboard.ts";
 import { parseDashboardAgencyDetailQuery } from "../lib/dashboard-routes.ts";
 
 const migration = new URL("../supabase/migrations/20261002110000_scalable_dashboard_reporting.sql", import.meta.url);
+const orderingMigration = new URL("../supabase/migrations/20261005120000_dashboard_json_ordering.sql", import.meta.url);
 it("dashboard reporting migration is available for deployment", () => assert.ok(existsSync(migration)));
 
 describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASHBOARD_DB_TESTS !== "1" }, () => {
@@ -51,6 +52,7 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
       values (6,'BK6','00000000-0000-4000-8000-000000000202',202,'2026-11-01','2026-11-03','confirmed',300,'2026-09-10','2026-08-31T17:00:00Z'),
              (7,'BK7','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',999,'2026-09-10','2026-09-30T17:00:00Z');`);
     sql(readFileSync(migration, "utf8"));
+    sql(readFileSync(orderingMigration, "utf8"));
   });
   after(() => { spawnSync("docker", ["rm", "-f", container]); });
   it("uses Bangkok updated-month boundaries, all-status counts and confirmed sales", () => {
@@ -120,6 +122,83 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     assert.deepEqual(first.bookings.rows.map((row: { id: string }) => row.id), ["4", "3"]);
     assert.deepEqual(second.bookings.rows.map((row: { id: string }) => row.id), ["2", "1"]);
     assert.deepEqual(last.bookings.rows.map((row: { id: string }) => row.id), ["6", "5"]);
+  });
+  it("booking JSON ordering survives reordered aggregate input without changing page membership", () => {
+    // Fault injection: preserve the chosen page, but change its delivery order
+    // before aggregation. No SQL relation promises scan order to its consumer.
+    const original = sql("select pg_get_functiondef('public.dashboard_report(uuid,jsonb)'::regprocedure);");
+    const perturbed = original.replace("from payloads where not is_detail", "from (select * from payloads order by data->>'id' asc) payloads where not is_detail");
+    assert.notEqual(perturbed, original, "aggregate input seam must exist");
+    try {
+      sql(perturbed);
+      for (const [sort, expected] of [
+        ["updated-desc", ["5", "4", "3", "2", "1", "6"]],
+        ["price-asc", ["4", "3", "2", "1", "6", "5"]],
+        ["price-desc", ["6", "4", "3", "2", "1", "5"]],
+      ] as const) {
+        const ids = [1, 2, 3].flatMap(page => report({ sort, page, pageSize: 2, bookingId: "1" }).bookings.rows.map((row: { id: string }) => row.id));
+        assert.deepEqual(ids, expected, sort);
+      }
+    } finally { sql(original); }
+  });
+  it("agency JSON ordering survives reordered aggregate input", () => {
+    const original = sql("select pg_get_functiondef('public.dashboard_report(uuid,jsonb)'::regprocedure);");
+    const perturbed = original.replace("from agency_page a", 'from (select * from agency_page order by "amountCents" asc) a');
+    assert.notEqual(perturbed, original, "agency aggregate input seam must exist");
+    try {
+      sql(perturbed);
+      assert.deepEqual(report({ agencySort: "sales-desc" }).agencies.rows.map((row: { id: string | null }) => row.id), [null, agency]);
+    } finally { sql(original); }
+  });
+  it("top-agency JSON ordering survives reordered aggregate input", () => {
+    const original = sql("select pg_get_functiondef('public.dashboard_report(uuid,jsonb)'::regprocedure);");
+    const seam = 'from (select * from groups order by "amountCents" desc,count desc,name collate public.dashboard_thai,id nulls last limit 5) g';
+    const perturbed = original.replace(seam, 'from (select * from (select * from groups order by "amountCents" desc,count desc,name collate public.dashboard_thai,id nulls last limit 5) chosen order by "amountCents" asc) g');
+    assert.notEqual(perturbed, original, "top-agency aggregate input seam must exist");
+    try {
+      sql(perturbed);
+      assert.deepEqual(report().topAgencies.map((row: { id: string | null }) => row.id), [null, agency]);
+    } finally { sql(original); }
+  });
+  it("preserves every booking sort across pages with ties, null prices and a separate detail", () => {
+    sql(`insert into bookings(id,booking_code,listing_id,houseid,check_in,check_out,status,price_max,created_at,updated_at)
+      select n,'SORT'||n,'00000000-0000-4000-8000-000000000101',101,
+        '2026-06-01'::date + (n % 3),'2026-06-05','confirmed',
+        case when n=65 then null when n in (61,62) then 200 else 100 end,
+        '2026-05-01','2026-06-10'::timestamptz from generate_series(60,65) n;`);
+    for (const [sort, expected] of [
+      ["updated-desc", ["65", "64", "63", "62", "61", "60"]],
+      ["checkin-desc", ["65", "62", "64", "61", "63", "60"]],
+      ["date-desc", ["65", "62", "64", "61", "63", "60"]],
+      ["date-asc", ["63", "60", "64", "61", "65", "62"]],
+      ["price-asc", ["64", "63", "60", "62", "61", "65"]],
+      ["price-desc", ["62", "61", "64", "63", "60", "65"]],
+    ] as const) {
+      const ids = [1, 2, 3].flatMap(page => {
+        const r = report({ month: "2026-06", sort, page, pageSize: 2, bookingId: "60" });
+        assert.equal(r.bookings.total, 6);
+        assert.equal(r.bookingDetail.id, "60");
+        assert.equal(r.bookings.rows.some((row: Record<string, unknown>) => "note" in row || "is_detail" in row), false);
+        return r.bookings.rows.map((row: { id: string }) => row.id);
+      });
+      assert.deepEqual(ids, expected, sort);
+    }
+  });
+  it("keeps tied agencies stable across pages without exposing sort helper fields", () => {
+    sql(`insert into agents(id,name) select ('10000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'ชื่อซ้ำ' from generate_series(1,12) n;
+      insert into bookings(id,booking_code,listing_id,houseid,agent_id,check_in,check_out,status,price_max,created_at,updated_at)
+      select 70+n,'AGENCY-SORT'||n,'00000000-0000-4000-8000-000000000101',101,
+        ('10000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'2026-03-01','2026-03-02','confirmed',100,'2026-03-01','2026-03-01' from generate_series(1,12) n;`);
+    const expected = Array.from({ length: 12 }, (_, i) => `10000000-0000-4000-8000-${String(i+1).padStart(12,"0")}`);
+    for (const agencySort of ["sales-desc", "sales-asc", "count-desc", "count-asc", "name-asc"]) {
+      const first = report({ month: "2026-03", agencySort });
+      const second = report({ month: "2026-03", agencySort, agenciesPage: 2 });
+      assert.equal(first.agencies.rows.length, 10);
+      assert.equal(second.agencies.rows.length, 2);
+      assert.deepEqual([...first.agencies.rows, ...second.agencies.rows].map((row: { id: string }) => row.id), expected, agencySort);
+      assert.deepEqual(first.topAgencies.map((row: { id: string }) => row.id), expected.slice(0,5));
+      assert.deepEqual(Object.keys(first.agencies.rows[0]).sort(), ["amountCents", "count", "id", "missingPrices", "name"]);
+    }
   });
   it("keeps an existing agency accessible when its selected scope has no bookings", () => {
     const r = report({ agency, checkInFrom: "2027-01-01", checkInTo: "2027-01-02" });

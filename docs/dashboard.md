@@ -85,6 +85,13 @@ collation (the target PostgreSQL installation must support ICU). No browser role
 permission. Migration and app rollout have not been performed by the local
 test command.
 
+Then apply `20261005120000_dashboard_json_ordering.sql`. It explicitly orders
+booking, agency-page and top-agency JSON aggregates by the same keys used to
+select each page (including Thai names, numeric booking IDs and null handling).
+It does not change totals, filters, page sizes, permissions or response fields.
+Tests perturb aggregate input order and check cross-page ties/null prices to
+verify the JSON order does not rely on incidental scan order.
+
 Run the real database contract suite against disposable local PostgreSQL 17:
 
 ```powershell
