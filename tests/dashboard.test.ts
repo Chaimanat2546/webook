@@ -9,7 +9,7 @@ import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient } from "@supabase/supabase-js";
 import { CircleUserRoundIcon, CreditCardIcon, TicketCheckIcon } from "lucide-react";
-import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type DashboardBookingSource, type DashboardHouse, type DashboardScope } from "../lib/dashboard.ts";
+import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type DashboardBookingSource, type DashboardHouse, type DashboardHouseDetailData, type DashboardScope } from "../lib/dashboard.ts";
 import { safeHouseReturnTo } from "../lib/admin-return-to.ts";
 import { parseThaiMonth, thaiMonthValue } from "../lib/thai-month.ts";
 import { createDashboardRepository, type DashboardRepository } from "../server/repositories/dashboard.ts";
@@ -351,9 +351,9 @@ test("dashboard mobile layouts keep house metadata grouped and details compact",
 
   const houseReport = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09", view: "house", houseId: "listing-new" });
   const houseHtml = renderToStaticMarkup(createElement(await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx"), { report: houseReport, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
-  assert.match(houseHtml, /grid grid-cols-2 gap-x-4 gap-y-3/);
-  assert.match(houseHtml, /ผู้เข้าพักสูงสุด/);
-  assert.match(houseHtml, /เวลาเช็กอิน/);
+  assert.match(houseHtml, /grid gap-x-4 divide-y/);
+  assert.match(houseHtml, /รองรับสูงสุด/);
+  assert.match(houseHtml, /เช็กอิน/);
 });
 
 test("agency detail reuses the booking toolbar and responsive list", async () => {
@@ -376,6 +376,20 @@ test("agency detail reuses the booking toolbar and responsive list", async () =>
   assert.match(bookingsHtml, /1 พ\.ย\. 2569/);
   assert.match(bookingsHtml, /฿1,234\.50/);
 
+});
+
+test("agency detail prioritizes sales while keeping secondary summary metrics compact on mobile", async () => {
+  const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09", view: "agency", agency: "agency-a" });
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, {
+    report,
+    query: parseDashboardQuery({ month: "2026-09", view: "agency", agency: "agency-a" }),
+  }));
+
+  assert.match(html, /aria-label="สรุปยอดเอเจนซี่" class="grid grid-cols-2 gap-3 md:grid-cols-3"/);
+  assert.match(html, /col-span-2 md:col-span-1/);
+  assert.match(html, /จำนวนการจองติดจอง[\s\S]*hidden md:block/);
+  assert.match(html, /สัดส่วนยอดขาย[\s\S]*hidden md:block/);
 });
 
 test("agency bookings use booking-list sort options before pagination", async () => {
@@ -663,9 +677,9 @@ test("agency detail shows only its booking list and house details expose manage 
   assert.match(houseHtml, /07:00/);
   assert.match(houseHtml, /ห้องนอน/);
   assert.match(houseHtml, /ห้องน้ำ/);
-  assert.match(houseHtml, /ผู้เข้าพักสูงสุด/);
-  assert.match(houseHtml, /โซน/);
-  assert.match(houseHtml, /ประเภทบ้าน/);
+  assert.match(houseHtml, /รองรับสูงสุด/);
+  assert.match(houseHtml, /พัทยาเหนือ/);
+  assert.match(houseHtml, /พูลวิลล่า/);
   assert.match(houseHtml, /เปิดใช้งาน/);
 });
 
@@ -708,6 +722,50 @@ test("dashboard house detail refuses unapproved scopes and out-of-month IDs befo
     DashboardItemNotFound,
   );
   assert.equal(richReads, 0);
+});
+
+test("dashboard house detail renders real gallery prices facilities and internal operations without fabricated profile data", async () => {
+  const repo = repository({ kind: "admin" });
+  const data: DashboardHouseDetailData = {
+    propertyId: "202", title: "New House", description: "พูลวิลล่าสำหรับครอบครัว", propertyTags: ["ครอบครัว", "สัตว์เลี้ยงได้"], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00:00", checkoutTime: "11:00:00", extraBedPrice: 500, insuranceFee: 5000, sortOrder: 2, notes: "เตรียมผ้าเช็ดตัว", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z",
+    images: [{ id: "cover", url: "https://example.com/cover.jpg", zone: "cover", order: 1, isCover: true }, { id: "inside", url: "https://example.com/inside.jpg", zone: "inside", order: 2, isCover: false }],
+    prices: Array.from({ length: 7 }, (_, dayOfWeek) => ({ dayOfWeek, baseGuests: 6, devillePrice: 5000 + dayOfWeek * 100, agencyPrice: 4500 + dayOfWeek * 100, note: dayOfWeek === 0 ? "วันธรรมดา" : null })),
+    facilities: [{ id: "wifi", name: "wifi", title: "Wi-Fi", message: "300 Mbps" }, { id: "pool", name: "private_pool", title: "สระว่ายน้ำส่วนตัว", message: null }],
+  };
+  repo.houseDetail = async () => data;
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /แกลเลอรีรูปภาพ/);
+  assert.match(html, /2 รูป/);
+  assert.match(html, /พูลวิลล่าสำหรับครอบครัว/);
+  assert.match(html, /ครอบครัว/);
+  assert.match(html, /ราคา/);
+  assert.match(html, /฿5,000\.00/);
+  assert.match(html, /วันธรรมดา/);
+  assert.match(html, /สิ่งอำนวยความสะดวก/);
+  assert.match(html, /Wi-Fi/);
+  assert.match(html, /ข้อมูลจัดการ/);
+  assert.match(html, /ค่าประกัน/);
+  assert.match(html, /ราคาเตียงเสริม/);
+  assert.match(html, /เตรียมผ้าเช็ดตัว/);
+  assert.match(html, /href="\/admin\/houses\/202\?returnTo=/);
+  assert.doesNotMatch(html, /รีวิว|H-030|เจ้าของบ้าน|2 เตียง/);
+});
+
+test("dashboard house detail renders empty states without optional or broken media", async () => {
+  const repo = repository({ kind: "admin" });
+  repo.houseDetail = async () => ({ propertyId: "202", title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", extraBedPrice: null, insuranceFee: null, sortOrder: null, notes: null, createdAt: "2026-09-12T00:00:00Z", updatedAt: null, images: [], prices: [], facilities: [] });
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /ยังไม่มีรูปภาพบ้าน/);
+  assert.match(html, /ยังไม่ได้กำหนดราคา/);
+  assert.match(html, /ยังไม่มีสิ่งอำนวยความสะดวกที่เปิดใช้งาน/);
+  assert.doesNotMatch(html, /<img/);
+  assert.doesNotMatch(html, /คำอธิบายบ้าน|แท็กบ้าน|โน้ตภายใน|อัปเดตล่าสุด|ราคาเตียงเสริม/);
 });
 
 test("empty booking lists distinguish empty month from unmatched filters", async () => {

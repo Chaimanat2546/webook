@@ -7,7 +7,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { dashboardBackHref } from "../../../lib/dashboard-navigation";
-import { dashboardAgencyBookingDetailHref, dashboardAgencyDetailBookingQuery, dashboardAgencyDetailHref, dashboardBookingDetailHref, dashboardHouseDetailHref, type DashboardAgencyDetailQuery } from "../../../lib/dashboard-routes";
+import { dashboardAgencyBookingDetailHref, dashboardAgencyDetailBookingQuery, dashboardAgencyDetailHref, dashboardBookingDetailHref, type DashboardAgencyDetailQuery } from "../../../lib/dashboard-routes";
 import { dashboardDate, dashboardMoney, dashboardStatus, type DashboardCustomer, type DashboardQuery, type DashboardReport } from "../../../lib/dashboard";
 import { dashboardNights } from "../../../lib/dashboard-calculations";
 import { Button } from "../../ui/button";
@@ -18,6 +18,7 @@ import { DashboardDetailLayout } from "./dashboard-detail-layout";
 import { DashboardSummaryCard } from "./dashboard-summary-card";
 import { DashboardTabs } from "./dashboard-tabs";
 import { BookingsList } from "./bookings-list";
+import { DashboardHouseDetailView } from "./dashboard-house-detail";
 
 interface DashboardDetailsProps {
   backHref?: string;
@@ -27,10 +28,6 @@ interface DashboardDetailsProps {
   query: DashboardQuery;
   report: DashboardReport;
   loadBookingCustomer?: (bookingId: string) => Promise<{ ok: true; customer: DashboardCustomer | null } | { ok: false; customer: null }>;
-}
-
-function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
-  return <div className={`min-w-0 ${className ?? ""}`}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium [overflow-wrap:anywhere]">{children}</dd></div>;
 }
 
 function AgencySummaryMetric({ accent, children, description, icon: Icon, label, visual }: { accent: "blue" | "green" | "orange"; children: ReactNode; description: string; icon: LucideIcon; label: string; visual: ReactNode }) {
@@ -201,27 +198,5 @@ export function DashboardDetails({
     </div>;
   }
 
-  const house = detail.house;
-  const propertyType = house.propertyType === "poolvilla" ? "พูลวิลล่า" : house.propertyType === "condo" ? "คอนโด" : house.propertyType ?? "—";
-  const time = (value: string | null) => value?.slice(0, 5) ?? "—";
-  const returnTo = dashboardHouseDetailHref({ month: query.month, search: query.houseSearch, page: query.housesPage }, house.id);
-  const manageParams = new URLSearchParams({ returnTo });
-  return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
-    <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description="รายละเอียดบ้านใหม่" title={house.title} />
-    <Card><CardContent className="space-y-6">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-5 lg:grid-cols-4">
-        <Field label="เลขบ้าน">{house.propertyId ? `DV-${house.propertyId}` : "ยังไม่ระบุ DV"}</Field>
-        <Field label="วันที่เพิ่มเข้าระบบ">{dashboardDate(house.createdAt, true)}</Field>
-        <Field label="ประเภทบ้าน">{propertyType}</Field>
-        <Field label="โซน">{house.locationZone ?? "—"}</Field>
-        <Field label="ห้องนอน">{house.bedrooms ?? "—"}</Field>
-        <Field label="ห้องน้ำ">{house.bathrooms ?? "—"}</Field>
-        <Field label="ผู้เข้าพักสูงสุด">{house.maxGuests === null ? "—" : `${house.maxGuests} คน`}</Field>
-        <Field label="สถานะบ้าน">{house.isActive === null ? "ไม่ระบุ" : house.isActive ? "เปิดใช้งาน" : "ปิดใช้งาน"}</Field>
-        <Field label="เวลาเช็กอิน">{time(house.checkinTime)}</Field>
-        <Field label="เวลาเช็กเอาต์">{time(house.checkoutTime)}</Field>
-      </dl>
-      {house.propertyId && <Button asChild variant="outline" className="min-h-11"><Link href={`/admin/houses/${encodeURIComponent(house.propertyId)}?${manageParams.toString()}`}>จัดการบ้าน</Link></Button>}
-    </CardContent></Card>
-  </div>;
+  return <DashboardHouseDetailView backHref={resolvedBackHref} backLabel={backLabel} detail={detail} query={query} />;
 }
