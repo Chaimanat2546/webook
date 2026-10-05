@@ -1304,7 +1304,8 @@ test("dashboard renders month controls and only administrator views include agen
     assert.equal(html.includes("New House"), scope.kind === "admin");
     assert.equal(html.includes("กราฟยอดขายเอเจนซี่ 5 อันดับแรก"), scope.kind === "admin");
     if (scope.kind === "admin") {
-      assert.match(html, /flex w-full flex-1 flex-col divide-y \[&amp;&gt;a\]:flex-1/);
+      assert.match(html, /flex w-full flex-1 flex-col divide-y/);
+      assert.doesNotMatch(html, /flex w-full flex-1 flex-col divide-y \[&amp;&gt;a\]:flex-1/);
       assert.match(html, /--color-amountCents: var\(--primary\)/);
     }
   }
