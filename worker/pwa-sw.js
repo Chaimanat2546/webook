@@ -1,6 +1,9 @@
 import { PrecacheController } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
-import { NetworkOnly } from "workbox-strategies";
+import { CacheableResponsePlugin } from "workbox-cacheable-response";
+import { ExpirationPlugin } from "workbox-expiration";
+import { CacheFirst, NetworkOnly } from "workbox-strategies";
+import { HOUSE_IMAGE_CACHE_MAX_AGE_SECONDS, shouldCacheHouseImageRequest } from "../lib/house-image-cache.ts";
 
 const offlineUrl = "/pwa/offline.html";
 const precache = new PrecacheController({ cacheName: "webook-pwa-precache-v1" });
@@ -10,6 +13,19 @@ precache.precache(self.__WB_MANIFEST);
 registerRoute(
   ({ url, sameOrigin }) => sameOrigin && !url.search && precache.getCachedURLs().includes(url.href),
   async ({ request }) => (await precache.matchPrecache(request)) || fetch(request),
+);
+
+const houseImageCache = new CacheFirst({
+  cacheName: "webook-house-images-v1",
+  plugins: [
+    new CacheableResponsePlugin({ statuses: [0, 200] }),
+    new ExpirationPlugin({ maxEntries: 500, maxAgeSeconds: HOUSE_IMAGE_CACHE_MAX_AGE_SECONDS }),
+  ],
+});
+
+registerRoute(
+  ({ request, url }) => shouldCacheHouseImageRequest({ url: url.href, method: request.method, destination: request.destination }),
+  houseImageCache,
 );
 
 const navigation = new NetworkOnly({

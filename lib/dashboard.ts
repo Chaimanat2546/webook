@@ -42,6 +42,15 @@ export interface DashboardReportingResult {
 
 export const DASHBOARD_VIEWS = ["overview", "bookings", "agencies", "houses", "booking", "agency", "house"] as const;
 export type DashboardViewName = typeof DASHBOARD_VIEWS[number];
+
+export const HOUSE_RATING_OPTIONS = [
+  { value: 0, label: "กรุณาเลือก" },
+  { value: 1, label: "รีเช็คก่อนโอนบ้านไม่เหลือค่อยส่ง" },
+  { value: 2, label: "บ้านเก่าโทรมห้ามส่ง" },
+  { value: 3, label: "บ้านเก่าแต่พอส่งได้" },
+  { value: 4, label: "ส่งได้ต่อราคาง่าย" },
+  { value: 5, label: "ส่งได้เลยบ้านใหม่" },
+] as const;
 export const DASHBOARD_SOURCE_VIEWS = ["overview", "bookings", "agencies", "houses"] as const;
 export type DashboardSourceView = typeof DASHBOARD_SOURCE_VIEWS[number];
 
@@ -80,6 +89,17 @@ export interface DashboardListQuery {
   month: string;
   search: string;
   page: number;
+}
+
+export const DASHBOARD_HOUSE_LIST_SORTS = [
+  { value: "created-desc", label: "เพิ่มล่าสุด" },
+  { value: "created-asc", label: "เพิ่มเก่าสุด" },
+  { value: "name-asc", label: "ชื่อบ้าน ก-ฮ" },
+] as const;
+export type DashboardHouseListSort = typeof DASHBOARD_HOUSE_LIST_SORTS[number]["value"];
+
+export interface DashboardHousesQuery extends DashboardListQuery {
+  houseSort?: DashboardHouseListSort;
 }
 
 export const DASHBOARD_AGENCY_LIST_SORTS = [
@@ -202,6 +222,56 @@ export interface DashboardHouse {
   checkoutTime: string | null;
 }
 
+export interface DashboardHouseImage {
+  id: string;
+  url: string;
+  zone: string | null;
+  order: number;
+  isCover: boolean;
+}
+
+export interface DashboardHousePrice {
+  dayOfWeek: number | null;
+  baseGuests: number | null;
+  devillePrice: number | null;
+  agencyPrice: number | null;
+  note: string | null;
+}
+
+export interface DashboardHouseFacility {
+  id: string;
+  name: string | null;
+  title: string | null;
+  message: string | null;
+}
+
+export interface DashboardHouseDetailData {
+  propertyId: string | null;
+  title: string;
+  description: string | null;
+  propertyTags: string[];
+  bedrooms: number | null;
+  bathrooms: number | null;
+  maxGuests: number | null;
+  locationZone: string | null;
+  propertyType: string | null;
+  ownerName?: string | null;
+  rating?: number | null;
+  isActive: boolean | null;
+  checkinTime: string | null;
+  checkoutTime: string | null;
+  extraBedPrice: number | null;
+  insuranceFee: number | null;
+  sortOrder: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  images: DashboardHouseImage[];
+  imageCount?: number;
+  prices: DashboardHousePrice[];
+  facilities: DashboardHouseFacility[];
+}
+
 export interface DashboardSales {
   count: number;
   amountCents: number;
@@ -249,6 +319,7 @@ export interface DashboardAgencyDetail {
 export interface DashboardHouseDetail {
   kind: "house";
   house: DashboardHouse;
+  data: DashboardHouseDetailData;
 }
 
 export type DashboardDetail = DashboardBookingDetail | DashboardAgencyDetail | DashboardHouseDetail;

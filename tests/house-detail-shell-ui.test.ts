@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const pageUrl = new URL("../app/admin/houses/[propertyId]/page.tsx", import.meta.url);
+const dashboardUrl = new URL("../lib/dashboard.ts", import.meta.url);
 const notificationUrl = new URL(
   "../components/admin/houses/house-detail-save-notification.tsx",
   import.meta.url,
@@ -126,6 +127,7 @@ describe("house detail shell UI", () => {
 
   it("renders the editable listing details form without forbidden fields", () => {
     const source = readFileSync(pageUrl, "utf8");
+    const ratingOptions = readFileSync(dashboardUrl, "utf8");
 
     assert.match(source, /saveHouseDetailsAction/);
     assert.match(source, /saveHouseDetailsAction\.bind\(null, propertyId\)/);
@@ -138,12 +140,14 @@ describe("house detail shell UI", () => {
     assert.match(source, /condo/);
     assert.match(source, /คอนโด/);
     assert.match(source, /ราคาเตียงเสริม/);
-    assert.match(source, /0 - กรุณาเลือก/);
-    assert.match(source, /1 - รีเช็คก่อนโอนบ้านไม่เหลือค่อยส่ง/);
-    assert.match(source, /2 - บ้านเก่าโทรมห้ามส่ง/);
-    assert.match(source, /3 - บ้านเก่าแต่พอส่งได้/);
-    assert.match(source, /4 - ส่งได้ต่อราคาง่าย/);
-    assert.match(source, /5 - ส่งได้เลยบ้านใหม่/);
+    assert.match(source, /import \{ HOUSE_RATING_OPTIONS \} from .*lib\/dashboard/);
+    assert.match(source, /options=\{HOUSE_RATING_OPTIONS\.map/);
+    assert.match(ratingOptions, /value: 0, label: "กรุณาเลือก"/);
+    assert.match(ratingOptions, /value: 1, label: "รีเช็คก่อนโอนบ้านไม่เหลือค่อยส่ง"/);
+    assert.match(ratingOptions, /value: 2, label: "บ้านเก่าโทรมห้ามส่ง"/);
+    assert.match(ratingOptions, /value: 3, label: "บ้านเก่าแต่พอส่งได้"/);
+    assert.match(ratingOptions, /value: 4, label: "ส่งได้ต่อราคาง่าย"/);
+    assert.match(ratingOptions, /value: 5, label: "ส่งได้เลยบ้านใหม่"/);
     assert.match(source, /htmlFor="rating"[\s\S]{0,500}<HouseDetailCombobox/);
     assert.match(source, /id="rating"[\s\S]*name="rating"[\s\S]*disabled=\{!canManageRating\}/);
     assert.match(source, /const ratingAction = \(/);

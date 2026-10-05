@@ -1,5 +1,5 @@
 import "server-only";
-import { parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgencyListSort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDetail, type DashboardListQuery, type DashboardMonth, type DashboardOverviewQuery, type DashboardPage, type DashboardReport } from "../../lib/dashboard.ts";
+import { parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgencyListSort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDetail, type DashboardHouseListSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardMonth, type DashboardOverviewQuery, type DashboardPage, type DashboardReport } from "../../lib/dashboard.ts";
 import type { DashboardAgencyDetailQuery } from "../../lib/dashboard-routes.ts";
 import { dashboardShare } from "../../lib/dashboard-calculations.ts";
 import type { DashboardRepository } from "../repositories/dashboard.ts";
@@ -22,6 +22,7 @@ interface DashboardLoadOptions {
   bookingAmountFromCents?: number;
   bookingAmountToCents?: number;
   agencyListSort?: DashboardAgencyListSort;
+  houseListSort?: DashboardHouseListSort;
 }
 function paginate<T>(rows: T[], requestedPage: number): DashboardPage<T> {
   const pages = Math.max(1, Math.ceil(rows.length / 10)), page = Math.min(requestedPage, pages);
@@ -61,6 +62,8 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   const houses = [...sourceHouses].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id, "en", { numeric: true }));
   const bookings = { ...result.bookings, rows: result.bookings.rows.map(row => publicBooking(row, scope.kind === "admin")) };
   const houseRows = houses.filter(row => !query.houseSearch || `${row.title} DV-${row.propertyId ?? ""}`.toLocaleLowerCase("th-TH").includes(query.houseSearch.toLocaleLowerCase("th-TH")));
+  if (options.houseListSort === "created-asc") houseRows.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id, "en", { numeric: true }));
+  else if (options.houseListSort === "name-asc") houseRows.sort((a, b) => a.title.localeCompare(b.title, "th") || a.id.localeCompare(b.id, "en", { numeric: true }));
   let detail: DashboardDetail | null = null;
   if (query.view === "booking") {
     const booking = result.bookingDetail;
@@ -82,7 +85,10 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   if (query.view === "house") {
     const house = houses.find(row => row.id === query.houseId);
     if (!house) throw new DashboardItemNotFound();
-    detail = { kind: "house", house };
+    if (!house.propertyId) throw new DashboardItemNotFound();
+    const data = await repository.houseDetail(house.propertyId);
+    if (!data) throw new DashboardItemNotFound();
+    detail = { kind: "house", house, data };
   }
   return {
     scope, month: query.month, bookingCount: result.bookingCount, waitingCount: result.statusCounts.waiting,
@@ -121,8 +127,8 @@ export async function loadDashboardAgencies(repository: DashboardRepository, act
   return loadDashboard(repository, actorId, { month: query.month, view: "agencies", agencySearch: query.search, agenciesPage: String(query.page) }, { agencyListSort: query.agencySort });
 }
 
-export async function loadDashboardHouses(repository: DashboardRepository, actorId: string, query: DashboardListQuery): Promise<DashboardReport> {
-  return loadDashboard(repository, actorId, { month: query.month, view: "houses", houseSearch: query.search, housesPage: String(query.page) });
+export async function loadDashboardHouses(repository: DashboardRepository, actorId: string, query: DashboardHousesQuery): Promise<DashboardReport> {
+  return loadDashboard(repository, actorId, { month: query.month, view: "houses", houseSearch: query.search, housesPage: String(query.page) }, { houseListSort: query.houseSort });
 }
 
 export async function loadDashboardBooking(repository: DashboardRepository, actorId: string, query: DashboardBookingsQuery, bookingId: string): Promise<DashboardReport> {
