@@ -13,3 +13,7 @@ test("staging CI public values take precedence over the local environment file",
     NEXT_PUBLIC_SUPABASE_ANON_KEY: "ci-anon-key",
   });
 });
+
+test("staging CI rejects a non-Staging Supabase URL", () => {
+  assert.throws(() => stagingPublicEnvironment({ NEXT_PUBLIC_SUPABASE_URL: "https://rqizfiayvcbozlzuvbok.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "ci-anon-key" }), /Invalid Staging Supabase public URL/);
+});

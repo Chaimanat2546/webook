@@ -10,7 +10,10 @@ export function stagingPublicEnvironment(environment = process.env) {
     NEXT_PUBLIC_SUPABASE_URL: environment.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: environment.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   };
-  if (fromEnvironment.NEXT_PUBLIC_SUPABASE_URL && fromEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY) return fromEnvironment;
+  if (fromEnvironment.NEXT_PUBLIC_SUPABASE_URL && fromEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (fromEnvironment.NEXT_PUBLIC_SUPABASE_URL !== "https://sxvkhzhqtrpxgzumsswl.supabase.co") throw new Error("Invalid Staging Supabase public URL.");
+    return fromEnvironment;
+  }
   const path = join(process.cwd(), ".env.staging");
   if (!existsSync(path)) throw new Error("Missing .env.staging for Staging build");
   const values = {};
