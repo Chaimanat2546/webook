@@ -113,3 +113,49 @@ daily chart points remain bounded to the selected month (the chart is shown
 only on the monthly overview). Agency count means all statuses, not just
 confirmed bookings. Sales still mean confirmed full booking prices, not cash
 received.
+
+## Internal RPC plan inspection (local, 2026-10-05)
+
+Enable the opt-in diagnostic mode alongside the database tests:
+
+```powershell
+$env:RUN_DASHBOARD_DB_TESTS='1'
+$env:RUN_DASHBOARD_PLANS='1'
+node --import ./tests/register-server-only.mjs --test tests/dashboard-migration.test.ts
+Remove-Item Env:RUN_DASHBOARD_DB_TESTS, Env:RUN_DASHBOARD_PLANS
+```
+
+This loads `auto_explain` only inside the disposable PostgreSQL test sessions,
+with nested statements, ANALYZE and BUFFERS enabled and per-node timing off.
+Unlike EXPLAIN of the outer function call, it captures the actual internal
+`with base ...` query and asserts that a bookings scan is present. Each
+`RPC INTERNAL PLAN` output line summarizes timings, rows, scan/index choices
+and temporary blocks. See [PostgreSQL auto_explain documentation](https://www.postgresql.org/docs/17/auto-explain.html).
+
+The diagnostic forces both custom and generic plans. This is a comparison,
+not proof that default `plan_cache_mode=auto` selects either one in a deployed
+connection pool. Timings below are one instrumented local run, not medians,
+load-test results, browser latency or a production SLA. The synthetic schema
+has smaller/less varied rows than a live database may have.
+
+| Scope | Scoped rows | Internal custom / generic | Observation |
+| --- | ---: | ---: | --- |
+| Selective month | 6 | 0.77 / 0.73 ms | Date index, no temporary blocks |
+| Distributed month | 2,572 | 11.01 / 11.02 ms | Bitmap date scan, no temporary blocks |
+| Stay range | 7 | 0.80 / 0.82 ms | Custom plan uses check-in index |
+| Dense month | 30,000 | 121.67 / 156.49 ms | Custom sequential scan; generic bitmap scan; temporary blocks |
+| Minority owner | 300 of 30,000 | 2.47 / 7.82 ms | Custom house/date index; generic filters out 29,700 rows |
+| Minority agency | 300 of 30,000 | 72.54 / 75.37 ms | Base still includes 30,000 rows for global sales denominator |
+
+For the dense month, outer RPC duration was 140.08 / 171.45 ms respectively,
+including additional function/planning work. Temporary blocks read/written
+were 3,040/1,824 (custom) and 3,648/1,824 (generic). The output remains bounded
+to nine booking rows; bounded transfer does not make aggregation constant-cost.
+
+Conclusion: selective date and custom owner scopes use the intended indexes.
+Reading nearly all rows for a full-period aggregate is not by itself evidence
+of a missing index. Two follow-ups for Staging measurement are generic-plan
+owner selectivity and temporary I/O for dense reports. Do not globally raise
+work_mem or force a plan mode on this evidence alone: concurrency and live data
+distribution were not measured. No production SQL, indexes, database settings
+or deployment were changed during this inspection.

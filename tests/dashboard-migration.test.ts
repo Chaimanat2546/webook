@@ -25,6 +25,33 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
   function report(options: Record<string, unknown> = {}, actor = admin) {
     return JSON.parse(sql(`select public.dashboard_report('${actor}', '${JSON.stringify({ month: "2026-09", ...options }).replaceAll("'", "''")}'::jsonb);`));
   }
+  function inspectPlans(label: string, actor: string, query: Record<string, unknown>) {
+    for (const mode of ["force_custom_plan", "force_generic_plan"]) {
+      const output = sql(`load 'auto_explain'; set client_min_messages=log;
+        set auto_explain.log_min_duration=0; set auto_explain.log_analyze=on;
+        set auto_explain.log_buffers=on; set auto_explain.log_nested_statements=on;
+        set auto_explain.log_timing=off; set auto_explain.log_format='json';
+        set auto_explain.log_parameter_max_length=0; set plan_cache_mode='${mode}';
+        select dashboard_report('${actor}','${JSON.stringify(query)}');`);
+      const plans = [...output.matchAll(/LOG:  duration: ([\d.]+) ms  plan:\r?\n(\{[\s\S]*?\r?\n\})/g)]
+        .map(match => ({ ms: Number(match[1]), document: JSON.parse(match[2]) as Record<string, unknown> }));
+      const nested = plans.find(plan => String(plan.document["Query Text"]).trimStart().startsWith("with base"));
+      assert.ok(nested, "auto_explain must expose the internal reporting query, not only the outer Result");
+      const root = nested.document.Plan as Record<string, unknown>;
+      const scans: Record<string, unknown>[] = [];
+      const indexes: string[] = [];
+      function visit(node: Record<string, unknown>) {
+        if (typeof node["Index Name"] === "string" && node["Index Name"].startsWith("bookings_")) indexes.push(node["Index Name"]);
+        if (node["Relation Name"] === "bookings" || ["CTE base", "CTE scoped"].includes(String(node["Subplan Name"]))) {
+          scans.push({ type: node["Node Type"], relation: node["Relation Name"], cte: node["Subplan Name"], rows: node["Actual Rows"], removed: node["Rows Removed by Filter"], loops: node["Actual Loops"] });
+        }
+        if (Array.isArray(node.Plans)) for (const child of node.Plans) visit(child);
+      }
+      visit(root);
+      assert.ok(scans.some(node => node.relation === "bookings"), "internal plan must include the real booking scan");
+      console.log("RPC INTERNAL PLAN", JSON.stringify({ label, mode, internalMs: nested.ms, outerMs: plans.at(-1)?.ms, sharedHitBlocks: root["Shared Hit Blocks"], tempReadBlocks: root["Temp Read Blocks"], tempWrittenBlocks: root["Temp Written Blocks"], indexes, scans }));
+    }
+  }
   before(async () => {
     const run = spawnSync("docker", ["run", "--rm", "-d", "--name", container, "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "postgres:17-alpine"], { encoding: "utf8" });
     assert.equal(run.status, 0, run.stderr);
@@ -234,9 +261,31 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     assert.match(plan, /Buffers:/);
     console.log(plan);
     console.log(sql(`explain (analyze,buffers) select dashboard_report('${admin}','{"month":"2025-01","pageSize":9}');`));
+    if (process.env.RUN_DASHBOARD_PLANS === "1") {
+        for (const [label, actor, query] of [
+          ["selective-month", admin, { month: "2026-09", pageSize: 9 }],
+          ["broad-month", admin, { month: "2025-01", pageSize: 9 }],
+          ["owner-month", owner, { month: "2026-09", pageSize: 9 }],
+          ["agency-month", admin, { month: "2025-01", agency, pageSize: 9 }],
+          ["stay-range", admin, { month: "2026-09", checkInFrom: "2026-11-01", checkInTo: "2026-11-03", pageSize: 9 }],
+        ] as const) {
+          inspectPlans(label, actor, query);
+        }
+    }
     sql(`update bookings set updated_at='2025-01-10' where id>100; analyze bookings;`);
     assert.equal(report({ month: "2025-01" }).bookingCount, 30000);
     assert.equal(report({ month: "2025-01" }).bookings.rows.length, 9);
+    if (process.env.RUN_DASHBOARD_PLANS === "1") {
+      inspectPlans("dense-month-30000", admin, { month: "2025-01", pageSize: 9 });
+      inspectPlans("dense-agency-30000", admin, { month: "2025-01", agency, pageSize: 9 });
+      // A minority owner/agency exercises selectivity hidden by single-tenant fixtures.
+      sql(`update bookings set houseid=202,listing_id='00000000-0000-4000-8000-000000000202',
+        agent_id='00000000-0000-4000-8000-000000000011' where id>100 and id%100<>0; analyze bookings;`);
+      assert.equal(report({ month: "2025-01" }, owner).bookingCount, 300);
+      assert.equal(report({ month: "2025-01", agency }).bookingCount, 300);
+      inspectPlans("minority-owner-300-of-30000", owner, { month: "2025-01", pageSize: 9 });
+      inspectPlans("minority-agency-300-of-30000", admin, { month: "2025-01", agency, pageSize: 9 });
+    }
     console.log(sql(`explain (analyze,buffers) select dashboard_report('${admin}','{"month":"2025-01","pageSize":9}');`));
   });
 });
