@@ -202,6 +202,53 @@ export interface DashboardHouse {
   checkoutTime: string | null;
 }
 
+export interface DashboardHouseImage {
+  id: string;
+  url: string;
+  zone: string | null;
+  order: number;
+  isCover: boolean;
+}
+
+export interface DashboardHousePrice {
+  dayOfWeek: number | null;
+  baseGuests: number | null;
+  devillePrice: number | null;
+  agencyPrice: number | null;
+  note: string | null;
+}
+
+export interface DashboardHouseFacility {
+  id: string;
+  name: string | null;
+  title: string | null;
+  message: string | null;
+}
+
+export interface DashboardHouseDetailData {
+  propertyId: string | null;
+  title: string;
+  description: string | null;
+  propertyTags: string[];
+  bedrooms: number | null;
+  bathrooms: number | null;
+  maxGuests: number | null;
+  locationZone: string | null;
+  propertyType: string | null;
+  isActive: boolean | null;
+  checkinTime: string | null;
+  checkoutTime: string | null;
+  extraBedPrice: number | null;
+  insuranceFee: number | null;
+  sortOrder: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  images: DashboardHouseImage[];
+  prices: DashboardHousePrice[];
+  facilities: DashboardHouseFacility[];
+}
+
 export interface DashboardSales {
   count: number;
   amountCents: number;
@@ -249,6 +296,7 @@ export interface DashboardAgencyDetail {
 export interface DashboardHouseDetail {
   kind: "house";
   house: DashboardHouse;
+  data: DashboardHouseDetailData;
 }
 
 export type DashboardDetail = DashboardBookingDetail | DashboardAgencyDetail | DashboardHouseDetail;

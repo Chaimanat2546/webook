@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildHouseImageDisplayUrl } from "../../lib/house-image-display-url.ts";
-import { dashboardPropertyId, dashboardScope, type DashboardScope, type DashboardMonth, type DashboardCustomer, type DashboardHouse } from "../../lib/dashboard.ts";
+import { dashboardPropertyId, dashboardScope, type DashboardScope, type DashboardMonth, type DashboardCustomer, type DashboardHouse, type DashboardHouseDetailData } from "../../lib/dashboard.ts";
 import { record } from "../../lib/house-bookings.ts";
 import type { DashboardReportingQuery, DashboardReportingResult } from "../../lib/dashboard.ts";
 import { parseDashboardReportingResult } from "./dashboard-reporting.ts";
@@ -14,6 +14,7 @@ export interface DashboardRepository {
   creatorName(creatorId: string): Promise<string | null>;
   customerDetail(scope: DashboardScope, propertyId: string, customerId: string): Promise<DashboardCustomer | null>;
   newHouses(month: DashboardMonth): Promise<DashboardHouse[]>;
+  houseDetail(propertyId: string): Promise<DashboardHouseDetailData | null>;
 }
 
 
@@ -32,6 +33,10 @@ function nullableText(value: unknown): string | null {
 
 function nullableBoolean(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
 }
 
 function customerDetail(value: unknown): DashboardCustomer {
@@ -136,6 +141,64 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
         if (offset >= count) return rows;
         if (!page.length) throw new Error("dashboard_incomplete_data");
       }
+    },
+    async houseDetail(propertyId) {
+      const { data: listingData, error: listingError } = await client.from("listings")
+        .select("id,property_id,title,description,property_tags,bedrooms,bathrooms,max_guests,location_zone,property_type,is_active,checkin_time,checkout_time,extra_beds,insurance_fee,sort_order,notes,created_at,updated_at")
+        .eq("property_id", propertyId)
+        .maybeSingle();
+      if (listingError) throw new Error("dashboard_unavailable");
+      if (!listingData) return null;
+      const listing = record(listingData);
+      const listingId = text(listing.id);
+      const resolvedPropertyId = dashboardPropertyId(listing.property_id);
+      if (!resolvedPropertyId || resolvedPropertyId !== propertyId) return null;
+
+      const [{ data: imageData, error: imageError }, { data: priceData, error: priceError }, { data: listingFacilityData, error: listingFacilityError }, { data: facilityData, error: facilityError }] = await Promise.all([
+        client.from("images").select("id,image_name,image_url,image_zone,image_move,cover_select").eq("property_id", propertyId).order("image_move").order("id"),
+        client.from("listing_prices").select("day_of_week,base_guests,deville_price,agency_price,notes").eq("listing_id", listingId).order("day_of_week").order("id"),
+        client.from("listing_facilities").select("facility_id,message,value_boolean").eq("listing_id", listingId).eq("value_boolean", true).order("id"),
+        client.from("facilities").select("id,name,title").order("title", { ascending: true }),
+      ]);
+      if (imageError || priceError || listingFacilityError || facilityError) throw new Error("dashboard_unavailable");
+
+      const facilityById = new Map<string, { name: string | null; title: string | null }>();
+      for (const value of facilityData ?? []) {
+        const facility = record(value);
+        const id = nullableText(facility.id);
+        if (id) facilityById.set(id, { name: nullableText(facility.name), title: nullableText(facility.title) });
+      }
+
+      return {
+        propertyId: resolvedPropertyId,
+        title: typeof listing.title === "string" ? listing.title : "ไม่ระบุชื่อบ้าน",
+        description: nullableText(listing.description), propertyTags: stringArray(listing.property_tags),
+        bedrooms: nullableNumber(listing.bedrooms), bathrooms: nullableNumber(listing.bathrooms), maxGuests: nullableNumber(listing.max_guests),
+        locationZone: nullableText(listing.location_zone), propertyType: nullableText(listing.property_type), isActive: nullableBoolean(listing.is_active),
+        checkinTime: nullableText(listing.checkin_time), checkoutTime: nullableText(listing.checkout_time), extraBedPrice: nullableNumber(listing.extra_beds),
+        insuranceFee: nullableNumber(listing.insurance_fee), sortOrder: nullableNumber(listing.sort_order), notes: nullableText(listing.notes),
+        createdAt: text(listing.created_at), updatedAt: nullableText(listing.updated_at),
+        images: (imageData ?? []).flatMap(value => {
+          const image = record(value);
+          const url = buildHouseImageDisplayUrl({ imageName: nullableText(image.image_name), imageUrl: nullableText(image.image_url) });
+          const id = nullableText(image.id);
+          if (!url || !id) return [];
+          const zone = nullableText(image.image_zone);
+          const coverSelect = nullableNumber(image.cover_select);
+          return [{ id, url, zone, order: nullableNumber(image.image_move) ?? 0, isCover: zone === "cover" || (coverSelect !== null && coverSelect >= 1 && coverSelect <= 10) }];
+        }),
+        prices: (priceData ?? []).map(value => {
+          const price = record(value);
+          return { dayOfWeek: nullableNumber(price.day_of_week), baseGuests: nullableNumber(price.base_guests), devillePrice: nullableNumber(price.deville_price), agencyPrice: nullableNumber(price.agency_price), note: nullableText(price.notes) };
+        }),
+        facilities: (listingFacilityData ?? []).flatMap(value => {
+          const facility = record(value);
+          if (facility.value_boolean !== true) return [];
+          const id = nullableText(facility.facility_id);
+          const details = id ? facilityById.get(id) : undefined;
+          return id && details ? [{ id, name: details.name, title: details.title, message: nullableText(facility.message) }] : [];
+        }),
+      };
     },
   };
 }

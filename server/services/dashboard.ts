@@ -82,7 +82,10 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   if (query.view === "house") {
     const house = houses.find(row => row.id === query.houseId);
     if (!house) throw new DashboardItemNotFound();
-    detail = { kind: "house", house };
+    if (!house.propertyId) throw new DashboardItemNotFound();
+    const data = await repository.houseDetail(house.propertyId);
+    if (!data) throw new DashboardItemNotFound();
+    detail = { kind: "house", house, data };
   }
   return {
     scope, month: query.month, bookingCount: result.bookingCount, waitingCount: result.statusCounts.waiting,

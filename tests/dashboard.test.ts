@@ -13,7 +13,7 @@ import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type Da
 import { safeHouseReturnTo } from "../lib/admin-return-to.ts";
 import { parseThaiMonth, thaiMonthValue } from "../lib/thai-month.ts";
 import { createDashboardRepository, type DashboardRepository } from "../server/repositories/dashboard.ts";
-import { DashboardForbidden, loadDashboard, loadDashboardAgencies, loadDashboardAgency, loadDashboardBooking, loadDashboardBookingCustomer, loadDashboardBookings, loadDashboardHouses } from "../server/services/dashboard.ts";
+import { DashboardForbidden, DashboardItemNotFound, loadDashboard, loadDashboardAgencies, loadDashboardAgency, loadDashboardBooking, loadDashboardBookingCustomer, loadDashboardBookings, loadDashboardHouse, loadDashboardHouses } from "../server/services/dashboard.ts";
 import { dashboardBookingsHref, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery, parseDashboardHousesQuery } from "../lib/dashboard-routes.ts";
 
 const booking: DashboardBookingSource = {
@@ -669,6 +669,60 @@ test("agency detail shows only its booking list and house details expose manage 
   assert.match(houseHtml, /เปิดใช้งาน/);
 });
 
+test("dashboard house detail loads rich data only after admin month membership succeeds", async () => {
+  const repo = repository({ kind: "admin" });
+  const calls: string[] = [];
+  const richRepository = repo as DashboardRepository & {
+    houseDetail(propertyId: string): Promise<{
+      description: string | null;
+      propertyTags: string[];
+      insuranceFee: number | null;
+      sortOrder: number | null;
+      updatedAt: string | null;
+      extraBedPrice: number | null;
+      notes: string | null;
+      images: [];
+      prices: [];
+      facilities: [];
+    } | null>;
+  };
+  richRepository.newHouses = async month => {
+    calls.push(`houses:${month.month}`);
+    return [{ id: "listing-new", propertyId: "202", title: "New House", createdAt: "2026-09-12T00:00:00Z", bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00" }];
+  };
+  richRepository.houseDetail = async propertyId => {
+    calls.push(`detail:${propertyId}`);
+    return { description: null, propertyTags: [], insuranceFee: 5000, sortOrder: 1, updatedAt: null, extraBedPrice: 500, notes: null, images: [], prices: [], facilities: [] };
+  };
+
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+
+  assert.deepEqual(calls, ["houses:2026-09", "detail:202"]);
+  assert.equal(report.detail?.kind, "house");
+  assert.equal(report.detail?.kind === "house" ? report.detail.data.insuranceFee : null, 5000);
+});
+
+test("dashboard house detail refuses unapproved scopes and out-of-month IDs before rich reads", async () => {
+  const ownerRepository = repository({ kind: "owner", propertyId: "101" });
+  ownerRepository.newHouses = async () => assert.fail("owner queried new houses");
+  await assert.rejects(
+    loadDashboardHouse(ownerRepository, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new"),
+    DashboardForbidden,
+  );
+
+  const adminRepository = repository({ kind: "admin" }, [booking], []);
+  let richReads = 0;
+  (adminRepository as DashboardRepository & { houseDetail(propertyId: string): Promise<null> }).houseDetail = async () => {
+    richReads++;
+    return null;
+  };
+  await assert.rejects(
+    loadDashboardHouse(adminRepository, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "outside-month"),
+    DashboardItemNotFound,
+  );
+  assert.equal(richReads, 0);
+});
+
 test("empty booking lists distinguish empty month from unmatched filters", async () => {
   const View = await dashboardComponent("BookingsList", "../components/admin/dashboard/bookings-list.tsx");
   for (const [rows, search, expected] of [[[], "", /ไม่มีการจองในเดือนนี้/], [[booking], "not-found", /ไม่พบการจองที่ตรงกับตัวกรอง/]] as const) {
@@ -695,6 +749,11 @@ function repository(
     async creatorName() { return null; },
     async customerDetail() { return null; },
     async newHouses() { return houses; },
+    async houseDetail(propertyId) {
+      const house = houses.find(candidate => candidate.propertyId === propertyId);
+      if (!house) return null;
+      return { propertyId: house.propertyId, title: house.title, description: null, propertyTags: [], bedrooms: house.bedrooms, bathrooms: house.bathrooms, maxGuests: house.maxGuests, locationZone: house.locationZone, propertyType: house.propertyType, isActive: house.isActive, checkinTime: house.checkinTime, checkoutTime: house.checkoutTime, extraBedPrice: null, insuranceFee: null, sortOrder: null, notes: null, createdAt: house.createdAt, updatedAt: null, images: [], prices: [], facilities: [] };
+    },
   };
 }
 
@@ -1030,6 +1089,43 @@ test("new-house history paginates beyond the server response cap using the selec
   assert.equal(rows[0].locationZone, "พัทยาเหนือ");
   assert.equal(rows[0].checkinTime, "15:00:00");
   assert.equal(calls, 2);
+});
+
+test("repository maps a dashboard house detail from listing media prices and enabled facilities", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    const url = new URL(new Request(input, init).url);
+    if (url.pathname === "/rest/v1/listings") {
+      assert.equal(url.searchParams.get("property_id"), "eq.101");
+      const select = url.searchParams.get("select") ?? "";
+      for (const field of ["description", "property_tags", "extra_beds", "insurance_fee", "sort_order", "notes", "updated_at"]) assert.match(select, new RegExp(`(?:^|,)${field}(?:,|$)`));
+      return new Response(JSON.stringify({ id: "listing-101", property_id: 101, title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", property_tags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, max_guests: 12, location_zone: "พัทยา", property_type: "poolvilla", is_active: true, checkin_time: "14:00:00", checkout_time: "11:00:00", extra_beds: 500, insurance_fee: 5000, sort_order: 2, notes: "โน้ตภายใน", created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-13T00:00:00Z" }), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/rest/v1/images") {
+      assert.equal(url.searchParams.get("property_id"), "eq.101");
+      return new Response(JSON.stringify([{ id: "image-1", image_name: "cover.jpg", image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover.jpg", image_zone: "cover", image_move: 1, cover_select: 0 }]), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/rest/v1/listing_prices") {
+      assert.equal(url.searchParams.get("listing_id"), "eq.listing-101");
+      return new Response(JSON.stringify([{ day_of_week: 0, base_guests: 10, deville_price: 5000, agency_price: 4500, notes: "วันธรรมดา" }]), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/rest/v1/listing_facilities") {
+      assert.equal(url.searchParams.get("listing_id"), "eq.listing-101");
+      return new Response(JSON.stringify([{ facility_id: "wifi", value_boolean: true, message: "300 Mbps" }, { facility_id: "pool", value_boolean: false, message: null }]), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/rest/v1/facilities") {
+      return new Response(JSON.stringify([{ id: "wifi", name: "wifi", title: "Wi-Fi" }, { id: "pool", name: "private_pool", title: "สระว่ายน้ำ" }]), { headers: { "Content-Type": "application/json" } });
+    }
+    assert.fail(`unexpected request ${url.pathname}`);
+  } } });
+
+  const detail = await createDashboardRepository(client).houseDetail("101");
+
+  assert.deepEqual(detail, {
+    propertyId: "101", title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", propertyTags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, maxGuests: 12, locationZone: "พัทยา", propertyType: "poolvilla", isActive: true, checkinTime: "14:00:00", checkoutTime: "11:00:00", extraBedPrice: 500, insuranceFee: 5000, sortOrder: 2, notes: "โน้ตภายใน", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z",
+    images: [{ id: "image-1", url: "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/cover.jpg", zone: "cover", order: 1, isCover: true }],
+    prices: [{ dayOfWeek: 0, baseGuests: 10, devillePrice: 5000, agencyPrice: 4500, note: "วันธรรมดา" }],
+    facilities: [{ id: "wifi", name: "wifi", title: "Wi-Fi", message: "300 Mbps" }],
+  });
 });
 
 test("failed or incomplete reads reject rather than displaying partial totals", async () => {
