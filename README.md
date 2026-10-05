@@ -515,6 +515,24 @@ Before enabling the workflows, create the GitHub Environment `production`, limit
 The Production Worker target is pinned in `wrangler.jsonc` to account `7c1d945e149fc6fad2124176124d8f33` and Worker `webook-admin`. Runtime secrets remain managed in Cloudflare; `npm run deploy:cf` must not be used to put secrets into the repository.
 The third-party GitHub Actions are pinned to reviewed commit SHAs; update them intentionally (for example with Dependabot), not by changing a mutable major-version tag.
 
+For Staging, create a protected GitHub Environment named `staging`, restrict it
+to the `staging` branch, and configure required reviewers. Add these Environment
+secrets:
+
+- `SUPABASE_ACCESS_TOKEN` — scoped token with read access needed to link the Staging project.
+- `SUPABASE_DB_PASSWORD` — Staging database password.
+- `CLOUDFLARE_API_TOKEN` — token scoped only to the Staging Cloudflare account and Worker deployment.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+A push to `staging` validates without secrets, then waits for Environment
+approval. The approved job links its fresh GitHub runner only to
+`sxvkhzhqtrpxgzumsswl`, dry-runs and applies migrations, then runs
+`npm run deploy:cf:staging`. Local Staging migration commands must not use
+`--linked`, because this checkout can link to Production. Database migrations
+are forward-only: a failed migration prevents deployment, and a successful
+migration is corrected by a later migration rather than rewriting history.
+
 ## References
 
 - Supabase CLI: https://supabase.com/docs/reference/cli

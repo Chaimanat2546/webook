@@ -1,0 +1,60 @@
+name: Deploy staging
+
+on:
+  push:
+    branches:
+      - staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run audit:security
+      - run: npm run verify
+      - run: npm run build
+      - run: npx opennextjs-cloudflare build
+      - run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run -c wrangler.staging.jsonc
+
+  deploy:
+    name: Apply migration and deploy Staging Worker
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run audit:security
+      - run: node scripts/run-staging-supabase-migrations.mjs
+      - run: npm run deploy:cf:staging
+      - run: rg -q "sxvkhzhqtrpxgzumsswl" .open-next
+      - run: "! rg -q \"rqizfiayvcbozlzuvbok\" .open-next"
