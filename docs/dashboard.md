@@ -159,3 +159,37 @@ owner selectivity and temporary I/O for dense reports. Do not globally raise
 work_mem or force a plan mode on this evidence alone: concurrency and live data
 distribution were not measured. No production SQL, indexes, database settings
 or deployment were changed during this inspection.
+
+## Staging verification (2026-10-05)
+
+Applied only `20261002110000_scalable_dashboard_reporting` and
+`20261005120000_dashboard_json_ordering` to Staging project
+`sxvkhzhqtrpxgzumsswl`. Both migrations and their migration-history entries
+were committed in one transaction, with a 5-second lock timeout and 60-second
+statement timeout. Required columns and Thai ICU collation were checked first
+against PostgreSQL 17.6. Production was not queried or changed; the repository's
+existing CLI link was preserved and a separate Staging work directory was used.
+
+Read-only checks against the live 242-booking dataset passed:
+
+- For every populated Bangkok updated-month and agency scope, independently
+  calculated SQL counts and confirmed-price totals matched the RPC.
+- Every booking page matched the complete SQL ID sequence (updated timestamp,
+  then numeric ID descending); list payloads omitted detail notes/customer names.
+- Confirmed filtering matched status counts; search/amount filters left summary
+  metrics unchanged. Reversed amount ranges and unknown actors were rejected.
+- Function grants allowed service_role, not anon or authenticated.
+- Staging REST calls passed the application's strict repository result parser;
+  booking detail remained available when list search excluded it. An anonymous
+  REST call was rejected with SQLSTATE 42501.
+
+September 2026 snapshot: 241 scoped bookings, 159 confirmed, confirmed sales
+1,960,622.00 THB. Agency `51fb64b1-afdf-48cc-a0d2-f8d770dea163` had **25 total
+bookings, 20 confirmed, 255,800.00 THB confirmed sales**. These are a point-in-time
+Staging snapshot, not Production totals.
+
+Limits: Staging had no eligible owner identity, so live owner isolation was not
+tested (the disposable database suite covers it). No application Worker was
+deployed, no browser end-to-end test was performed, and this small dataset does
+not validate high-volume concurrency or live nested-plan performance. Dense
+temporary I/O and pooled generic-plan owner selectivity remain load-test work.
