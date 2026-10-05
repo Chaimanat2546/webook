@@ -141,6 +141,10 @@ describe("Cloudflare deployment boundary", () => {
     assert.match(workflow, /node scripts\/run-staging-supabase-migrations\.mjs[\s\S]*npm run deploy:cf:staging/);
     assert.match(workflow, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
     assert.match(workflow, /SUPABASE_DB_PASSWORD: \$\{\{ secrets\.SUPABASE_DB_PASSWORD \}\}/);
+    assert.match(workflow, /grep --recursive --quiet --binary-files=text "sxvkhzhqtrpxgzumsswl" \.open-next/);
+    assert.match(workflow, /! grep --recursive --quiet --binary-files=text/);
+    assert.match(workflow, /rqizfiayvcbozlzuvbok/);
+    assert.doesNotMatch(workflow, /\brg\b/);
   });
 
   it("blocks deploys on runtime audit findings and tracks development audit findings separately", () => {
