@@ -13,8 +13,8 @@ import { dashboardAgencyChartLabel, dashboardScope, parseDashboardQuery, type Da
 import { safeHouseReturnTo } from "../lib/admin-return-to.ts";
 import { parseThaiMonth, thaiMonthValue } from "../lib/thai-month.ts";
 import { createDashboardRepository, type DashboardRepository } from "../server/repositories/dashboard.ts";
-import { DashboardForbidden, loadDashboard, loadDashboardAgencies, loadDashboardAgency, loadDashboardBooking, loadDashboardBookingCustomer, loadDashboardBookings } from "../server/services/dashboard.ts";
-import { dashboardBookingsHref, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery } from "../lib/dashboard-routes.ts";
+import { DashboardForbidden, loadDashboard, loadDashboardAgencies, loadDashboardAgency, loadDashboardBooking, loadDashboardBookingCustomer, loadDashboardBookings, loadDashboardHouses } from "../server/services/dashboard.ts";
+import { dashboardBookingsHref, parseDashboardAgencyDetailQuery, parseDashboardBookingsQuery, parseDashboardHousesQuery } from "../lib/dashboard-routes.ts";
 
 const booking: DashboardBookingSource = {
   id: "1", code: "BK1", propertyId: "101", houseTitle: "House A", checkIn: "2026-11-01", checkOut: "2026-11-03",
@@ -282,6 +282,7 @@ test("canonical agency and house pages render their own workflows", async () => 
 
   const HousesPage = await dashboardPageComponent("../app/admin/dashboard/houses/page.tsx", repo);
   const housesHtml = renderToStaticMarkup(await HousesPage({ searchParams: Promise.resolve({ month: "2026-09" }) }) as ReactNode);
+  assert.match(housesHtml, /class="mx-auto min-w-0 max-w-7xl space-y-5"/);
   assert.match(housesHtml, /<header[^>]*>.*href="\/admin\/dashboard\?month=2026-09"[^>]*>.*กลับไปภาพรวม.*<h1[^>]*>บ้านใหม่<\/h1>/);
   assert.equal((housesHtml.match(/บ้านใหม่/g) ?? []).length, 1);
   assert.doesNotMatch(housesHtml, /ประวัติบ้านเพิ่มใหม่|บ้านที่สร้างรายการในเดือนที่เลือก/);
@@ -488,6 +489,24 @@ test("booking pager reports nine rows per page", async () => {
   }));
 
   assert.match(html, /1–9 จาก 10 รายการ/);
+});
+
+test("new house list uses a table on desktop and cards on mobile", async () => {
+  const NewHousesList = await dashboardComponent("NewHousesList", "../components/admin/dashboard/new-houses-list.tsx");
+  const query = parseDashboardHousesQuery({ month: "2026-09" });
+  const report = await loadDashboardHouses(repository({ kind: "admin" }), "signed-in-user", query);
+  const html = renderToStaticMarkup(createElement(NewHousesList, { report, query }));
+
+  assert.match(html, /hidden overflow-hidden rounded-xl border md:block/);
+  assert.match(html, /<th[^>]*>บ้าน \/ DV<\/th>/);
+  assert.match(html, /<th[^>]*>วันที่เพิ่ม<\/th>/);
+  assert.match(html, /<td[^>]*whitespace-normal[^>]*>[\s\S]*break-words[^>]*>New House/);
+  assert.match(html, /space-y-3 md:hidden/);
+  assert.match(html, /rounded-xl border bg-card p-3 shadow-sm/);
+  assert.equal((html.match(/New House/g) ?? []).length, 2);
+  assert.equal((html.match(/DV-202/g) ?? []).length, 2);
+  assert.equal((html.match(/12 ก\.ย\. 2569/g) ?? []).length, 2);
+  assert.match(html, /data-dashboard-detail-link/);
 });
 
 test("dashboard detail primitives preserve responsive slots and summary framing", async () => {

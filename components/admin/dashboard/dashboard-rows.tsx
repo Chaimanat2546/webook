@@ -59,3 +59,26 @@ export function DashboardAgencyRow({ agency, href }: { agency: DashboardAgency; 
 export function DashboardHouseRow({ house, href }: { house: DashboardHouse; href: string }) {
   return <Link id={`dashboard-house-${house.id}`} data-dashboard-detail-link href={href} className="grid min-h-11 min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-1 rounded-lg py-2 transition-colors hover:bg-muted/60 focus-visible:outline-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-2"><span className="min-w-0"><span className="block break-words font-medium [overflow-wrap:anywhere]">{house.title}</span><span className="block text-xs text-muted-foreground">{house.propertyId ? `DV-${house.propertyId}` : "ยังไม่ระบุ DV"}</span></span><span className="text-xs text-muted-foreground sm:whitespace-nowrap">{dashboardDate(house.createdAt)}</span></Link>;
 }
+
+export function DashboardHouseTableRow({ house, href }: { house: DashboardHouse; href: string }) {
+  return <TableRow>
+    <TableCell className="align-top whitespace-normal">
+      <Link id={`dashboard-house-${house.id}`} data-dashboard-detail-link href={href} className="block min-w-48 break-words rounded-sm font-medium [overflow-wrap:anywhere] hover:underline focus-visible:outline-2">
+        {house.title}
+        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{house.propertyId ? `DV-${house.propertyId}` : "ยังไม่ระบุ DV"}</span>
+      </Link>
+    </TableCell>
+    <TableCell className="whitespace-nowrap text-right text-muted-foreground">{dashboardDate(house.createdAt)}</TableCell>
+  </TableRow>;
+}
+
+export function DashboardHouseCard({ house, href }: { house: DashboardHouse; href: string }) {
+  return <Link id={`dashboard-house-${house.id}`} data-dashboard-detail-link href={href} className="block rounded-xl border bg-card p-3 shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-2">
+    <span className="flex min-w-0 items-start justify-between gap-3">
+      <span className="min-w-0 break-words font-semibold [overflow-wrap:anywhere]">{house.title}</span>
+      <ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+    </span>
+    <span className="mt-0.5 block text-xs text-muted-foreground">{house.propertyId ? `DV-${house.propertyId}` : "ยังไม่ระบุ DV"}</span>
+    <span className="mt-3 block text-sm text-muted-foreground"><span className="text-xs">วันที่เพิ่ม</span><span className="ml-2">{dashboardDate(house.createdAt)}</span></span>
+  </Link>;
+}
