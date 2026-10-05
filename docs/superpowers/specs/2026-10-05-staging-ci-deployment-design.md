@@ -30,9 +30,9 @@ are outside this work.
    credentials.
 3. When validation passes, a protected job enters the GitHub Environment named
    `staging`. GitHub required reviewers approve that job.
-4. The protected job validates the Staging database target, dry-runs pending
-   migrations, applies them using the Staging database URL, then deploys the
-   Staging Worker.
+4. The protected job links the fresh GitHub runner to the fixed Staging project,
+   validates the linked project reference, dry-runs pending migrations, applies
+   them, then deploys the Staging Worker.
 5. After deploy, the workflow checks the compiled output for the exact Staging
    Supabase project reference and rejects any Production project reference.
 
@@ -54,21 +54,25 @@ The allowed targets are fixed:
 The GitHub Environment `staging`, restricted to the `staging` branch and
 protected by required reviewers, holds these secrets:
 
-- `STAGING_DB_URL`
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_DB_PASSWORD`
 - `CLOUDFLARE_API_TOKEN`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-`STAGING_DB_URL` is used only as an environment value for the Supabase CLI. It
-is never supplied as a command-line argument, written to files, or printed.
-The workflow does not use `supabase --linked`, because the local repository
-link may point to Production.
+`SUPABASE_ACCESS_TOKEN` is a scoped token with only the read access needed to
+link the fixed Staging project. `SUPABASE_DB_PASSWORD` is supplied only as an
+environment variable for the Supabase CLI, never as a command-line argument,
+written to files, or printed. The GitHub runner is a fresh checkout, so it may
+use `supabase link --project-ref sxvkhzhqtrpxgzumsswl` and `supabase db push`
+after the project-reference guard succeeds. Local developer commands must not
+use `--linked`, because the local repository link may point to Production.
 
 ## Implementation boundaries
 
-`scripts/assert-staging-supabase-target.mjs` validates a supplied database URL
-without printing it. It accepts only the Staging project host/user forms used
-by Supabase poolers and rejects Production or unrecognized hosts.
+`scripts/assert-staging-supabase-target.mjs` validates the linked project
+reference without printing secrets. It accepts only `sxvkhzhqtrpxgzumsswl` and
+rejects Production or unrecognized project references.
 
 `scripts/run-staging-cloudflare.mjs` first accepts the two required public
 Supabase build values from its process environment. If either is missing, it
@@ -81,11 +85,12 @@ it does not duplicate the Worker deploy command.
 ## Tests and documentation
 
 Tests must assert that the new workflow pins the Staging branch, uses the
-protected `staging` Environment, validates before deployment, applies the
-migration before the deploy script, and receives credentials only from
-Environment secrets. Target-guard tests cover accepted Staging URLs and reject
-Production, arbitrary hosts, and missing inputs. Existing Staging deploy tests
-cover environment-file restoration; new tests cover CI environment precedence.
+protected `staging` Environment, validates before deployment, links and
+validates only the Staging project, applies the migration before the deploy
+script, and receives credentials only from Environment secrets. Target-guard
+tests cover the exact accepted Staging reference and reject Production,
+arbitrary, and missing inputs. Existing Staging deploy tests cover
+environment-file restoration; new tests cover CI environment precedence.
 
 The README documents one-time GitHub Environment setup, required reviewers,
 required secrets, the promotion flow, and the rule that local commands must
