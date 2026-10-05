@@ -144,7 +144,7 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
     },
     async houseDetail(propertyId) {
       const { data: listingData, error: listingError } = await client.from("listings")
-        .select("id,property_id,title,description,property_tags,bedrooms,bathrooms,max_guests,location_zone,property_type,is_active,checkin_time,checkout_time,extra_beds,insurance_fee,sort_order,notes,created_at,updated_at")
+        .select("id,property_id,title,description,property_tags,bedrooms,bathrooms,max_guests,location_zone,property_type,is_active,checkin_time,checkout_time,extra_beds,insurance_fee,sort_order,notes,owner_id,rating,created_at,updated_at")
         .eq("property_id", propertyId)
         .maybeSingle();
       if (listingError) throw new Error("dashboard_unavailable");
@@ -153,14 +153,17 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
       const listingId = text(listing.id);
       const resolvedPropertyId = dashboardPropertyId(listing.property_id);
       if (!resolvedPropertyId || resolvedPropertyId !== propertyId) return null;
+      const ownerId = dashboardPropertyId(listing.owner_id);
 
-      const [{ data: imageData, error: imageError }, { data: priceData, error: priceError }, { data: listingFacilityData, error: listingFacilityError }, { data: facilityData, error: facilityError }] = await Promise.all([
-        client.from("images").select("id,image_name,image_url,image_zone,image_move,cover_select").eq("property_id", propertyId).order("image_move").order("id"),
+      const [{ data: imageData, count: imageCount, error: imageError }, { data: coverImageData, error: coverImageError }, { data: priceData, error: priceError }, { data: listingFacilityData, error: listingFacilityError }, { data: facilityData, error: facilityError }, ownerResult] = await Promise.all([
+        client.from("images").select("id,image_name,image_url,image_zone,image_move,cover_select", { count: "exact" }).eq("property_id", propertyId).order("image_move").order("id").limit(4),
+        client.from("images").select("id,image_name,image_url,image_zone,image_move,cover_select").eq("property_id", propertyId).eq("image_zone", "cover").order("image_move").order("id").limit(1).maybeSingle(),
         client.from("listing_prices").select("day_of_week,base_guests,deville_price,agency_price,notes").eq("listing_id", listingId).order("day_of_week").order("id"),
         client.from("listing_facilities").select("facility_id,message,value_boolean").eq("listing_id", listingId).eq("value_boolean", true).order("id"),
         client.from("facilities").select("id,name,title").order("title", { ascending: true }),
+        ownerId ? client.from("users").select("name").eq("dv_id", ownerId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       ]);
-      if (imageError || priceError || listingFacilityError || facilityError) throw new Error("dashboard_unavailable");
+      if (imageError || coverImageError || priceError || listingFacilityError || facilityError || ownerResult.error) throw new Error("dashboard_unavailable");
 
       const facilityById = new Map<string, { name: string | null; title: string | null }>();
       for (const value of facilityData ?? []) {
@@ -169,16 +172,22 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
         if (id) facilityById.set(id, { name: nullableText(facility.name), title: nullableText(facility.title) });
       }
 
+      const coverId = coverImageData ? String(record(coverImageData).id) : null;
+      const boundedImages = coverImageData
+        ? [coverImageData, ...(imageData ?? []).filter(value => String(record(value).id) !== coverId).slice(0, 4)]
+        : (imageData ?? []).slice(0, 5);
+
       return {
         propertyId: resolvedPropertyId,
         title: typeof listing.title === "string" ? listing.title : "ไม่ระบุชื่อบ้าน",
         description: nullableText(listing.description), propertyTags: stringArray(listing.property_tags),
         bedrooms: nullableNumber(listing.bedrooms), bathrooms: nullableNumber(listing.bathrooms), maxGuests: nullableNumber(listing.max_guests),
         locationZone: nullableText(listing.location_zone), propertyType: nullableText(listing.property_type), isActive: nullableBoolean(listing.is_active),
+        ownerName: nullableText(ownerResult.data?.name), rating: nullableNumber(listing.rating),
         checkinTime: nullableText(listing.checkin_time), checkoutTime: nullableText(listing.checkout_time), extraBedPrice: nullableNumber(listing.extra_beds),
         insuranceFee: nullableNumber(listing.insurance_fee), sortOrder: nullableNumber(listing.sort_order), notes: nullableText(listing.notes),
         createdAt: text(listing.created_at), updatedAt: nullableText(listing.updated_at),
-        images: (imageData ?? []).flatMap(value => {
+        images: boundedImages.flatMap(value => {
           const image = record(value);
           const url = buildHouseImageDisplayUrl({ imageName: nullableText(image.image_name), imageUrl: nullableText(image.image_url) });
           const id = dashboardPropertyId(image.id);
@@ -187,6 +196,7 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
           const coverSelect = nullableNumber(image.cover_select);
           return [{ id, url, zone, order: nullableNumber(image.image_move) ?? 0, isCover: zone === "cover" || (coverSelect !== null && coverSelect >= 1 && coverSelect <= 10) }];
         }),
+        imageCount: imageCount ?? imageData?.length ?? 0,
         prices: (priceData ?? []).map(value => {
           const price = record(value);
           return { dayOfWeek: nullableNumber(price.day_of_week), baseGuests: nullableNumber(price.base_guests), devillePrice: nullableNumber(price.deville_price), agencyPrice: nullableNumber(price.agency_price), note: nullableText(price.notes) };

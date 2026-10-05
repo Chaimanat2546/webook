@@ -286,14 +286,16 @@ test("canonical agency and house pages render their own workflows", async () => 
   assert.match(housesHtml, /<header[^>]*>.*href="\/admin\/dashboard\?month=2026-09"[^>]*>.*กลับไปภาพรวม.*<h1[^>]*>บ้านใหม่<\/h1>/);
   assert.equal((housesHtml.match(/บ้านใหม่/g) ?? []).length, 1);
   assert.doesNotMatch(housesHtml, /ประวัติบ้านเพิ่มใหม่|บ้านที่สร้างรายการในเดือนที่เลือก/);
-  assert.match(housesHtml, /action="\/admin\/dashboard\/houses"/);
+  assert.doesNotMatch(housesHtml, /action="\/admin\/dashboard\/houses"/);
   assert.match(housesHtml, /aria-label="ค้นหาบ้าน"/);
-  assert.match(housesHtml, /class="relative col-span-2 min-w-0 sm:col-span-1 sm:flex-1 sm:max-w-sm"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาบ้าน"/);
-  assert.match(housesHtml, /<input type="month"[^>]*id="houses-month"[^>]*name="month"/);
-  assert.match(housesHtml, /class="relative col-span-2 min-w-0 sm:col-span-1 sm:w-48"/);
-  assert.match(housesHtml, /class="[^"]*h-11 pl-9" id="houses-month"/);
-  assert.match(housesHtml, /class="[^"]*col-span-2[^"]*h-11[^"]*" type="submit"/);
-  assert.doesNotMatch(housesHtml, /type="hidden" name="month"/);
+  assert.match(housesHtml, /class="relative w-full"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาบ้าน"/);
+  assert.match(housesHtml, /aria-label="ค้นหา"[^>]*type="submit"/);
+  assert.match(housesHtml, /data-thai-month-picker/);
+  assert.match(housesHtml, /กันยายน 2569/);
+  assert.match(housesHtml, /id="house-sort"/);
+  assert.match(housesHtml, /aria-label="เรียงลำดับบ้าน"/);
+  assert.match(housesHtml, /เพิ่มล่าสุด/);
+  assert.doesNotMatch(housesHtml, /type="month"/);
   assert.ok(housesHtml.indexOf('aria-label="ค้นหาบ้าน"') < housesHtml.indexOf("overflow-hidden rounded-xl border"));
   assert.match(housesHtml, /href="\/admin\/dashboard\/houses\/listing-new\?month=2026-09"/);
 });
@@ -319,8 +321,10 @@ test("canonical detail pages use their list return headers", async () => {
   assert.doesNotMatch(agencyHtml, /ดูการจองทั้งหมด/);
 
   const HousePage = await dashboardPageComponent("../app/admin/dashboard/houses/[id]/page.tsx", repo) as (props: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
-  const houseHtml = renderToStaticMarkup(await HousePage({ params: Promise.resolve({ id: "listing-new" }), searchParams: Promise.resolve({ month: "2026-09", search: "villa", page: "2" }) }) as ReactNode);
-  assert.match(houseHtml, /<header[^>]*>.*href="\/admin\/dashboard\/houses\?month=2026-09&amp;search=villa&amp;page=2"[^>]*>.*กลับไปบ้านใหม่.*<h1[^>]*>New House<\/h1>/);
+  const houseHtml = renderToStaticMarkup(await HousePage({ params: Promise.resolve({ id: "listing-new" }), searchParams: Promise.resolve({ month: "2026-09", search: "villa", houseSort: "name-asc", page: "2" }) }) as ReactNode);
+  assert.match(houseHtml, /href="\/admin\/dashboard\/houses\?month=2026-09&amp;search=villa&amp;houseSort=name-asc&amp;page=2"[^>]*>.*กลับไปบ้านใหม่/);
+  assert.match(houseHtml, /returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09%26search%3Dvilla%26houseSort%3Dname-asc%26page%3D2/);
+  assert.match(houseHtml, /<h1[^>]*>New House<\/h1>/);
 });
 
 test("booking house links retain the full agency-origin booking detail URL", async () => {
@@ -351,9 +355,15 @@ test("dashboard mobile layouts keep house metadata grouped and details compact",
 
   const houseReport = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09", view: "house", houseId: "listing-new" });
   const houseHtml = renderToStaticMarkup(createElement(await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx"), { report: houseReport, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
-  assert.match(houseHtml, /grid gap-x-4 divide-y/);
+  assert.match(houseHtml, /grid grid-cols-5 divide-x rounded-xl border/);
   assert.match(houseHtml, /รองรับสูงสุด/);
   assert.match(houseHtml, /เช็กอิน/);
+  assert.match(houseHtml, /data-dashboard-house-mobile-sections/);
+  assert.match(houseHtml, /ดูปฏิทินบ้าน/);
+  assert.match(houseHtml, /จัดการบ้าน/);
+  const houseDetailSource = readFileSync(fileURLToPath(new URL("../components/admin/dashboard/dashboard-house-detail.tsx", import.meta.url)), "utf8");
+  assert.match(houseDetailSource, /open=\{open\} onToggle=\{event => onOpenChange\(id, event\.currentTarget\.open\)\}/);
+  assert.match(houseDetailSource, /setOpenMobileSection\(current => current === id \? null : current\)/);
 });
 
 test("agency detail reuses the booking toolbar and responsive list", async () => {
@@ -388,6 +398,7 @@ test("agency detail prioritizes sales while keeping secondary summary metrics co
 
   assert.match(html, /aria-label="สรุปยอดเอเจนซี่" class="grid grid-cols-2 gap-3 md:grid-cols-3"/);
   assert.match(html, /col-span-2 md:col-span-1/);
+  assert.match(html, /ยอดขาย[\s\S]*>รายการติดจองในช่วงที่เลือก<\/p>/);
   assert.match(html, /จำนวนการจองติดจอง[\s\S]*hidden md:block/);
   assert.match(html, /สัดส่วนยอดขาย[\s\S]*hidden md:block/);
 });
@@ -511,6 +522,11 @@ test("new house list uses a table on desktop and cards on mobile", async () => {
   const report = await loadDashboardHouses(repository({ kind: "admin" }), "signed-in-user", query);
   const html = renderToStaticMarkup(createElement(NewHousesList, { report, query }));
 
+  assert.match(html, /aria-label="ค้นหาบ้าน"[^>]*placeholder="ค้นหาบ้าน\.\.\."/);
+  assert.match(html, /aria-label="ค้นหา"[^>]*type="submit"/);
+  assert.match(html, /data-thai-month-picker/);
+  assert.match(html, /กันยายน 2569/);
+  assert.doesNotMatch(html, /type="month"/);
   assert.match(html, /hidden overflow-hidden rounded-xl border md:block/);
   assert.match(html, /<th[^>]*>บ้าน \/ DV<\/th>/);
   assert.match(html, /<th[^>]*>วันที่เพิ่ม<\/th>/);
@@ -521,6 +537,29 @@ test("new house list uses a table on desktop and cards on mobile", async () => {
   assert.equal((html.match(/DV-202/g) ?? []).length, 2);
   assert.equal((html.match(/12 ก\.ย\. 2569/g) ?? []).length, 2);
   assert.match(html, /data-dashboard-detail-link/);
+});
+
+test("new house history sorts before pagination", async () => {
+  const base = repository({ kind: "admin" });
+  const example = (await base.newHouses({ month: "2026-09", start: "2026-08-31T17:00:00Z", end: "2026-09-30T17:00:00Z" }))[0];
+  if (!example) assert.fail("missing house fixture");
+  const houses = Array.from({ length: 11 }, (_, index) => ({
+    ...example,
+    id: `house-${index + 1}`,
+    propertyId: String(index + 1),
+    title: index === 0 ? "ฮาวส์" : index === 10 ? "กาญจน์" : `บ้าน ${index + 1}`,
+    createdAt: `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
+  }));
+  const repo = repository({ kind: "admin" }, [booking], houses);
+  const newest = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09" }));
+  const oldestPageTwo = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", houseSort: "created-asc", page: "2" }));
+  const byName = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", houseSort: "name-asc" }));
+  const byNamePageTwo = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", houseSort: "name-asc", page: "2" }));
+
+  assert.deepEqual(newest.admin?.houses.rows.map(house => house.id), ["house-11", "house-10", "house-9", "house-8", "house-7", "house-6", "house-5", "house-4", "house-3", "house-2"]);
+  assert.deepEqual(oldestPageTwo.admin?.houses.rows.map(house => house.id), ["house-11"]);
+  assert.equal(byName.admin?.houses.rows[0]?.id, "house-11");
+  assert.deepEqual(byNamePageTwo.admin?.houses.rows.map(house => house.id), ["house-1"]);
 });
 
 test("dashboard detail primitives preserve responsive slots and summary framing", async () => {
@@ -673,7 +712,7 @@ test("agency detail shows only its booking list and house details expose manage 
   const houseRaw = { month: "2026-09", view: "house", houseId: "listing-new" };
   const house = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", houseRaw);
   const houseHtml = renderToStaticMarkup(createElement(View, { report: house, query: parseDashboardQuery(houseRaw) }));
-  assert.match(houseHtml, /href="\/admin\/houses\/202\?returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09"/);
+  assert.match(houseHtml, /href="\/admin\/houses\/202\?section=details&amp;returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09"/);
   assert.match(houseHtml, /07:00/);
   assert.match(houseHtml, /ห้องนอน/);
   assert.match(houseHtml, /ห้องน้ำ/);
@@ -738,7 +777,7 @@ test("dashboard house detail renders real gallery prices facilities and internal
   const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
 
   assert.match(html, /แกลเลอรีรูปภาพ/);
-  assert.match(html, /2 รูป/);
+  assert.match(html, /1 \/ 2/);
   assert.match(html, /aria-label="เปิดรูปที่ 2 จาก 2"/);
   assert.match(html, /พูลวิลล่าสำหรับครอบครัว/);
   assert.match(html, /ครอบครัว/);
@@ -747,12 +786,52 @@ test("dashboard house detail renders real gallery prices facilities and internal
   assert.match(html, /วันธรรมดา/);
   assert.match(html, /สิ่งอำนวยความสะดวก/);
   assert.match(html, /Wi-Fi/);
-  assert.match(html, /ข้อมูลจัดการ/);
+  assert.match(html, /ข้อมูลการจัดการ/);
   assert.match(html, /ค่าประกัน/);
   assert.match(html, /ราคาเตียงเสริม/);
   assert.match(html, /เตรียมผ้าเช็ดตัว/);
-  assert.match(html, /href="\/admin\/houses\/202\?returnTo=/);
-  assert.doesNotMatch(html, /รีวิว|H-030|เจ้าของบ้าน|2 เตียง/);
+  assert.match(html, /data-dashboard-house-mobile-sections/);
+  assert.equal((html.match(/data-dashboard-house-mobile-section(?:\s|=|>)/g) ?? []).length, 4);
+  assert.match(html, /ข้อมูลพื้นฐาน/);
+  assert.match(html, /รูปภาพ/);
+  assert.match(html, /ดูปฏิทินบ้าน/);
+  assert.match(html, /จัดการบ้าน/);
+  assert.match(html, /href="\/admin\/houses\/202\?section=details&amp;returnTo=/);
+  assert.doesNotMatch(html, /รีวิว|H-030|2 เตียง/);
+});
+
+test("dashboard house mobile management summary shows owner and configured rating when present", async () => {
+  const repo = repository({ kind: "admin" });
+  repo.houseDetail = async () => ({ propertyId: "202", title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", ownerName: "ภู", rating: 4, extraBedPrice: 500, insuranceFee: 5000, sortOrder: null, notes: null, createdAt: "2026-09-12T00:00:00Z", updatedAt: null, images: [], prices: [], facilities: [] });
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /เจ้าของบ้าน/);
+  assert.match(html, /ภู/);
+  assert.match(html, /เรตติ้ง/);
+  assert.match(html, /ส่งได้ต่อราคาง่าย/);
+});
+
+test("house gallery prioritizes the cover zone and the +N thumbnail opens image management", async () => {
+  const repo = repository({ kind: "admin" });
+  repo.houseDetail = async () => ({ propertyId: "202", title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", ownerName: null, rating: null, extraBedPrice: null, insuranceFee: null, sortOrder: null, notes: null, createdAt: "2026-09-12T00:00:00Z", updatedAt: null, imageCount: 12,
+    images: [
+      { id: "inside-1", url: "https://example.com/inside-1.jpg", zone: "inside", order: 1, isCover: false },
+      { id: "inside-2", url: "https://example.com/inside-2.jpg", zone: "inside", order: 2, isCover: false },
+      { id: "inside-3", url: "https://example.com/inside-3.jpg", zone: "inside", order: 3, isCover: false },
+      { id: "inside-4", url: "https://example.com/inside-4.jpg", zone: "inside", order: 4, isCover: false },
+      { id: "cover", url: "https://example.com/cover.jpg", zone: "cover", order: 5, isCover: true },
+    ], prices: [], facilities: [],
+  });
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /รูปบ้าน New House ภาพที่ 1[\s\S]*src="https:\/\/example\.com\/cover\.jpg"/);
+  assert.match(html, /href="\/admin\/houses\/202\/images\?returnTo=/);
+  assert.match(html, /มีรูปที่เหลืออีก 8 รูป/);
+  assert.match(html, /\+8<\/a>/);
 });
 
 test("dashboard house detail renders empty states without optional or broken media", async () => {
@@ -766,7 +845,7 @@ test("dashboard house detail renders empty states without optional or broken med
   assert.match(html, /ยังไม่ได้กำหนดราคา/);
   assert.match(html, /ยังไม่มีสิ่งอำนวยความสะดวกที่เปิดใช้งาน/);
   assert.doesNotMatch(html, /<img/);
-  assert.doesNotMatch(html, /คำอธิบายบ้าน|แท็กบ้าน|โน้ตภายใน|อัปเดตล่าสุด|ราคาเตียงเสริม/);
+  assert.doesNotMatch(html, /คำอธิบายบ้าน|แท็กบ้าน/);
 });
 
 test("empty booking lists distinguish empty month from unmatched filters", async () => {
@@ -1143,12 +1222,16 @@ test("repository maps a dashboard house detail from listing media prices and ena
     if (url.pathname === "/rest/v1/listings") {
       assert.equal(url.searchParams.get("property_id"), "eq.101");
       const select = url.searchParams.get("select") ?? "";
-      for (const field of ["description", "property_tags", "extra_beds", "insurance_fee", "sort_order", "notes", "updated_at"]) assert.match(select, new RegExp(`(?:^|,)${field}(?:,|$)`));
-      return new Response(JSON.stringify({ id: "listing-101", property_id: 101, title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", property_tags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, max_guests: 12, location_zone: "พัทยา", property_type: "poolvilla", is_active: true, checkin_time: "14:00:00", checkout_time: "11:00:00", extra_beds: 500, insurance_fee: 5000, sort_order: 2, notes: "โน้ตภายใน", created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-13T00:00:00Z" }), { headers: { "Content-Type": "application/json" } });
+      for (const field of ["description", "property_tags", "extra_beds", "insurance_fee", "sort_order", "notes", "owner_id", "rating", "updated_at"]) assert.match(select, new RegExp(`(?:^|,)${field}(?:,|$)`));
+      return new Response(JSON.stringify({ id: "listing-101", property_id: 101, title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", property_tags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, max_guests: 12, location_zone: "พัทยา", property_type: "poolvilla", is_active: true, checkin_time: "14:00:00", checkout_time: "11:00:00", extra_beds: 500, insurance_fee: 5000, sort_order: 2, notes: "โน้ตภายใน", owner_id: 42, rating: 4, created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-13T00:00:00Z" }), { headers: { "Content-Type": "application/json" } });
     }
     if (url.pathname === "/rest/v1/images") {
       assert.equal(url.searchParams.get("property_id"), "eq.101");
-      return new Response(JSON.stringify([{ id: 1, image_name: "cover.jpg", image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover.jpg", image_zone: "cover", image_move: 1, cover_select: 0 }]), { headers: { "Content-Type": "application/json" } });
+      if (url.searchParams.get("image_zone") === "eq.cover") {
+        return new Response(JSON.stringify({ id: 1, image_name: "cover.jpg", image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover.jpg", image_zone: "cover", image_move: 1, cover_select: 0 }), { headers: { "Content-Type": "application/json" } });
+      }
+      assert.equal(url.searchParams.get("limit"), "4");
+      return new Response(JSON.stringify([{ id: 1, image_name: "cover.jpg", image_url: "https://s3.ap-southeast-1.amazonaws.com/example-bucket/cover.jpg", image_zone: "cover", image_move: 1, cover_select: 0 }]), { headers: { "Content-Type": "application/json", "Content-Range": "0-0/1" } });
     }
     if (url.pathname === "/rest/v1/listing_prices") {
       assert.equal(url.searchParams.get("listing_id"), "eq.listing-101");
@@ -1161,13 +1244,17 @@ test("repository maps a dashboard house detail from listing media prices and ena
     if (url.pathname === "/rest/v1/facilities") {
       return new Response(JSON.stringify([{ id: "wifi", name: "wifi", title: "Wi-Fi" }, { id: "pool", name: "private_pool", title: "สระว่ายน้ำ" }]), { headers: { "Content-Type": "application/json" } });
     }
+    if (url.pathname === "/rest/v1/users") {
+      assert.equal(url.searchParams.get("dv_id"), "eq.42");
+      return new Response(JSON.stringify({ name: "เจ้าของตัวอย่าง" }), { headers: { "Content-Type": "application/json" } });
+    }
     assert.fail(`unexpected request ${url.pathname}`);
   } } });
 
   const detail = await createDashboardRepository(client).houseDetail("101");
 
   assert.deepEqual(detail, {
-    propertyId: "101", title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", propertyTags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, maxGuests: 12, locationZone: "พัทยา", propertyType: "poolvilla", isActive: true, checkinTime: "14:00:00", checkoutTime: "11:00:00", extraBedPrice: 500, insuranceFee: 5000, sortOrder: 2, notes: "โน้ตภายใน", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z",
+    propertyId: "101", title: "บ้านริมสระ", description: "บ้านพักพร้อมสระ", propertyTags: ["ครอบครัว"], bedrooms: 4, bathrooms: 3, maxGuests: 12, locationZone: "พัทยา", propertyType: "poolvilla", isActive: true, ownerName: "เจ้าของตัวอย่าง", rating: 4, checkinTime: "14:00:00", checkoutTime: "11:00:00", extraBedPrice: 500, insuranceFee: 5000, sortOrder: 2, notes: "โน้ตภายใน", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z", imageCount: 1,
     images: [{ id: "1", url: "https://d24r25u6qcb3zryipzoiqj2jxy0ilqtm.lambda-url.ap-southeast-1.on.aws/cover.jpg", zone: "cover", order: 1, isCover: true }],
     prices: [{ dayOfWeek: 0, baseGuests: 10, devillePrice: 5000, agencyPrice: 4500, note: "วันธรรมดา" }],
     facilities: [{ id: "wifi", name: "wifi", title: "Wi-Fi", message: "300 Mbps" }],

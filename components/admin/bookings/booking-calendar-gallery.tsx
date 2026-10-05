@@ -27,11 +27,11 @@ type PageState =
 const loadError = "โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง";
 const pageError = "โหลดรายการบ้านไม่สำเร็จ กรุณาลองอีกครั้ง";
 
-export function BookingCalendarGallery() {
+export function BookingCalendarGallery({ initialSearch = "", initialSearchMode = "dv" }: { initialSearch?: string; initialSearchMode?: GallerySearchMode }) {
   const [initialMonth] = useState(() => bookingToday().slice(0, 7));
-  const [search, setSearch] = useState("");
-  const [searchMode, setSearchMode] = useState<GallerySearchMode>("dv");
-  const [committedSearch, setCommittedSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
+  const [searchMode, setSearchMode] = useState<GallerySearchMode>(initialSearchMode);
+  const [committedSearch, setCommittedSearch] = useState(initialSearch.trim());
   const [requestedPage, setRequestedPage] = useState(1);
   const [pageState, setPageState] = useState<PageState>({ status: "loading", key: "dv::1" });
   const [pageRetry, setPageRetry] = useState(0);

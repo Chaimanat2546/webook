@@ -19,6 +19,7 @@ import {
   formatListingFacilityTitle,
 } from "../../../../lib/listing-facilities";
 import { ZONE_OPTIONS } from "../../../../lib/house-zones";
+import { HOUSE_RATING_OPTIONS } from "../../../../lib/dashboard";
 import {
   canManageHousePrices,
   canManageHouseRating,
@@ -49,15 +50,6 @@ const HOUSE_DETAIL_SECTIONS = [
 const HOUSE_DETAILS_FORM_ID = "house-details-form";
 const HOUSE_PRICES_FORM_ID = "house-prices-form";
 const HOUSE_FACILITIES_FORM_ID = "house-facilities-form";
-
-const RATING_OPTIONS = [
-  { label: "0 - กรุณาเลือก", value: "0" },
-  { label: "1 - รีเช็คก่อนโอนบ้านไม่เหลือค่อยส่ง", value: "1" },
-  { label: "2 - บ้านเก่าโทรมห้ามส่ง", value: "2" },
-  { label: "3 - บ้านเก่าแต่พอส่งได้", value: "3" },
-  { label: "4 - ส่งได้ต่อราคาง่าย", value: "4" },
-  { label: "5 - ส่งได้เลยบ้านใหม่", value: "5" },
-];
 
 const TIME_OPTIONS = [
   { label: "ไม่ระบุ", value: "" },
@@ -203,7 +195,7 @@ export default async function HouseDetailPage({
         id="rating"
         name="rating"
         disabled={!canManageRating}
-        options={RATING_OPTIONS}
+        options={HOUSE_RATING_OPTIONS.map(option => ({ label: `${option.value} - ${option.label}`, value: String(option.value) }))}
         placeholder="เลือกเรตติ้ง"
       />
     </div>

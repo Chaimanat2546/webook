@@ -45,3 +45,11 @@ test("shipped worker is reproducible and public file changes invalidate its revi
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("PWA worker applies a bounded 12-hour runtime cache to approved house images", async () => {
+  const source = await readFile(new URL("../worker/pwa-sw.js", import.meta.url), "utf8");
+  assert.match(source, /new CacheFirst\(/);
+  assert.match(source, /new CacheableResponsePlugin\(\{\s*statuses:\s*\[0, 200\]/);
+  assert.match(source, /new ExpirationPlugin\(\{\s*maxEntries:\s*500,\s*maxAgeSeconds:\s*HOUSE_IMAGE_CACHE_MAX_AGE_SECONDS/);
+  assert.match(source, /shouldCacheHouseImageRequest\(/);
+});
