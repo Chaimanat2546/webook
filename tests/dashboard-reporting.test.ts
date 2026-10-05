@@ -44,6 +44,7 @@ function serviceRepository(): DashboardRepository {
     report: async () => parseDashboardReportingResult(reportFixture),
     newHouses: async () => [], bookingCustomer: async () => null,
     coverImageUrl: async () => null, creatorName: async () => null, customerDetail: async () => null,
+    houseDetail: async () => null,
   };
 }
 test("overview and booking workflows consume database totals instead of page rows", async () => {

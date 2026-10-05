@@ -672,27 +672,14 @@ test("agency detail shows only its booking list and house details expose manage 
 test("dashboard house detail loads rich data only after admin month membership succeeds", async () => {
   const repo = repository({ kind: "admin" });
   const calls: string[] = [];
-  const richRepository = repo as DashboardRepository & {
-    houseDetail(propertyId: string): Promise<{
-      description: string | null;
-      propertyTags: string[];
-      insuranceFee: number | null;
-      sortOrder: number | null;
-      updatedAt: string | null;
-      extraBedPrice: number | null;
-      notes: string | null;
-      images: [];
-      prices: [];
-      facilities: [];
-    } | null>;
-  };
+  const richRepository = repo;
   richRepository.newHouses = async month => {
     calls.push(`houses:${month.month}`);
     return [{ id: "listing-new", propertyId: "202", title: "New House", createdAt: "2026-09-12T00:00:00Z", bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00" }];
   };
   richRepository.houseDetail = async propertyId => {
     calls.push(`detail:${propertyId}`);
-    return { description: null, propertyTags: [], insuranceFee: 5000, sortOrder: 1, updatedAt: null, extraBedPrice: 500, notes: null, images: [], prices: [], facilities: [] };
+    return { propertyId, title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", insuranceFee: 5000, sortOrder: 1, updatedAt: null, extraBedPrice: 500, notes: null, createdAt: "2026-09-12T00:00:00Z", images: [], prices: [], facilities: [] };
   };
 
   const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
@@ -712,7 +699,7 @@ test("dashboard house detail refuses unapproved scopes and out-of-month IDs befo
 
   const adminRepository = repository({ kind: "admin" }, [booking], []);
   let richReads = 0;
-  (adminRepository as DashboardRepository & { houseDetail(propertyId: string): Promise<null> }).houseDetail = async () => {
+  adminRepository.houseDetail = async () => {
     richReads++;
     return null;
   };
