@@ -1,12 +1,14 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildHouseImageDisplayUrl } from "../../lib/house-image-display-url.ts";
-import { dashboardPropertyId, dashboardScope, type DashboardScope, type DashboardMonth, type DashboardBookingSource, type DashboardCustomer, type DashboardHouse } from "../../lib/dashboard.ts";
+import { dashboardPropertyId, dashboardScope, type DashboardScope, type DashboardMonth, type DashboardCustomer, type DashboardHouse } from "../../lib/dashboard.ts";
 import { record } from "../../lib/house-bookings.ts";
+import type { DashboardReportingQuery, DashboardReportingResult } from "../../lib/dashboard.ts";
+import { parseDashboardReportingResult } from "./dashboard-reporting.ts";
 
 export interface DashboardRepository {
+  report(actorId: string, query: DashboardReportingQuery): Promise<DashboardReportingResult>;
   access(actorId: string): Promise<DashboardScope | null>;
-  bookings(scope: DashboardScope, month: DashboardMonth, dateField?: DashboardBookingDateField, includeNote?: boolean): Promise<DashboardBookingSource[]>;
   bookingCustomer(scope: DashboardScope, bookingId: string): Promise<{ propertyId: string; customerId: string | null } | null>;
   coverImageUrl(scope: DashboardScope, propertyId: string): Promise<string | null>;
   creatorName(creatorId: string): Promise<string | null>;
@@ -14,7 +16,6 @@ export interface DashboardRepository {
   newHouses(month: DashboardMonth): Promise<DashboardHouse[]>;
 }
 
-export type DashboardBookingDateField = "created_at" | "updated_at" | "check_in";
 
 function text(value: unknown): string {
   if (typeof value !== "string") throw new Error("dashboard_invalid_data");
@@ -54,53 +55,15 @@ function customerDetail(value: unknown): DashboardCustomer {
 
 export function createDashboardRepository(client: SupabaseClient): DashboardRepository {
   return {
+    async report(actorId, query) {
+      const { data, error } = await client.rpc("dashboard_report", { p_actor: actorId, p_query: query });
+      if (error) throw new Error("dashboard_unavailable");
+      return parseDashboardReportingResult(data);
+    },
     async access(actorId) {
       const { data, error } = await client.from("users").select("role_id,dv_id").eq("uid", actorId).maybeSingle();
       if (error) throw new Error("dashboard_unavailable");
       return dashboardScope(data);
-    },
-    async bookings(scope, month, dateField = "created_at", includeNote = false) {
-      const rows: DashboardBookingSource[] = [];
-      // Read all pages, even when PostgREST's configured cap is below 500.
-      for (let offset = 0; ;) {
-        const agencyFields = scope.kind === "admin" ? ",agent_id,agent:agents(id,name)" : "";
-        let query = client.from("bookings")
-          .select(`id,booking_code,listing_id,houseid,customer_id,check_in,check_out,checkin_time,checkout_time,status,price_max,price_sell,extra_charge,insurance,payment_expires_at,created_at,updated_at,created_by${includeNote ? ",note" : ""},customer:customers(first_name,last_name),listing:listings!inner(id,property_id,title)${agencyFields}`, { count: "exact" })
-          .gte(dateField, month.start).lt(dateField, month.end)
-          .order(dateField, { ascending: false }).order("id", { ascending: false })
-          .range(offset, offset + 499);
-        if (scope.kind === "owner") {
-          query = query.eq("houseid", scope.propertyId).eq("listing.property_id", scope.propertyId);
-        }
-        const { data, count, error } = await query;
-        if (error || count === null) throw new Error("dashboard_unavailable");
-        const page: unknown[] = data ?? [];
-        for (const value of page) {
-          const row = record(value), house = record(row.listing);
-          const propertyId = dashboardPropertyId(row.houseid);
-          // Reject legacy mismatched listing/house pairs before exposing any fields.
-          if (!propertyId || propertyId !== dashboardPropertyId(house.property_id) || row.listing_id !== house.id) continue;
-          if (scope.kind === "owner" && propertyId !== scope.propertyId) continue;
-          const agent = scope.kind === "admin" && row.agent ? record(row.agent) : null;
-          const customer = row.customer ? record(row.customer) : null;
-          rows.push({
-            id: String(row.id), code: text(row.booking_code), propertyId, houseTitle: typeof house.title === "string" ? house.title : `DV-${propertyId}`,
-            checkIn: text(row.check_in), checkOut: text(row.check_out), status: typeof row.status === "string" ? row.status : null,
-            createdAt: text(row.created_at), updatedAt: text(row.updated_at), priceCents: cents(row.price_max),
-            depositCents: cents(row.price_sell), extraChargeCents: cents(row.extra_charge), insuranceCents: cents(row.insurance), paymentExpiresAt: nullableText(row.payment_expires_at),
-            ...(includeNote ? { note: nullableText(row.note) } : {}),
-            checkInTime: nullableText(row.checkin_time), checkOutTime: nullableText(row.checkout_time), createdById: nullableUuid(row.created_by),
-            customerId: dashboardPropertyId(row.customer_id),
-            customerFirstName: customer && typeof customer.first_name === "string" ? customer.first_name : null,
-            customerLastName: customer && typeof customer.last_name === "string" ? customer.last_name : null,
-            agentId: scope.kind === "admin" && typeof row.agent_id === "string" ? row.agent_id : null,
-            agentName: agent && agent.id === row.agent_id && typeof agent.name === "string" ? agent.name : null,
-          });
-        }
-        offset += page.length;
-        if (offset >= count) return rows;
-        if (!page.length) throw new Error("dashboard_incomplete_data");
-      }
     },
     async bookingCustomer(scope, bookingId) {
       let query = client.from("bookings").select("houseid,customer_id,listing_id,listing:listings!inner(id,property_id)").eq("id", bookingId);
