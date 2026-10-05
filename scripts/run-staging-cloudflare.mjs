@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CommandExitError, withProductionEnvironmentExcluded } from "./staging-build-environment.mjs";
 
+/** @param {Pick<NodeJS.ProcessEnv, "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY">} environment */
 export function stagingPublicEnvironment(environment = process.env) {
   const fromEnvironment = {
     NEXT_PUBLIC_SUPABASE_URL: environment.NEXT_PUBLIC_SUPABASE_URL,
