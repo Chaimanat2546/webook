@@ -800,6 +800,17 @@ test("dashboard house detail renders real gallery prices facilities and internal
   assert.doesNotMatch(html, /รีวิว|H-030|2 เตียง/);
 });
 
+test("dashboard house detail renders an inactive desktop status badge in grey", async () => {
+  const repo = repository({ kind: "admin" });
+  repo.houseDetail = async () => ({ propertyId: "202", title: "Inactive House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: false, checkinTime: "15:00", checkoutTime: "11:00", extraBedPrice: null, insuranceFee: null, sortOrder: null, notes: null, createdAt: "2026-09-12T00:00:00Z", updatedAt: null, images: [], prices: [], facilities: [] });
+  const report = await loadDashboardHouse(repo, "signed-in-user", { month: "2026-09", search: "", page: 1 }, "listing-new");
+  const View = await dashboardComponent("DashboardDetails", "../components/admin/dashboard/dashboard-details.tsx");
+  const html = renderToStaticMarkup(createElement(View, { report, query: parseDashboardQuery({ month: "2026-09", view: "house", houseId: "listing-new" }) }));
+
+  assert.match(html, /hidden min-w-0 space-y-3 xl:block"><span[\s\S]*?bg-muted text-muted-foreground[\s\S]*?ปิดใช้งาน/);
+  assert.doesNotMatch(html, /bg-emerald-100/);
+});
+
 test("dashboard house mobile management summary shows owner and configured rating when present", async () => {
   const repo = repository({ kind: "admin" });
   repo.houseDetail = async () => ({ propertyId: "202", title: "New House", description: null, propertyTags: [], bedrooms: 3, bathrooms: 2, maxGuests: 8, locationZone: "พัทยาเหนือ", propertyType: "poolvilla", isActive: true, checkinTime: "15:00", checkoutTime: "11:00", ownerName: "ภู", rating: 4, extraBedPrice: 500, insuranceFee: 5000, sortOrder: null, notes: null, createdAt: "2026-09-12T00:00:00Z", updatedAt: null, images: [], prices: [], facilities: [] });

@@ -7,9 +7,9 @@ interface TemplatePalette {
 }
 
 const palette: Record<QuotationTemplate, TemplatePalette> = {
-  corporate: { accent: "bg-[#142d4c]", light: "bg-[#f2f5f8]" },
-  current: { accent: "bg-indigo-500", light: "bg-indigo-50" },
-  hospitality: { accent: "bg-[#286a5b]", light: "bg-[#f1f7f4]" },
+  corporate: { accent: "bg-[#043D5C]", light: "bg-[#EAF3F5]" },
+  current: { accent: "bg-[#07557A]", light: "bg-[#E6F4F7]" },
+  hospitality: { accent: "bg-[#119A9A]", light: "bg-[#E3F5F4]" },
 };
 
 interface QuotationTemplateThumbnailProps {
