@@ -143,6 +143,15 @@ describe("Cloudflare deployment boundary", () => {
     assert.match(workflow, /SUPABASE_DB_PASSWORD: \$\{\{ secrets\.SUPABASE_DB_PASSWORD \}\}/);
   });
 
+  it("blocks deploys on runtime audit findings and tracks development audit findings separately", () => {
+    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+    const workflow = readFileSync(new URL("../.github/workflows/audit-dev-dependencies.yml", import.meta.url), "utf8");
+    assert.equal(packageJson.scripts["audit:security"], "npm audit --omit=dev --audit-level=moderate");
+    assert.match(workflow, /schedule:/);
+    assert.match(workflow, /workflow_dispatch:/);
+    assert.match(workflow, /npm audit --include=dev --audit-level=moderate/);
+  });
+
   it("keeps the image media Worker deploy config separate", () => {
     const configPath = new URL("../workers/media/wrangler.jsonc", import.meta.url);
 
