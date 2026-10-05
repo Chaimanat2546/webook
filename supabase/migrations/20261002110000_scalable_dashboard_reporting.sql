@@ -59,7 +59,7 @@ begin
   v_end := (v_month + interval '1 month')::timestamp at time zone 'Asia/Bangkok';
   v_from := (p_query->>'checkInFrom')::date;
   v_to := (p_query->>'checkInTo')::date;
-  if (v_from is null) <> (v_to is null) or v_from > v_to or v_to - v_from > 366 then
+  if (v_from is null) <> (v_to is null) or v_from > v_to then
     raise exception 'dashboard_invalid_query' using errcode = '22023';
   end if;
 
@@ -142,7 +142,7 @@ begin
       count(*) as count from scoped where status_key='confirmed' group by 1
   ), days as (
     select d::date as date,coalesce(c.count,0) as count
-    from generate_series(coalesce(v_from,v_month)::timestamp,coalesce(v_to,(v_month+interval '1 month - 1 day')::date)::timestamp,interval '1 day') d
+    from generate_series(v_month::timestamp,(v_month+interval '1 month - 1 day')::timestamp,interval '1 day') d
     left join daily_counts c on c.day=d::date
   )
   select jsonb_build_object(

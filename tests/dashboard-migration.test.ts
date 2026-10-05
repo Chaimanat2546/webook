@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { before, after, describe, it } from "node:test";
 import { readFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createClient } from "@supabase/supabase-js";
+import { createDashboardRepository } from "../server/repositories/dashboard.ts";
+import { loadDashboardAgency } from "../server/services/dashboard.ts";
+import { parseDashboardAgencyDetailQuery } from "../lib/dashboard-routes.ts";
 
 const migration = new URL("../supabase/migrations/20261002110000_scalable_dashboard_reporting.sql", import.meta.url);
 it("dashboard reporting migration is available for deployment", () => assert.ok(existsSync(migration)));
@@ -68,6 +72,26 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     assert.equal(r.bookings.rows[0].note, undefined);
     assert.equal(report({ search: "Private" }).bookings.total, 0);
   });
+  it("maps actual PostgreSQL results through the repository and agency service", async () => {
+    const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+      const request = new Request(input, init), path = new URL(request.url).pathname;
+      if (path === "/rest/v1/users") return Response.json({ role_id: 1, dv_id: null });
+      if (path === "/rest/v1/listings") return new Response("[]", { headers: { "Content-Type": "application/json", "Content-Range": "*/0" } });
+      assert.equal(path, "/rest/v1/rpc/dashboard_report");
+      const body = await request.json();
+      assert.equal(body.p_actor, admin);
+      return Response.json(report(body.p_query, body.p_actor));
+    } } });
+    const result = await loadDashboardAgency(createDashboardRepository(client), admin, parseDashboardAgencyDetailQuery({ month: "2026-09", status: "waiting", amountFrom: "100", amountTo: "100" }), agency);
+    assert.equal(result.bookingCount, 5);
+    assert.equal(result.bookings.total, 1);
+    assert.equal(result.bookings.rows[0].id, "2");
+    assert.equal(result.detail?.kind, "agency");
+    if (result.detail?.kind !== "agency") assert.fail();
+    assert.equal(result.detail.agency.count, 5);
+    assert.equal(result.detail.sharePercent, 25);
+    assert.equal(result.detail.agency.amountCents, 10000);
+  });
   it("owner reports cannot leak another property, agency or detail", () => {
     const r = report({}, owner);
     assert.equal(r.bookingCount, 5);
@@ -83,6 +107,19 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     assert.equal(r.bookings.total, 0);
     assert.equal(r.bookingDetail.id, "7");
     assert.equal(report({ bookingId: "1", status: "waiting" }).bookingDetail.note, "secret");
+  });
+  it("supports existing multi-year stay filters without an unbounded chart response", () => {
+    const r = report({ checkInFrom: "2025-01-01", checkInTo: "2027-12-31" });
+    assert.equal(r.bookingCount, 7);
+    assert.ok(r.daily.length <= 31);
+  });
+  it("sorts deterministically across pages with null prices last", () => {
+    const first = report({ sort: "price-asc", pageSize: 2 });
+    const second = report({ sort: "price-asc", pageSize: 2, page: 2 });
+    const last = report({ sort: "price-asc", pageSize: 2, page: 3 });
+    assert.deepEqual(first.bookings.rows.map((row: { id: string }) => row.id), ["4", "3"]);
+    assert.deepEqual(second.bookings.rows.map((row: { id: string }) => row.id), ["2", "1"]);
+    assert.deepEqual(last.bookings.rows.map((row: { id: string }) => row.id), ["6", "5"]);
   });
   it("validates inputs and grants only the server role with a fixed search path", () => {
     for (const input of [{ month: "2026-99" }, { sort: "sql" }, { status: "sql" }, { page: 0 }, { pageSize: 10000 }, { amountFromCents: 2, amountToCents: 1 }, { checkInFrom: "2026-11-02", checkInTo: "2026-11-01" }]) {
@@ -102,6 +139,10 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     assert.match(plan, /Index|Bitmap/);
     assert.match(plan, /Buffers:/);
     console.log(plan);
+    console.log(sql(`explain (analyze,buffers) select dashboard_report('${admin}','{"month":"2025-01","pageSize":9}');`));
+    sql(`update bookings set updated_at='2025-01-10' where id>100; analyze bookings;`);
+    assert.equal(report({ month: "2025-01" }).bookingCount, 30000);
+    assert.equal(report({ month: "2025-01" }).bookings.rows.length, 9);
     console.log(sql(`explain (analyze,buffers) select dashboard_report('${admin}','{"month":"2025-01","pageSize":9}');`));
   });
 });

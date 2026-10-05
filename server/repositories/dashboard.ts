@@ -22,24 +22,12 @@ function text(value: unknown): string {
   return value;
 }
 
-function cents(value: unknown): number | null {
-  if (value === null || value === undefined) return null;
-  if ((typeof value !== "string" && typeof value !== "number") || !/^\d+(?:\.\d{1,2})?$/.test(String(value))) throw new Error("dashboard_invalid_amount");
-  const result = Math.round(Number(value) * 100);
-  if (!Number.isSafeInteger(result)) throw new Error("dashboard_invalid_amount");
-  return result;
-}
-
 function nullableNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function nullableText(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
-}
-
-function nullableUuid(value: unknown): string | null {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ? value.toLowerCase() : null;
 }
 
 function nullableBoolean(value: unknown): boolean | null {
