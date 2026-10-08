@@ -133,8 +133,8 @@ describe("quotation UI", () => {
 
     for (const marker of [
       'data-quotation-template="corporate"',
-      "#142d4c",
-      "#f2f5f8",
+      "--quotation-theme-primary",
+      "--quotation-theme-light",
       "data-corporate-company-metadata",
       "data-corporate-recipient",
       "data-corporate-settlement",
@@ -148,6 +148,7 @@ describe("quotation UI", () => {
     ]) {
       assert.match(corporate, new RegExp(marker));
     }
+    assert.doesNotMatch(corporate, /#142d4c|#f2f5f8/i);
     assert.doesNotMatch(corporate, /CurrentQuotationDocument/);
     assert.match(dispatcher, /quotation-document-corporate/);
   });
@@ -170,8 +171,8 @@ describe("quotation UI", () => {
     for (const marker of [
       'data-quotation-template="hospitality"',
       "QUOTATION",
-      "#286a5b",
-      "#c79b58",
+      "--quotation-theme-primary",
+      "--quotation-theme-muted",
       "data-hospitality-recipient",
       "data-hospitality-settlement",
       "data-document-items",
@@ -183,6 +184,7 @@ describe("quotation UI", () => {
     ]) {
       assert.match(hospitality, new RegExp(marker));
     }
+    assert.doesNotMatch(hospitality, /#286a5b|#c79b58/i);
     assert.doesNotMatch(hospitality, /CurrentQuotationDocument/);
     assert.match(dispatcher, /quotation-document-hospitality/);
   });

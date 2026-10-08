@@ -1,5 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export async function getAnalyticsListingTitles(client: SupabaseClient, ids: string[]): Promise<Map<string, string>> {
+  const numericIds = [...new Set(ids)].filter(id => /^[1-9]\d{0,14}$/.test(id));
+  const titles = new Map<string, string>();
+  // Keep URLs and response sizes bounded when sorting every house by its name.
+  for (let offset = 0; offset < numericIds.length; offset += 100) {
+    const batch = numericIds.slice(offset, offset + 100);
+    const { data, error } = await client.from("listings").select("property_id,title").in("property_id", batch).limit(batch.length);
+    if (error) throw new Error("listing_titles_unavailable");
+    for (const row of data ?? []) if (typeof row.title === "string" && row.title.trim()) titles.set(String(row.property_id), row.title.trim());
+  }
+  return titles;
+}
+
 import {
   type HouseListItem,
   type ListingDetailsUpdate,

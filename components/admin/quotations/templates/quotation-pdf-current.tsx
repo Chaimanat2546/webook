@@ -27,11 +27,11 @@ import {
 } from "./quotation-pdf-shared";
 
 const colors = {
-  accent: "#6366f1",
-  border: "#cbd5e1",
-  light: "#eef2ff",
-  muted: "#64748b",
-  text: "#0f172a",
+  accent: "#07557A",
+  border: "#CFE4E8",
+  light: "#E6F4F7",
+  muted: "#637780",
+  text: "#163542",
 };
 
 const CURRENT_TABLE_ROWS_PER_PAGE = 14;

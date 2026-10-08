@@ -114,7 +114,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
             </CardHeader>
             <CardContent className="flex flex-1">
               {report.overview.recentHouses.length ? (
-                <div className="flex w-full flex-1 flex-col divide-y [&>a]:flex-1">
+                <div className="flex w-full flex-1 flex-col divide-y">
                   {report.overview.recentHouses.map((house) => (
                     <DashboardHouseRow
                       key={house.id}
