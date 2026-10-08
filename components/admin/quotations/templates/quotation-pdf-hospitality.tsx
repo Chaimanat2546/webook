@@ -11,7 +11,10 @@ import { canUseHospitalitySideBySideSettlement } from "../../../../lib/quotation
 import { isQuotationLayoutBlockBefore } from "../../../../lib/quotation-layout-renderer";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 import { canKeepQuotationPdfItemTogether } from "../../../../lib/quotation-pdf";
-import { quotationThemePalette } from "../../../../lib/quotation-theme";
+import {
+  quotationThemePalette,
+  type QuotationThemePalette,
+} from "../../../../lib/quotation-theme";
 
 import type { QuotationPdfRendererProps } from "./quotation-pdf-contract";
 import {
@@ -24,15 +27,16 @@ import {
   vatLabel,
 } from "./quotation-pdf-shared";
 
-const colors = {
-  accent: "#c79b58",
-  border: "#b7d0c7",
-  paper: "#ffffff",
-  primary: "#286a5b",
-  text: "#17352d",
-};
+function createStyles(theme: QuotationThemePalette) {
+  const colors = {
+    accent: theme.muted,
+    border: theme.border,
+    paper: "#ffffff",
+    primary: theme.primary,
+    text: theme.dark,
+  };
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   page: {
     backgroundColor: colors.paper,
     color: colors.text,
@@ -184,7 +188,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 6,
   },
-});
+  });
+}
 
 export function HospitalityQuotationPdf({
   images,
@@ -192,6 +197,7 @@ export function HospitalityQuotationPdf({
 }: QuotationPdfRendererProps) {
   const { calculation, payload } = model;
   const theme = quotationThemePalette(payload.layout.config.themeColor);
+  const styles = createStyles(theme);
   const themedSharedStyles = {
     ...styles,
     grandTotal: { ...styles.grandTotal, borderTopColor: theme.contrast },

@@ -1,9 +1,9 @@
 import type { QuotationTemplate } from "./quotation-template";
 
 export const QUOTATION_TEMPLATE_THEME_COLORS: Record<QuotationTemplate, string> = {
-  corporate: "#142D4C",
-  current: "#6366F1",
-  hospitality: "#286A5B",
+  corporate: "#043D5C",
+  current: "#07557A",
+  hospitality: "#119A9A",
 };
 
 export interface QuotationThemePalette {
@@ -37,7 +37,7 @@ function mixHex(left: string, right: string, rightWeight: number): string {
 }
 
 export function quotationThemePalette(primaryColor: string): QuotationThemePalette {
-  const primary = isQuotationThemeColor(primaryColor) ? primaryColor.toUpperCase() : "#6366F1";
+  const primary = isQuotationThemeColor(primaryColor) ? primaryColor.toUpperCase() : "#07557A";
   const red = Number.parseInt(primary.slice(1, 3), 16);
   const green = Number.parseInt(primary.slice(3, 5), 16);
   const blue = Number.parseInt(primary.slice(5, 7), 16);

@@ -11,7 +11,10 @@ import { canUseHospitalitySideBySideSettlement } from "../../../../lib/quotation
 import { isQuotationLayoutBlockBefore } from "../../../../lib/quotation-layout-renderer";
 import { formatBaht, formatMoney } from "../../../../lib/quotation-money";
 import { canKeepQuotationPdfItemTogether } from "../../../../lib/quotation-pdf";
-import { quotationThemePalette } from "../../../../lib/quotation-theme";
+import {
+  quotationThemePalette,
+  type QuotationThemePalette,
+} from "../../../../lib/quotation-theme";
 
 import type { QuotationPdfRendererProps } from "./quotation-pdf-contract";
 import {
@@ -24,14 +27,15 @@ import {
   vatLabel,
 } from "./quotation-pdf-shared";
 
-const colors = {
-  border: "#bac5d1",
-  navy: "#142d4c",
-  panel: "#f2f5f8",
-  text: "#17283c",
-};
+function createStyles(theme: QuotationThemePalette) {
+  const colors = {
+    border: theme.border,
+    navy: theme.primary,
+    panel: theme.light,
+    text: theme.dark,
+  };
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   page: {
     color: colors.text,
     fontFamily: "Noto Sans Thai",
@@ -197,7 +201,8 @@ const styles = StyleSheet.create({
   signatureBoxCompact: { height: 32 },
   certificationImage: { height: 42, objectFit: "contain", width: "100%" },
   certificationImageCompact: { height: 28 },
-});
+  });
+}
 
 export function CorporateQuotationPdf({
   images,
@@ -205,6 +210,7 @@ export function CorporateQuotationPdf({
 }: QuotationPdfRendererProps) {
   const { calculation, payload } = model;
   const theme = quotationThemePalette(payload.layout.config.themeColor);
+  const styles = createStyles(theme);
   const themedSharedStyles = {
     ...styles,
     grandTotal: { ...styles.grandTotal, borderTopColor: theme.primary },
