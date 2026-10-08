@@ -45,13 +45,14 @@ function run(executable, args, env) {
 
 export async function runStagingCloudflare(command) {
   if (command !== "deploy" && command !== "upload") throw new Error("Usage: node scripts/run-staging-cloudflare.mjs <deploy|upload>");
-  const env = { ...process.env, ...stagingPublicEnvironment(), OPEN_NEXT_DEPLOY: "true" };
+  const env = { ...process.env, ...stagingPublicEnvironment(), CLOUDFLARE_ACCOUNT_ID: "0df55f166fa309dcc904e992c43f86db", OPEN_NEXT_DEPLOY: "true" };
   const openNextCli = join(process.cwd(), "node_modules", "@opennextjs", "cloudflare", "dist", "cli", "index.js");
   const wranglerCli = join(process.cwd(), "node_modules", ".bin", process.platform === "win32" ? "wrangler.cmd" : "wrangler");
   try {
     await withProductionEnvironmentExcluded(process.cwd(), async () => {
       run(process.execPath, [openNextCli, "build"], env);
     });
+    run(process.execPath, [openNextCli, "populateCache", "remote", "--config", "wrangler.staging.jsonc"], env);
     run(wranglerCli, [command, "-c", "wrangler.staging.jsonc", "--keep-vars"], env);
   } catch (error) {
     if (error instanceof CommandExitError) process.exitCode = error.exitCode;

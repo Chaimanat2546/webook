@@ -12,14 +12,16 @@ export interface ThaiMonthPickerProps {
   all?: boolean;
   className?: string;
   month: string;
+  maxMonth?: string;
   onMonthChange: (month: string) => void;
 }
 
 const MIN_BUDDHIST_YEAR = MIN_GREGORIAN_YEAR + 543;
 const MAX_BUDDHIST_YEAR = MAX_GREGORIAN_YEAR + 543;
 
-export function ThaiMonthPicker({ all = false, className, month, onMonthChange }: ThaiMonthPickerProps) {
+export function ThaiMonthPicker({ all = false, className, month, maxMonth, onMonthChange }: ThaiMonthPickerProps) {
   const selected = parseThaiMonth(month);
+  const maxYear = maxMonth ? parseThaiMonth(maxMonth).year : MAX_BUDDHIST_YEAR;
   const [year, setYear] = useState(selected.year);
 
   return (
@@ -34,13 +36,14 @@ export function ThaiMonthPicker({ all = false, className, month, onMonthChange }
         <div className="mb-3 flex items-center justify-between">
           <Button aria-label="ปีก่อนหน้า" disabled={year === MIN_BUDDHIST_YEAR} onClick={() => setYear((current) => current - 1)} size="icon-sm" type="button" variant="ghost"><ChevronLeftIcon aria-hidden /></Button>
           <span aria-live="polite" className="font-medium">{year}</span>
-          <Button aria-label="ปีถัดไป" disabled={year === MAX_BUDDHIST_YEAR} onClick={() => setYear((current) => current + 1)} size="icon-sm" type="button" variant="ghost"><ChevronRightIcon aria-hidden /></Button>
+          <Button aria-label="ปีถัดไป" disabled={year >= maxYear} onClick={() => setYear((current) => current + 1)} size="icon-sm" type="button" variant="ghost"><ChevronRightIcon aria-hidden /></Button>
         </div>
         <div aria-label={`เลือกเดือน ปี ${year}`} className="grid grid-cols-3 gap-1" role="group">
           {THAI_MONTH_NAMES.map((name, index) => {
             const monthNumber = index + 1;
             const active = selected.year === year && selected.month === monthNumber;
-            return <DropdownMenuItem aria-current={active ? "true" : undefined} className={`min-h-11 justify-center px-2 text-center ${active ? "bg-primary text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground" : ""}`} key={name} onSelect={() => onMonthChange(thaiMonthValue({ month: monthNumber, year }))}>{name}</DropdownMenuItem>;
+            const value = thaiMonthValue({ month: monthNumber, year });
+            return <DropdownMenuItem disabled={maxMonth !== undefined && value > maxMonth} aria-current={active ? "true" : undefined} className={`min-h-11 justify-center px-2 text-center ${active ? "bg-primary text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground" : ""}`} key={name} onSelect={() => onMonthChange(value)}>{name}</DropdownMenuItem>;
           })}
         </div>
       </DropdownMenuContent>

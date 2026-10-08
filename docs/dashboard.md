@@ -1,5 +1,7 @@
 # Booking dashboard
 
+Website statistics are a separate admin-only task at `/admin/dashboard/websites`, linked from the role-1 overview. It consumes each allowlisted seller's first-party reporting API; see [website analytics](website-analytics.md) for credentials, metrics, coverage and API contracts. Booking totals and owner permissions are unchanged.
+
 `/admin/dashboard` is a read-only monthly overview. Desktop navigation exposes Dashboard; on mobile it is in the More sidebar. Existing booking-edit permissions are not expanded.
 
 ## Access
@@ -192,3 +194,11 @@ tested (the disposable database suite covers it). No application Worker was
 deployed, no browser end-to-end test was performed, and this small dataset does
 not validate high-volume concurrency or live nested-plan performance. Dense
 temporary I/O and pooled generic-plan owner selectivity remain load-test work.
+
+The admin overview includes the streamed website analytics summary below the main dashboard sections. It lists site/domain, load status and six monthly totals; site-name links open the chosen site's analytics for the selected month. Owners never mount the summary loader. Future months show a no-statistics message without source requests or invalid links. See docs/website-analytics.md; focused check: tests/website-analytics-summary.test.ts.
+
+### Shared application palette
+
+The website summary uses compact rows below the `md` breakpoint: site/domain and load status, three headline counts (views, contacts, gallery opens), and a native disclosure for phone/LINE/chat counts. Site links retain the selected month. Desktop retains the complete table; unavailable values remain dashes in both layouts.
+
+`app/globals.css` owns the white/slate surfaces, blue primary/actions and green second chart series for the whole app, with corresponding dark tokens. Sidebar active and hover styles use shared sidebar tokens instead of literal black. The layout viewport and PWA manifest use the same blue theme color. Website analytics no longer overrides the palette locally; semantic destructive/status and quotation-specific document colors retain their owners.

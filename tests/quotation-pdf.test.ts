@@ -71,8 +71,8 @@ describe("quotation PDF", () => {
   it("renders Corporate with its own navy PDF layout", () => {
     for (const marker of [
       "CorporateQuotationPdf",
-      "#142d4c",
-      "#f2f5f8",
+      "theme.primary",
+      "theme.light",
       "data-pdf-header",
       "data-pdf-customer",
       "data-pdf-items",
@@ -93,8 +93,8 @@ describe("quotation PDF", () => {
   it("renders Hospitality with its own green PDF layout", () => {
     for (const marker of [
       "HospitalityQuotationPdf",
-      "#286a5b",
-      "#c79b58",
+      "theme.primary",
+      "theme.muted",
       "data-pdf-header",
       "data-pdf-items",
       "data-pdf-totals",
@@ -108,6 +108,14 @@ describe("quotation PDF", () => {
     }
     assert.doesNotMatch(hospitalityPdf, /CurrentQuotationPdf/);
     assert.match(pdfSource, /quotation-pdf-hospitality/);
+  });
+
+  it("derives Corporate and Hospitality PDF brand colors from the saved theme", () => {
+    for (const template of [corporatePdf, hospitalityPdf]) {
+      assert.match(template, /const theme = quotationThemePalette\(payload\.layout\.config\.themeColor\)/);
+      assert.match(template, /function createStyles\(theme: QuotationThemePalette\)/);
+      assert.match(template, /const styles = createStyles\(theme\)/);
+    }
   });
 
   it("aligns the Hospitality seller block with its swapped side", () => {
