@@ -135,7 +135,7 @@ test("repository paginates dense minimal booking rows with exact pair filter", a
   const rows = await createHouseBookingsRepository(client).galleryBookingSlices([house(101), house(102)], "2026-08-31", "2026-10-12");
   assert.equal(rows.length, 500);
   assert.deepEqual(requests.map(request => request.range), [[0, 499], [500, 999]]);
-  assert.equal(requests[0].fields, "id,listing_id,houseid,check_in,check_out,status");
+  assert.equal(requests[0].fields, "id,listing_id,houseid,check_in,check_out,status,calendar_source_id,booking_type");
   assert.equal(requests[0].filters.pairs, "and(listing_id.eq.listing-101,houseid.eq.101),and(listing_id.eq.listing-102,houseid.eq.102)");
   assert.deepEqual(requests[0].filters["lt:check_in"], "2026-10-12");
   assert.deepEqual(requests[0].filters["gt:check_out"], "2026-08-31");

@@ -9,6 +9,7 @@ import type { BookingGalleryCard as GalleryCard, GalleryHouseSummary } from "@/l
 import { BookingGalleryDays } from "./booking-gallery-days";
 import { BookingGalleryDatesSkeleton } from "./booking-gallery-skeleton";
 import "./booking-gallery-card.css";
+import Link from 'next/link';
 
 interface Props {
   house: GalleryHouseSummary;
@@ -36,6 +37,7 @@ export function BookingGalleryCard({ house, card, month, today, loading, error, 
       <CardTitle className="truncate" title={house.title}>{house.title}</CardTitle>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] text-muted-foreground">DV {house.property_id}</span>
+        <Link className="text-xs underline" href={`/admin/houses/${house.property_id}/calendar-sources`}>แหล่ง iCal</Link>
         <Badge variant={house.is_active === true ? "default" : "secondary"}>
           {house.is_active === true ? "เปิดใช้งาน" : house.is_active === false ? "ปิดใช้งาน" : "ไม่ทราบสถานะ"}
         </Badge>
@@ -55,8 +57,13 @@ export function BookingGalleryCard({ house, card, month, today, loading, error, 
           <span><i className="booking-gallery-dot booking-gallery-dot-confirmed" />ติดจอง</span>
           <span><i className="booking-gallery-dot booking-gallery-dot-waiting" />รอโอน</span>
           <span><i className="booking-gallery-dot booking-gallery-dot-repair" />ปิดซ่อม</span>
+          {Object.values(card.days).some(day=>day.externalBookings?.length)&&<span><i className="booking-gallery-dot booking-gallery-dot-external" />ไม่ว่างจาก iCal</span>}
           {Object.values(card.days).some(day => day.tone === "unknown") && <span><i className="booking-gallery-dot booking-gallery-dot-unknown" />สถานะไม่ทราบ (ติดจอง)</span>}
         </div>
+        {card.calendarSync?.sources.filter(source=>source.enabled).map(source=><p key={source.id} className="text-xs text-muted-foreground">
+          {source.label}: {source.last_synced_at?`ซิงก์ ${new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(new Date(source.last_synced_at))}`:'ยังไม่มีข้อมูลจากต้นทาง'}{source.last_error_code?' · ซิงก์ไม่สำเร็จ':''}
+        </p>)}
+        {card.calendarSync?.stale&&<p role="status" className="text-xs text-amber-700">ข้อมูล iCal บางแหล่งยังไม่ล่าสุด</p>}
       </> : error ? <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3 text-sm text-destructive">
         <p>{error}</p><Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => onRetry(month)}>ลองอีกครั้ง</Button>
       </div> : <BookingGalleryDatesSkeleton />}

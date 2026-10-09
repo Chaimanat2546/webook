@@ -1,8 +1,8 @@
 import type { Booking } from "./house-bookings.ts";
 
-export type OccupiedBooking = Pick<Booking, "id" | "check_in" | "check_out" | "status">;
-export function bookingConflict(rows: OccupiedBooking[], start: string, end: string, excludeId?: string) {
-  return rows.find(row => row.id !== excludeId && row.status !== "cancelled" && row.check_in < end && row.check_out > start);
+export type OccupiedBooking = Pick<Booking, "id" | "check_in" | "check_out" | "status" | "calendar_source_id">;
+export function bookingConflict(rows: OccupiedBooking[], start: string, end: string, excludeId?: string, ignoreExternal = false) {
+  return rows.find(row => row.id !== excludeId && row.status !== "cancelled" && !(ignoreExternal && row.calendar_source_id) && row.check_in < end && row.check_out > start);
 }
 export function occupiedNight(rows: OccupiedBooking[], day: string, excludeId?: string) {
   return rows.find(row => row.id !== excludeId && row.status !== "cancelled" && row.check_in <= day && row.check_out > day);

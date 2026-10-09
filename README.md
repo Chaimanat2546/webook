@@ -72,6 +72,22 @@ never copied into quotation snapshots.
 See [quotation management](docs/quotation-management.md) for behavior and
 verification details.
 
+## Airbnb calendar import
+
+The booking gallery imports Airbnb unavailable dates on demand into central
+`bookings`. Each house can have multiple iCal connections in
+`property_calendar_sources`. Imported rows are read-only and excluded from
+dashboard business reports; they are not customer bookings or payment records.
+This feature does not export availability to any OTA.
+
+Source management is at `/admin/houses/[propertyId]/calendar-sources` and requires
+`allow_tools.allow_booking = true` and `role_id = 1`. Booking operators can view
+imported dates in `/admin/bookings`. Configure the server-only
+`ICAL_SOURCE_ENCRYPTION_KEY` and release the new migration together with the
+application guards/report filters before adding sources.
+See [iCal configuration and behavior](docs/ical-booking-import.md) and
+[verification and release gaps](docs/superpowers/reports/2026-10-09-ical-booking-import-verification.md).
+
 ## Tech Stack
 
 - Next.js App Router

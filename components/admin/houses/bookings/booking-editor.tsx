@@ -66,13 +66,14 @@ export function BookingEditor({ propertyId, bookingId, initialDate = "", onClose
     } catch { toast.error("ยกเลิกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
     finally { saving.current = false; setEditorBusy(false); }
   }
-  const headerActions = <div className="flex shrink-0 items-center gap-1">{booking && booking.status !== "cancelled" && <Button variant="ghost" size="icon" className="text-destructive" disabled={editorBusy} aria-label="ยกเลิกการจอง" title="ยกเลิกการจอง" onClick={() => { if (!saving.current) { setCancelHasUnsaved(dirty.current); setCancelOpen(true); } }}><Trash2 aria-hidden className="size-4" /></Button>}<Button variant="ghost" size="sm" onClick={close} aria-label="ปิดแผงแก้ไข">ปิด</Button></div>;
-  const title = <><CalendarDays aria-hidden className="size-5 shrink-0" />{bookingId ? "แก้ไขการจอง" : "สร้างการจอง"}</>;
+  const headerActions = <div className="flex shrink-0 items-center gap-1">{booking && !booking.calendar_source_id && booking.status !== "cancelled" && <Button variant="ghost" size="icon" className="text-destructive" disabled={editorBusy} aria-label="ยกเลิกการจอง" title="ยกเลิกการจอง" onClick={() => { if (!saving.current) { setCancelHasUnsaved(dirty.current); setCancelOpen(true); } }}><Trash2 aria-hidden className="size-4" /></Button>}<Button variant="ghost" size="sm" onClick={close} aria-label="ปิดแผงแก้ไข">ปิด</Button></div>;
+  const title = <><CalendarDays aria-hidden className="size-5 shrink-0" />{booking?.calendar_source_id ? `ไม่ว่างจาก ${booking.booking_type ?? 'iCal'}` : bookingId ? "แก้ไขการจอง" : "สร้างการจอง"}</>;
   const description = <>{booking ? `${booking.booking_code} · ` : ""}DV-{propertyId}</>;
   const body = <>
       {presentation === "dialog" ? <DialogHeader className="shrink-0 border-b p-5"><div className="flex items-start justify-between gap-3"><div><DialogTitle className="flex items-center gap-2">{title}</DialogTitle><DialogDescription className="break-words">{description}</DialogDescription></div>{headerActions}</div></DialogHeader>
         : <SheetHeader className="border-b p-5"><div className="flex items-start justify-between gap-3"><div><SheetTitle className="flex items-center gap-2">{title}</SheetTitle><SheetDescription className="break-words">{description}</SheetDescription></div>{headerActions}</div></SheetHeader>}
-      {loading ? <BookingEditorSkeleton presentation={presentation} /> : error ? <div className="space-y-3 p-5"><p role="alert" className="text-destructive">{error}</p><Button onClick={() => void load()}>ลองอีกครั้ง</Button></div> :
+      {loading ? <BookingEditorSkeleton presentation={presentation} /> : error ? <div className="space-y-3 p-5"><p role="alert" className="text-destructive">{error}</p><Button onClick={() => void load()}>ลองอีกครั้ง</Button></div> : booking?.calendar_source_id ?
+        <div className="space-y-3 overflow-y-auto p-5"><p>วันเข้าพัก: {booking.check_in}</p><p>วันเช็กเอาต์: {booking.check_out} (ไม่รวมวันนี้)</p><p className="text-sm text-muted-foreground">ข้อมูลจากปฏิทินภายนอก แก้ไขผ่านต้นทางแล้วรอการซิงก์</p></div> :
         <BookingEditorForm propertyId={propertyId} booking={booking} initialDate={initialDate} presentation={presentation} onDirty={value => { dirty.current = value; }} onSaving={value => { saving.current = value; setEditorBusy(value); }} onClose={close}
           onSaved={value => { dirty.current = false; onSaved(value); onClose(); }} />}
       <Dialog open={cancelOpen} onOpenChange={open => { if (!saving.current) setCancelOpen(open); }}>

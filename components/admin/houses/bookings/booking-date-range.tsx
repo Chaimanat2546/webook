@@ -48,7 +48,7 @@ export function BookingDateRange({ propertyId, excludeId, start, end, revision, 
   const error = failure?.key === key ? failure.message : "";
   const loading = !ready && !error;
   const rows = ready ? loaded.rows : [];
-  const conflict = start && end ? bookingConflict(rows, start, end, excludeId) : undefined;
+  const conflict = start && end ? bookingConflict(rows, start, end, excludeId, unchangedStay) : undefined;
   useEffect(() => {
     onValid(!!ready && !!start && end > start && !conflict && !past);
   }, [ready, start, end, conflict, past, onValid]);

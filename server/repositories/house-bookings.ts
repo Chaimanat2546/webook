@@ -12,7 +12,7 @@ function mapCustomerDetail(value: unknown): BookingCustomerDetail {
   for (const field of CUSTOMER_FIELDS) customer[field.key] = nullableText(row[field.key]);
   return customer;
 }
-const selection = "id,booking_code,listing_id,houseid,agent_id,customer_id,booking_type,status,check_in,check_out,price_sell,price_max,deposit_amount,extra_charge,quantity,details,note,extra_person,insurance,checkin_time,checkout_time,payment_expires_at,updated_at,customer:customers(id,first_name,last_name,phone,dv_id)";
+const selection = "id,booking_code,listing_id,houseid,agent_id,customer_id,booking_type,calendar_source_id,external_uid,status,check_in,check_out,price_sell,price_max,deposit_amount,extra_charge,quantity,details,note,extra_person,insurance,checkin_time,checkout_time,payment_expires_at,updated_at,customer:customers(id,first_name,last_name,phone,dv_id)";
 function text(value: unknown): string { return typeof value === "string" ? value : ""; }
 function nullableText(value: unknown): string | null { return value == null ? null : text(value); }
 function number(value: unknown): number {
@@ -26,7 +26,8 @@ export function mapBookingCustomer(value: unknown): BookingCustomer {
 }
 export function mapBooking(value: unknown): Booking {
   const b = record(value);
-  return { id: bookingId(b.id), booking_code: text(b.booking_code), listing_id: text(b.listing_id), houseid: bookingId(b.houseid), agent_id: b.agent_id == null ? null : bookingAgencyId(b.agent_id), customer_id: b.customer_id == null ? null : bookingId(b.customer_id), customer: b.customer && record(b.customer).dv_id != null && bookingId(record(b.customer).dv_id) === bookingId(b.houseid) ? mapBookingCustomer(b.customer) : null, check_in: text(b.check_in), check_out: text(b.check_out), status: text(b.status), booking_type: nullableText(b.booking_type), price_sell: number(b.price_sell), price_max: b.price_max == null ? null : number(b.price_max), deposit_amount: number(b.deposit_amount), extra_charge: number(b.extra_charge), quantity: number(b.quantity), details: nullableText(b.details), note: nullableText(b.note), extra_person: b.extra_person == null ? null : number(b.extra_person), insurance: b.insurance == null ? null : number(b.insurance), checkin_time: nullableText(b.checkin_time), checkout_time: nullableText(b.checkout_time), payment_expires_at: nullableText(b.payment_expires_at), updated_at: text(b.updated_at) };
+  const external = { calendar_source_id: nullableText(b.calendar_source_id), external_uid: nullableText(b.external_uid) };
+  return { ...external, id: bookingId(b.id), booking_code: text(b.booking_code), listing_id: text(b.listing_id), houseid: bookingId(b.houseid), agent_id: b.agent_id == null ? null : bookingAgencyId(b.agent_id), customer_id: b.customer_id == null ? null : bookingId(b.customer_id), customer: b.customer && record(b.customer).dv_id != null && bookingId(record(b.customer).dv_id) === bookingId(b.houseid) ? mapBookingCustomer(b.customer) : null, check_in: text(b.check_in), check_out: text(b.check_out), status: text(b.status), booking_type: nullableText(b.booking_type), price_sell: number(b.price_sell), price_max: b.price_max == null ? null : number(b.price_max), deposit_amount: number(b.deposit_amount), extra_charge: number(b.extra_charge), quantity: number(b.quantity), details: nullableText(b.details), note: nullableText(b.note), extra_person: b.extra_person == null ? null : number(b.extra_person), insurance: b.insurance == null ? null : number(b.insurance), checkin_time: nullableText(b.checkin_time), checkout_time: nullableText(b.checkout_time), payment_expires_at: nullableText(b.payment_expires_at), updated_at: text(b.updated_at) };
 }
 export function mapBookingGalleryHouse(value: unknown): GalleryHouseSummary {
   const row = record(value);
@@ -44,7 +45,7 @@ function galleryLiteralTitlePattern(search: string): string {
 }
 function mapGalleryBookingSlice(value: unknown): GalleryBookingSlice {
   const row = record(value);
-  return { id: bookingId(row.id), listing_id: text(row.listing_id), houseid: bookingId(row.houseid), check_in: text(row.check_in), check_out: text(row.check_out), status: nullableText(row.status) };
+  return { id: bookingId(row.id), listing_id: text(row.listing_id), houseid: bookingId(row.houseid), check_in: text(row.check_in), check_out: text(row.check_out), status: nullableText(row.status), calendar_source_id: nullableText(row.calendar_source_id), booking_type: nullableText(row.booking_type) };
 }
 export function createHouseBookingsRepository(client: SupabaseClient) {
   return {
@@ -99,7 +100,7 @@ export function createHouseBookingsRepository(client: SupabaseClient) {
       const allowed = new Set(houses.map(house => `${house.id}:${house.property_id}`));
       const rows: GalleryBookingSlice[] = [];
       for (let from = 0; ; from += 500) {
-        const { data, error } = await client.from("bookings").select("id,listing_id,houseid,check_in,check_out,status")
+        const { data, error } = await client.from("bookings").select("id,listing_id,houseid,check_in,check_out,status,calendar_source_id,booking_type")
           .or(pairs.join(",")).lt("check_in", end).gt("check_out", start).order("check_in").order("id").range(from, from + 499);
         if (error) throw error;
         const page: unknown[] = data ?? [];
