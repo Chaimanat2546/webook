@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
+import { createElement, type ComponentType } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 const gallery = () => readFileSync(new URL("../components/admin/bookings/booking-calendar-gallery.tsx", import.meta.url), "utf8");
 const days = () => readFileSync(new URL("../components/admin/bookings/booking-gallery-days.tsx", import.meta.url), "utf8");
@@ -47,12 +52,20 @@ test("route mounts the gallery after the existing server authorization", () => {
   assert.match(source, /<BookingCalendarGallery\s+initialSearch=\{initialSearch\}\s+initialSearchMode=\{initialSearchMode\}\s*\/>/);
 });
 
-test("gallery editor reuses one booking form with Sheet and centred Dialog presentations", () => {
+test("gallery editor reuses one booking form with Sheet and centred Dialog presentations", async () => {
   const source = editor();
   assert.match(source, /export function BookingEditorForm/);
   assert.match(source, /<SheetContent/);
   assert.match(source, /<DialogContent/);
-  assert.match(source, /lg:grid-cols-\[minmax\(/);
+  const output=await build({entryPoints:[fileURLToPath(new URL('../components/admin/houses/bookings/booking-editor-layout.tsx',import.meta.url))],bundle:true,write:false,format:'cjs',platform:'node',packages:'external'});
+  const loaded={exports:{} as Record<string,unknown>};
+  new Function('require','module','exports',output.outputFiles[0].text)(createRequire(import.meta.url),loaded,loaded.exports);
+  const Layout=loaded.exports.BookingEditorLayout as ComponentType<Record<string,unknown>>;
+  const dialog=renderToStaticMarkup(createElement(Layout,{presentation:'dialog',dates:createElement('p',null,'calendar')},createElement('p',null,'details')));
+  assert.match(dialog,/lg:grid-cols-\[minmax\(/);
+  assert.ok(dialog.indexOf('calendar')<dialog.indexOf('details'));
+  const sheet=renderToStaticMarkup(createElement(Layout,{presentation:'sheet',dates:'calendar'},'details'));
+  assert.doesNotMatch(sheet,/grid-cols/);
   assert.match(source, /BookingEditorSkeleton presentation=\{presentation\}/);
   assert.match(skeleton(), /presentation === "dialog"/);
   assert.match(source, /<div className="min-h-0 min-w-0 flex-1 overflow-y-auto">\s*<fieldset/);

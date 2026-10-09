@@ -14,6 +14,7 @@ import {
   canUseAccommodation,
   canManageHousePrices,
   canViewHousePrices,
+  canUseBooking,
   requireHouseListAdmin,
 } from "../../../server/auth/admin";
 import { getPaginatedListings } from "../../../server/repositories/listings";
@@ -74,6 +75,7 @@ export default async function HousesPage({
             canManageAccommodation={canUseAccommodation(adminUser)}
             canManagePrices={canManageHousePrices(adminUser)}
             canViewPrices={canViewHousePrices(adminUser)}
+            canManageCalendars={canUseBooking(adminUser) && adminUser?.role_id === 1}
             houses={houses}
             returnTo={returnTo}
           />

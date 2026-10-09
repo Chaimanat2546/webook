@@ -9,6 +9,7 @@ import {
   PencilLineIcon,
   SparklesIcon,
   Toilet,
+  CalendarDays,
 } from "lucide-react";
 
 import {
@@ -76,12 +77,14 @@ function HouseActionsMenu({
   canManageAccommodation,
   canManagePrices,
   canViewPrices,
+  canManageCalendars,
   propertyId,
   returnTo,
 }: {
   canManageAccommodation: boolean;
   canManagePrices: boolean;
   canViewPrices: boolean;
+  canManageCalendars: boolean;
   propertyId: string;
   returnTo: string;
 }) {
@@ -124,6 +127,14 @@ function HouseActionsMenu({
               </Link>
             </DropdownMenuItem>
           ) : null}
+          {canManageCalendars ? (
+            <DropdownMenuItem asChild>
+              <Link href={`/admin/houses/${encodeURIComponent(propertyId)}?${new URLSearchParams({section:'calendar',returnTo})}`}>
+                <CalendarDays aria-hidden />
+                เชื่อมปฏิทินภายนอก
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -134,12 +145,14 @@ function HouseMobileActionsMenu({
   canManageAccommodation,
   canManagePrices,
   canViewPrices,
+  canManageCalendars,
   propertyId,
   returnTo,
 }: {
   canManageAccommodation: boolean;
   canManagePrices: boolean;
   canViewPrices: boolean;
+  canManageCalendars: boolean;
   propertyId: string;
   returnTo: string;
 }) {
@@ -186,6 +199,14 @@ function HouseMobileActionsMenu({
               </Link>
             </Button>
           ) : null}
+          {canManageCalendars ? (
+            <Button asChild className="justify-start" variant="outline">
+              <Link href={`/admin/houses/${encodeURIComponent(propertyId)}?${new URLSearchParams({section:'calendar',returnTo})}`}>
+                <CalendarDays aria-hidden />
+                เชื่อมปฏิทินภายนอก
+              </Link>
+            </Button>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
@@ -196,12 +217,14 @@ export function HouseList({
   canManageAccommodation,
   canManagePrices,
   canViewPrices,
+  canManageCalendars = false,
   houses,
   returnTo,
 }: {
   canManageAccommodation: boolean;
   canManagePrices: boolean;
   canViewPrices: boolean;
+  canManageCalendars?: boolean;
   houses: HouseListItem[];
   returnTo: string;
 }) {
@@ -242,6 +265,7 @@ export function HouseList({
                 canManageAccommodation={canManageAccommodation}
                 canManagePrices={canManagePrices}
                 canViewPrices={canViewPrices}
+                canManageCalendars={canManageCalendars}
                 propertyId={house.property_id}
                 returnTo={returnTo}
               />
@@ -283,6 +307,7 @@ export function HouseList({
                 canManageAccommodation={canManageAccommodation}
                     canManagePrices={canManagePrices}
                     canViewPrices={canViewPrices}
+                    canManageCalendars={canManageCalendars}
                     propertyId={house.property_id}
                     returnTo={returnTo}
                   />

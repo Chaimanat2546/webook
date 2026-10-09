@@ -22,7 +22,7 @@ describe("WeBooks Staging Cloudflare boundary", () => {
     const guard = readFileSync(new URL("../scripts/assert-staging-cloudflare-target.mjs", import.meta.url), "utf8");
     const runner = readFileSync(new URL("../scripts/run-staging-cloudflare.mjs", import.meta.url), "utf8");
     assert.match(guard, /Object\.hasOwn\(config, "services"\)/);
-    assert.match(runner, /\[command, "-c", "wrangler\.staging\.jsonc", "--keep-vars"\]/);
+    assert.match(runner, /\[command, "-c", "wrangler\.staging\.jsonc", "--keep-vars", \.\.\.stagingSecretArguments\(\)\]/);
   });
 
   it("runs Staging migrations only after linking the fixed CI project", () => {

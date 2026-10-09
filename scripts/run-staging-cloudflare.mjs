@@ -43,6 +43,11 @@ function run(executable, args, env) {
   if (result.status !== 0) throw new CommandExitError(result.status ?? 1, `${executable} exited with status ${result.status ?? 1}`);
 }
 
+export function stagingSecretArguments(directory = process.cwd()) {
+  const path = join(directory, '.env.ical-staging');
+  return existsSync(path) ? ['--secrets-file', path] : [];
+}
+
 export async function runStagingCloudflare(command) {
   if (command !== "deploy" && command !== "upload") throw new Error("Usage: node scripts/run-staging-cloudflare.mjs <deploy|upload>");
   const env = { ...process.env, ...stagingPublicEnvironment(), CLOUDFLARE_ACCOUNT_ID: "0df55f166fa309dcc904e992c43f86db", OPEN_NEXT_DEPLOY: "true" };
@@ -53,7 +58,7 @@ export async function runStagingCloudflare(command) {
       run(process.execPath, [openNextCli, "build"], env);
     });
     run(process.execPath, [openNextCli, "populateCache", "remote", "--config", "wrangler.staging.jsonc"], env);
-    run(wranglerCli, [command, "-c", "wrangler.staging.jsonc", "--keep-vars"], env);
+    run(wranglerCli, [command, "-c", "wrangler.staging.jsonc", "--keep-vars", ...stagingSecretArguments()], env);
   } catch (error) {
     if (error instanceof CommandExitError) process.exitCode = error.exitCode;
     else throw error;

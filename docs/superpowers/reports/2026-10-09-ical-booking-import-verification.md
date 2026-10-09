@@ -105,3 +105,57 @@ automatically repaired.
 The local feature is ready for Staging acceptance, not yet verified as a deployed
 or Production-ready integration. Setup and operator behavior are documented in
 `docs/ical-booking-import.md` and `.env.example`.
+
+## Staging follow-up: read-only calendar details
+
+The earlier acceptance gaps above describe the initial feature checkpoint.
+The subsequent Staging checks confirmed a real Airbnb sync for test house
+DV 990001: 16 imported UIDs, no cross-house rows, and read-only details.
+Production was not touched.
+
+The detail dialog now uses the existing calendar day renderer with a read-only
+mode, a desktop two-column layout, and a single-column mobile/Sheet layout.
+The right-hand panel shows source, Thai check-in/out dates, exclusive-checkout
+nights, status, notes and actual Bangkok sync time. No customer values,
+feed URL, agency selector, save or cancel-booking control is displayed.
+
+Browser checks on Staging observed desktop 1280px, mobile 360px, month navigation,
+no horizontal dialog overflow, and Escape returning focus to the selected day.
+Automated UI tests cover read-only days, exact selected dates, cross-month
+checkout exclusion, cancelled/failed states, and reloading the selected booking
+after refresh so a new sync timestamp is not paired with stale details.
+Code review identified the stale-snapshot case; it was fixed and re-reviewed
+without remaining Important/Critical findings. A real screen-reader session
+and all error/empty-state browser scenarios were not exercised.
+
+Final local verification: typecheck passed; lint 0 errors/11 existing warnings;
+966 tests total, 962 passed, 0 failed, 4 opt-in/existing skips.
+# Shared calendar revision — 2026-10-09
+
+- User approved one Dialog and one left calendar component for internal and iCal bookings.
+- Both branches now reuse `BookingEditorLayout` and `BookingDateRange`; only right-hand details and allowed actions differ. Removed the separate iCal calendar grid/styles.
+- Read-only date-cell test observed failure for date mutation, then passed after the guard; accessibility regression observed the incorrect free-night label before correction.
+- `npm run build:pwa` + `npm run verify`: exit 0; 967 tests, 963 passed, 0 failed, 4 skipped; lint 0 errors and 11 existing warnings. Updated the moved-layout assertion to render the shared component.
+- Reviewer found no Critical/Important issues; minor selected-night accessible name corrected and tested.
+- `npm run deploy:cf:staging`: exit 0; Worker version `56c421cb-6fd4-4194-a47a-22a3b31076eb`. Compiled bundle includes Staging Supabase reference, not Production.
+- Browser: internal calendar/date controls and customer/price/save form remain present; iCal uses same calendar with 35 disabled date buttons and no save. At 360px, dialog width 345px, single column and no horizontal overflow; Escape returned focus to the trigger. No booking was created, edited or cancelled during UI checks.
+- Code remains uncommitted/unpushed; no Production deployment. Full screen-reader and real-device testing not performed.
+
+## House calendar settings and Airbnb identity — 2026-10-09
+
+- Airbnb provider row now uses installed `SiAirbnb`; other providers keep the calendar fallback.
+- Settings moved into `/admin/houses/[id]?section=calendar` using the existing house shell/category navigation, with label “เชื่อมปฏิทินภายนอก”. Legacy route authorizes then redirects.
+- Removed gallery settings link. Added desktop/mobile house-list entries gated by role 1 and booking permission, preserving returnTo. Server authorization still checks auth.uid before reading source data.
+- Form labels use everyday Thai. Feed input stays masked, with new-password autocomplete to avoid saved-login autofill; final browser check found both fields empty without printing their values.
+- TDD observed missing Airbnb SVG, missing booking-only list entries, and autocomplete regression before fixes. Real SSR tests cover the shared shell/nav, permission rejection before data reads, both list entries, and brand-icon fallback.
+- Final verify exit 0: 971 tests, 967 passed, 0 failed, 4 skipped. Typecheck passed; lint 0 errors/11 existing warnings. Reviewer entry-gap finding fixed and re-review approved.
+- Staging deploy exit 0; version `0545dd41-1d8c-421a-9ade-1dbcf1f02d87`. Browser verified house-to-calendar navigation, legacy redirect, and 360px no horizontal overflow. No feed or booking was saved, disabled or cancelled.
+- Uncommitted/unpushed; no Production deployment. Cross-browser autofill and real-device testing remain unverified.
+
+## Restore original house-list presentation — 2026-10-09
+
+- Removed the visible desktop calendar link and standalone mobile button. Calendar action now lives inside the existing three-dot dropdown and mobile management Sheet; no changes to table/card layout classes or columns.
+- Regression first failed because closed menus exposed additional calendar controls, then passed after moving both entries inside existing menus. Both menu destinations preserve property ID/returnTo and remain permission-gated.
+- Relevant 12 tests and typecheck passed; final verify exit 0: 971 tests, 967 passed, 0 failed, 4 skipped; lint 0 errors/11 existing warnings. Scoped reviewer approved with no remaining findings.
+- Staging deploy exit 0, version `3440282a-4ff9-41f8-b592-ccacd8dd39d8`; bundle includes Staging reference and no Production reference. Uncommitted/unpushed; no Production operations.
+- Staging browser verified the closed desktop table contains only the original three-dot action; the calendar entry appears inside its dropdown. At 360px the card retains its original management button, with the calendar entry inside the management Sheet. Both destinations target the correct house and preserve returnTo. Screenshots saved; viewport reset. No booking/source data was modified during these checks.

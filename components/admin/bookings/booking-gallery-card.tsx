@@ -9,7 +9,6 @@ import type { BookingGalleryCard as GalleryCard, GalleryHouseSummary } from "@/l
 import { BookingGalleryDays } from "./booking-gallery-days";
 import { BookingGalleryDatesSkeleton } from "./booking-gallery-skeleton";
 import "./booking-gallery-card.css";
-import Link from 'next/link';
 
 interface Props {
   house: GalleryHouseSummary;
@@ -37,7 +36,6 @@ export function BookingGalleryCard({ house, card, month, today, loading, error, 
       <CardTitle className="truncate" title={house.title}>{house.title}</CardTitle>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] text-muted-foreground">DV {house.property_id}</span>
-        <Link className="text-xs underline" href={`/admin/houses/${house.property_id}/calendar-sources`}>แหล่ง iCal</Link>
         <Badge variant={house.is_active === true ? "default" : "secondary"}>
           {house.is_active === true ? "เปิดใช้งาน" : house.is_active === false ? "ปิดใช้งาน" : "ไม่ทราบสถานะ"}
         </Badge>

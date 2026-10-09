@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { toast } from "sonner";
 import { BookingDateRange } from "./booking-date-range";
+import { BookingEditorLayout } from './booking-editor-layout';
+import { IcalBookingDetails } from "./ical-booking-details";
 import { BookingCustomerPicker } from "./booking-customer-picker";
 import { BookingHouseInformation } from "./booking-house-information";
 import { BookingEditorSkeleton } from "./booking-skeletons";
@@ -67,13 +69,13 @@ export function BookingEditor({ propertyId, bookingId, initialDate = "", onClose
     finally { saving.current = false; setEditorBusy(false); }
   }
   const headerActions = <div className="flex shrink-0 items-center gap-1">{booking && !booking.calendar_source_id && booking.status !== "cancelled" && <Button variant="ghost" size="icon" className="text-destructive" disabled={editorBusy} aria-label="ยกเลิกการจอง" title="ยกเลิกการจอง" onClick={() => { if (!saving.current) { setCancelHasUnsaved(dirty.current); setCancelOpen(true); } }}><Trash2 aria-hidden className="size-4" /></Button>}<Button variant="ghost" size="sm" onClick={close} aria-label="ปิดแผงแก้ไข">ปิด</Button></div>;
-  const title = <><CalendarDays aria-hidden className="size-5 shrink-0" />{booking?.calendar_source_id ? `ไม่ว่างจาก ${booking.booking_type ?? 'iCal'}` : bookingId ? "แก้ไขการจอง" : "สร้างการจอง"}</>;
-  const description = <>{booking ? `${booking.booking_code} · ` : ""}DV-{propertyId}</>;
+  const title = <><CalendarDays aria-hidden className="size-5 shrink-0" />{booking?.calendar_source_id ? "ปฏิทินการจอง" : bookingId ? "แก้ไขการจอง" : "สร้างการจอง"}</>;
+  const description = <>{booking && !booking.calendar_source_id ? `${booking.booking_code} · ` : ""}DV-{propertyId}</>;
   const body = <>
       {presentation === "dialog" ? <DialogHeader className="shrink-0 border-b p-5"><div className="flex items-start justify-between gap-3"><div><DialogTitle className="flex items-center gap-2">{title}</DialogTitle><DialogDescription className="break-words">{description}</DialogDescription></div>{headerActions}</div></DialogHeader>
         : <SheetHeader className="border-b p-5"><div className="flex items-start justify-between gap-3"><div><SheetTitle className="flex items-center gap-2">{title}</SheetTitle><SheetDescription className="break-words">{description}</SheetDescription></div>{headerActions}</div></SheetHeader>}
       {loading ? <BookingEditorSkeleton presentation={presentation} /> : error ? <div className="space-y-3 p-5"><p role="alert" className="text-destructive">{error}</p><Button onClick={() => void load()}>ลองอีกครั้ง</Button></div> : booking?.calendar_source_id ?
-        <div className="space-y-3 overflow-y-auto p-5"><p>วันเข้าพัก: {booking.check_in}</p><p>วันเช็กเอาต์: {booking.check_out} (ไม่รวมวันนี้)</p><p className="text-sm text-muted-foreground">ข้อมูลจากปฏิทินภายนอก แก้ไขผ่านต้นทางแล้วรอการซิงก์</p></div> :
+        <IcalBookingDetails propertyId={propertyId} booking={booking} onClose={close} presentation={presentation}/> :
         <BookingEditorForm propertyId={propertyId} booking={booking} initialDate={initialDate} presentation={presentation} onDirty={value => { dirty.current = value; }} onSaving={value => { saving.current = value; setEditorBusy(value); }} onClose={close}
           onSaved={value => { dirty.current = false; onSaved(value); onClose(); }} />}
       <Dialog open={cancelOpen} onOpenChange={open => { if (!saving.current) setCancelOpen(open); }}>
@@ -157,13 +159,11 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
   const supportedStatus = BOOKING_STATUSES.some(status => status.value === form.status);
   return <form onSubmit={save} className="flex min-h-0 flex-1 flex-col">
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto"><fieldset disabled={saving} className="min-w-0 p-5">
-      <div className={presentation === "dialog" ? "grid gap-5 lg:grid-cols-[minmax(19rem,0.8fr)_minmax(0,1.2fr)]" : "space-y-5"}>
-      <section className="space-y-3"><h3 className="flex items-center gap-2 font-semibold"><CalendarDays aria-hidden className="size-4 shrink-0 text-muted-foreground" />ช่วงเข้าพัก</h3>
+      <BookingEditorLayout presentation={presentation} dates={<>
         <BookingDateRange propertyId={propertyId} excludeId={booking?.id} originalStart={booking?.check_in} originalEnd={booking?.check_out} originalStatus={booking?.status} start={form.check_in} end={form.check_out} revision={availabilityRevision}
           onValid={setDatesValid} onChange={(check_in, check_out) => { setDatesValid(false); setForm(previous => ({ ...previous, check_in, check_out })); }} />
         {datesChanged && form.status !== "repair" && <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">เปลี่ยนวันแล้ว ยอดเงินยังเท่าเดิม โปรดตรวจสอบ</p>}
-      </section>
-      <div className="space-y-5">
+      </>}>
       {form.status !== "repair" && agencyAccess.canManageBookingAgency && <section className="space-y-3 border-t pt-4"><label className="space-y-1"><span>เอเจนซี่</span><select className="h-8 w-full rounded-lg border bg-background px-2" value={form.agent_id ?? ""} onChange={event => change("agent_id", event.target.value || null)}>{bookingAgencyChoices(true, agencyAccess.agencies, form.agent_id ?? booking?.agent_id ?? null).map((agency) => <option key={agency.id} value={agency.id}>{agency.label}</option>)}</select></label></section>}
       {form.status !== "repair" && <section className="space-y-3 border-t pt-4">
         <BookingCustomerPicker propertyId={propertyId} customer={customer} onBusy={busy => { setCustomerBusy(busy); onSaving(busy); }} onSelect={next => { setCustomer(next); change("customer_id", next.id); }} />
@@ -179,8 +179,7 @@ export function BookingEditorForm({ propertyId, booking, initialDate, onDirty, o
         {form.status !== "repair" && ([{ key: "price_max", label: "ค่าบ้านเต็มจำนวน" }, { key: "price_sell", label: "มัดจำที่ต้องชำระ" }, { key: "extra_charge", label: "ค่าใช้จ่ายเพิ่ม" }] as const).map(({ key, label }) => <label key={key} className={`space-y-1 ${key === "price_max" ? "col-span-2" : ""}`}>{label}<Input type="number" required={!booking || key !== "price_max"} min={0} max={999999999.99} step="0.01" value={form[key] === null || Number.isNaN(form[key]) ? "" : form[key]} onChange={e => change(key, key === "price_max" && e.target.value === "" ? null : e.target.valueAsNumber)} /></label>)}
         <label className="col-span-2 space-y-1">หมายเหตุ<Textarea rows={3} maxLength={10000} value={form.note ?? ""} onChange={e => change("note", e.target.value || null)} /></label>
       </div></section>
-      </div>
-      </div>
+      </BookingEditorLayout>
     </fieldset></div>
     <div className="shrink-0 space-y-3 border-t bg-popover p-4">{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<div className="flex justify-between gap-3"><Button type="button" variant="outline" disabled={saving} onClick={onClose}>ยกเลิก</Button><Button type="submit" disabled={saving || (!datesValid && form.status !== "cancelled") || !supportedStatus || nights <= 0 || !dirty || (form.status !== "repair" && form.status !== "cancelled" && (!booking || booking.status === "repair") && !form.customer_id)}>{saving ? "กำลังบันทึก…" : "บันทึก"}</Button></div></div>
   </form>;

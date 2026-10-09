@@ -2,6 +2,7 @@
 
 import { BadgeDollarSign, HouseIcon, SparklesIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { CalendarDays } from 'lucide-react';
 import { useEffect, useRef } from "react";
 
 import { scrollActiveItemToStart } from "../../../lib/scroll-active-item";
@@ -25,6 +26,7 @@ const sectionIconByKey: Record<string, LucideIcon> = {
   details: HouseIcon,
   prices: BadgeDollarSign,
   facilities: SparklesIcon,
+  calendar: CalendarDays,
 };
 
 function sectionHref(propertyId: string, section: string, returnTo?: string | null) {
