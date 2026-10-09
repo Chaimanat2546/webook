@@ -1,10 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { build } from "esbuild";
 import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { emptyMetrics } from "../lib/website-analytics.ts";
+
+async function siteSummarySkeleton() {
+  const bundle = await build({ entryPoints: ["components/admin/dashboard/website-analytics/site-summary-skeleton.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), loaded, loaded.exports);
+  return loaded.exports.WebsiteSiteSummarySkeleton as ComponentType<Record<string, unknown>>;
+}
 
 test("website summary preserves selected site/month and distinguishes failure from zero", async () => {
   const bundle = await build({ entryPoints: ["components/admin/dashboard/website-analytics/site-summary.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
@@ -22,4 +30,20 @@ test("website summary preserves selected site/month and distinguishes failure fr
     assert.ok(html.includes(`ช่องทางติดต่อ<span class="sr-only"> ${site.displayName}</span>`));
   }
   assert.ok(!html.includes("ข้อมูลไม่ครบ"));
+});
+
+test("dashboard uses a shaped loading skeleton for the website summary", () => {
+  const source = readFileSync(new URL("../app/admin/dashboard/page.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /fallback={<WebsiteSiteSummarySkeleton/);
+});
+
+test("website summary skeleton reserves the responsive eight-column table", async () => {
+  const html = renderToStaticMarkup(createElement(await siteSummarySkeleton()));
+
+  assert.match(html, /data-loading-section="analytics-loading-site-summary"/);
+  assert.match(html, /role="status"/);
+  assert.match(html, /กำลังโหลดสถิติแยกเว็บไซต์/);
+  assert.match(html, /data-loading-site-summary-desktop/);
+  assert.equal((html.match(/data-loading-site-summary-column/g) ?? []).length, 40);
 });

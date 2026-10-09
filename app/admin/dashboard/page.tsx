@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { WebsiteSiteSummaryLoader } from "../../../components/admin/dashboard/website-analytics/site-summary-loader";
+import { WebsiteSiteSummarySkeleton } from "../../../components/admin/dashboard/website-analytics/site-summary-skeleton";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { dashboardSession } from "../../../server/auth/dashboard";
@@ -26,5 +27,5 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     if (error instanceof DashboardForbidden || error instanceof DashboardItemNotFound) notFound();
     return <div className="space-y-4"><DashboardHeader month={query.month} /><div role="alert" className="rounded-lg border p-6">โหลดข้อมูล Dashboard ไม่สำเร็จ กรุณาลองอีกครั้ง <Link className="underline" href={`/admin/dashboard?month=${query.month}`}>โหลดใหม่</Link></div></div>;
   }
-  return <DashboardView report={report} query={query} websiteSummary={report.scope.kind === "admin" ? <Suspense key={query.month} fallback={<div role="status" className="rounded-xl border p-4 text-sm text-muted-foreground">กำลังโหลดสถิติแยกเว็บไซต์…</div>}><WebsiteSiteSummaryLoader month={query.month} /></Suspense> : undefined} />;
+  return <DashboardView report={report} query={query} websiteSummary={report.scope.kind === "admin" ? <Suspense key={query.month} fallback={<WebsiteSiteSummarySkeleton />}><WebsiteSiteSummaryLoader month={query.month} /></Suspense> : undefined} />;
 }
