@@ -16,6 +16,38 @@ async function view() {
   new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name === "next/navigation" ? { useRouter: () => ({ push() {} }) } : require(name), loaded, loaded.exports);
   return loaded.exports.WebsiteAnalyticsView as ComponentType<Record<string, unknown>>;
 }
+
+async function loadingView(view?: "houses") {
+  const bundle = await build({ entryPoints: [fileURLToPath(new URL("../app/admin/dashboard/websites/loading.tsx", import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> }, require = createRequire(import.meta.url);
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name === "next/navigation" ? { useSearchParams: () => new URLSearchParams(view === "houses" ? "view=houses" : "") } : require(name), loaded, loaded.exports);
+  return loaded.exports.default as ComponentType<Record<string, unknown>>;
+}
+
+test("website statistics overview loading state mirrors overview sections", async () => {
+  const html = renderToStaticMarkup(createElement(await loadingView()));
+
+  for (const section of ["analytics-loading-header", "analytics-loading-filters", "analytics-loading-summary", "analytics-loading-chart", "analytics-loading-ranking"]) {
+    assert.ok(html.includes(`data-loading-section=\"${section}\"`), section);
+  }
+  assert.ok(!html.includes("analytics-loading-house-list"));
+  assert.ok(!html.includes("analytics-loading-pagination"));
+  assert.match(html, /role="status"/);
+  assert.match(html, /กำลังโหลดสถิติเข้าเว็บไซต์/);
+  assert.match(html, /motion-reduce:animate-none/);
+});
+
+test("website statistics all-houses loading state mirrors the house-list workspace", async () => {
+  const html = renderToStaticMarkup(createElement(await loadingView("houses")));
+
+  for (const section of ["analytics-loading-house-header", "analytics-loading-house-search", "analytics-loading-house-filters", "analytics-loading-house-list", "analytics-loading-pagination"]) {
+    assert.ok(html.includes(`data-loading-section=\"${section}\"`), section);
+  }
+  assert.ok(!html.includes("analytics-loading-summary"));
+  assert.ok(!html.includes("analytics-loading-chart"));
+  assert.ok(!html.includes("analytics-loading-ranking"));
+});
+
 test("website statistics render counts, accessible headings and safe site data", async () => {
   const query = { month: "2026-10", site: "all", page: 1 };
   const report = await loadWebsiteAnalytics(query, { now: () => new Date(period.as_of), sites: () => sites, read: async site => ({ ok: true, report: parseSourceReport(source(site), site, period) }) });
