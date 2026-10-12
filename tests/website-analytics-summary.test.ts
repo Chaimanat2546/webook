@@ -96,7 +96,12 @@ test("website summary preserves selected site/month and distinguishes failure fr
   new Function("require", "module", "exports", bundle.outputFiles[0].text)(requireWithNavigation, loaded, loaded.exports);
   const Component = loaded.exports.WebsiteSiteSummary as ComponentType<Record<string, unknown>>;
   const sites = ["partial", "unavailable", "not_configured"].map((status, index) => ({ key: `site${index}`, displayName: `Website ${index}`, origin: `https://site${index}.test`, status, coverage: null, daily: index === 0 ? [{ ...emptyMetrics(), date: "2026-10-01", page_views: 123 }] : undefined, totals: index === 0 ? { ...emptyMetrics(), page_views: 123 } : null }));
+  sites[1].origin = "https://www.site1.test";
   const html = renderToStaticMarkup(createElement(Component, { sites, month: "2026-10" }));
+  for (let index = 0; index < sites.length; index++) {
+    assert.equal((html.match(new RegExp(`>www\\.site${index}\\.test<`, "g")) ?? []).length, 2, "desktop and mobile use a single www. prefix");
+  }
+  assert.doesNotMatch(html, /www\.www\./);
   assert.match(html, /<h2>แนวโน้มประสิทธิภาพเว็บไซต์<\/h2>/);
   assert.equal((html.match(/แนวโน้มประสิทธิภาพเว็บไซต์/g) ?? []).length, 1);
   assert.equal((html.match(/เปรียบเทียบจำนวนเข้าชม การกดติดต่อ และการเปิดรูป ของแต่ละเว็บไซต์/g) ?? []).length, 1);

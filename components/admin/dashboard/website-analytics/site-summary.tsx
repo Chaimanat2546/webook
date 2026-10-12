@@ -7,6 +7,10 @@ import { columns, MetricCells } from "./table-metrics";
 import { WebsiteSiteSummaryChart } from "./site-summary-chart";
 import { websiteAnalyticsHref, type WebsiteSummary } from "../../../../lib/website-analytics";
 
+function displayDomain(origin: string): string {
+  return `www.${new URL(origin).hostname.replace(/^www\./, "")}`;
+}
+
 function SiteStatus({ site }: { site: WebsiteSummary }) {
   const loaded = site.status === "complete" || site.status === "partial";
   const unconfigured = site.status === "not_configured";
@@ -17,7 +21,7 @@ function MobileSiteSummary({ sites, month }: { sites: WebsiteSummary[]; month: s
   return <ul className="divide-y md:hidden" aria-label="สถิติแยกเว็บไซต์บนมือถือ">{sites.map(site => <li key={site.key} className="min-w-0 py-3 first:pt-0 last:pb-0">
     <div className="flex flex-wrap items-start justify-between gap-2">
       <Link href={websiteAnalyticsHref({ month, site: site.key, page: 1 }, {})} className="flex min-w-0 flex-1 items-center gap-1 rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-primary">
-        <span className="min-w-0"><span className="block break-words text-sm font-medium">{site.displayName}</span><span className="mt-0.5 block break-all text-[11px] text-muted-foreground">{new URL(site.origin).hostname}</span></span><ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0"><span className="block break-words text-sm font-medium">{site.displayName}</span><span className="mt-0.5 block break-all text-[11px] text-muted-foreground">{displayDomain(site.origin)}</span></span><ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </Link>
       <SiteStatus site={site} />
     </div>
@@ -43,7 +47,7 @@ export function WebsiteSiteSummary({ sites, month }: { sites: WebsiteSummary[]; 
         <TableHeader><TableRow><TableHead className="min-w-48">เว็บไซต์ / โดเมน</TableHead><TableHead className="min-w-32">สถานะข้อมูล</TableHead>{columns.map(column => <TableHead key={column.key} className="text-right">{column.label}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{sites.map(site => {
           return <TableRow key={site.key}>
-            <TableCell><Link href={websiteAnalyticsHref({ month, site: site.key, page: 1 }, {})} className="block rounded-sm py-1 hover:underline focus-visible:outline-2"><span className="font-medium">{site.displayName}</span><span className="mt-1 block text-xs text-muted-foreground">{new URL(site.origin).hostname}</span></Link></TableCell>
+            <TableCell><Link href={websiteAnalyticsHref({ month, site: site.key, page: 1 }, {})} className="block rounded-sm py-1 hover:underline focus-visible:outline-2"><span className="font-medium">{site.displayName}</span><span className="mt-1 block text-xs text-muted-foreground">{displayDomain(site.origin)}</span></Link></TableCell>
             <TableCell><SiteStatus site={site} /></TableCell>
             <MetricCells metrics={site.totals} />
           </TableRow>;
