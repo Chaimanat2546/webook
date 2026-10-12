@@ -6,6 +6,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { type DashboardQuery, type DashboardReport } from "../../../lib/dashboard";
+import { dashboardHouseDetailHref } from "../../../lib/dashboard-routes";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../ui/empty";
 import { DashboardHouseRow } from "./dashboard-rows";
@@ -119,7 +120,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
                     <DashboardHouseRow
                       key={house.id}
                       house={house}
-                      href={`/admin/dashboard/houses/${encodeURIComponent(house.id)}?month=${encodeURIComponent(query.month)}`}
+                      href={dashboardHouseDetailHref({ month: query.month, search: "", page: 1 }, house.id, "overview")}
                     />
                   ))}
                 </div>

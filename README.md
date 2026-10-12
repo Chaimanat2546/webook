@@ -307,6 +307,8 @@ If login behaves strangely after changing users or env vars, clear cookies for `
 
 Admins can sign in with email or `public.users.username`. Username sign-in is resolved server-side to the user's email with `SUPABASE_SERVICE_ROLE_KEY`, then authenticated through Supabase Auth. If a username is missing, duplicated, or has no email, the login fails with the same generic invalid-credentials message.
 
+Successful sign-in redirects to `/`, which authenticates the session and uses the same verified-UID booking access check as the admin navigation. Booking operators land on `/admin/bookings`; users without available booking access retain `/admin/houses` as their destination. Opening `/` while signed out redirects to `/login`. This does not grant additional permissions or accept a browser-supplied return URL.
+
 Local Supabase is configured to force re-authentication after 12 hours with `[auth.sessions].timebox = "12h"`. For staging/production, set the same value in Supabase Dashboard -> Authentication -> Sessions -> Time-box user sessions. Supabase enforces this when sessions refresh, so the visible logout can be delayed by up to the JWT expiry time.
 
 ## Admin Password Reset
