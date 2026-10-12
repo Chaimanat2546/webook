@@ -33,6 +33,7 @@ test("card calendar keeps occupied and free days keyboard accessible and forward
     days: {
       "2026-09-20": { date: "2026-09-20", tone: "confirmed", bookingId: "booking-7" },
       "2026-09-21": { date: "2026-09-21", tone: "free", bookingId: null },
+      "2026-09-22": { date: "2026-09-22", tone: "external", bookingId: "external-1", externalBookings: [{ id: "external-1", provider: "airbnb" }] },
     },
   };
   const dateButton = {} as HTMLElement;
@@ -42,13 +43,15 @@ test("card calendar keeps occupied and free days keyboard accessible and forward
     onCreateSelect: (...values: unknown[]) => selected.push(["create", ...values]),
   });
   const buttons = buttonsIn(element);
-  assert.equal(buttons.length, 2);
-  assert.deepEqual(buttons.map(button => button.props.tabIndex), [0, 0]);
+  assert.equal(buttons.length, 3);
+  assert.deepEqual(buttons.map(button => button.props.tabIndex), [0, 0, 0]);
   buttons.find(button => button.props["aria-label"]?.includes("2026-09-20"))?.props.onClick?.({ currentTarget: dateButton });
   buttons.find(button => button.props["aria-label"]?.includes("2026-09-21"))?.props.onClick?.({ currentTarget: dateButton });
+  buttons.find(button => button.props["aria-label"]?.includes("2026-09-22"))?.props.onClick?.({ currentTarget: dateButton });
   assert.deepEqual(selected, [
     ["edit", "house-101", "booking-7", dateButton],
     ["create", "house-101", "2026-09-21", dateButton],
+    ["edit", "house-101", "external-1", dateButton],
   ]);
 });
 

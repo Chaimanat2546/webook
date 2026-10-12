@@ -8,6 +8,7 @@ import { Button } from "../../ui/button";
 interface HouseTaskHeaderProps {
   actions?: ReactNode;
   backHref: string;
+  backLabel?: string;
   propertyId: string | number;
   subtitle: string;
   title: string;
@@ -16,6 +17,7 @@ interface HouseTaskHeaderProps {
 export function HouseTaskHeader({
   actions,
   backHref,
+  backLabel = "กลับไปบ้านพัก",
   propertyId,
   subtitle,
   title,
@@ -26,7 +28,7 @@ export function HouseTaskHeader({
         <Button asChild className="min-h-12 w-fit px-3 text-base md:min-h-0 md:px-0 md:text-sm" size="sm" variant="ghost">
           <Link href={backHref}>
             <ArrowLeftIcon data-icon="inline-start" />
-            กลับไปบ้านพัก
+            {backLabel}
           </Link>
         </Button>
         <div>

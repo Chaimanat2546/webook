@@ -18,7 +18,7 @@ export async function CalendarSourcesWorkspace({propertyId,returnTo,sections}:Pr
   const house=await requireBookingHouse(context.repository,propertyId);
   const sources=(await context.calendarRepository.list([house.id])).map(calendarSourceSummary);
   return <div className="flex flex-col gap-3 lg:h-[calc(100dvh-6.5rem)] lg:min-h-0 lg:gap-4">
-    <HouseTaskHeader backHref={returnTo??'/admin/houses'} propertyId={house.property_id} title={house.title} subtitle="จัดการข้อมูลบ้านพัก"/>
+    <HouseTaskHeader backHref={returnTo??'/admin/houses'} backLabel={returnTo === '/admin/bookings' || returnTo?.startsWith('/admin/bookings?') ? 'กลับไปการจอง' : undefined} propertyId={house.property_id} title={house.title} subtitle="จัดการข้อมูลบ้านพัก"/>
     <HouseWorkspaceShell sidebarTitle="หมวดข้อมูล" contentIcon={<CalendarDays aria-hidden/>} contentTitle="เชื่อมปฏิทินภายนอก"
       sidebar={<HouseDetailSectionNav propertyId={house.property_id} returnTo={returnTo} sections={sections} selectedSection="calendar"/>}>
       <CalendarSources propertyId={house.property_id} initialSources={sources}/>

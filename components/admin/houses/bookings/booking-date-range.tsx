@@ -88,7 +88,7 @@ export function BookingDateRange({ propertyId, excludeId, start, end, revision, 
     {!readOnly && ready && conflict && <p role="alert" className="text-sm text-destructive">ช่วงนี้ติดจอง {conflict.check_in} ถึง {conflict.check_out} กรุณาเลือกช่วงใหม่</p>}
     <div className="relative h-[380px]" aria-busy={loading}>
     <div className={loading ? "invisible" : undefined} inert={loading}>
-    <FullCalendar plugins={[dayGridPlugin, classicThemePlugin]} initialView="dayGridMonth" initialDate={start || undefined} locale={thLocale} firstDay={1}
+    <FullCalendar plugins={[dayGridPlugin, classicThemePlugin]} initialView="dayGridMonth" initialDate={start || undefined} locale={thLocale} firstDay={0}
       height={380} fixedWeekCount={false} headerToolbar={{ start: "title", end: "prev,next" }} toolbarTitleClass="booking-range-title" toolbarClass="booking-range-toolbar"
       datesSet={info => setView({ start: info.startStr.slice(0, 10), end: info.endStr.slice(0, 10) })}
       dayCellClass="booking-range-cell"

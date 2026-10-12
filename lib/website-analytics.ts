@@ -7,7 +7,7 @@ export const WEBSITE_ANALYTICS_SORTS = [
 ] as const;
 export type WebsiteAnalyticsSort = typeof WEBSITE_ANALYTICS_SORTS[number]["value"];
 export interface WebsiteAnalyticsQuery { month: string; site: string; page: number; search?: string; sort?: WebsiteAnalyticsSort; view?: "houses"; granularity?: "day" | "month"; pages?: Record<string, number> }
-export interface AnalyticsMonth { date: string; page_views: number | null; contact_clicks: number | null; status: "complete" | "partial" | "unavailable" | "no_data" }
+export interface AnalyticsMonth { date: string; page_views: number | null; contact_clicks: number | null; gallery_opens?: number | null; status: "complete" | "partial" | "unavailable" | "no_data" }
 export interface AnalyticsPeriod {
   from_date: string; to_date: string; timezone: "Asia/Bangkok";
   as_of: string; contract_version: "1.0"; villa_id: null;
@@ -30,6 +30,8 @@ export type SiteReportResult = { ok: true; report: SourceReport } | { ok: false;
 export interface WebsiteSummary {
   key: string; displayName: string; origin: string; status: "complete" | "partial" | SiteFailureReason;
   totals: AnalyticsMetrics | null; coverage: AnalyticsCoverage | null;
+  daily?: AnalyticsDay[];
+  monthly?: AnalyticsMonth[];
   unattributed?: AnalyticsMetrics; villas?: { rows: WebsiteVilla[]; page: number; total: number };
 }
 export interface WebsiteVilla extends AnalyticsVilla { siteKey: string; siteName: string; title?: string }

@@ -52,13 +52,33 @@ test("pagination keeps large portfolios to five numbered controls around the cur
   assert.deepEqual(galleryView.bookingGalleryPageNumbers(2, 3), [1, 2, 3]);
 });
 
-test("query bounds September to its Monday-first six-week grid and normalises zone", () => {
+test("query bounds September to its Sunday-first six-week grid and normalises zone", () => {
   assert.deepEqual(parseBookingGalleryQuery({ month: "2026-09", zone: " พัทยา ", order: "booked", start: "2020-01-01", end: "2030-01-01" }), {
-    month: "2026-09", start: "2026-08-31", end: "2026-10-12", zone: "พัทยา", order: "booked",
+    month: "2026-09", start: "2026-08-30", end: "2026-10-11", zone: "พัทยา", order: "booked",
   });
   assert.deepEqual(parseBookingGalleryQuery({ month: "2026-09", zone: "   " }), {
-    month: "2026-09", start: "2026-08-31", end: "2026-10-12", zone: null, order: "title",
+    month: "2026-09", start: "2026-08-30", end: "2026-10-11", zone: null, order: "title",
   });
+});
+
+test("Sunday-first grids align months starting Sunday, Monday and Saturday across year boundaries", () => {
+  for (const [month, start, end, firstDateColumn] of [
+    ['2026-02', '2026-02-01', '2026-03-15', 0],
+    ['2026-06', '2026-05-31', '2026-07-12', 1],
+    ['2026-08', '2026-07-26', '2026-09-06', 6],
+    ['2027-01', '2026-12-27', '2027-02-07', 5],
+  ] as const) {
+    const query = parseBookingGalleryQuery({ month });
+    assert.equal(query.start, start);
+    assert.equal(query.end, end);
+    const dates = Object.keys(buildBookingGallery([houseA], [], month)[0].days);
+    assert.equal(dates.length, 42);
+    assert.equal(dates[0], start);
+    assert.equal(dates.indexOf(`${month}-01`), firstDateColumn);
+    for (let index = 0; index < dates.length; index++) {
+      assert.equal(new Date(`${dates[index]}T00:00:00Z`).getUTCDay(), index % 7);
+    }
+  }
 });
 
 test("query rejects malformed months, zones and order", () => {

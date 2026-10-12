@@ -25,6 +25,8 @@
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-field-background: var(--field-background);
+  --color-field-border: var(--field-border);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
@@ -66,6 +68,8 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: #CFE4E8;
   --input: #CFE4E8;
+  --field-background: #FFFFFF;
+  --field-border: #B8CDD3;
   --ring: #2BAFC0;
   --chart-1: #07557A;
   --chart-2: #119A9A;
@@ -101,6 +105,8 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: #EFFBFC1A;
   --input: #EFFBFC26;
+  --field-background: #123D4B;
+  --field-border: #658B98;
   --ring: #2BAFC0;
   --chart-1: #2BAFC0;
   --chart-2: #119A9A;

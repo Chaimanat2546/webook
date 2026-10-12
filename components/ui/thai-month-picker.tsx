@@ -27,7 +27,7 @@ export function ThaiMonthPicker({ all = false, className, month, maxMonth, onMon
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button aria-label="เลือกเดือน" className={cn("h-11 min-w-48 justify-between px-3 text-base", className)} data-thai-month-picker disabled={all} type="button" variant="outline">
+        <Button aria-label="เลือกเดือน" className={cn("h-11 min-w-48 justify-between border-field-border bg-field-background px-3 text-base disabled:bg-muted dark:border-field-border dark:bg-field-background dark:disabled:bg-muted", className)} data-thai-month-picker disabled={all} type="button" variant="outline">
           <span className="flex items-center gap-2"><CalendarDaysIcon aria-hidden className="size-4" />{all ? "ทุกเดือน" : `${THAI_MONTH_NAMES[selected.month - 1]} ${selected.year}`}</span>
           <ChevronDownIcon aria-hidden className="size-4" />
         </Button>

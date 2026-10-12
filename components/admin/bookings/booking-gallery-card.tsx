@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ interface Props {
   today: string;
   loading: boolean;
   error: string;
+  returnTo?: string;
   onMonthChange: (propertyId: string, month: string) => void;
   onRetry: (month: string) => void;
   onBookingSelect: (propertyId: string, bookingId: string, trigger: HTMLElement) => void;
@@ -27,10 +29,18 @@ function monthLabel(month: string): string {
   return new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`));
 }
 
-export function BookingGalleryCard({ house, card, month, today, loading, error, onMonthChange, onRetry, onBookingSelect, onCreateSelect }: Props) {
+export function BookingGalleryCard({ house, card, month, today, loading, error, returnTo = "/admin/bookings", onMonthChange, onRetry, onBookingSelect, onCreateSelect }: Props) {
   const previousMonth = adjacentBookingGalleryMonth(month, -1);
   const nextMonth = adjacentBookingGalleryMonth(month, 1);
   const disabled = house.is_active !== true;
+  const syncSources = card?.calendarSync?.sources.filter(source => source.enabled) ?? [];
+  const stale = card?.calendarSync?.stale === true;
+  const source = syncSources[0];
+  const syncText = syncSources.length > 1
+    ? `ปฏิทินภายนอก ${syncSources.length} แหล่ง · ${stale ? "ข้อมูลบางแหล่งยังไม่ล่าสุด" : "เชื่อมต่อแล้ว"}`
+    : source
+      ? `${source.label}: ${source.last_synced_at ? `ซิงก์ ${new Intl.DateTimeFormat("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(new Date(source.last_synced_at))}` : "ยังไม่มีข้อมูลจากต้นทาง"}${source.last_error_code ? " · ซิงก์ไม่สำเร็จ" : stale ? " · ข้อมูลยังไม่ล่าสุด" : ""}`
+      : stale ? "ข้อมูลปฏิทินภายนอกยังไม่ล่าสุด" : "";
   return <Card size="sm" className="booking-gallery-card min-w-0 gap-2">
     <CardHeader className="min-w-0 gap-1">
       <CardTitle className="truncate" title={house.title}>{house.title}</CardTitle>
@@ -55,13 +65,15 @@ export function BookingGalleryCard({ house, card, month, today, loading, error, 
           <span><i className="booking-gallery-dot booking-gallery-dot-confirmed" />ติดจอง</span>
           <span><i className="booking-gallery-dot booking-gallery-dot-waiting" />รอโอน</span>
           <span><i className="booking-gallery-dot booking-gallery-dot-repair" />ปิดซ่อม</span>
-          {Object.values(card.days).some(day=>day.externalBookings?.length)&&<span><i className="booking-gallery-dot booking-gallery-dot-external" />ไม่ว่างจาก iCal</span>}
+          {Object.values(card.days).some(day => day.externalBookings?.length) && <Link
+            href={`/admin/houses/${encodeURIComponent(house.property_id)}?${new URLSearchParams({ section: "calendar", returnTo })}`}
+            className="inline-flex items-center gap-[.2rem] whitespace-nowrap underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+            aria-label={`ปฏิทินภายนอกของ ${house.title}`}
+          ><i aria-hidden="true" className="booking-gallery-dot booking-gallery-dot-external" />ปฏิทินภายนอก</Link>}
           {Object.values(card.days).some(day => day.tone === "unknown") && <span><i className="booking-gallery-dot booking-gallery-dot-unknown" />สถานะไม่ทราบ (ติดจอง)</span>}
         </div>
-        {card.calendarSync?.sources.filter(source=>source.enabled).map(source=><p key={source.id} className="text-xs text-muted-foreground">
-          {source.label}: {source.last_synced_at?`ซิงก์ ${new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(new Date(source.last_synced_at))}`:'ยังไม่มีข้อมูลจากต้นทาง'}{source.last_error_code?' · ซิงก์ไม่สำเร็จ':''}
-        </p>)}
-        {card.calendarSync?.stale&&<p role="status" className="text-xs text-amber-700">ข้อมูล iCal บางแหล่งยังไม่ล่าสุด</p>}
+        <p data-booking-sync-status title={syncText || undefined} role={stale ? "status" : undefined}
+          className={`h-4 truncate text-xs ${stale ? "text-amber-700" : "text-muted-foreground"}`}>{syncText}</p>
       </> : error ? <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3 text-sm text-destructive">
         <p>{error}</p><Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => onRetry(month)}>ลองอีกครั้ง</Button>
       </div> : <BookingGalleryDatesSkeleton />}
