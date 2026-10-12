@@ -211,3 +211,16 @@ Out of scope for current MVP:
 - Do not use decorative gradients
 - Do not invent future controls
 - Do not copy Linear, Airtable, or Supabase directly
+
+# Shared form field surfaces
+
+Text inputs, textareas, selects, combobox shells, and date/month picker triggers use
+`bg-field-background` and `border-field-border`. Light mode uses white fields and
+a soft blue-grey outline (`#B8CDD3`); dark mode uses a dedicated dark field surface and lighter
+outline. These tokens are independent of card/table borders. Disabled controls
+use the muted surface, while existing focus and validation states are retained.
+Grouped controls keep their inner inputs transparent so the outer shell owns
+the surface. Do not override fields with the page's `bg-background`.
+
+The soft light-mode outline is a visual preference, not a 3:1 contrast guarantee.
+Keep the existing focus ring and validation styles; do not lighten those states.

@@ -35,6 +35,8 @@ export interface BookingUpdate {
   payment_expires_at: string | null;
 }
 export interface Booking extends BookingUpdate {
+  calendar_source_id?: string | null;
+  external_uid?: string | null;
   booking_code: string;
   listing_id: string;
   houseid: string;

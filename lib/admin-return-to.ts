@@ -1,5 +1,6 @@
 export function safeHouseReturnTo(value: unknown): string | null {
   if (typeof value !== "string") return null;
+  if ((value === "/admin/bookings" || value.startsWith("/admin/bookings?")) && !value.includes("\\") && !value.includes("#")) return value;
   if (value === "/admin/houses" || value.startsWith("/admin/houses?")) return value;
   if (!value.startsWith("/admin/dashboard/") || value.startsWith("//") || value.includes("\\") || value.includes("#")) return null;
 

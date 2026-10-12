@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/card";
 import { Badge } from "../../../ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../ui/table";
 import { columns, MetricCells } from "./table-metrics";
+import { WebsiteSiteSummaryChart } from "./site-summary-chart";
 import { websiteAnalyticsHref, type WebsiteSummary } from "../../../../lib/website-analytics";
 
 function SiteStatus({ site }: { site: WebsiteSummary }) {
@@ -31,11 +32,14 @@ function MobileSiteSummary({ sites, month }: { sites: WebsiteSummary[]; month: s
 export function WebsiteSiteSummary({ sites, month }: { sites: WebsiteSummary[]; month: string }) {
   return <Card>
     <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-      <div><CardTitle><h2>แยกเว็บไซต์</h2></CardTitle><p className="mt-1 text-xs text-muted-foreground">สถานะข้อมูลและผลรวมในเดือนที่เลือก · กดชื่อเว็บไซต์เพื่อดูสถิติ</p></div>
+      <div className="flex min-w-0 w-full items-start gap-3 sm:w-auto sm:flex-1">
+        <span className="shrink-0 rounded-lg bg-muted p-2 text-primary"><ChartNoAxesColumnIncreasing aria-hidden className="size-5" /></span>
+        <div className="min-w-0"><CardTitle><h2>แนวโน้มประสิทธิภาพเว็บไซต์</h2></CardTitle><p className="mt-1 text-xs text-muted-foreground">เปรียบเทียบจำนวนเข้าชม การกดติดต่อ และการเปิดรูป ของแต่ละเว็บไซต์</p></div>
+      </div>
       <span className="text-xs text-muted-foreground">{sites.length} โดเมนที่ผูกในระบบ</span>
     </CardHeader>
     <CardContent>
-      {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><MobileSiteSummary sites={sites} month={month} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
+      {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryChart key={month} sites={sites} month={month} /><MobileSiteSummary sites={sites} month={month} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
         <TableHeader><TableRow><TableHead className="min-w-48">เว็บไซต์ / โดเมน</TableHead><TableHead className="min-w-32">สถานะข้อมูล</TableHead>{columns.map(column => <TableHead key={column.key} className="text-right">{column.label}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{sites.map(site => {
           return <TableRow key={site.key}>

@@ -58,6 +58,7 @@ export async function saveHouseBooking(repository: HouseBookingsRepository, acto
   // The RPC repeats these checks under a row lock to prevent concurrent edits.
   const current = await repository.get(house, input.id);
   if (!current) throw new Error("booking_not_found");
+  if (current.calendar_source_id) throw new Error('รายการจาก iCal แก้ไขได้ผ่านการซิงก์เท่านั้น');
   if (current.updated_at !== input.updated_at) throw new Error("booking_stale");
   await assertBookingAgency(repository, input.agent_id, canManageAgency, current.agent_id);
   if (input.status !== "cancelled") assertBookingNotPast(input.check_in, input.check_out, bookingToday(), current);
@@ -104,6 +105,7 @@ export async function cancelHouseBooking(repository: HouseBookingsRepository, ac
   const house = await requireBookingHouse(repository, propertyId);
   const current = await repository.get(house, bookingId(id));
   if (!current) throw new Error("booking_not_found");
+  if (current.calendar_source_id) throw new Error('รายการจาก iCal แก้ไขได้ผ่านการซิงก์เท่านั้น');
   if (current.updated_at !== expectedRevision) throw new Error("booking_stale");
   return repository.update(house, actorId, parseBookingUpdate({ ...current, status: "cancelled" }));
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { addMetrics, analyticsPeriod, compareWebsiteVillas, matchesWebsiteVilla, emptyMetrics, WebsiteAnalyticsError, type AnalyticsDay, type AnalyticsPeriod, type AnalyticsSite, type SiteReportResult, type WebsiteAnalyticsQuery, type WebsiteAnalyticsReport, type WebsiteSummary, type WebsiteVilla } from "../../lib/website-analytics.ts";
 import { listAnalyticsSites } from "../site-analytics/registry.ts";
 import { fetchSiteReport } from "../site-analytics/client.ts";
-import { loadMonthlyHistory } from "../site-analytics/history.ts";
+import { loadMonthlyHistoryWithSites } from "../site-analytics/history.ts";
 
 export interface WebsiteAnalyticsDependencies {
   now?: () => Date;
@@ -39,7 +39,7 @@ export async function loadWebsiteAnalytics(query: WebsiteAnalyticsQuery, depende
     const report = result.report;
     availableSites++;
     totals = addMetrics(totals, report.totals); unattributed = addMetrics(unattributed, report.unattributed);
-    websites.push({ ...identity, status: report.coverage.range_complete && report.coverage.rows_complete ? "complete" : "partial", totals: report.totals, coverage: report.coverage });
+    websites.push({ ...identity, status: report.coverage.range_complete && report.coverage.rows_complete ? "complete" : "partial", totals: report.totals, coverage: report.coverage, daily: report.daily });
     for (const day of report.daily) days.set(day.date, { ...addMetrics(days.get(day.date) ?? emptyMetrics(), day), date: day.date });
     for (const villa of report.villas) villas.push({ ...villa, siteKey: site.key, siteName: site.displayName });
   }
@@ -76,7 +76,9 @@ export async function loadWebsiteAnalytics(query: WebsiteAnalyticsQuery, depende
       for (const villa of visible) villa.title = titles.get(villa.villa_id);
     } catch { /* Counts remain usable when optional catalog metadata is unavailable. */ }
   }
-  const monthly = query.granularity === "month" && query.view !== "houses" ? await loadMonthlyHistory(sites, period, results, dependencies.read ?? fetchSiteReport) : undefined;
+  const history = query.granularity === "month" && query.view !== "houses" ? await loadMonthlyHistoryWithSites(sites, period, results, dependencies.read ?? fetchSiteReport) : undefined;
+  const monthly = history?.monthly;
+  if (history) for (const site of websites) site.monthly = history.bySite.get(site.key);
   return {
     ...(searchUnavailable ? { searchUnavailable: true } : {}),
     ...(nameSortUnavailable ? { nameSortUnavailable: true } : {}),

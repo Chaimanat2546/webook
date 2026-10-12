@@ -62,7 +62,7 @@ function BookingCalendarWorkspace({ propertyId }: { propertyId: string }) {
     <div className="relative min-h-0 flex-1" aria-busy={loading}>
       <div className={`h-full ${loading ? "invisible" : ""}`} inert={loading}>
       <FullCalendar key={propertyId} plugins={[dayGridPlugin, classicThemePlugin, interactionPlugin]} initialView="dayGridMonth" locale={thLocale} now={bangkokToday} initialDate={bangkokToday}
-        firstDay={1} height="100%" headerToolbar={{ start: "title", end: "prev,today,next" }}
+        firstDay={0} height="100%" headerToolbar={{ start: "title", end: "prev,today,next" }}
         toolbarClass="house-booking-toolbar" toolbarTitleClass="house-booking-month"
         events={bookings.map(bookingEvent)} datesSet={datesSet}
         editable={false} eventInteractive dayMaxEvents={1} displayEventTime={false}

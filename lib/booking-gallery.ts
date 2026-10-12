@@ -1,5 +1,6 @@
 import { bookingToday } from "./booking-availability.ts";
 import { bookingId, type Booking } from "./house-bookings.ts";
+import type { CalendarSyncSummary } from './ical-calendar.ts';
 
 export interface BookingGalleryQuery {
   month: string;
@@ -20,7 +21,7 @@ export interface GalleryHousePage { houses: GalleryHouseSummary[]; total: number
 export type GallerySearchMode = "dv" | "title";
 export interface GalleryPageInput { page: number; search: string; searchMode: GallerySearchMode }
 export interface GalleryCalendarInput { month: string; start: string; end: string; propertyIds: string[] }
-export interface GalleryBookingSlice { id: string; listing_id: string; houseid: string; check_in: string; check_out: string; status: string | null }
+export interface GalleryBookingSlice { id: string; listing_id: string; houseid: string; check_in: string; check_out: string; status: string | null; calendar_source_id?: string|null; booking_type?: string|null }
 
 export function parseGalleryPageInput(input: unknown): GalleryPageInput {
   if (input != null && (typeof input !== "object" || Array.isArray(input))) throw new Error("ข้อมูลไม่ถูกต้อง");
@@ -47,11 +48,13 @@ export function parseGalleryCalendarInput(input: unknown): GalleryCalendarInput 
 
 export interface BookingGalleryDay {
   date: string;
-  tone: "free" | "waiting" | "confirmed" | "repair" | "unknown" | "holiday";
+  tone: "free" | "waiting" | "confirmed" | "repair" | "unknown" | "holiday" | "external";
   bookingId: string | null;
+  externalBookings?: Array<{id:string;provider:string}>;
 }
 
 export interface BookingGalleryCard {
+  calendarSync?: CalendarSyncSummary;
   propertyId: string;
   title: string;
   zone: string | null;
@@ -103,9 +106,9 @@ function monthRange(month: string): { start: string; end: string } {
   if (!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("เดือนไม่ถูกต้อง");
   const [year, monthNumber] = month.split("-").map(Number);
   const first = Date.UTC(year, monthNumber - 1, 1);
-  const mondayOffset = (new Date(first).getUTCDay() + 6) % 7;
-  const start = new Date(first - mondayOffset * dayMilliseconds).toISOString().slice(0, 10);
-  const end = new Date(first + (42 - mondayOffset) * dayMilliseconds).toISOString().slice(0, 10);
+  const sundayOffset = new Date(first).getUTCDay();
+  const start = new Date(first - sundayOffset * dayMilliseconds).toISOString().slice(0, 10);
+  const end = new Date(first + (42 - sundayOffset) * dayMilliseconds).toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) throw new Error("เดือนไม่ถูกต้อง");
   return { start, end };
 }
@@ -145,11 +148,19 @@ export function buildBookingGallery(houses: BookingGalleryHouse[], bookings: Arr
     const tone = booking.status === "confirmed" || booking.status === "waiting" || booking.status === "repair" ? booking.status : "unknown";
     for (let day = Math.max(firstDay, Date.parse(`${booking.check_in}T00:00:00Z`)); day < Math.min(lastDay, Date.parse(`${booking.check_out}T00:00:00Z`)); day += dayMilliseconds) {
       const date = new Date(day).toISOString().slice(0, 10);
-      card.days[date] = { date, tone, bookingId: booking.id };
+      const existing = card.days[date];
+      if (booking.calendar_source_id) {
+        const externalBookings = [...(existing.externalBookings ?? []), { id: booking.id, provider: booking.booking_type ?? 'iCal' }];
+        card.days[date] = { ...existing, externalBookings,
+          tone: existing.bookingId && existing.tone !== 'external' ? existing.tone : 'external',
+          bookingId: existing.bookingId ?? booking.id };
+      } else {
+        card.days[date] = { date, tone, bookingId: booking.id, ...(existing.externalBookings ? {externalBookings:existing.externalBookings}: {}) };
+      }
     }
   }
   for (const card of cards) {
-    card.bookedNights = Object.values(card.days).filter(day => day.date.startsWith(month) && (day.tone === "confirmed" || day.tone === "waiting" || day.tone === "unknown")).length;
+    card.bookedNights = Object.values(card.days).filter(day => day.date.startsWith(month) && (day.tone === "confirmed" || day.tone === "waiting" || day.tone === "unknown" || day.tone === 'external')).length;
   }
   return cards;
 }

@@ -37,7 +37,7 @@ test("calendar validation rejects empty, duplicate, oversize and malformed IDs b
   }
   await assert.rejects(() => listBookingGalleryCalendars(repository, { month: "2026-13", propertyIds: ["101"] }));
   assert.equal(reads, 0);
-  assert.deepEqual(parseGalleryCalendarInput({ month: "2026-09", propertyIds: ["101"] }), { month: "2026-09", start: "2026-08-31", end: "2026-10-12", propertyIds: ["101"] });
+  assert.deepEqual(parseGalleryCalendarInput({ month: "2026-09", propertyIds: ["101"] }), { month: "2026-09", start: "2026-08-30", end: "2026-10-11", propertyIds: ["101"] });
 });
 
 test("calendar service resolves requested houses and reads only their booking pairs", async () => {
@@ -47,9 +47,10 @@ test("calendar service resolves requested houses and reads only their booking pa
     galleryBookingSlices: async (houses: GalleryHouseSummary[], start: string, end: string) => { calls.push(["bookings", houses, start, end]); return []; },
   } as unknown as ReturnType<typeof createHouseBookingsRepository>;
   const cards = await listBookingGalleryCalendars(repository, { month: "2026-09", propertyIds: ["101"] });
-  assert.deepEqual(calls, [["resolve", ["101"]], ["bookings", [house(101)], "2026-08-31", "2026-10-12"]]);
+  assert.deepEqual(calls, [["resolve", ["101"]], ["bookings", [house(101)], "2026-08-30", "2026-10-11"]]);
   assert.equal(cards.length, 1);
-  assert.equal(cards[0].days["2026-10-11"].tone, "free");
+  assert.equal(cards[0].days["2026-10-10"].tone, "free");
+  assert.equal(cards[0].days["2026-10-11"], undefined);
 });
 
 test("unknown and null booking statuses occupy dates, while checkout and wrong pair remain free", () => {
@@ -135,7 +136,7 @@ test("repository paginates dense minimal booking rows with exact pair filter", a
   const rows = await createHouseBookingsRepository(client).galleryBookingSlices([house(101), house(102)], "2026-08-31", "2026-10-12");
   assert.equal(rows.length, 500);
   assert.deepEqual(requests.map(request => request.range), [[0, 499], [500, 999]]);
-  assert.equal(requests[0].fields, "id,listing_id,houseid,check_in,check_out,status");
+  assert.equal(requests[0].fields, "id,listing_id,houseid,check_in,check_out,status,calendar_source_id,booking_type");
   assert.equal(requests[0].filters.pairs, "and(listing_id.eq.listing-101,houseid.eq.101),and(listing_id.eq.listing-102,houseid.eq.102)");
   assert.deepEqual(requests[0].filters["lt:check_in"], "2026-10-12");
   assert.deepEqual(requests[0].filters["gt:check_out"], "2026-08-31");

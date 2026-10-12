@@ -1,0 +1,101 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { spawnSync, spawn } from 'node:child_process';
+import { test } from 'node:test';
+
+const actor = '00000000-0000-4000-8000-000000000001';
+const house = '00000000-0000-4000-8000-000000000010';
+const source = '00000000-0000-4000-8000-000000000020';
+const migration = new URL('../supabase/migrations/20261009120000_ical_booking_import.sql', import.meta.url);
+
+test('transactional iCal database contract on disposable PostgreSQL', { skip: process.env.ICAL_DB_INTEGRATION !== '1' }, async () => {
+  const container = `webook-ical-test-${crypto.randomUUID()}`;
+  const run = (args: string[], input?: string) => {
+    const result = spawnSync('docker', args, { encoding: 'utf8', input, timeout: 60_000 });
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
+    return result.stdout.trim();
+  };
+  const sql = (text: string) => run(['exec','-i',container,'psql','-U','postgres','-X','-A','-t','-v','ON_ERROR_STOP=1'],text);
+  run(['run','--rm','-d','--network','none','--name',container,'-e','POSTGRES_HOST_AUTH_METHOD=trust','postgres:17-alpine']);
+  try {
+    for (let attempt=0; attempt<50; attempt++) {
+      if (spawnSync('docker',['exec',container,'pg_isready','-U','postgres']).status === 0) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    sql(readFileSync(new URL('./fixtures/ical-db-baseline.sql',import.meta.url),'utf8'));
+    sql(readFileSync(new URL('../supabase/migrations/20260930100000_booking_payment_expiry.sql',import.meta.url),'utf8'));
+    sql(readFileSync(new URL('../supabase/migrations/20261005130000_dashboard_confirmed_agency_counts.sql',import.meta.url),'utf8'));
+    sql(readFileSync(migration,'utf8'));
+    sql(`insert into property_calendar_sources(id,listing_id,provider,label,ical_url_encrypted) values ('${source}','${house}','airbnb','Fixture','encrypted');`);
+    assert.equal(sql("select count(*) from information_schema.columns where table_name='property_calendar_sources' and table_schema='public';"),'13');
+    assert.throws(()=>sql('set role anon; select * from property_calendar_sources;'),'anonymous source reads are denied');
+    assert.throws(()=>sql(`set role authenticated; select calendar_claim_source('${source}','${actor}');`),'unprivileged RPC execution is denied');
+    assert.throws(()=>sql(`select calendar_claim_source('${source}','00000000-0000-4000-8000-000000000099');`),'unknown actor is denied');
+    const claim = () => new Promise<string>((resolve,reject) => {
+      const child=spawn('docker',['exec','-i',container,'psql','-U','postgres','-X','-A','-t','-v','ON_ERROR_STOP=1']);
+      let output='',error=''; child.stdout.on('data',d=>output+=d); child.stderr.on('data',d=>error+=d);
+      child.on('error',reject); child.on('close',code=>code===0?resolve(output.trim()):reject(new Error(error)));
+      child.stdin.end(`select calendar_claim_source('${source}','${actor}')->>'token';`);
+    });
+    const leases=(await Promise.all([claim(),claim()])).filter(Boolean);
+    assert.equal(leases.length,1,'exactly one concurrent worker wins');
+    const token=leases[0];
+    sql(`insert into bookings(booking_code,listing_id,houseid,status,check_in,check_out,price_max) values ('internal','${house}',100,'confirmed','2026-10-16','2026-10-19',100);`);
+    const apply = (events: string) => sql(`select calendar_apply_snapshot('${source}','${token}','${actor}','${events}'::jsonb);`);
+    apply('[{"uid":"one","status":"active","start":"2026-10-15","endExclusive":"2026-10-18"}]');
+    assert.equal(sql("select count(*) from bookings where calendar_source_id is not null;"),'1');
+    assert.equal(sql("select booking_type || ':' || check_out::text from bookings where calendar_source_id is not null;"),'airbnb:2026-10-18');
+    assert.equal(sql("select actor_id from test_booking_audit where booking_id=(select id from bookings where calendar_source_id is not null) limit 1;"),actor);
+    assert.throws(()=>apply('[]'),'completed lease cannot be reused');
+    sql(`update property_calendar_sources set next_refresh_at=null where id='${source}';`);
+    const token2=await claim();
+    sql(`select calendar_apply_snapshot('${source}','${token2}','${actor}','[{"uid":"one","status":"active","start":"2026-10-16","endExclusive":"2026-10-20"}]');`);
+    assert.equal(sql("select count(*) from bookings where calendar_source_id is not null;"),'1');
+    assert.equal(sql("select check_in from bookings where calendar_source_id is not null;"),'2026-10-16');
+    sql(`update property_calendar_sources set next_refresh_at=null where id='${source}';`);
+    const unchangedToken=await claim(),auditBefore=sql('select count(*) from test_booking_audit;');
+    sql(`select calendar_apply_snapshot('${source}','${unchangedToken}','${actor}','[{"uid":"one","status":"active","start":"2026-10-16","endExclusive":"2026-10-20"}]');`);
+    assert.equal(sql('select count(*) from test_booking_audit;'),auditBefore,'unchanged snapshots do not log booking updates');
+    assert.throws(()=>sql("update bookings set note='manual' where calendar_source_id is not null;"),'imported row rejects normal edit');
+    const repairValues=JSON.stringify({check_in:'2026-10-16',check_out:'2026-10-20',customer_id:null,status:'repair',quantity:4,price_sell:0,price_max:0,extra_charge:0,note:null,insurance:0,extra_person:0,checkin_time:null,checkout_time:null,payment_expires_at:null});
+    assert.throws(()=>sql(`select admin_update_house_booking(100,id,updated_at,'${actor}','${repairValues}') from bookings where calendar_source_id is not null;`),/calendar_booking_readonly/,'existing update RPC also hits the guard');
+    sql("update bookings set note='editable' where booking_code='internal';");
+    assert.throws(()=>sql(`insert into bookings(booking_code,listing_id,houseid,status,check_in,check_out) values ('external-conflict','${house}',100,'confirmed','2026-10-19','2026-10-20');`),'new internal dates cannot ignore imported occupancy');
+    assert.throws(()=>sql(`insert into bookings(booking_code,listing_id,houseid,status,check_in,check_out) values ('internal2','${house}',100,'confirmed','2026-10-17','2026-10-18');`));
+    assert.equal(sql(`select (dashboard_report('${actor}','{"month":"2026-10","view":"overview","checkInFrom":"2026-10-01","checkInTo":"2026-10-31"}') -> 'statusCounts' ->> 'confirmed');`),'1');
+    sql(`update property_calendar_sources set next_refresh_at=null where id='${source}';`);
+    const token3=await claim();
+    sql(`select calendar_record_failure('${source}','${token3}','${actor}','calendar_timeout');`);
+    assert.equal(sql("select status from bookings where calendar_source_id is not null;"),'confirmed');
+    assert.equal(await claim(),'','failure cooldown avoids repeat fetch');
+    sql(`update property_calendar_sources set next_refresh_at=null where id='${source}';`);
+    const expired=await claim();
+    sql(`update property_calendar_sources set sync_lease_expires_at=clock_timestamp()-interval '1 second' where id='${source}';`);
+    assert.throws(()=>sql(`select calendar_apply_snapshot('${source}','${expired}','${actor}','[]');`),/calendar_stale_lease/);
+    const replacement=await claim();
+    assert.notEqual(replacement,expired);
+    const beforeRollback=sql('select count(*) from test_booking_audit;');
+    assert.throws(()=>sql(`select calendar_apply_snapshot('${source}','${replacement}','${actor}','[{"uid":"one","status":"active","start":"2026-11-01","endExclusive":"2026-11-02"},{"uid":"bad","status":"active","start":"bad","endExclusive":"bad"}]');`));
+    assert.equal(sql('select count(*) from test_booking_audit;'),beforeRollback,'snapshot and audit writes roll back together');
+    assert.equal(sql("select check_in from bookings where calendar_source_id is not null;"),'2026-10-16');
+    const source2='00000000-0000-4000-8000-000000000021',otherHouse='00000000-0000-4000-8000-000000000011';
+    sql(`insert into listings values('${otherHouse}',101,'Other house'); insert into property_calendar_sources(id,listing_id,provider,label,ical_url_encrypted) values('${source2}','${house}','airbnb','Second','encrypted');`);
+    const tokenSecond=sql(`select calendar_claim_source('${source2}','${actor}')->>'token';`);
+    sql(`select calendar_apply_snapshot('${source2}','${tokenSecond}','${actor}','[{"uid":"one","status":"active","start":"2026-10-16","endExclusive":"2026-10-20"}]');`);
+    assert.equal(sql("select count(*) from bookings where external_uid='one';"),'2','UID is unique only within its own source');
+    assert.throws(()=>sql(`select calendar_update_source('${source2}','${otherHouse}','${actor}','Wrong house',true,null);`),/calendar_source_not_found/);
+    assert.throws(()=>sql(`begin; select set_config('webook.calendar_write','allowed',true); update bookings set listing_id='${otherHouse}',houseid=101 where calendar_source_id='${source2}'; commit;`),/calendar_invalid_booking/);
+    sql(`select calendar_update_source('${source2}','${house}','${actor}','Second',false,null);`);
+    sql(`select calendar_update_source('${source}','${house}','${actor}','Replacement',true,'new-encrypted');`);
+    assert.throws(()=>sql(`select calendar_apply_snapshot('${source}','${replacement}','${actor}','[]');`),/calendar_stale_lease/,'URL replacement invalidates an in-flight lease');
+    const claimedConfig=JSON.parse(sql(`select calendar_claim_source('${source}','${actor}');`)) as {token:string;source:{ical_url_encrypted:string}};
+    assert.equal(claimedConfig.source.ical_url_encrypted,'new-encrypted');
+    sql(`select calendar_record_failure('${source}','${claimedConfig.token}','${actor}','calendar_http_error');`);
+    sql(`update property_calendar_sources set next_refresh_at=null where id='${source}';`);
+    const token4=await claim();
+    sql(`select calendar_apply_snapshot('${source}','${token4}','${actor}','[]');`);
+    assert.equal(sql("select count(*) from bookings where calendar_source_id is not null and status<>'cancelled';"),'0');
+    sql(`select calendar_update_source('${source}','${house}','${actor}','Renamed',false,null);`);
+    assert.equal(await claim(),'','disabled source cannot be claimed');
+  } finally { run(['rm','-f',container]); }
+});

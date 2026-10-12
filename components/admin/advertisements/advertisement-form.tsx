@@ -1058,7 +1058,7 @@ export function AdvertisementForm({
           <div className="grid gap-2">
             <Label htmlFor={zoneId}>โซนบ้าน</Label>
             <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-10 w-full rounded-md border border-field-border bg-field-background disabled:bg-muted px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               defaultValue={defaultZone}
               id={zoneId}
               name="zone"

@@ -118,7 +118,15 @@ view=houses ใช้ DashboardDetailLayout, DashboardTaskHeader, DashboardListT
 
 ### Main dashboard website summary
 
+The Card header owns the single “แนวโน้มประสิทธิภาพเว็บไซต์” heading and comparison description, including its chart icon. The chart body does not repeat this heading. The loading header mirrors this structure; table, links and metrics remain unchanged.
+
+The main dashboard compares selected-month totals across websites, not a daily/monthly trend. It has no period or metric switches: all three metrics appear together. Old `websiteGraph` parameters are ignored and the summary loader uses the selected-month report without historical requests. The separate `/admin/dashboard/websites` detail page retains its shared `chart-period-toggle.tsx`, daily/monthly behavior and history loading unchanged.
+
 The admin overview streams a per-website summary below the existing dashboard sections instead of a navigation button. The table shows domain, load status and all six metric totals for the selected dashboard month. Website-name links retain that month and select the corresponding website overview. Partial coverage uses the successful-load label; unavailable totals render as dashes. Owners do not mount the server loader. Source tokens remain server-only; optional house title lookups are skipped for this summary. Focused rendering/navigation checks: tests/website-analytics-summary.test.ts.
+
+A grouped vertical bar chart above the summary table shows one website per horizontal-axis category and three adjacent bars: page views (green), total contact clicks (blue), and gallery opens (cyan). `websiteComparisonData` reads the exact same `WebsiteSummary.totals` used by the selected-month table; daily/history rows are not re-summed. Zero totals remain zero and missing totals stay null, with unavailable websites listed explicitly rather than drawn as zero. The shared tooltip shows the full website name and all three totals. Dense charts scroll horizontally inside a keyboard-focusable region without widening the page. The tooltip follows the active bar coordinate instead of being pinned to the chart corner. Its content stays within the visible scroll region on selection, resize and horizontal scrolling. Desktop table and mobile summaries are unchanged. The loading skeleton reserves chart space.
+
+When all chart totals are missing, the existing dashboard Empty primitives show a centered chart icon, “ยังไม่มีข้อมูลสถิติ” and “สถิติจากเว็บไซต์จะแสดงที่นี่เมื่อเชื่อมต่อสำเร็จ”, matching the recent-houses empty state. Future-month selections use the same icon/title layout with “ยังไม่มีสถิติสำหรับเดือนในอนาคต”, without fetching analytics. Source diagnostics and the table remain visible.
 
 ### Compact mobile overview
 

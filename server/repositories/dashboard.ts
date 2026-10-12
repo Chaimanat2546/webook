@@ -59,7 +59,7 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
       return dashboardScope(data);
     },
     async bookingCustomer(scope, bookingId) {
-      let query = client.from("bookings").select("houseid,customer_id,listing_id,listing:listings!inner(id,property_id)").eq("id", bookingId);
+      let query = client.from("bookings").select("houseid,customer_id,listing_id,listing:listings!inner(id,property_id)").eq("id", bookingId).is('calendar_source_id', null);
       if (scope.kind === "owner") query = query.eq("houseid", scope.propertyId).eq("listing.property_id", scope.propertyId);
       const { data, error } = await query.maybeSingle();
       if (error) throw new Error("dashboard_unavailable");

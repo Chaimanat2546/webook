@@ -1142,7 +1142,7 @@ describe("quotation UI", () => {
     assert.match(editor, /function OfficeTypeControls[\s\S]*<RadioGroup[\s\S]*aria-invalid=\{Boolean\(error\)\}[\s\S]*<RadioGroupItem[\s\S]*data-field=\{field\}/);
     assert.match(editor, /<select[^>]*aria-invalid=\{Boolean\(vatError\)\}[^>]*data-field=\{field\}/);
     assert.match(customerPicker, /aria-invalid=\{Boolean\(error\)\}[\s\S]*data-field="customer\.name"/);
-    assert.match(editor, /const selectClassName =[\s\S]*?disabled:bg-input\/50[^";]*aria-invalid:border-destructive[^";]*aria-invalid:ring-destructive\/20/);
+    assert.match(editor, /const selectClassName =[\s\S]*?disabled:bg-muted[^";]*aria-invalid:border-destructive[^";]*aria-invalid:ring-destructive\/20/);
     assert.doesNotMatch(editor, /const selectClassName =[\s\S]*?appearance-none[^";]*";/);
   });
 
