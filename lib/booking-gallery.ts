@@ -106,9 +106,9 @@ function monthRange(month: string): { start: string; end: string } {
   if (!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("เดือนไม่ถูกต้อง");
   const [year, monthNumber] = month.split("-").map(Number);
   const first = Date.UTC(year, monthNumber - 1, 1);
-  const mondayOffset = (new Date(first).getUTCDay() + 6) % 7;
-  const start = new Date(first - mondayOffset * dayMilliseconds).toISOString().slice(0, 10);
-  const end = new Date(first + (42 - mondayOffset) * dayMilliseconds).toISOString().slice(0, 10);
+  const sundayOffset = new Date(first).getUTCDay();
+  const start = new Date(first - sundayOffset * dayMilliseconds).toISOString().slice(0, 10);
+  const end = new Date(first + (42 - sundayOffset) * dayMilliseconds).toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) throw new Error("เดือนไม่ถูกต้อง");
   return { start, end };
 }

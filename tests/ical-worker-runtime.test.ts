@@ -2,6 +2,38 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { build } from 'esbuild';
 
+test('native Workers fetch imports a feed and never follows redirects', {skip:process.env.ICAL_WORKER_INTEGRATION!=='1'}, async () => {
+  const { Miniflare, convertV4MiniflareOptions } = await import('miniflare');
+  const bundled = await build({write:false,bundle:true,format:'esm',platform:'browser',
+    stdin:{resolveDir:process.cwd(),loader:'ts',contents:`
+      import {fetchIcal} from './server/calendar/fetch-ical.ts';
+      export default {async fetch(request) {
+        const mode=new URL(request.url).pathname.slice(1);
+        try {return Response.json({body:await fetchIcal('https://www.airbnb.com/calendar/ical/123.ics?mode='+mode)});}
+        catch(error){return Response.json({error:error.message});}
+      }};
+    `},plugins:[{name:'test-server-only',setup(b){
+      b.onResolve({filter:/^server-only$/},()=>({path:'server-only',namespace:'test-only'}));
+      b.onLoad({filter:/.*/,namespace:'test-only'},()=>({contents:'export {};'}));
+    }}]});
+  let followed = false;
+  const runtime = new Miniflare(convertV4MiniflareOptions({
+    modules:true, script:bundled.outputFiles[0].text,
+    compatibilityDate:'2026-06-30',compatibilityFlags:['nodejs_compat','global_fetch_strictly_public'],
+    outboundService(request) {
+      const target=new URL(request.url);
+      if(target.hostname!=='www.airbnb.com'){followed=true;return new Response('unexpected');}
+      if(target.searchParams.get('mode')==='redirect')return new Response(null,{status:302,headers:{location:'https://unapproved.example/private'}});
+      return new Response('BEGIN:VCALENDAR\\r\\nEND:VCALENDAR');
+    },
+  }));
+  try {
+    assert.deepEqual(await (await runtime.dispatchFetch('https://runtime.test/feed')).json(),{body:'BEGIN:VCALENDAR\\r\\nEND:VCALENDAR'});
+    assert.deepEqual(await (await runtime.dispatchFetch('https://runtime.test/redirect')).json(),{error:'calendar_http_error'});
+    assert.equal(followed,false);
+  } finally {await runtime.dispose();}
+});
+
 test('iCal integration modules execute in local Workers runtime', {skip:process.env.ICAL_WORKER_INTEGRATION!=='1'},async()=>{
   // Miniflare is supplied by the pinned Wrangler dependency, not a new install.
   const {Miniflare}=await import('miniflare');

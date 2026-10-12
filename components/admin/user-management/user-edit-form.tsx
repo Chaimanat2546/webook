@@ -63,7 +63,7 @@ export function UserEditForm({ roles, section, user }: UserEditFormProps) {
             <select
               aria-describedby="webook-user-role-error"
               aria-invalid={hasRoleIdError}
-              className={`h-8 w-full rounded-lg border bg-transparent px-2.5 py-1 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 ${hasRoleIdError ? "border-destructive focus-visible:border-destructive focus-visible:ring-3 focus-visible:ring-destructive/20" : "border-input focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"}`}
+              className={`h-8 w-full rounded-lg border bg-field-background disabled:bg-muted px-2.5 py-1 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 ${hasRoleIdError ? "border-destructive focus-visible:border-destructive focus-visible:ring-3 focus-visible:ring-destructive/20" : "border-field-border focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"}`}
               defaultValue={user.roleId === null ? "" : String(user.roleId)}
               id="webook-user-role"
               name="roleId"

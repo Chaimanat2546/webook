@@ -24,7 +24,7 @@ function formatRange(value: DateRange | undefined): string {
 
 export function ThaiDateRangePicker({ onChange, portalContainer, value }: ThaiDateRangePickerProps) {
   return <Popover>
-    <PopoverTrigger aria-label="ช่วงวันที่เข้าพัก" render={<Button className="h-8 w-full justify-start text-left font-normal data-[empty=true]:text-muted-foreground" data-empty={!value?.from} type="button" variant="outline" />}>
+    <PopoverTrigger aria-label="ช่วงวันที่เข้าพัก" render={<Button className="h-8 w-full justify-start border-field-border bg-field-background text-left font-normal disabled:bg-muted data-[empty=true]:text-muted-foreground dark:border-field-border dark:bg-field-background dark:disabled:bg-muted" data-empty={!value?.from} type="button" variant="outline" />}>
       <CalendarDaysIcon aria-hidden />{formatRange(value)}
     </PopoverTrigger>
     <PopoverContent className="w-auto min-w-0 overflow-hidden bg-background p-0" container={portalContainer} align="start"><Calendar className="rounded-[calc(var(--radius-xl)-1px)]" locale={th} mode="range" onSelect={onChange} selected={value} formatters={{ formatCaption: date => thaiDate.format(date) }} /></PopoverContent>

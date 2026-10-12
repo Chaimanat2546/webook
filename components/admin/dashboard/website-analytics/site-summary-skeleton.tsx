@@ -6,11 +6,12 @@ const pulse = "motion-reduce:animate-none";
 export function WebsiteSiteSummarySkeleton() {
   return <Card data-loading-section="analytics-loading-site-summary" role="status" aria-label="กำลังโหลดสถิติแยกเว็บไซต์">
     <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-      <div className="space-y-2"><Skeleton className={`h-6 w-28 ${pulse}`} /><Skeleton className={`h-4 w-72 max-w-full ${pulse}`} /></div>
+      <div className="flex min-w-0 w-full items-start gap-3 sm:w-auto sm:flex-1"><Skeleton className={`size-9 shrink-0 rounded-lg ${pulse}`} /><div className="min-w-0 space-y-2"><Skeleton className={`h-6 w-56 max-w-full ${pulse}`} /><Skeleton className={`h-4 w-96 max-w-full ${pulse}`} /></div></div>
       <Skeleton className={`h-4 w-28 ${pulse}`} />
     </CardHeader>
     <CardContent>
       <span className="sr-only">กำลังโหลดสถิติแยกเว็บไซต์…</span>
+      <Skeleton data-loading-site-summary-chart className={`mb-6 h-60 w-full ${pulse}`} aria-hidden="true" />
       <div className="space-y-3 md:hidden" aria-hidden="true">
         {Array.from({ length: 3 }, (_, index) => <div key={index} className="space-y-3 border-b pb-3 last:border-b-0 last:pb-0"><div className="flex items-start justify-between gap-3"><div className="space-y-2"><Skeleton className={`h-4 w-32 ${pulse}`} /><Skeleton className={`h-3 w-40 ${pulse}`} /></div><Skeleton className={`h-6 w-20 ${pulse}`} /></div><div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/40 p-2"><Skeleton className={`h-8 ${pulse}`} /><Skeleton className={`h-8 ${pulse}`} /><Skeleton className={`h-8 ${pulse}`} /></div></div>)}
       </div>

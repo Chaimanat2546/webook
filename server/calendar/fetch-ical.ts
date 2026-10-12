@@ -16,7 +16,8 @@ export async function fetchIcal(value: string, fetcher: typeof fetch = fetch): P
   const timer = setTimeout(() => controller.abort(), 8000);
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
-    const response = await fetcher(url, { redirect: 'error', cache: 'no-store', signal: controller.signal });
+    // Workers rejects redirect:'error'; manual mode still rejects every 3xx below.
+    const response = await fetcher(url, { redirect: 'manual', cache: 'no-store', signal: controller.signal });
     if (!response.ok || response.redirected) throw new Error('calendar_http_error');
     if (Number(response.headers.get('content-length')) > 1_048_576) {
       await response.body?.cancel(); throw new Error('ical_too_large');

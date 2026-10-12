@@ -1,5 +1,7 @@
 import { BadgeDollarSign, HouseIcon, SaveIcon, SparklesIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { CalendarDays } from 'lucide-react';
+import { CalendarSourcesWorkspace } from '../../../../components/admin/houses/calendar-sources-workspace';
 import { notFound } from "next/navigation";
 import { safeHouseReturnTo } from "../../../../lib/admin-return-to";
 
@@ -25,6 +27,7 @@ import {
   canManageHouseRating,
   canUseAccommodation,
   canViewHousePrices,
+  canUseBooking,
   requireAdmin,
 } from "../../../../server/auth/admin";
 import {
@@ -45,6 +48,7 @@ const HOUSE_DETAIL_SECTIONS = [
   { key: "details", label: "ข้อมูลบ้าน" },
   { key: "prices", label: "ราคาพื้นฐาน" },
   { key: "facilities", label: "สิ่งอำนวยความสะดวก" },
+  { key: "calendar", label: "เชื่อมปฏิทินภายนอก" },
 ] as const;
 
 const HOUSE_DETAILS_FORM_ID = "house-details-form";
@@ -68,6 +72,7 @@ const sectionIconByKey: Record<HouseDetailSectionKey, LucideIcon> = {
   details: HouseIcon,
   prices: BadgeDollarSign,
   facilities: SparklesIcon,
+  calendar: CalendarDays,
 };
 
 function getSelectedSection(value?: string): HouseDetailSectionKey {
@@ -153,6 +158,11 @@ export default async function HouseDetailPage({
   const canManageAccommodation = canUseAccommodation(adminUser);
   const canViewPrices = canViewHousePrices(adminUser);
   const canManagePrices = canManageHousePrices(adminUser);
+  const canManageCalendars = canUseBooking(adminUser) && adminUser?.role_id === 1;
+  if (selectedSection === 'calendar') {
+    const calendarSections = HOUSE_DETAIL_SECTIONS.filter(item => item.key === 'calendar' ? canManageCalendars : item.key === 'prices' ? canViewPrices : canManageAccommodation);
+    return <CalendarSourcesWorkspace propertyId={propertyId} returnTo={safeReturnTo} sections={calendarSections}/>;
+  }
   if (selectedSection === "prices" && !canViewPrices) notFound();
   if (selectedSection !== "prices" && !canManageAccommodation) notFound();
 
@@ -172,9 +182,10 @@ export default async function HouseDetailPage({
     details: "ข้อมูล",
     prices: `${LISTING_PRICE_DAYS.length} วัน`,
     facilities: `${activeFacilityCount} เปิด`,
+    calendar: 'Airbnb',
   };
   const detailSections = HOUSE_DETAIL_SECTIONS.filter((item) =>
-    item.key === "prices" ? canViewPrices : canManageAccommodation,
+    item.key === 'calendar' ? canManageCalendars : item.key === "prices" ? canViewPrices : canManageAccommodation,
   ).map((item) => ({
     ...item,
     badge: sectionBadges[item.key],

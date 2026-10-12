@@ -27,12 +27,12 @@ type PageState =
 const loadError = "โหลดปฏิทินการจองไม่สำเร็จ กรุณาลองอีกครั้ง";
 const pageError = "โหลดรายการบ้านไม่สำเร็จ กรุณาลองอีกครั้ง";
 
-export function BookingCalendarGallery({ initialSearch = "", initialSearchMode = "dv" }: { initialSearch?: string; initialSearchMode?: GallerySearchMode }) {
+export function BookingCalendarGallery({ initialSearch = "", initialSearchMode = "dv", initialPage = 1 }: { initialSearch?: string; initialSearchMode?: GallerySearchMode; initialPage?: number }) {
   const [initialMonth] = useState(() => bookingToday().slice(0, 7));
   const [search, setSearch] = useState(initialSearch);
   const [searchMode, setSearchMode] = useState<GallerySearchMode>(initialSearchMode);
   const [committedSearch, setCommittedSearch] = useState(initialSearch.trim());
-  const [requestedPage, setRequestedPage] = useState(1);
+  const [requestedPage, setRequestedPage] = useState(initialPage);
   const [pageState, setPageState] = useState<PageState>({ status: "loading", key: "dv::1" });
   const [pageRetry, setPageRetry] = useState(0);
   const [houseMonths, setHouseMonths] = useState<Record<string, string>>({});
@@ -118,6 +118,7 @@ export function BookingCalendarGallery({ initialSearch = "", initialSearchMode =
   }, [houses, houseMonths, initialMonth, loadPairs, cacheStates]);
 
   const choose = (selection: GallerySelection, element: HTMLElement) => { trigger.current = element; setSelected(selection); };
+  const returnTo = `/admin/bookings?${new URLSearchParams({ search: committedSearch, searchMode, page: String(page?.page ?? requestedPage) })}`;
 
   return <main className="space-y-5">
     <div><h1 className="text-2xl font-semibold">การจอง</h1><p className="text-sm text-muted-foreground">ปฏิทินการจองของบ้านทั้งหมด</p></div>
@@ -140,6 +141,7 @@ export function BookingCalendarGallery({ initialSearch = "", initialSearchMode =
         const state = cacheStates[`${house.property_id}:${month}`];
         return <GalleryCard key={house.property_id} house={house} card={state?.status === "ready" ? state.card : null} month={month} today={today}
           loading={!state || state.status === "loading"} error={state?.status === "error" ? state.message : ""}
+          returnTo={returnTo}
           onMonthChange={(propertyId, nextMonth) => setHouseMonths(current => ({ ...current, [propertyId]: nextMonth }))}
           onRetry={retryMonth => { void loadPairs([{ propertyId: house.property_id, month: retryMonth }], true); }}
           onBookingSelect={(propertyId, bookingId, element) => choose({ propertyId, bookingId }, element)}

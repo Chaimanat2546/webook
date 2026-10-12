@@ -13,7 +13,7 @@ export async function saveCalendarSourceAction(propertyId:string,input:unknown){
     const payload=parsed.url?await encryptSourceUrl(parsed.url):null;
     if(parsed.sourceId)await calendarRepository.update(parsed.sourceId,house.id,actorId,parsed.label,parsed.enabled,payload);
     else {if(!payload)throw new Error('กรุณาระบุ URL');await calendarRepository.add(house.id,parsed.label,payload);}
-    revalidatePath(`/admin/houses/${house.property_id}/calendar-sources`);revalidatePath('/admin/bookings');
+    revalidatePath(`/admin/houses/${house.property_id}`);revalidatePath(`/admin/houses/${house.property_id}/calendar-sources`);revalidatePath('/admin/bookings');
     return (await calendarRepository.list([house.id])).map(calendarSourceSummary);
   });
 }
@@ -22,6 +22,7 @@ export async function refreshCalendarSourcesAction(propertyId:string){
     const {repository,calendarRepository,actorId}=await requireCalendarSourcesAdmin();
     const house=await requireBookingHouse(repository,propertyId);
     const result=await refreshHouseCalendars(calendarRepository,[house.id],actorId);
+    revalidatePath(`/admin/houses/${house.property_id}`);
     revalidatePath('/admin/bookings');
     return result[house.id].sources;
   });
