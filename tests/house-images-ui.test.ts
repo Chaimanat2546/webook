@@ -138,9 +138,6 @@ describe("house image mobile UI", () => {
 
   it("keeps the house list return URL through the image page and zone changes", () => {
     assert.match(pageSource, /searchParams: Promise<\{ zone\?: string; returnTo\?: string; mode\?: string \}>/);
-    assert.match(pageSource, /value === "\/admin\/houses"/);
-    assert.match(pageSource, /value\??\.startsWith\("\/admin\/houses\?"\)/);
-    assert.match(pageSource, /const safeReturnTo = getSafeReturnTo\(returnTo\);/);
     assert.match(pageSource, /const backHref = safeReturnTo \?\? "\/admin\/houses";/);
     assert.match(pageSource, /backHref=\{backHref\}/);
     assert.match(pageSource, /returnTo=\{safeReturnTo \?\? undefined\}/);

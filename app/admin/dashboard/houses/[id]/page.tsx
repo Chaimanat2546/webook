@@ -11,13 +11,15 @@ export default async function DashboardHouseDetailPage({ params, searchParams }:
   const { actorId, repository } = await dashboardSession();
   let routeQuery;
   let report;
+  const { from, ...listRaw } = raw;
   try {
-    routeQuery = parseDashboardHousesQuery(raw);
+    if (from !== undefined && from !== "overview") notFound();
+    routeQuery = parseDashboardHousesQuery(listRaw);
     report = await loadDashboardHouse(repository, actorId, routeQuery, id);
   } catch (error) {
     if (error instanceof DashboardForbidden || error instanceof DashboardItemNotFound) notFound();
     notFound();
   }
   const query = parseDashboardQuery({ month: routeQuery.month, view: "house", from: "houses", houseId: id, houseSearch: routeQuery.search, housesPage: String(routeQuery.page) });
-  return <DashboardDetails backHref={dashboardHousesHref(routeQuery)} backLabel="กลับไปบ้านใหม่" houseDetailReturnTo={dashboardHouseDetailHref(routeQuery, id)} query={query} report={report} />;
+  return <DashboardDetails backHref={from === "overview" ? `/admin/dashboard?month=${encodeURIComponent(routeQuery.month)}` : dashboardHousesHref(routeQuery)} backLabel={from === "overview" ? "กลับไปภาพรวม" : "กลับไปบ้านใหม่"} houseDetailReturnTo={dashboardHouseDetailHref(routeQuery, id, from === "overview" ? "overview" : undefined)} query={query} report={report} />;
 }
