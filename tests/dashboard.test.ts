@@ -241,7 +241,7 @@ test("canonical bookings page renders the booking workflow", async () => {
   assert.doesNotMatch(html, /1 รายการ · ฿1,234\.50/);
   assert.doesNotMatch(html, /การจองติดจอง/);
   assert.match(html, /overflow-hidden rounded-xl border/);
-  assert.match(html, /hidden overflow-hidden rounded-xl border md:block/);
+  assert.match(html, /hidden overflow-hidden rounded-xl border[^"\n]* md:block/);
   assert.match(html, /space-y-3 md:hidden/);
   assert.match(html, /rounded-xl border bg-card p-3 shadow-sm/);
   assert.doesNotMatch(html, /ยอดขายเอเจนซี่/);
@@ -271,7 +271,7 @@ test("canonical agency and house pages render their own workflows", async () => 
   assert.match(agenciesHtml, /data-slot="select-value"[^>]*>ยอดขายสูงสุด/);
   assert.match(agenciesHtml, /class="relative w-full"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาเอเจนซี่"/);
   assert.doesNotMatch(agenciesHtml, /type="month"[^>]*id="agency-month"/);
-  assert.match(agenciesHtml, /class="hidden overflow-hidden rounded-xl border md:block"/);
+  assert.match(agenciesHtml, /class="hidden overflow-hidden rounded-xl border[^"\n]* md:block"/);
   assert.match(agenciesHtml, /class="space-y-3 md:hidden"[\s\S]*rounded-xl border bg-card p-3 shadow-sm/);
   assert.match(agenciesHtml, /<table[^>]*>[\s\S]*<th[^>]*>ชื่อเอเจนซี่<\/th>[\s\S]*<th[^>]*>จำนวนการจองติดจอง<\/th>[\s\S]*<th[^>]*>ยอดขาย<\/th>/);
   assert.equal((agenciesHtml.match(/<th /g) ?? []).length, 3);
@@ -325,6 +325,21 @@ test("canonical detail pages use their list return headers", async () => {
   assert.match(houseHtml, /href="\/admin\/dashboard\/houses\?month=2026-09&amp;search=villa&amp;houseSort=name-asc&amp;page=2"[^>]*>.*กลับไปบ้านใหม่/);
   assert.match(houseHtml, /returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09%26search%3Dvilla%26houseSort%3Dname-asc%26page%3D2/);
   assert.match(houseHtml, /<h1[^>]*>New House<\/h1>/);
+});
+
+test("operational dashboard tables separate white surfaces and tinted headers from the page", async () => {
+  const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09" });
+  for (const [name, file, query] of [
+    ["BookingsList", "bookings-list", parseDashboardBookingsQuery({ month: "2026-09" })],
+    ["NewHousesList", "new-houses-list", parseDashboardHousesQuery({ month: "2026-09" })],
+    ["AgenciesList", "agencies-list", { month: "2026-09", search: "", page: 1 }],
+  ] as const) {
+    const View = await dashboardComponent(name, `../components/admin/dashboard/${file}.tsx`);
+    const html = renderToStaticMarkup(createElement(View, { report, query }));
+    assert.match(html, /<table[^>]*class="[^"]*bg-card/);
+    assert.match(html, /<thead[^>]*class="[^"]*bg-secondary/);
+    assert.match(html, /<table[^>]*class="[^"]*\[&amp;_tr\]:border-border\/70/);
+  }
 });
 
 test("overview house links return to the selected overview month even after house management", async () => {
@@ -425,7 +440,7 @@ test("agency detail reuses the booking toolbar and responsive list", async () =>
   assert.match(bookingsHtml, /aria-label="เรียงลำดับ"/);
   assert.match(bookingsHtml, /data-thai-month-picker/);
   assert.doesNotMatch(bookingsHtml, /การจอง \(1\)|บ้านยอดขายสูงสุด/);
-  assert.match(bookingsHtml, /hidden overflow-hidden rounded-xl border md:block[\s\S]*<table[\s\S]*space-y-3 md:hidden/);
+  assert.match(bookingsHtml, /hidden overflow-hidden rounded-xl border[^"\n]* md:block[\s\S]*<table[\s\S]*space-y-3 md:hidden/);
   assert.match(bookingsHtml, /rounded-xl border bg-card p-3 shadow-sm/);
   assert.match(bookingsHtml, /House A/);
   assert.match(bookingsHtml, /1 พ\.ย\. 2569/);
@@ -572,7 +587,7 @@ test("new house list uses a table on desktop and cards on mobile", async () => {
   assert.match(html, /data-thai-month-picker/);
   assert.match(html, /กันยายน 2569/);
   assert.doesNotMatch(html, /type="month"/);
-  assert.match(html, /hidden overflow-hidden rounded-xl border md:block/);
+  assert.match(html, /hidden overflow-hidden rounded-xl border[^"\n]* md:block/);
   assert.match(html, /<th[^>]*>บ้าน \/ DV<\/th>/);
   assert.match(html, /<th[^>]*>วันที่เพิ่ม<\/th>/);
   assert.match(html, /<td[^>]*whitespace-normal[^>]*>[\s\S]*break-words[^>]*>New House/);
