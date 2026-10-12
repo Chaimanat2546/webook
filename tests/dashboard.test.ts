@@ -327,6 +327,51 @@ test("canonical detail pages use their list return headers", async () => {
   assert.match(houseHtml, /<h1[^>]*>New House<\/h1>/);
 });
 
+test("overview house links return to the selected overview month even after house management", async () => {
+  const repo = repository({ kind: "admin" });
+  const report = await loadDashboard(repo, "signed-in-user", { month: "2026-09" });
+  const Overview = await dashboardComponent("DashboardOverviewView", "../components/admin/dashboard/dashboard-overview.tsx");
+  const overviewHtml = renderToStaticMarkup(createElement(Overview, { report, query: parseDashboardQuery({ month: "2026-09" }) }));
+  assert.match(overviewHtml, /href="\/admin\/dashboard\/houses\/listing-new\?month=2026-09&amp;from=overview"/);
+  assert.match(overviewHtml, /href="\/admin\/dashboard\/houses\?month=2026-09"/);
+
+  const Page = await dashboardPageComponent("../app/admin/dashboard/houses/[id]/page.tsx", repo) as (props: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
+  const html = renderToStaticMarkup(await Page({ params: Promise.resolve({ id: "listing-new" }), searchParams: Promise.resolve({ month: "2026-09", from: "overview" }) }) as ReactNode);
+  assert.match(html, /href="\/admin\/dashboard\?month=2026-09"[^>]*>.*กลับไปภาพรวม/);
+  assert.match(html, /returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09%26from%3Doverview/);
+  assert.equal(safeHouseReturnTo("/admin/dashboard/houses/listing-new?month=2026-09&from=overview"), "/admin/dashboard/houses/listing-new?month=2026-09&from=overview");
+  for (const from of ["https://evil.example", ["overview"], "houses"]) {
+    await assert.rejects(Page({ params: Promise.resolve({ id: "listing-new" }), searchParams: Promise.resolve({ month: "2026-09", from }) }), /NEXT_HTTP_ERROR_FALLBACK;404/);
+  }
+});
+
+test("house image management preserves dashboard origin in its real header", async () => {
+  const bundle = await build({ entryPoints: [fileURLToPath(new URL("../app/admin/houses/[propertyId]/images/page.tsx", import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external", plugins: [{ name: "house-read-boundary", setup(builder) {
+    builder.onResolve({ filter: /server\/auth\/admin$/ }, () => ({ path: "fixture-auth", external: true }));
+    builder.onResolve({ filter: /server\/repositories\/(images|listings)$/ }, args => ({ path: args.path.endsWith("images") ? "fixture-images" : "fixture-house", external: true }));
+  } }] });
+  const loaded = { exports: {} as Record<string, unknown> };
+  const require = createRequire(import.meta.url);
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => {
+    if (name === "fixture-auth") return { requireAccommodationAdmin: async () => ({ supabase: {} }) };
+    if (name === "fixture-images") return { getImagesByPropertyId: async () => [] };
+    if (name === "fixture-house") return { getListingByPropertyId: async () => ({ property_id: 202, title: "New House" }) };
+    if (name === "server-only") return {};
+    if (name === "next/navigation") return { ...require(name), useRouter: () => ({ push() {} }) };
+    return require(name);
+  }, loaded, loaded.exports);
+  const Page = loaded.exports.default as (props: { params: Promise<{ propertyId: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<ReactNode>;
+  for (const mode of [undefined, "cover-select"]) {
+    const html = renderToStaticMarkup(await Page({ params: Promise.resolve({ propertyId: "202" }), searchParams: Promise.resolve({ returnTo: "/admin/dashboard/houses/listing-new?month=2026-09&from=overview", mode }) }));
+    assert.match(html, /href="\/admin\/dashboard\/houses\/listing-new\?month=2026-09&amp;from=overview"/);
+  }
+  const unsafeHtml = renderToStaticMarkup(await Page({ params: Promise.resolve({ propertyId: "202" }), searchParams: Promise.resolve({ returnTo: "https://evil.example" }) }));
+  assert.match(unsafeHtml, /href="\/admin\/houses"/);
+  assert.doesNotMatch(unsafeHtml, /evil\.example/);
+  const listHtml = renderToStaticMarkup(await Page({ params: Promise.resolve({ propertyId: "202" }), searchParams: Promise.resolve({ returnTo: "/admin/houses?search=villa&page=2" }) }));
+  assert.match(listHtml, /href="\/admin\/houses\?search=villa&amp;page=2"/);
+});
+
 test("booking house links retain the full agency-origin booking detail URL", async () => {
   const BookingPage = await dashboardPageComponent("../app/admin/dashboard/bookings/[bookingId]/page.tsx", repository({ kind: "admin" })) as (props: { params: Promise<{ bookingId: string }>; searchParams: Promise<Record<string, unknown>> }) => Promise<unknown>;
   const html = renderToStaticMarkup(await BookingPage({

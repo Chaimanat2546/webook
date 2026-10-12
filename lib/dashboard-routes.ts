@@ -213,10 +213,10 @@ export function dashboardHousesHref(query: DashboardHousesQuery, changes: Partia
   return `/admin/dashboard/houses?${params.toString()}`;
 }
 
-export function dashboardHouseDetailHref(query: DashboardHousesQuery, houseId: string): string {
+export function dashboardHouseDetailHref(query: DashboardHousesQuery, houseId: string, from?: "overview"): string {
   const href = dashboardHousesHref(query);
   const [path, search = ""] = href.split("?");
-  return `${path}/${encodeURIComponent(houseId)}?${search}`;
+  return `${path}/${encodeURIComponent(houseId)}?${search}${from === "overview" ? "&from=overview" : ""}`;
 }
 
 export function legacyDashboardHref(query: DashboardQuery): string {

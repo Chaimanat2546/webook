@@ -34,7 +34,7 @@ export async function signIn(formData: FormData) {
     redirect("/login?error=invalid");
   }
 
-  redirect("/admin/houses");
+  redirect("/");
 }
 
 async function resolveSignInEmail(identifier: string) {

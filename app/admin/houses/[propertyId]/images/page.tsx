@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { safeHouseReturnTo } from "../../../../../lib/admin-return-to";
 
 import { HouseTaskHeader } from "../../../../../components/admin/houses/house-task-header";
 import { CoverSelectViewer } from "../../../../../components/admin/images/cover-select-viewer";
@@ -13,14 +14,6 @@ import {
   uploadHouseImagesAction,
 } from "./actions";
 
-function getSafeReturnTo(value?: string): string | null {
-  if (value === "/admin/houses" || value?.startsWith("/admin/houses?")) {
-    return value;
-  }
-
-  return null;
-}
-
 export default async function HouseImagesPage({
   params,
   searchParams,
@@ -30,7 +23,7 @@ export default async function HouseImagesPage({
 }) {
   const { propertyId } = await params;
   const { mode, returnTo, zone } = await searchParams;
-  const safeReturnTo = getSafeReturnTo(returnTo);
+  const safeReturnTo = safeHouseReturnTo(returnTo);
   const backHref = safeReturnTo ?? "/admin/houses";
   const { supabase } = await requireAccommodationAdmin();
 
