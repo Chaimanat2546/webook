@@ -1,0 +1,33 @@
+"use client";
+
+import { useState } from "react";
+import { ThaiDateRangePicker } from "../../ui/thai-date-range-picker";
+import { RangeShortcuts } from "./range-shortcuts";
+
+interface ReportDateRange { from: string; to: string }
+interface ReportDateRangePickerProps {
+  month: string;
+  range?: ReportDateRange;
+  today?: string;
+  availableFrom?: string;
+  pastOnly?: boolean;
+  loading?: boolean;
+  className?: string;
+  label?: string;
+  onChange: (range: ReportDateRange) => void;
+}
+export const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const localDate = (value: string) => new Date(`${value}T00:00:00`);
+
+export function ReportDateRangePicker({ month, range, today, availableFrom, pastOnly = false, loading, className, label = "ช่วงวันที่รายงาน", onChange }: ReportDateRangePickerProps) {
+  const [clockToday] = useState(() => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10));
+  const currentDay = today ?? clockToday;
+  const [year, number] = month.split("-").map(Number);
+  const monthEnd = new Date(Date.UTC(year, number, 0)).toISOString().slice(0, 10);
+  const selected = range ?? { from: `${month}-01`, to: pastOnly && monthEnd > currentDay ? currentDay : monthEnd };
+  return <ThaiDateRangePicker confirmSelection loading={loading} className={className} label={label}
+    value={{ from: localDate(selected.from), to: localDate(selected.to) }}
+    disabled={[{ before: localDate("1900-01-01") }, { after: localDate(pastOnly ? currentDay : "2199-12-31") }]}
+    renderShortcuts={(select, custom, draft) => <RangeShortcuts today={currentDay} availableFrom={availableFrom} selected={draft?.from && draft.to ? { from: dateKey(draft.from), to: dateKey(draft.to) } : undefined} onSelect={select} onCustom={custom} />}
+    onChange={draft => { if (draft?.from && draft.to) onChange({ from: dateKey(draft.from), to: dateKey(draft.to) }); }} />;
+}

@@ -13,7 +13,7 @@ export function ConfirmedBookingsChart({ points }: { points: DashboardDailyBooki
     <ChartContainer config={config} className="aspect-auto h-64 w-full">
       <BarChart accessibilityLayer data={points} margin={{ left: -20, right: 8 }}>
         <CartesianGrid vertical={false} />
-        <XAxis dataKey="date" axisLine={false} tickLine={false} interval={4} tickFormatter={(value: string) => value.slice(8)} />
+        <XAxis dataKey="date" axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={25} tickFormatter={(value: string) => `${value.slice(8)}/${value.slice(5, 7)}`} />
         <YAxis allowDecimals={false} axisLine={false} tickLine={false} width={28} />
         <ChartTooltip content={<ChartTooltipContent labelFormatter={value => dashboardDate(`${String(value)}T00:00:00.000Z`)} />} />
         <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />

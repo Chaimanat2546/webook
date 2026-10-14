@@ -94,3 +94,19 @@ test("denied users never execute the reporting RPC", async () => {
   repo.report = async () => assert.fail("unauthorized RPC");
   await assert.rejects(loadDashboardOverview(repo, "denied", { month: "2026-09" }), DashboardForbidden);
 });
+
+test("custom report dates reach the RPC and new houses as Bangkok boundaries", async () => {
+  const repo = serviceRepository();
+  repo.report = async (_actor, query) => {
+    assert.equal(query.dateFrom, "2026-08-29");
+    assert.equal(query.dateTo, "2026-10-02");
+    assert.equal(query.checkInFrom, undefined);
+    return parseDashboardReportingResult(reportFixture);
+  };
+  repo.newHouses = async query => {
+    assert.equal(query.start, "2026-08-28T17:00:00.000Z");
+    assert.equal(query.end, "2026-10-02T17:00:00.000Z");
+    return [];
+  };
+  await loadDashboardOverview(repo, "admin", { month: "2026-09", dateFrom: "2026-08-29", dateTo: "2026-10-02" });
+});

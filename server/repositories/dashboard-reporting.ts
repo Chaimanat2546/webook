@@ -53,7 +53,7 @@ export function parseDashboardReportingResult(value: unknown): DashboardReportin
   return {
     bookingCount: integer(r.bookingCount), sales: sales(r.sales), totalSalesCents: integer(r.totalSalesCents),
     statusCounts: { confirmed: integer(counts.confirmed), waiting: integer(counts.waiting), cancelled: integer(counts.cancelled), repair: integer(counts.repair), unknown: integer(counts.unknown) },
-    daily: rows(r.daily, 367, value => { const day = object(value); return { date: text(day.date), count: integer(day.count) }; }),
+    daily: rows(r.daily, 109574, value => { const day = object(value); return { date: text(day.date), count: integer(day.count) }; }),
     bookings: page(r.bookings, 100, booking), bookingDetail: r.bookingDetail === null ? null : booking(r.bookingDetail),
     agencies: page(r.agencies, 10, agency), selectedAgency: r.selectedAgency === null ? null : agency(r.selectedAgency),
     agencyCount: integer(r.agencyCount), topAgencies: rows(r.topAgencies, 5, agency),

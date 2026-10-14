@@ -127,6 +127,58 @@ test("dashboard uses a shaped loading skeleton for the website summary", () => {
   assert.match(source, /fallback={<WebsiteSiteSummarySkeleton/);
 });
 
+test("range summary displays its dates and keeps cross-month detail links valid even with future dashboard context", async () => {
+  const bundle = await build({ entryPoints: ["components/admin/dashboard/website-analytics/site-summary.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)(requireWithNavigation, loaded, loaded.exports);
+  const Component = loaded.exports.WebsiteSiteSummary as ComponentType<Record<string, unknown>>;
+  const html = renderToStaticMarkup(createElement(Component, {
+    sites: [{ key: "a", displayName: "A", origin: "https://a.test", status: "partial", totals: emptyMetrics(), coverage: null }],
+    month: "2026-11", range: { from: "2026-09-25", to: "2026-10-05" }, today: "2026-10-14",
+  }));
+  assert.match(html, /2026-09-25 ถึง 2026-10-05/);
+  assert.match(html, /aria-label="ช่วงวันที่สถิติเข้าเว็บไซต์"/);
+  assert.doesNotMatch(html, />ใช้<|>ยกเลิก</);
+  assert.match(html, /ข้อมูลไม่ครบช่วงวันที่/);
+  assert.match(html, /month=2026-10&amp;site=a&amp;from=2026-09-25&amp;to=2026-10-05/);
+});
+
+test("custom range remains visible in mobile and full-list filters", async () => {
+  const bundle = await build({ entryPoints: ["components/admin/dashboard/website-analytics/filters.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)(requireWithNavigation, loaded, loaded.exports);
+  const Component = loaded.exports.WebsiteAnalyticsFilters as ComponentType<Record<string, unknown>>;
+  for (const view of [undefined, "houses"]) {
+    const html = renderToStaticMarkup(createElement(Component, {
+      query: { month: "2026-10", site: "a", page: 1, from: "2026-09-25", to: "2026-10-05", view },
+      sites: [{ key: "a", displayName: "A" }], maxMonth: "2026-10",
+    }));
+    assert.match(html, /<p class="text-xs text-muted-foreground">ช่วงวันที่: 2026-09-25 – 2026-10-05 · เวลาไทย<\/p>/);
+  }
+});
+
+test("range confirmation actions live inside the calendar popup", async () => {
+  const bundle = await build({
+    entryPoints: ["components/admin/dashboard/website-analytics/summary-range-filter.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external",
+    plugins: [{ name: "expose-popup", setup(builder) {
+      builder.onLoad({ filter: /components[\\/]ui[\\/]popover\.tsx$/ }, () => ({ loader: "tsx", contents: `
+        import React from 'react';
+        export const Popover = ({children}) => <>{children}</>;
+        export const PopoverTrigger = ({children}) => <button>{children}</button>;
+        export const PopoverContent = ({children}) => <section data-test-popup="">{children}</section>;
+      ` }));
+    } }],
+  });
+  const loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)(requireWithNavigation, loaded, loaded.exports);
+  const Component = loaded.exports.SummaryRangeFilter as ComponentType<Record<string, unknown>>;
+  const html = renderToStaticMarkup(createElement(Component, { month: "2026-10", range: { from: "2026-10-01", to: "2026-10-14" }, today: "2026-10-14" }));
+  const popup = html.match(/<section data-test-popup="">([\s\S]*)<\/section>/)?.[1] ?? "";
+  assert.match(popup, />ใช้<\/button>/);
+  assert.match(popup, />ยกเลิก<\/button>/);
+  assert.equal((html.match(/>ใช้<\/button>/g) ?? []).length, 1);
+});
+
 test("website summary skeleton reserves the responsive eight-column table", async () => {
   const html = renderToStaticMarkup(createElement(await siteSummarySkeleton()));
 
