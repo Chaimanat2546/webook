@@ -1,3 +1,4 @@
+import { dashboardOverviewHref } from "../../../../lib/dashboard-routes";
 import { notFound } from "next/navigation";
 import { parseDashboardHousesQuery } from "../../../../lib/dashboard-routes";
 import { dashboardSession } from "../../../../server/auth/dashboard";
@@ -20,7 +21,7 @@ export default async function DashboardHousesPage({ searchParams }: { searchPara
     notFound();
   }
   return <DashboardDetailLayout>
-    <DashboardTaskHeader backHref={`/admin/dashboard?month=${routeQuery.month}`} backLabel="กลับไปภาพรวม" description="ตรวจสอบบ้านที่เพิ่มเข้าระบบ" title="บ้านใหม่" />
+    <DashboardTaskHeader backHref={dashboardOverviewHref(routeQuery)} backLabel="กลับไปภาพรวม" description="ตรวจสอบบ้านที่เพิ่มเข้าระบบ" title="บ้านใหม่" />
     <NewHousesList report={report} query={routeQuery} />
   </DashboardDetailLayout>;
 }

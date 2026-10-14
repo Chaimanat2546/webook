@@ -1,13 +1,22 @@
 export type DashboardScope = { kind: "admin" } | { kind: "owner"; propertyId: string };
 
-export interface DashboardMonth {
+export interface DashboardDateFilter {
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export function dashboardDateFilter(query: DashboardDateFilter): DashboardDateFilter {
+  return query.dateFrom && query.dateTo ? { dateFrom: query.dateFrom, dateTo: query.dateTo } : {};
+}
+
+export interface DashboardMonth extends DashboardDateFilter {
   month: string;
   start: string;
   end: string;
 }
 
 /** RPC request: monthly reporting always uses updated_at; stay dates are inclusive. */
-export interface DashboardReportingQuery {
+export interface DashboardReportingQuery extends DashboardDateFilter {
   month: string;
   view?: DashboardViewName;
   checkInFrom?: string;
@@ -69,7 +78,7 @@ export interface DashboardQuery extends DashboardMonth {
   houseId: string;
 }
 
-export interface DashboardBookingsQuery {
+export interface DashboardBookingsQuery extends DashboardDateFilter {
   month: string;
   checkInFrom?: string;
   checkInTo?: string;
@@ -81,11 +90,11 @@ export interface DashboardBookingsQuery {
   amountToCents?: number;
 }
 
-export interface DashboardOverviewQuery {
+export interface DashboardOverviewQuery extends DashboardDateFilter {
   month: string;
 }
 
-export interface DashboardListQuery {
+export interface DashboardListQuery extends DashboardDateFilter {
   month: string;
   search: string;
   page: number;
@@ -366,6 +375,8 @@ export function parseDashboardQuery(raw: Record<string, unknown>, now = new Date
     throw new Error("กรุณาเลือกเดือนที่ถูกต้อง (ค.ศ. 1900–2199)");
   }
   const [year, number] = month.split("-").map(Number);
+  const dateFrom = reportDate(raw.dateFrom), dateTo = reportDate(raw.dateTo);
+  if ((dateFrom === undefined) !== (dateTo === undefined) || (dateFrom && dateTo && dateFrom > dateTo)) throw new Error("ช่วงวันที่ไม่ถูกต้อง");
   const status = raw.status ?? "all";
   if (typeof status !== "string" || (status !== "all" && !DASHBOARD_STATUSES.some(item => item.value === status))) throw new Error("สถานะไม่ถูกต้อง");
   function text(value: unknown): string {
@@ -402,8 +413,9 @@ export function parseDashboardQuery(raw: Record<string, unknown>, now = new Date
   if (resolvedView === "house" && !houseId) throw new Error("ไม่พบรหัสบ้าน");
   return {
     month,
-    start: new Date(Date.UTC(year, number - 1, 1) - 7 * 60 * 60 * 1000).toISOString(),
-    end: new Date(Date.UTC(year, number, 1) - 7 * 60 * 60 * 1000).toISOString(),
+    ...(dateFrom && dateTo ? { dateFrom, dateTo } : {}),
+    start: dateFrom ? new Date(`${dateFrom}T00:00:00+07:00`).toISOString() : new Date(Date.UTC(year, number - 1, 1) - 7 * 60 * 60 * 1000).toISOString(),
+    end: dateTo ? new Date(Date.parse(`${dateTo}T00:00:00+07:00`) + 86400000).toISOString() : new Date(Date.UTC(year, number, 1) - 7 * 60 * 60 * 1000).toISOString(),
     view: resolvedView,
     from: from(raw.from),
     page: page(raw.page),
@@ -421,4 +433,12 @@ export function dashboardMoney(cents: number): string {
 
 export function dashboardDate(value: string, includeTime = false): string {
   return new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric", ...(includeTime ? { hour: "2-digit", minute: "2-digit" } as const : {}) }).format(new Date(value));
+}
+
+function reportDate(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !/^(?:19|20|21)\d{2}-\d{2}-\d{2}$/.test(value)) throw new Error("ช่วงวันที่ไม่ถูกต้อง");
+  const date = new Date(`${value}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error("ช่วงวันที่ไม่ถูกต้อง");
+  return value;
 }

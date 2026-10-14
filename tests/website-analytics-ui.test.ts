@@ -82,6 +82,9 @@ test("overview shows five ranked houses and links to the complete paginated webs
   assert.equal(detailQuery.view, "houses");
   const detail = renderToStaticMarkup(createElement(View, { report, query: detailQuery, sites }));
   assert.ok(detail.includes("สถิติบ้านทั้งหมด")); assert.ok(detail.includes("House 10"));
+  assert.match(detail, /<table[^>]*class="[^"]*bg-card/);
+  assert.match(detail, /<thead[^>]*class="[^"]*bg-secondary/);
+  assert.match(detail, /<table[^>]*class="[^"]*\[&amp;_tr\]:border-border\/70/);
   assert.ok(detail.includes("แบ่งหน้ารายการ"));
   assert.ok(detail.includes("analytics-sort"));
   assert.ok(detail.includes("table-fixed"));

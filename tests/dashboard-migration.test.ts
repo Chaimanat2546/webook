@@ -9,6 +9,7 @@ import { parseDashboardAgencyDetailQuery } from "../lib/dashboard-routes.ts";
 
 const migration = new URL("../supabase/migrations/20261002110000_scalable_dashboard_reporting.sql", import.meta.url);
 const orderingMigration = new URL("../supabase/migrations/20261005120000_dashboard_json_ordering.sql", import.meta.url);
+const rangeMigration = new URL("../supabase/migrations/20261014100000_dashboard_date_ranges.sql", import.meta.url);
 const confirmedAgencyCountsMigration = new URL("../supabase/migrations/20261005130000_dashboard_confirmed_agency_counts.sql", import.meta.url);
 it("dashboard reporting migration is available for deployment", () => assert.ok(existsSync(migration)));
 it("dashboard confirmed agency counts migration is available for deployment", () => assert.ok(existsSync(confirmedAgencyCountsMigration)));
@@ -83,8 +84,27 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     sql(readFileSync(migration, "utf8"));
     sql(readFileSync(orderingMigration, "utf8"));
     sql(readFileSync(confirmedAgencyCountsMigration, "utf8"));
+    sql("alter table bookings add column calendar_source_id uuid;");
+    sql(readFileSync(rangeMigration, "utf8"));
   });
   after(() => { spawnSync("docker", ["rm", "-f", container]); });
+  it("supports inclusive cross-month reporting and rejects invalid ranges", () => {
+    const r = report({ dateFrom: "2026-09-10", dateTo: "2026-10-01" });
+    assert.equal(r.bookingCount, 6);
+    assert.equal(r.daily.length, 22);
+    assert.deepEqual(r.daily[0], { date: "2026-09-10", count: 2 });
+    assert.deepEqual(r.daily.at(-1), { date: "2026-10-01", count: 1 });
+    const ownerRange = report({ dateFrom: "2026-09-01", dateTo: "2026-10-01" }, owner);
+    assert.equal(ownerRange.bookingCount, 6);
+    for (const range of [{dateFrom:"2026-10-01"}, {dateFrom:"2026-10-01",dateTo:"2026-09-01"}, {dateFrom:"2026-02-30",dateTo:"2026-10-01"}]) {
+      sql(`select dashboard_report('${admin}','${JSON.stringify({ month: "2026-09", ...range })}');`, false);
+    }
+  });
+  it("keeps calendar imports out of reports with a custom range", () => {
+    sql("update bookings set calendar_source_id='00000000-0000-4000-8000-000000000099' where id=7;");
+    try { assert.equal(report({ dateFrom: "2026-10-01", dateTo: "2026-10-01" }).bookingCount, 0); }
+    finally { sql("update bookings set calendar_source_id=null where id=7;"); }
+  });
   it("uses Bangkok updated-month boundaries, all-status counts and confirmed sales", () => {
     const r = report();
     assert.equal(r.bookingCount, 6);

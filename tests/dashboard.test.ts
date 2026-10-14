@@ -241,18 +241,19 @@ test("canonical bookings page renders the booking workflow", async () => {
   assert.doesNotMatch(html, /1 รายการ · ฿1,234\.50/);
   assert.doesNotMatch(html, /การจองติดจอง/);
   assert.match(html, /overflow-hidden rounded-xl border/);
-  assert.match(html, /hidden overflow-hidden rounded-xl border md:block/);
+  assert.match(html, /hidden overflow-hidden rounded-xl border[^"\n]* md:block/);
   assert.match(html, /space-y-3 md:hidden/);
   assert.match(html, /rounded-xl border bg-card p-3 shadow-sm/);
   assert.doesNotMatch(html, /ยอดขายเอเจนซี่/);
   assert.match(html, /aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
-  assert.match(html, /data-thai-month-picker/);
+  assert.match(html, /data-thai-date-range-picker/);
   assert.doesNotMatch(html, /type="month"[^>]*id="booking-month"/);
   assert.match(html, /id="booking-status"[^>]*role="combobox"/);
   assert.match(html, /id="booking-sort"[^>]*role="combobox"/);
   assert.match(html, /data-slot="select-value"[^>]*>จองล่าสุด/);
   assert.doesNotMatch(html, /name="agency"/);
-  assert.match(html, /pb-1 md:overflow-x-auto/);
+  assert.match(html, /flex w-full min-w-0 flex-wrap gap-2/);
+  assert.doesNotMatch(html, /md:min-w-max|md:overflow-x-auto/);
   assert.match(html, /href="\/admin\/dashboard\/bookings\/1\?month=2026-09&amp;status=confirmed&amp;sort=updated-desc"/);
 });
 
@@ -266,12 +267,12 @@ test("canonical agency and house pages render their own workflows", async () => 
   assert.doesNotMatch(agenciesHtml, /เฉพาะติดจอง · เรียงยอดขายสูงสุดก่อน/);
   assert.doesNotMatch(agenciesHtml, /action="\/admin\/dashboard\/agencies"/);
   assert.match(agenciesHtml, /aria-label="ค้นหาเอเจนซี่"/);
-  assert.match(agenciesHtml, /data-thai-month-picker/);
+  assert.match(agenciesHtml, /data-thai-date-range-picker/);
   assert.match(agenciesHtml, /id="agency-sort"[^>]*role="combobox"/);
   assert.match(agenciesHtml, /data-slot="select-value"[^>]*>ยอดขายสูงสุด/);
   assert.match(agenciesHtml, /class="relative w-full"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาเอเจนซี่"/);
   assert.doesNotMatch(agenciesHtml, /type="month"[^>]*id="agency-month"/);
-  assert.match(agenciesHtml, /class="hidden overflow-hidden rounded-xl border md:block"/);
+  assert.match(agenciesHtml, /class="hidden overflow-hidden rounded-xl border[^"\n]* md:block"/);
   assert.match(agenciesHtml, /class="space-y-3 md:hidden"[\s\S]*rounded-xl border bg-card p-3 shadow-sm/);
   assert.match(agenciesHtml, /<table[^>]*>[\s\S]*<th[^>]*>ชื่อเอเจนซี่<\/th>[\s\S]*<th[^>]*>จำนวนการจองติดจอง<\/th>[\s\S]*<th[^>]*>ยอดขาย<\/th>/);
   assert.equal((agenciesHtml.match(/<th /g) ?? []).length, 3);
@@ -290,8 +291,8 @@ test("canonical agency and house pages render their own workflows", async () => 
   assert.match(housesHtml, /aria-label="ค้นหาบ้าน"/);
   assert.match(housesHtml, /class="relative w-full"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาบ้าน"/);
   assert.match(housesHtml, /aria-label="ค้นหา"[^>]*type="submit"/);
-  assert.match(housesHtml, /data-thai-month-picker/);
-  assert.match(housesHtml, /กันยายน 2569/);
+  assert.match(housesHtml, /data-thai-date-range-picker/);
+  assert.match(housesHtml, /1 ก.ย. 2569 – 30 ก.ย. 2569/);
   assert.match(housesHtml, /id="house-sort"/);
   assert.match(housesHtml, /aria-label="เรียงลำดับบ้าน"/);
   assert.match(housesHtml, /เพิ่มล่าสุด/);
@@ -325,6 +326,21 @@ test("canonical detail pages use their list return headers", async () => {
   assert.match(houseHtml, /href="\/admin\/dashboard\/houses\?month=2026-09&amp;search=villa&amp;houseSort=name-asc&amp;page=2"[^>]*>.*กลับไปบ้านใหม่/);
   assert.match(houseHtml, /returnTo=%2Fadmin%2Fdashboard%2Fhouses%2Flisting-new%3Fmonth%3D2026-09%26search%3Dvilla%26houseSort%3Dname-asc%26page%3D2/);
   assert.match(houseHtml, /<h1[^>]*>New House<\/h1>/);
+});
+
+test("operational dashboard tables separate white surfaces and tinted headers from the page", async () => {
+  const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", { month: "2026-09" });
+  for (const [name, file, query] of [
+    ["BookingsList", "bookings-list", parseDashboardBookingsQuery({ month: "2026-09" })],
+    ["NewHousesList", "new-houses-list", parseDashboardHousesQuery({ month: "2026-09" })],
+    ["AgenciesList", "agencies-list", { month: "2026-09", search: "", page: 1 }],
+  ] as const) {
+    const View = await dashboardComponent(name, `../components/admin/dashboard/${file}.tsx`);
+    const html = renderToStaticMarkup(createElement(View, { report, query }));
+    assert.match(html, /<table[^>]*class="[^"]*bg-card/);
+    assert.match(html, /<thead[^>]*class="[^"]*bg-secondary/);
+    assert.match(html, /<table[^>]*class="[^"]*\[&amp;_tr\]:border-border\/70/);
+  }
 });
 
 test("overview house links return to the selected overview month even after house management", async () => {
@@ -423,9 +439,9 @@ test("agency detail reuses the booking toolbar and responsive list", async () =>
   assert.match(bookingsHtml, /name="search"[^>]*value="villa"/);
   assert.match(bookingsHtml, /aria-label="สถานะการจอง"/);
   assert.match(bookingsHtml, /aria-label="เรียงลำดับ"/);
-  assert.match(bookingsHtml, /data-thai-month-picker/);
+  assert.match(bookingsHtml, /data-thai-date-range-picker/);
   assert.doesNotMatch(bookingsHtml, /การจอง \(1\)|บ้านยอดขายสูงสุด/);
-  assert.match(bookingsHtml, /hidden overflow-hidden rounded-xl border md:block[\s\S]*<table[\s\S]*space-y-3 md:hidden/);
+  assert.match(bookingsHtml, /hidden overflow-hidden rounded-xl border[^"\n]* md:block[\s\S]*<table[\s\S]*space-y-3 md:hidden/);
   assert.match(bookingsHtml, /rounded-xl border bg-card p-3 shadow-sm/);
   assert.match(bookingsHtml, /House A/);
   assert.match(bookingsHtml, /1 พ\.ย\. 2569/);
@@ -481,7 +497,7 @@ test("agency booking search reports when no booking matches", async () => {
   assert.ok(html.indexOf("ยอดขาย") < html.indexOf("ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"));
 });
 
-test("booking filters use the Thai month picker without an agency dropdown", async () => {
+test("booking filters use the Thai date range picker without an agency dropdown", async () => {
   const View = await dashboardComponent("BookingsList", "../components/admin/dashboard/bookings-list.tsx");
   const raw = { month: "2026-09", view: "bookings", status: "confirmed", page: "2" };
   const report = await loadDashboard(repository({ kind: "admin" }), "signed-in-user", raw);
@@ -489,9 +505,9 @@ test("booking filters use the Thai month picker without an agency dropdown", asy
   const html = renderToStaticMarkup(createElement(View, { report, query }));
   assert.match(html, /aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
   assert.match(html, /placeholder="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
-  assert.match(html, /class="[^"]*h-8[^"]*text-sm[^"]*"[^>]*data-thai-month-picker/);
-  assert.match(html, /class="[^"]*flex-1[^"]*min-w-0[^"]*"[^>]*data-thai-month-picker/);
-  assert.doesNotMatch(html, /class="[^"]*min-w-(?:36|44|48)[^"]*"[^>]*data-thai-month-picker/);
+  assert.match(html, /class="[^"]*h-8[^"]*text-sm[^"]*"[^>]*data-thai-date-range-picker/);
+  assert.match(html, /class="[^"]*w-auto[^"]*min-w-0[^"]*"[^>]*data-thai-date-range-picker/);
+  assert.doesNotMatch(html, /class="[^"]*min-w-(?:36|44|48)[^"]*"[^>]*data-thai-date-range-picker/);
   assert.doesNotMatch(html, /type="month"[^>]*id="booking-month"/);
   assert.match(html, /id="booking-status"[^>]*data-slot="select-trigger"/);
   assert.match(html, /id="booking-sort"[^>]*data-slot="select-trigger"/);
@@ -504,7 +520,8 @@ test("booking filters use the Thai month picker without an agency dropdown", asy
   assert.doesNotMatch(html, /id="booking-sort"[^>]*class="[^"]*min-w-/);
   assert.doesNotMatch(html, /<select/);
   assert.doesNotMatch(html, /name="agency"/);
-  assert.match(html, /pb-1 md:overflow-x-auto/);
+  assert.match(html, /flex w-full min-w-0 flex-wrap gap-2/);
+  assert.doesNotMatch(html, /md:min-w-max|md:overflow-x-auto/);
   assert.doesNotMatch(html, /name="page"/);
   assert.doesNotMatch(html, /กลับภาพรวม/);
   assert.doesNotMatch(html, /การจองติดจอง/);
@@ -536,8 +553,7 @@ test("booking advanced filters keep mobile status and sort controls in the sheet
   assert.ok(html.includes("ช่วงยอดจอง (บาท)"));
   assert.match(html, /aria-label="ยอดจองต่ำสุด"/);
   assert.match(html, /aria-label="ยอดจองสูงสุด"/);
-  assert.match(html, /ช่วงวันที่เข้าพัก/);
-  assert.match(html, /aria-label="ช่วงวันที่เข้าพัก"/);
+  assert.doesNotMatch(html, /ช่วงวันที่เข้าพัก|data-thai-date-range-picker/);
   assert.match(html, /id="mobile-booking-status"/);
   assert.match(html, /id="mobile-booking-sort"/);
   assert.match(html, /สถานะการจอง/);
@@ -569,10 +585,10 @@ test("new house list uses a table on desktop and cards on mobile", async () => {
 
   assert.match(html, /aria-label="ค้นหาบ้าน"[^>]*placeholder="ค้นหาบ้าน\.\.\."/);
   assert.match(html, /aria-label="ค้นหา"[^>]*type="submit"/);
-  assert.match(html, /data-thai-month-picker/);
-  assert.match(html, /กันยายน 2569/);
+  assert.match(html, /data-thai-date-range-picker/);
+  assert.match(html, /1 ก.ย. 2569 – 30 ก.ย. 2569/);
   assert.doesNotMatch(html, /type="month"/);
-  assert.match(html, /hidden overflow-hidden rounded-xl border md:block/);
+  assert.match(html, /hidden overflow-hidden rounded-xl border[^"\n]* md:block/);
   assert.match(html, /<th[^>]*>บ้าน \/ DV<\/th>/);
   assert.match(html, /<th[^>]*>วันที่เพิ่ม<\/th>/);
   assert.match(html, /<td[^>]*whitespace-normal[^>]*>[\s\S]*break-words[^>]*>New House/);
@@ -906,7 +922,7 @@ test("dashboard house detail renders empty states without optional or broken med
 
 test("empty booking lists distinguish empty month from unmatched filters", async () => {
   const View = await dashboardComponent("BookingsList", "../components/admin/dashboard/bookings-list.tsx");
-  for (const [rows, search, expected] of [[[], "", /ไม่มีการจองในเดือนนี้/], [[booking], "not-found", /ไม่พบการจองที่ตรงกับตัวกรอง/]] as const) {
+  for (const [rows, search, expected] of [[[], "", /ไม่มีการจองในช่วงที่เลือก/], [[booking], "not-found", /ไม่พบการจองที่ตรงกับตัวกรอง/]] as const) {
     const raw = { month: "2026-09", view: "bookings", search };
     const report = await loadDashboard(repository({ kind: "admin" }, [...rows]), "signed-in-user", raw);
     assert.match(renderToStaticMarkup(createElement(View, { report, query: parseDashboardBookingsQuery({ month: "2026-09", search }) })), expected);
@@ -1324,7 +1340,7 @@ test("failed or incomplete reads reject rather than displaying partial totals", 
   }
 });
 
-test("dashboard renders month controls and only administrator views include agency and house history", async () => {
+test("dashboard renders date range controls and only administrator views include agency and house history", async () => {
   const bundle = await build({ entryPoints: [fileURLToPath(new URL("../components/admin/dashboard/dashboard-view.tsx", import.meta.url))], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
   const loaded = { exports: {} as Record<string, unknown> };
   const require = createRequire(import.meta.url);
@@ -1334,16 +1350,16 @@ test("dashboard renders month controls and only administrator views include agen
   for (const scope of [{ kind: "admin" }, { kind: "owner", propertyId: "101" }] as const) {
     const report = await loadDashboard(repository(scope), "signed-in-user", { month: "2026-09" });
     const html = renderToStaticMarkup(createElement(View, { report, query }));
-    assert.match(html, /data-thai-month-picker/);
-    assert.match(html, /aria-label="เลือกเดือน"/);
-    assert.match(html, /กันยายน 2569/);
+    assert.match(html, /data-thai-date-range-picker/);
+    assert.match(html, /aria-label="ช่วงวันที่รายงาน"/);
+    assert.match(html, /1 ก.ย. 2569 – 30 ก.ย. 2569/);
     assert.doesNotMatch(html, /<select/);
     assert.doesNotMatch(html, /ดูข้อมูล/);
     assert.match(html, /ติดจอง/);
     assert.equal((html.match(/<span class="block text-xl font-semibold tabular-nums">1<\/span>/g) ?? []).length, 1);
     assert.match(html, /ยอดขายจากการจอง/);
     assert.match(html, /สถานะการจอง/);
-    assert.match(html, /จำนวนการจองเดือนนี้/);
+    assert.match(html, /จำนวนการจองในช่วงที่เลือก/);
     assert.match(html, /aria-label="กราฟจำนวนการจองติดจองรายวัน"/);
     assert.match(html, /aria-label="กราฟจำนวนการจองติดจองรายวัน" class="w-full"/);
     assert.match(html, /--color-count: var\(--primary\)/);
@@ -1356,7 +1372,7 @@ test("dashboard renders month controls and only administrator views include agen
     assert.doesNotMatch(html, /วิธีคำนวณยอดขาย/);
     if (scope.kind === "admin") assert.match(html, /ดูทั้งหมด/);
     assert.equal(html.includes("ยอดขายเอเจนซี่สูงสุด 5 อันดับ"), scope.kind === "admin");
-    assert.equal(html.includes("บ้านใหม่เดือนนี้"), scope.kind === "admin");
+    assert.equal(html.includes("บ้านใหม่ในช่วงที่เลือก"), scope.kind === "admin");
     assert.equal(html.includes("New House"), scope.kind === "admin");
     assert.equal(html.includes("กราฟยอดขายเอเจนซี่ 5 อันดับแรก"), scope.kind === "admin");
     if (scope.kind === "admin") {

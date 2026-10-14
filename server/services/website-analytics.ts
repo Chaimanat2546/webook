@@ -3,6 +3,7 @@ import { addMetrics, analyticsPeriod, compareWebsiteVillas, matchesWebsiteVilla,
 import { listAnalyticsSites } from "../site-analytics/registry.ts";
 import { fetchSiteReport } from "../site-analytics/client.ts";
 import { loadMonthlyHistoryWithSites } from "../site-analytics/history.ts";
+import { readSiteRange } from "../site-analytics/range.ts";
 
 export interface WebsiteAnalyticsDependencies {
   now?: () => Date;
@@ -25,7 +26,7 @@ export async function loadWebsiteAnalytics(query: WebsiteAnalyticsQuery, depende
   async function work() {
     while (next < sites.length) {
       const site = sites[next++];
-      try { results.set(site.key, await (dependencies.read ?? fetchSiteReport)(site, period)); }
+      try { results.set(site.key, await readSiteRange(site, period, dependencies.read ?? fetchSiteReport)); }
       catch { results.set(site.key, { ok: false, reason: "unavailable" }); }
     }
   }
@@ -76,7 +77,7 @@ export async function loadWebsiteAnalytics(query: WebsiteAnalyticsQuery, depende
       for (const villa of visible) villa.title = titles.get(villa.villa_id);
     } catch { /* Counts remain usable when optional catalog metadata is unavailable. */ }
   }
-  const history = query.granularity === "month" && query.view !== "houses" ? await loadMonthlyHistoryWithSites(sites, period, results, dependencies.read ?? fetchSiteReport) : undefined;
+  const history = query.granularity === "month" && !query.from && query.view !== "houses" ? await loadMonthlyHistoryWithSites(sites, period, results, dependencies.read ?? fetchSiteReport) : undefined;
   const monthly = history?.monthly;
   if (history) for (const site of websites) site.monthly = history.bySite.get(site.key);
   return {

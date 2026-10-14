@@ -1,3 +1,4 @@
+import { dashboardDateFilter } from "../../../../../lib/dashboard";
 import { notFound } from "next/navigation";
 import { parseDashboardQuery } from "../../../../../lib/dashboard";
 import { dashboardAgencyBookingDetailHref, dashboardAgenciesHref, dashboardAgencyDetailHref, dashboardBookingDetailHref, dashboardBookingsHref, parseDashboardBookingOrigin, parseDashboardBookingsQuery } from "../../../../../lib/dashboard-routes";
@@ -22,7 +23,7 @@ export default async function DashboardBookingDetailPage({ params, searchParams 
     if (error instanceof DashboardForbidden || error instanceof DashboardItemNotFound) notFound();
     notFound();
   }
-  const query = parseDashboardQuery({ month: routeQuery.month, view: "booking", from: "bookings", bookingId, status: routeQuery.status, search: routeQuery.search, page: String(routeQuery.page) });
+  const query = parseDashboardQuery({ month: routeQuery.month, ...dashboardDateFilter(routeQuery), view: "booking", from: "bookings", bookingId, status: routeQuery.status, search: routeQuery.search, page: String(routeQuery.page) });
   const backHref = origin ? dashboardAgencyDetailHref(origin.query, origin.agencyId) : dashboardBookingsHref(routeQuery);
   const houseReturnTo = origin ? dashboardAgencyBookingDetailHref(origin.query, origin.agencyId, bookingId) : dashboardBookingDetailHref(routeQuery, bookingId);
   return <DashboardDetails backHref={backHref} backLabel={origin ? "กลับไปเอเจนซี่" : "กลับไปการจอง"} houseReturnTo={houseReturnTo} loadBookingCustomer={loadDashboardBookingCustomerAction} query={query} report={report} />;

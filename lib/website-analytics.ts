@@ -6,7 +6,8 @@ export const WEBSITE_ANALYTICS_SORTS = [
   { value: "code", label: "รหัสบ้าน", heading: "บ้านเรียงตามรหัส", direction: "น้อยไปมาก" },
 ] as const;
 export type WebsiteAnalyticsSort = typeof WEBSITE_ANALYTICS_SORTS[number]["value"];
-export interface WebsiteAnalyticsQuery { month: string; site: string; page: number; search?: string; sort?: WebsiteAnalyticsSort; view?: "houses"; granularity?: "day" | "month"; pages?: Record<string, number> }
+export interface AnalyticsDateRange { from: string; to: string }
+export interface WebsiteAnalyticsQuery { month: string; site: string; page: number; from?: string; to?: string; search?: string; sort?: WebsiteAnalyticsSort; view?: "houses"; granularity?: "day" | "month"; pages?: Record<string, number> }
 export interface AnalyticsMonth { date: string; page_views: number | null; contact_clicks: number | null; gallery_opens?: number | null; status: "complete" | "partial" | "unavailable" | "no_data" }
 export interface AnalyticsPeriod {
   from_date: string; to_date: string; timezone: "Asia/Bangkok";
@@ -62,7 +63,8 @@ export function addMetrics(a: AnalyticsMetrics, b: AnalyticsMetrics): AnalyticsM
   return result;
 }
 export function parseWebsiteAnalyticsQuery(raw: Record<string, unknown>, allowedKeys: readonly string[], now: Date, options: { singleSite?: boolean } = {}): WebsiteAnalyticsQuery {
-  const allowed = ["month", "site", "page", "granularity", "view", "sort", "search", ...allowedKeys.map(key => `page_${key}`)];
+  const allowed = ["month", "site", "page", "from", "to", "granularity", "view", "sort", "search", ...allowedKeys.map(key => `page_${key}`)];
+  const range = parseAnalyticsDateRange(raw.from, raw.to, now);
   if (Object.keys(raw).some(key => !allowed.includes(key))) throw new WebsiteAnalyticsError("invalid_query", 400);
   const current = new Date(now.getTime() + 7 * 3600000).toISOString().slice(0, 7);
   const month = raw.month ?? current, site = raw.site ?? "all", page = raw.page ?? "1";
@@ -86,18 +88,28 @@ export function parseWebsiteAnalyticsQuery(raw: Record<string, unknown>, allowed
   }
   const selectedSite = options.singleSite && site === "all" ? allowedKeys[0] : site;
   if (!selectedSite) throw new WebsiteAnalyticsError("invalid_query", 400);
-  return { month, site: selectedSite, page: Number(page), ...(search ? { search } : {}), ...(sort ? { sort } : {}), ...(raw.view === "houses" ? { view: "houses" as const } : {}), ...(raw.granularity ? { granularity: raw.granularity } : {}), ...(Object.keys(pages).length ? { pages: { ...pages } } : {}) };
+  return { month, ...range, site: selectedSite, page: Number(page), ...(search ? { search } : {}), ...(sort ? { sort } : {}), ...(raw.view === "houses" ? { view: "houses" as const } : {}), ...(raw.granularity ? { granularity: raw.granularity } : {}), ...(Object.keys(pages).length ? { pages: { ...pages } } : {}) };
+}
+export function parseAnalyticsDateRange(from: unknown, to: unknown, now = new Date()): AnalyticsDateRange | undefined {
+  if (from === undefined && to === undefined) return undefined;
+  const valid = (value: unknown): value is string => typeof value === "string" && /^(?:19|20|21)\d{2}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+  const today = new Date(now.getTime() + 7 * 3600000).toISOString().slice(0, 10);
+  if (!valid(from) || !valid(to) || from > to || to > today) throw new WebsiteAnalyticsError("invalid_query", 400);
+  return { from, to };
 }
 export function analyticsPeriod(query: WebsiteAnalyticsQuery, now: Date): AnalyticsPeriod {
+  const range = parseAnalyticsDateRange(query.from, query.to, now);
   const today = new Date(now.getTime() + 7 * 3600000).toISOString().slice(0, 10);
   const [year, month] = query.month.split("-").map(Number);
   const last = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-  return { from_date: `${query.month}-01`, to_date: last < today ? last : today, timezone: "Asia/Bangkok", as_of: now.toISOString(), contract_version: "1.0", villa_id: null };
+  return { from_date: range?.from ?? `${query.month}-01`, to_date: range?.to ?? (last < today ? last : today), timezone: "Asia/Bangkok", as_of: now.toISOString(), contract_version: "1.0", villa_id: null };
 }
 export function websiteAnalyticsHref(query: WebsiteAnalyticsQuery, changes: Partial<WebsiteAnalyticsQuery> = {}): string {
   const next = { ...query, ...changes };
-  if (changes.month !== undefined || changes.site !== undefined || changes.sort !== undefined || changes.search !== undefined) { next.page = 1; next.pages = {}; }
+  if (changes.month !== undefined) { delete next.from; delete next.to; }
+  if (changes.month !== undefined || changes.from !== undefined || changes.to !== undefined || changes.site !== undefined || changes.sort !== undefined || changes.search !== undefined) { next.page = 1; next.pages = {}; }
   const params = new URLSearchParams({ month: next.month, site: next.site });
+  if (next.from && next.to) { params.set("from", next.from); params.set("to", next.to); }
   if (next.page !== 1) params.set("page", String(next.page));
   if (next.view === "houses") params.set("view", "houses");
   if (next.granularity === "month") params.set("granularity", "month");

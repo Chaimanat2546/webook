@@ -1,3 +1,4 @@
+import { dashboardOverviewHref } from "../../../../lib/dashboard-routes";
 import { notFound } from "next/navigation";
 import { parseDashboardBookingsQuery } from "../../../../lib/dashboard-routes";
 import { dashboardSession } from "../../../../server/auth/dashboard";
@@ -20,7 +21,7 @@ export default async function DashboardBookingsPage({ searchParams }: { searchPa
   }
   return (
     <div className="mx-auto w-full max-w-7xl">
-      <DashboardTaskHeader backHref={`/admin/dashboard?month=${routeQuery.month}`} backLabel="กลับไปภาพรวม" description="ตรวจสอบและจัดการรายการจอง" title="รายการจอง" />
+      <DashboardTaskHeader backHref={dashboardOverviewHref(routeQuery)} backLabel="กลับไปภาพรวม" description="ตรวจสอบและจัดการรายการจอง" title="รายการจอง" />
       <BookingsList report={report} query={routeQuery} />
     </div>
   );

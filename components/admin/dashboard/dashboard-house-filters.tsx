@@ -8,7 +8,7 @@ import { DASHBOARD_HOUSE_LIST_SORTS, type DashboardHousesQuery } from "../../../
 import { dashboardHousesHref } from "../../../lib/dashboard-routes";
 import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import { ThaiMonthPicker } from "../../ui/thai-month-picker";
+import { ReportDateRangePicker } from "./report-date-range-picker";
 import { DashboardListToolbar } from "./dashboard-list-toolbar";
 
 export function DashboardHouseFilters({ query }: { query: DashboardHousesQuery }) {
@@ -26,11 +26,11 @@ export function DashboardHouseFilters({ query }: { query: DashboardHousesQuery }
       <Input aria-label="ค้นหาบ้าน" className="h-11 pl-9 pr-11" name="search" onChange={event => setSearch(event.target.value)} placeholder="ค้นหาบ้าน..." type="search" value={search} />
       <button aria-label="ค้นหา" className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2" type="submit"><SearchIcon aria-hidden className="size-4" /></button>
     </div>
-    <div className="w-full min-w-0 pb-1 md:overflow-x-auto">
-      <div className="flex w-full min-w-0 gap-2 md:min-w-max">
-        <ThaiMonthPicker className="h-8 flex-1 min-w-0 text-sm md:flex-none" month={query.month} onMonthChange={month => router.push(dashboardHousesHref(query, { month }))} />
+    <div className="w-full min-w-0 pb-1">
+      <div className="flex w-full min-w-0 flex-wrap gap-2">
+        <ReportDateRangePicker className="h-8 w-auto min-w-0 max-w-full flex-none text-sm" month={query.month} range={query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo } : undefined} onChange={range => router.push(dashboardHousesHref(query, { dateFrom: range.from, dateTo: range.to }))} />
         <Select items={DASHBOARD_HOUSE_LIST_SORTS} value={query.houseSort ?? "created-desc"} onValueChange={houseSort => { if (houseSort) router.push(dashboardHousesHref(query, { houseSort })); }}>
-          <SelectTrigger id="house-sort" aria-label="เรียงลำดับบ้าน" className="min-w-0 flex-1 pl-3 md:flex-none">
+          <SelectTrigger id="house-sort" aria-label="เรียงลำดับบ้าน" className="min-w-0 w-auto max-w-full pl-3">
             <ListFilterIcon aria-hidden className="size-4 text-muted-foreground" />
             <SelectValue />
           </SelectTrigger>

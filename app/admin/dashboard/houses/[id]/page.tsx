@@ -1,3 +1,5 @@
+import { dashboardDateFilter } from "../../../../../lib/dashboard";
+import { dashboardOverviewHref } from "../../../../../lib/dashboard-routes";
 import { notFound } from "next/navigation";
 import { parseDashboardQuery } from "../../../../../lib/dashboard";
 import { dashboardHouseDetailHref, dashboardHousesHref, parseDashboardHousesQuery } from "../../../../../lib/dashboard-routes";
@@ -20,6 +22,6 @@ export default async function DashboardHouseDetailPage({ params, searchParams }:
     if (error instanceof DashboardForbidden || error instanceof DashboardItemNotFound) notFound();
     notFound();
   }
-  const query = parseDashboardQuery({ month: routeQuery.month, view: "house", from: "houses", houseId: id, houseSearch: routeQuery.search, housesPage: String(routeQuery.page) });
-  return <DashboardDetails backHref={from === "overview" ? `/admin/dashboard?month=${encodeURIComponent(routeQuery.month)}` : dashboardHousesHref(routeQuery)} backLabel={from === "overview" ? "กลับไปภาพรวม" : "กลับไปบ้านใหม่"} houseDetailReturnTo={dashboardHouseDetailHref(routeQuery, id, from === "overview" ? "overview" : undefined)} query={query} report={report} />;
+  const query = parseDashboardQuery({ month: routeQuery.month, ...dashboardDateFilter(routeQuery), view: "house", from: "houses", houseId: id, houseSearch: routeQuery.search, housesPage: String(routeQuery.page) });
+  return <DashboardDetails backHref={from === "overview" ? dashboardOverviewHref(routeQuery) : dashboardHousesHref(routeQuery)} backLabel={from === "overview" ? "กลับไปภาพรวม" : "กลับไปบ้านใหม่"} houseDetailReturnTo={dashboardHouseDetailHref(routeQuery, id, from === "overview" ? "overview" : undefined)} query={query} report={report} />;
 }

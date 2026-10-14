@@ -1,4 +1,4 @@
-import { DASHBOARD_AGENCY_LIST_SORTS, DASHBOARD_BOOKING_SORTS, DASHBOARD_HOUSE_LIST_SORTS, DASHBOARD_STATUSES, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardBookingsQuery, type DashboardBookingSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardQuery } from "./dashboard.ts";
+import { dashboardDateFilter, type DashboardDateFilter, DASHBOARD_AGENCY_LIST_SORTS, DASHBOARD_BOOKING_SORTS, DASHBOARD_HOUSE_LIST_SORTS, DASHBOARD_STATUSES, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardBookingsQuery, type DashboardBookingSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardQuery } from "./dashboard.ts";
 
 type RouteRawQuery = Record<string, unknown>;
 
@@ -21,7 +21,7 @@ function rejectsForeignBookingParameters(raw: RouteRawQuery) {
 
 export function parseDashboardBookingsQuery(raw: RouteRawQuery): DashboardBookingsQuery {
   rejectsForeignBookingParameters(raw);
-  const query = parseDashboardQuery({ month: raw.month, page: raw.page, search: raw.search });
+  const query = parseDashboardQuery({ month: raw.month, dateFrom: raw.dateFrom, dateTo: raw.dateTo, page: raw.page, search: raw.search });
   const status = raw.status ?? "confirmed";
   if (typeof status !== "string" || (status !== "all" && !DASHBOARD_STATUSES.some(item => item.value === status))) throw new Error("สถานะไม่ถูกต้อง");
   const sort = raw.sort ?? "updated-desc";
@@ -32,7 +32,7 @@ export function parseDashboardBookingsQuery(raw: RouteRawQuery): DashboardBookin
   const amountToCents = bookingAmount(raw.amountTo);
   if ((checkInFrom === undefined) !== (checkInTo === undefined) || (checkInFrom && checkInTo && checkInFrom > checkInTo)) throw new Error("ช่วงวันที่เข้าพักไม่ถูกต้อง");
   if (amountFromCents !== undefined && amountToCents !== undefined && amountFromCents > amountToCents) throw new Error("ช่วงยอดจองไม่ถูกต้อง");
-  return { month: query.month, status, search: query.search, sort: sort as DashboardBookingSort, page: query.page, ...(checkInFrom && checkInTo ? { checkInFrom, checkInTo } : {}), ...(amountFromCents !== undefined ? { amountFromCents } : {}), ...(amountToCents !== undefined ? { amountToCents } : {}) };
+  return { month: query.month, ...dashboardDateFilter(query), status, search: query.search, sort: sort as DashboardBookingSort, page: query.page, ...(checkInFrom && checkInTo ? { checkInFrom, checkInTo } : {}), ...(amountFromCents !== undefined ? { amountFromCents } : {}), ...(amountToCents !== undefined ? { amountToCents } : {}) };
 }
 
 function bookingAmount(value: unknown): number | undefined {
@@ -59,10 +59,10 @@ function bookingDate(value: unknown): string | undefined {
 
 export function dashboardBookingsHref(query: DashboardBookingsQuery, changes: Partial<DashboardBookingsQuery> = {}): string {
   const merged = { ...query, ...changes };
-  if (changes.month !== undefined || changes.status !== undefined || changes.search !== undefined || changes.sort !== undefined || "checkInFrom" in changes || "checkInTo" in changes || "amountFromCents" in changes || "amountToCents" in changes) {
+  if ("dateFrom" in changes || "dateTo" in changes || changes.month !== undefined || changes.status !== undefined || changes.search !== undefined || changes.sort !== undefined || "checkInFrom" in changes || "checkInTo" in changes || "amountFromCents" in changes || "amountToCents" in changes) {
     merged.page = 1;
   }
-  const params = new URLSearchParams({ month: merged.month });
+  const params = dashboardPeriodParams(merged);
   params.set("status", merged.status);
   if (merged.search) params.set("search", merged.search);
   if (merged.checkInFrom && merged.checkInTo) {
@@ -89,7 +89,7 @@ function parseDashboardListQuery(raw: RouteRawQuery, view: "agencies" | "houses"
     : ["view", "from", "status", "agency", "housesPage", "agenciesPage", "agencySearch", "bookingId", "houseId"];
   if (foreign.some(key => key in raw)) throw new Error("ตัวกรองไม่ถูกต้อง");
   const query = parseDashboardQuery({ ...raw, view, ...(view === "agencies" ? { agencySearch: raw.search, agenciesPage: raw.page } : { houseSearch: raw.search, housesPage: raw.page }) });
-  return { month: query.month, search: view === "agencies" ? query.agencySearch : query.houseSearch, page: view === "agencies" ? query.agenciesPage : query.housesPage };
+  return { month: query.month, ...dashboardDateFilter(query), search: view === "agencies" ? query.agencySearch : query.houseSearch, page: view === "agencies" ? query.agenciesPage : query.housesPage };
 }
 
 export function parseDashboardAgenciesQuery(raw: RouteRawQuery): DashboardAgenciesQuery {
@@ -113,8 +113,8 @@ export function dashboardAgenciesHref(query: DashboardAgenciesQuery, changes: Pa
   if (changes.month !== undefined && changes.month !== query.month) {
     merged.search = "";
     merged.page = 1;
-  } else if (changes.search !== undefined || changes.agencySort !== undefined) merged.page = 1;
-  const params = new URLSearchParams({ month: merged.month });
+  } else if ("dateFrom" in changes || "dateTo" in changes || changes.search !== undefined || changes.agencySort !== undefined) merged.page = 1;
+  const params = dashboardPeriodParams(merged);
   if (merged.search) params.set("search", merged.search);
   if (merged.agencySort && merged.agencySort !== "sales-desc") params.set("agencySort", merged.agencySort);
   if (merged.page !== 1) params.set("page", String(merged.page));
@@ -123,7 +123,7 @@ export function dashboardAgenciesHref(query: DashboardAgenciesQuery, changes: Pa
 
 export function dashboardAgencyDetailBookingQuery(query: DashboardAgencyDetailQuery): DashboardBookingsQuery {
   return {
-    month: query.month,
+    month: query.month, ...dashboardDateFilter(query),
     status: query.status,
     search: query.bookingSearch,
     sort: query.sort,
@@ -143,8 +143,8 @@ export function dashboardAgencyDetailHref(query: DashboardAgenciesQuery | Dashbo
   const detailQuery = agencyDetailQuery(query);
   const current = dashboardAgencyDetailBookingQuery(detailQuery);
   const merged = { ...current, ...changes };
-  if (changes.month !== undefined || changes.status !== undefined || changes.search !== undefined || changes.sort !== undefined || "checkInFrom" in changes || "checkInTo" in changes) merged.page = 1;
-  const href = dashboardAgenciesHref(detailQuery, changes.month === undefined ? {} : { month: merged.month });
+  if ("dateFrom" in changes || "dateTo" in changes || changes.month !== undefined || changes.status !== undefined || changes.search !== undefined || changes.sort !== undefined || "checkInFrom" in changes || "checkInTo" in changes) merged.page = 1;
+  const href = dashboardAgenciesHref(detailQuery, { ...(changes.month === undefined ? {} : { month: merged.month }), ...("dateFrom" in changes ? { dateFrom: changes.dateFrom } : {}), ...("dateTo" in changes ? { dateTo: changes.dateTo } : {}) });
   const [path, search = ""] = href.split("?");
   const detail = new URLSearchParams(search);
   detail.set("status", merged.status);
@@ -187,7 +187,7 @@ export function parseDashboardBookingOrigin(raw: RouteRawQuery): { agencyId: str
 export function parseDashboardAgencyDetailQuery(raw: RouteRawQuery): DashboardAgencyDetailQuery {
   const { bookingSearch: rawBookingSearch, bookingsPage, status, checkInFrom, checkInTo, amountFrom, amountTo, sort, ...listRaw } = raw;
   const list = parseDashboardAgenciesQuery(listRaw);
-  const bookings = parseDashboardBookingsQuery({ month: list.month, status, search: rawBookingSearch, checkInFrom, checkInTo, amountFrom, amountTo, sort, page: bookingsPage });
+  const bookings = parseDashboardBookingsQuery({ month: list.month, ...dashboardDateFilter(list), status, search: rawBookingSearch, checkInFrom, checkInTo, amountFrom, amountTo, sort, page: bookingsPage });
   return {
     ...list,
     status: bookings.status,
@@ -205,8 +205,8 @@ export function dashboardHousesHref(query: DashboardHousesQuery, changes: Partia
   if (changes.month !== undefined && changes.month !== query.month) {
     merged.search = "";
     merged.page = 1;
-  } else if (changes.search !== undefined || changes.houseSort !== undefined) merged.page = 1;
-  const params = new URLSearchParams({ month: merged.month });
+  } else if ("dateFrom" in changes || "dateTo" in changes || changes.search !== undefined || changes.houseSort !== undefined) merged.page = 1;
+  const params = dashboardPeriodParams(merged);
   if (merged.search) params.set("search", merged.search);
   if (merged.houseSort && merged.houseSort !== "created-desc") params.set("houseSort", merged.houseSort);
   if (merged.page !== 1) params.set("page", String(merged.page));
@@ -220,14 +220,23 @@ export function dashboardHouseDetailHref(query: DashboardHousesQuery, houseId: s
 }
 
 export function legacyDashboardHref(query: DashboardQuery): string {
-  const bookings: DashboardBookingsQuery = { month: query.month, status: query.status, search: query.search, sort: "updated-desc", page: query.page };
-  const agencies = { month: query.month, search: query.agencySearch, page: query.agenciesPage };
-  const houses = { month: query.month, search: query.houseSearch, page: query.housesPage };
+  const bookings: DashboardBookingsQuery = { month: query.month, ...dashboardDateFilter(query), status: query.status, search: query.search, sort: "updated-desc", page: query.page };
+  const agencies = { month: query.month, ...dashboardDateFilter(query), search: query.agencySearch, page: query.agenciesPage };
+  const houses = { month: query.month, ...dashboardDateFilter(query), search: query.houseSearch, page: query.housesPage };
   if (query.view === "bookings") return dashboardBookingsHref(bookings);
   if (query.view === "booking") return dashboardBookingDetailHref(bookings, query.bookingId);
   if (query.view === "agencies") return dashboardAgenciesHref(agencies);
   if (query.view === "agency") return dashboardAgencyDetailHref(agencies, query.agency);
   if (query.view === "houses") return dashboardHousesHref(houses);
   if (query.view === "house") return dashboardHouseDetailHref(houses, query.houseId);
-  return `/admin/dashboard?month=${encodeURIComponent(query.month)}`;
+  return dashboardOverviewHref(query);
+}
+
+export function dashboardPeriodParams(query: DashboardDateFilter & { month: string }): URLSearchParams {
+  const params = new URLSearchParams({ month: query.month });
+  if (query.dateFrom && query.dateTo) { params.set("dateFrom", query.dateFrom); params.set("dateTo", query.dateTo); }
+  return params;
+}
+export function dashboardOverviewHref(query: DashboardDateFilter & { month: string }): string {
+  return `/admin/dashboard?${dashboardPeriodParams(query)}`;
 }
