@@ -7,6 +7,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { createMobileNavigationMemory, isMobileWorkspace, mobileDestinations, mobileSection, mobileTitle, type MobileNavigationPermissions } from "../../lib/mobile-navigation";
 import { cn } from "../../lib/utils";
 import { useSidebar } from "../ui/sidebar";
+import { AdminPageContainer } from "./admin-page-container";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 const icons = { houses: House, bookings: CalendarDays, advertisements: Megaphone, quotations: FileText, users: Users };
@@ -27,7 +28,7 @@ export function AdminMobileContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return (
     <div className={cn("min-w-0 flex-1 px-4 py-5 md:px-6", !isMobileWorkspace(pathname) && "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-5 print:pb-0")}>
-      {children}
+      <AdminPageContainer>{children}</AdminPageContainer>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { dashboardOverviewHref } from "../../../../lib/dashboard-routes";
 import { notFound } from "next/navigation";
 import { parseDashboardAgenciesQuery } from "../../../../lib/dashboard-routes";
 import { dashboardSession } from "../../../../server/auth/dashboard";
@@ -19,5 +20,5 @@ export default async function DashboardAgenciesPage({ searchParams }: { searchPa
     if (error instanceof DashboardForbidden) notFound();
     notFound();
   }
-  return <DashboardDetailLayout><DashboardTaskHeader backHref={`/admin/dashboard?month=${routeQuery.month}`} backLabel="กลับไปภาพรวม" description="ตรวจสอบยอดขายตามเอเจนซี่" title="ยอดขายเอเจนซี่" /><AgenciesList report={report} query={routeQuery} /></DashboardDetailLayout>;
+  return <DashboardDetailLayout><DashboardTaskHeader backHref={dashboardOverviewHref(routeQuery)} backLabel="กลับไปภาพรวม" description="ตรวจสอบยอดขายตามเอเจนซี่" title="ยอดขายเอเจนซี่" /><AgenciesList report={report} query={routeQuery} /></DashboardDetailLayout>;
 }

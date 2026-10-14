@@ -1,5 +1,5 @@
 import "server-only";
-import { parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgencyListSort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDetail, type DashboardHouseListSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardMonth, type DashboardOverviewQuery, type DashboardPage, type DashboardReport } from "../../lib/dashboard.ts";
+import { dashboardDateFilter, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgencyListSort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDetail, type DashboardHouseListSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardMonth, type DashboardOverviewQuery, type DashboardPage, type DashboardReport } from "../../lib/dashboard.ts";
 import type { DashboardAgencyDetailQuery } from "../../lib/dashboard-routes.ts";
 import { dashboardShare } from "../../lib/dashboard-calculations.ts";
 import type { DashboardRepository } from "../repositories/dashboard.ts";
@@ -50,7 +50,7 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   const range = options.bookingDateRange;
   const [result, sourceHouses] = await Promise.all([
     repository.report(actorId, {
-      month: query.month, view: query.view, status: query.status, search: query.search,
+      month: query.month, ...dashboardDateFilter(query), view: query.view, status: query.status, search: query.search,
       page: query.page, pageSize: 9, sort: options.bookingListSort ?? "updated-desc",
       agency, agencySearch: query.agencySearch, agenciesPage: query.agenciesPage, agencySort: options.agencyListSort,
       bookingId: query.view === "booking" ? query.bookingId : undefined,
@@ -91,7 +91,7 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     detail = { kind: "house", house, data };
   }
   return {
-    scope, month: query.month, bookingCount: result.bookingCount, waitingCount: result.statusCounts.waiting,
+    scope, month: query.month, ...dashboardDateFilter(query), bookingCount: result.bookingCount, waitingCount: result.statusCounts.waiting,
     statusCounts: result.statusCounts, sales: result.sales, bookings, detail,
     overview: { confirmedBookingsByDay: result.daily, topAgencies: scope.kind === "admin" ? result.topAgencies : [], recentHouses: houses.slice(0, 6), agencyCount: scope.kind === "admin" ? result.agencyCount : 0, newHouseCount: houses.length },
     admin: scope.kind === "admin" ? { agencies: result.agencies, houses: paginate(houseRows, query.housesPage), selectedAgency: null } : null,
@@ -103,9 +103,9 @@ function previousDay(date: string): string {
   return value.toISOString().slice(0, 10);
 }
 export async function loadDashboardBookings(repository: DashboardRepository, actorId: string, query: DashboardBookingsQuery): Promise<DashboardReport> {
-  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
+  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, ...dashboardDateFilter(query), start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
   return loadDashboard(repository, actorId, {
-    month: query.month,
+    month: query.month, ...dashboardDateFilter(query),
     view: "bookings",
     status: query.status,
     search: query.search,
@@ -120,21 +120,21 @@ function nextDay(date: string): string {
 }
 
 export async function loadDashboardOverview(repository: DashboardRepository, actorId: string, query: DashboardOverviewQuery): Promise<DashboardReport> {
-  return loadDashboard(repository, actorId, { month: query.month, view: "overview" });
+  return loadDashboard(repository, actorId, { month: query.month, ...dashboardDateFilter(query), view: "overview" });
 }
 
 export async function loadDashboardAgencies(repository: DashboardRepository, actorId: string, query: DashboardAgenciesQuery): Promise<DashboardReport> {
-  return loadDashboard(repository, actorId, { month: query.month, view: "agencies", agencySearch: query.search, agenciesPage: String(query.page) }, { agencyListSort: query.agencySort });
+  return loadDashboard(repository, actorId, { month: query.month, ...dashboardDateFilter(query), view: "agencies", agencySearch: query.search, agenciesPage: String(query.page) }, { agencyListSort: query.agencySort });
 }
 
 export async function loadDashboardHouses(repository: DashboardRepository, actorId: string, query: DashboardHousesQuery): Promise<DashboardReport> {
-  return loadDashboard(repository, actorId, { month: query.month, view: "houses", houseSearch: query.search, housesPage: String(query.page) }, { houseListSort: query.houseSort });
+  return loadDashboard(repository, actorId, { month: query.month, ...dashboardDateFilter(query), view: "houses", houseSearch: query.search, housesPage: String(query.page) }, { houseListSort: query.houseSort });
 }
 
 export async function loadDashboardBooking(repository: DashboardRepository, actorId: string, query: DashboardBookingsQuery, bookingId: string): Promise<DashboardReport> {
-  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
+  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, ...dashboardDateFilter(query), start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
   return loadDashboard(repository, actorId, {
-    month: query.month,
+    month: query.month, ...dashboardDateFilter(query),
     view: "booking",
     bookingId,
     status: query.status,
@@ -144,9 +144,9 @@ export async function loadDashboardBooking(repository: DashboardRepository, acto
 }
 
 export async function loadDashboardAgency(repository: DashboardRepository, actorId: string, query: DashboardAgencyDetailQuery, agencyId: string): Promise<DashboardReport> {
-  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
+  const bookingDateRange = query.checkInFrom && query.checkInTo ? { month: query.month, ...dashboardDateFilter(query), start: query.checkInFrom, end: nextDay(query.checkInTo) } : undefined;
   return loadDashboard(repository, actorId, {
-    month: query.month, view: "agency", agency: agencyId,
+    month: query.month, ...dashboardDateFilter(query), view: "agency", agency: agencyId,
     status: query.status, search: query.bookingSearch, page: String(query.bookingsPage),
     agencySearch: query.search, agenciesPage: String(query.page),
   }, {
@@ -157,7 +157,7 @@ export async function loadDashboardAgency(repository: DashboardRepository, actor
 }
 export async function loadDashboardHouse(repository: DashboardRepository, actorId: string, query: DashboardListQuery, houseId: string): Promise<DashboardReport> {
   return loadDashboard(repository, actorId, {
-    month: query.month,
+    month: query.month, ...dashboardDateFilter(query),
     view: "house",
     houseId,
     houseSearch: query.search,

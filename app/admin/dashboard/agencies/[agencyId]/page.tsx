@@ -1,3 +1,4 @@
+import { dashboardDateFilter } from "../../../../../lib/dashboard";
 import { notFound } from "next/navigation";
 import { parseDashboardQuery } from "../../../../../lib/dashboard";
 import { dashboardAgenciesHref, parseDashboardAgencyDetailQuery } from "../../../../../lib/dashboard-routes";
@@ -18,6 +19,6 @@ export default async function DashboardAgencyDetailPage({ params, searchParams }
     if (error instanceof DashboardForbidden || error instanceof DashboardItemNotFound) notFound();
     notFound();
   }
-  const query = parseDashboardQuery({ month: routeQuery.month, view: "agency", from: "agencies", agency: agencyId, agencySearch: routeQuery.search, agenciesPage: String(routeQuery.page) });
+  const query = parseDashboardQuery({ month: routeQuery.month, ...dashboardDateFilter(routeQuery), view: "agency", from: "agencies", agency: agencyId, agencySearch: routeQuery.search, agenciesPage: String(routeQuery.page) });
   return <DashboardDetails agencyQuery={routeQuery} backHref={dashboardAgenciesHref(routeQuery)} backLabel="กลับไปเอเจนซี่" query={query} report={report} />;
 }

@@ -1,5 +1,8 @@
 "use client";
 
+import { dashboardDateFilter } from "../../../lib/dashboard";
+
+
 /* eslint-disable @next/next/no-img-element -- cover images are stored in tenant-controlled Supabase Storage URLs. */
 import Link from "next/link";
 import { BarChart3Icon, Building2Icon, CalendarDaysIcon, CircleDollarSignIcon, CircleUserRoundIcon, CreditCardIcon, HouseIcon, MapPinIcon, MoonIcon, PhoneIcon, PieChartIcon, SparklesIcon, StickyNoteIcon, TagIcon, TicketCheckIcon } from "lucide-react";
@@ -142,7 +145,7 @@ export function DashboardDetails({
     const amount = status === "repair" ? "—" : booking.priceCents === null ? "ไม่ระบุยอด" : dashboardMoney(booking.priceCents);
     const agency = detail.agency?.name ?? "ไม่ระบุเอเจนซี่";
     const channel = detail.agency?.id ? "เอเจนซี่" : "ไม่ระบุ";
-    const bookingReturnTo = houseReturnTo ?? dashboardBookingDetailHref({ month: query.month, status: query.status, search: query.search, sort: "updated-desc", page: query.page }, booking.id);
+    const bookingReturnTo = houseReturnTo ?? dashboardBookingDetailHref({ month: query.month, ...dashboardDateFilter(query), status: query.status, search: query.search, sort: "updated-desc", page: query.page }, booking.id);
     const houseHref = `/admin/houses/${encodeURIComponent(booking.propertyId)}?returnTo=${encodeURIComponent(bookingReturnTo)}`;
     const selectBookingTab = (next: typeof bookingTab | undefined) => {
       if (!next) return;
@@ -189,7 +192,7 @@ export function DashboardDetails({
   }
 
   if (detail.kind === "agency") {
-    const agencyListQuery = agencyQuery ?? { month: query.month, search: query.agencySearch, page: query.agenciesPage, status: "confirmed", bookingSearch: "", bookingsPage: 1, sort: "updated-desc" as const };
+    const agencyListQuery = agencyQuery ?? { month: query.month, ...dashboardDateFilter(query), search: query.agencySearch, page: query.agenciesPage, status: "confirmed", bookingSearch: "", bookingsPage: 1, sort: "updated-desc" as const };
     const agencyId = detail.agency.id ?? "unassigned";
     return <div className="mx-auto min-w-0 max-w-7xl space-y-5">
       <DashboardTaskHeader backHref={resolvedBackHref} backLabel={backLabel} description="รายละเอียดเอเจนซี่" title={detail.agency.name} />

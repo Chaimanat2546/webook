@@ -1,3 +1,5 @@
+import { dashboardDateFilter } from "../../../lib/dashboard";
+import { dashboardPeriodParams } from "../../../lib/dashboard-routes";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -46,9 +48,9 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
       <Card className="min-h-[21rem] gap-2">
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-3">
-            <h2>จำนวนการจองเดือนนี้</h2>
+            <h2>จำนวนการจองในช่วงที่เลือก</h2>
             <Link
-              href={`/admin/dashboard/bookings?month=${encodeURIComponent(query.month)}&status=confirmed`}
+              href={`/admin/dashboard/bookings?${dashboardPeriodParams(query)}&status=confirmed`}
               className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"
             >
               ดูทั้งหมด
@@ -81,7 +83,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
               <CardTitle className="flex items-center justify-between gap-3">
                 <h2>ยอดขายเอเจนซี่สูงสุด 5 อันดับ</h2>
                 <Link
-                  href={`/admin/dashboard/agencies?month=${encodeURIComponent(query.month)}`}
+                  href={`/admin/dashboard/agencies?${dashboardPeriodParams(query)}`}
                   className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"
                 >
                   ดูทั้งหมด
@@ -104,9 +106,9 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
           <Card className="min-h-[20rem] h-full gap-2">
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-3">
-                <h2>บ้านใหม่เดือนนี้</h2>
+                <h2>บ้านใหม่ในช่วงที่เลือก</h2>
                 <Link
-                  href={`/admin/dashboard/houses?month=${encodeURIComponent(query.month)}`}
+                  href={`/admin/dashboard/houses?${dashboardPeriodParams(query)}`}
                   className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"
                 >
                   ดูทั้งหมด
@@ -120,7 +122,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
                     <DashboardHouseRow
                       key={house.id}
                       house={house}
-                      href={dashboardHouseDetailHref({ month: query.month, search: "", page: 1 }, house.id, "overview")}
+                      href={dashboardHouseDetailHref({ month: query.month, ...dashboardDateFilter(query), search: "", page: 1 }, house.id, "overview")}
                     />
                   ))}
                 </div>
@@ -128,7 +130,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
                 <DashboardOverviewEmptyState
                   icon={House}
                   title="ยังไม่มีบ้านเพิ่มใหม่"
-                  description="บ้านที่เพิ่มในเดือนนี้จะแสดงที่นี่"
+                  description="บ้านที่เพิ่มในช่วงที่เลือกจะแสดงที่นี่"
                 />
               )}
             </CardContent>

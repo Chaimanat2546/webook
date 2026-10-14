@@ -1,5 +1,8 @@
 "use client";
 
+import { dashboardDateFilter } from "../../../lib/dashboard";
+
+
 /* eslint-disable @next/next/no-img-element -- image URLs are allowlisted by the server-side storage adapter. */
 import Link from "next/link";
 import { useState } from "react";
@@ -99,7 +102,7 @@ function MobileSection({ children, id, onOpenChange, open, icon: Icon, summary, 
 
 export function DashboardHouseDetailView({ backHref, backLabel, detail, houseDetailReturnTo, query }: DashboardHouseDetailViewProps) {
   const { data, house } = detail;
-  const returnTo = houseDetailReturnTo ?? dashboardHouseDetailHref({ month: query.month, search: query.houseSearch, page: query.housesPage }, house.id);
+  const returnTo = houseDetailReturnTo ?? dashboardHouseDetailHref({ month: query.month, ...dashboardDateFilter(query), search: query.houseSearch, page: query.housesPage }, house.id);
   const propertyId = data.propertyId;
   const imagesHref = propertyId ? `/admin/houses/${encodeURIComponent(propertyId)}/images?returnTo=${encodeURIComponent(returnTo)}` : null;
   const active = data.isActive ?? house.isActive;

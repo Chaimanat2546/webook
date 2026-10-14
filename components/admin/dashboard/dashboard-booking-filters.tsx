@@ -1,7 +1,6 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import type { DateRange } from "react-day-picker";
 import { ListFilterIcon, SearchIcon, SlidersHorizontalIcon, TagIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -12,8 +11,7 @@ import { Button } from "../../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "../../ui/sheet";
-import { ThaiDateRangePicker } from "../../ui/thai-date-range-picker";
-import { ThaiMonthPicker } from "../../ui/thai-month-picker";
+import { ReportDateRangePicker } from "./report-date-range-picker";
 import { DashboardListToolbar } from "./dashboard-list-toolbar";
 
 interface DashboardBookingFiltersProps {
@@ -35,7 +33,6 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
   const [amountFrom, setAmountFrom] = useState(() => amountValue(query?.amountFromCents));
   const [amountTo, setAmountTo] = useState(() => amountValue(query?.amountToCents));
   const [amountError, setAmountError] = useState(false);
-  const [checkInRange, setCheckInRange] = useState<DateRange | undefined>(() => query?.checkInFrom && query.checkInTo ? { from: localDate(query.checkInFrom), to: localDate(query.checkInTo) } : undefined);
   const [status, setStatus] = useState<DashboardBookingsQuery["status"]>(query?.status ?? "confirmed");
   const [sort, setSort] = useState<DashboardBookingsQuery["sort"]>(query?.sort ?? "updated-desc");
 
@@ -43,7 +40,6 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
     setAmountFrom("");
     setAmountTo("");
     setAmountError(false);
-    setCheckInRange(undefined);
     setStatus("confirmed");
     setSort("updated-desc");
   }
@@ -56,7 +52,8 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
     }
     setAmountError(false);
     onFiltersApply?.({
-      ...dateRangeChanges(checkInRange?.from && checkInRange.to ? checkInRange : undefined),
+      checkInFrom: undefined,
+      checkInTo: undefined,
       amountFromCents: from,
       amountToCents: to,
       ...(showBookingControls ? { status, sort } : {}),
@@ -95,7 +92,6 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
       </div>
     </div> : null}
     <fieldset className="space-y-2"><legend className="text-sm font-medium">ช่วงยอดจอง (บาท)</legend><div className="flex items-center gap-2"><Input aria-invalid={amountError} aria-label="ยอดจองต่ำสุด" inputMode="decimal" onChange={event => { setAmountFrom(event.target.value); setAmountError(false); }} placeholder="ขั้นต่ำ" type="text" value={amountFrom} /><span aria-hidden className="text-muted-foreground">–</span><Input aria-invalid={amountError} aria-label="ยอดจองสูงสุด" inputMode="decimal" onChange={event => { setAmountTo(event.target.value); setAmountError(false); }} placeholder="สูงสุด" type="text" value={amountTo} /></div>{amountError ? <p role="alert" className="text-sm text-destructive">ยอดสูงสุดต้องไม่น้อยกว่ายอดต่ำสุด</p> : null}</fieldset>
-    <fieldset className="space-y-2"><legend className="text-sm font-medium">ช่วงวันที่เข้าพัก</legend><ThaiDateRangePicker onChange={setCheckInRange} portalContainer={datePickerPortalContainer} value={checkInRange} /></fieldset>
     <Button className="w-full" onClick={apply} type="button">ใช้ตัวกรอง</Button>
   </div>;
 }
@@ -119,9 +115,9 @@ export function DashboardBookingFilters({ query, href }: DashboardBookingFilters
       <Input aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่" className="h-11 pl-9 pr-11" name="search" onChange={event => setSearch(event.target.value)} placeholder="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่" type="search" value={search} />
       <button aria-label="ค้นหา" className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2" type="submit"><SearchIcon aria-hidden className="size-4" /></button>
     </div>
-    <div className="w-full min-w-0 pb-1 md:overflow-x-auto">
-      <div className="flex w-full min-w-0 gap-2 md:min-w-max">
-        <ThaiMonthPicker all={Boolean(query.checkInFrom)} className="h-8 flex-1 min-w-0 text-sm md:flex-none" month={query.month} onMonthChange={month => navigate({ month, checkInFrom: undefined, checkInTo: undefined })} />
+    <div className="w-full min-w-0 pb-1">
+      <div className="flex w-full min-w-0 flex-wrap gap-2">
+        <ReportDateRangePicker className="h-8 w-auto min-w-0 max-w-full flex-none text-sm" month={query.month} label="ช่วงวันที่อัปเดตการจอง" range={query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo } : undefined} onChange={range => navigate({ dateFrom: range.from, dateTo: range.to, checkInFrom: undefined, checkInTo: undefined })} />
         <div className="hidden md:block"><Select items={bookingStatusOptions} value={query.status} onValueChange={status => { if (status) navigate({ status }); }}>
           <SelectTrigger id="booking-status" aria-label="สถานะการจอง" className="pl-3">
             <TagIcon aria-hidden className="size-4 text-muted-foreground" />
@@ -150,22 +146,6 @@ export function DashboardBookingFilters({ query, href }: DashboardBookingFilters
       </div>
     </div>
   </DashboardListToolbar>;
-}
-
-function localDate(value: string): Date {
-  return new Date(`${value}T12:00:00`);
-}
-
-function dateRangeChanges(range: DateRange | undefined): Pick<DashboardBookingsQuery, "checkInFrom" | "checkInTo"> {
-  if (!range?.from || !range.to) return { checkInFrom: undefined, checkInTo: undefined };
-  return { checkInFrom: dateValue(range.from), checkInTo: dateValue(range.to) };
-}
-
-function dateValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function amountCents(value: string): number | undefined {
