@@ -5,27 +5,32 @@ import { Badge } from "../../../ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../ui/table";
 import { columns, MetricCells } from "./table-metrics";
 import { WebsiteSiteSummaryGraph } from "./site-summary-graph";
-import { websiteAnalyticsHref, type AnalyticsDateRange, type WebsiteSummary } from "../../../../lib/website-analytics";
+import type { AnalyticsDateRange, WebsiteSummary } from "../../../../lib/website-analytics";
 
+import { websitePeriodHref, type WebsitePreviousPeriod } from "../../../../lib/website-analytics-comparison";
+import type { WebsiteScopeSelection } from "../../../../lib/website-analytics-scope";
+import type { WebsiteOption } from "./filters";
 import { SummaryRangeFilter } from "./summary-range-filter";
+import { WebsiteDatasetControls } from "./dataset-controls";
 
 function displayDomain(origin: string): string {
   return `www.${new URL(origin).hostname.replace(/^www\./, "")}`;
 }
 
-function SiteStatus({ site }: { site: WebsiteSummary }) {
+function SiteStatus({ site, showCoverage = false }: { site: WebsiteSummary; showCoverage?: boolean }) {
   const loaded = site.status === "complete" || site.status === "partial";
   const unconfigured = site.status === "not_configured";
-  return <Badge variant="outline" className={loaded ? "border-emerald-200 bg-emerald-50 text-emerald-700" : unconfigured ? "border-amber-200 bg-amber-50 text-amber-700" : "border-red-200 bg-red-50 text-red-700"}>{loaded ? "โหลดสำเร็จ" : unconfigured ? "ยังไม่ได้ตั้งค่า" : "โหลดไม่ได้"}</Badge>;
+  const partial = showCoverage && site.status === "partial";
+  return <Badge variant="outline" className={partial || unconfigured ? "border-amber-200 bg-amber-50 text-amber-700" : loaded ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}>{partial ? "ข้อมูลไม่ครบ" : loaded ? "โหลดสำเร็จ" : unconfigured ? "ยังไม่ได้ตั้งค่า" : "โหลดไม่ได้"}</Badge>;
 }
 
-function MobileSiteSummary({ sites, month, range }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange }) {
+function MobileSiteSummary({ sites, month, range, showCoverage = false, scope }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; showCoverage?: boolean; scope?: WebsiteScopeSelection }) {
   return <ul className="divide-y md:hidden" aria-label="สถิติแยกเว็บไซต์บนมือถือ">{sites.map(site => <li key={site.key} className="min-w-0 py-3 first:pt-0 last:pb-0">
     <div className="flex flex-wrap items-start justify-between gap-2">
-      <Link href={websiteAnalyticsHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {})} className="flex min-w-0 flex-1 items-center gap-1 rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-primary">
+      <Link href={websitePeriodHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {}, showCoverage, scope)} className="flex min-w-0 flex-1 items-center gap-1 rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-primary">
         <span className="min-w-0"><span className="block break-words text-sm font-medium">{site.displayName}</span><span className="mt-0.5 block break-all text-[11px] text-muted-foreground">{displayDomain(site.origin)}</span></span><ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </Link>
-      <SiteStatus site={site} />
+      <SiteStatus site={site} showCoverage={showCoverage} />
     </div>
     <dl className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-muted/40 p-2">{columns.filter(column => ["page_views", "contact_clicks", "gallery_opens"].includes(column.key)).map(column => <div key={column.key} className="min-w-0"><dt className="text-[11px] text-muted-foreground">{column.label}</dt><dd className={`break-all text-base font-semibold tabular-nums ${column.key === "contact_clicks" ? "text-primary" : ""}`}>{site.totals?.[column.key].toLocaleString("th-TH") ?? "—"}</dd></div>)}</dl>
     <details className="group mt-1">
@@ -35,10 +40,9 @@ function MobileSiteSummary({ sites, month, range }: { sites: WebsiteSummary[]; m
   </li>)}</ul>;
 }
 
-export function WebsiteSiteSummary({ sites, month, range, today }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; today?: string }) {
+export function WebsiteSiteSummary({ sites, month, range, today, asOf, compare = false, previous, scope }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; today?: string; asOf?: string; compare?: boolean; previous?: WebsitePreviousPeriod; scope?: WebsiteScopeSelection; options?: WebsiteOption[] }) {
   const availableFrom = sites.flatMap(site => {
-    if (!site.coverage) return [];
-    const time = Date.parse(site.coverage.data_available_from);
+    const time = site.coverage ? Date.parse(site.coverage.data_available_from) : NaN;
     return Number.isFinite(time) ? [new Date(time + 7 * 3600000).toISOString().slice(0, 10)] : [];
   }).sort()[0];
   return <Card>
@@ -48,16 +52,19 @@ export function WebsiteSiteSummary({ sites, month, range, today }: { sites: Webs
         <div className="min-w-0"><CardTitle><h2>แนวโน้มประสิทธิภาพเว็บไซต์</h2></CardTitle><p className="mt-1 text-xs text-muted-foreground">เปรียบเทียบจำนวนเข้าชม การกดติดต่อ และการเปิดรูป ของแต่ละเว็บไซต์</p></div>
       </div>
       <span className="text-xs text-muted-foreground">{sites.length} โดเมนที่ผูกในระบบ</span>
-      {range && today && <SummaryRangeFilter key={`${range.from}:${range.to}`} month={month} range={range} today={today} availableFrom={availableFrom} />}
+      {range && today && <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+        <SummaryRangeFilter key={`${range.from}:${range.to}`} month={month} range={range} today={today} availableFrom={availableFrom} />
+        <WebsiteDatasetControls range={range} today={today} sites={sites} scope={scope} comparison={compare && previous ? { ...previous.range, sites: previous.sites.map(site => site.key) } : undefined} />
+      </div>}
     </CardHeader>
     <CardContent>
-      {range && sites.some(site => site.status === "partial") && <p role="status" className="mb-3 text-sm text-amber-700">บางเว็บไซต์มีข้อมูลไม่ครบช่วงวันที่ที่เลือก ยอดที่แสดงรวมเฉพาะข้อมูลที่มี</p>}
-      {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryGraph key={`${month}:${range?.from}:${range?.to}`} sites={sites} month={month} range={range} /><MobileSiteSummary sites={sites} month={month} range={range} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
+      {range && (!compare || !previous) && sites.some(site => site.status === "partial") && <p role="status" className="mb-3 text-sm text-amber-700">{compare ? "ข้อมูลบางเว็บไซต์ไม่ครบ" : "บางเว็บไซต์มีข้อมูลไม่ครบช่วงวันที่ที่เลือก ยอดที่แสดงรวมเฉพาะข้อมูลที่มี"}</p>}
+      {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryGraph sites={sites} month={month} range={range} today={today} asOf={asOf} compare={compare} previous={previous} scope={scope} /><MobileSiteSummary sites={sites} month={month} range={range} showCoverage={compare} scope={scope} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
         <TableHeader><TableRow><TableHead className="min-w-48">เว็บไซต์ / โดเมน</TableHead><TableHead className="min-w-32">สถานะข้อมูล</TableHead>{columns.map(column => <TableHead key={column.key} className="text-right">{column.label}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{sites.map(site => {
           return <TableRow key={site.key}>
-            <TableCell><Link href={websiteAnalyticsHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {})} className="block rounded-sm py-1 hover:underline focus-visible:outline-2"><span className="font-medium">{site.displayName}</span><span className="mt-1 block text-xs text-muted-foreground">{displayDomain(site.origin)}</span></Link></TableCell>
-            <TableCell><SiteStatus site={site} /></TableCell>
+            <TableCell><Link href={websitePeriodHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {}, compare, scope)} className="block rounded-sm py-1 hover:underline focus-visible:outline-2"><span className="font-medium">{site.displayName}</span><span className="mt-1 block text-xs text-muted-foreground">{displayDomain(site.origin)}</span></Link></TableCell>
+            <TableCell><SiteStatus site={site} showCoverage={compare} /></TableCell>
             <MetricCells metrics={site.totals} />
           </TableRow>;
         })}</TableBody>

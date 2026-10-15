@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, type TooltipContentProps, type TooltipValueType } from "recharts";
 import { ChartNoAxesColumnIncreasing } from "lucide-react";
 import type { AnalyticsDateRange, WebsiteSummary } from "../../../../lib/website-analytics";
@@ -40,7 +40,7 @@ function ScrollingTooltip({ viewport, ...props }: TooltipContentProps<TooltipVal
   return <div ref={content} className="w-60"><ChartTooltipContent active={props.active} payload={props.payload} label={props.label} className="w-full min-w-0" /></div>;
 }
 
-export function WebsiteSiteSummaryChart({ sites, month, range }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange }) {
+export function WebsiteSiteSummaryChart({ sites, month, range, legend }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; legend?: ReactNode }) {
   const [viewport, setViewport] = useState<HTMLDivElement | null>(null);
   const points = websiteComparisonData(sites);
   const data = points.filter(point => point.page_views !== null);
@@ -49,6 +49,7 @@ export function WebsiteSiteSummaryChart({ sites, month, range }: { sites: Websit
 
   return <figure aria-label="กราฟเปรียบเทียบสถิติทุกเว็บไซต์" className="mb-6 min-w-0 border-b pb-6">
     <p className="mb-3 text-xs text-muted-foreground">เปรียบเทียบผลรวมแต่ละเว็บไซต์ · {range ? `${range.from} ถึง ${range.to} · เวลาไทย` : monthLabel}</p>
+    {legend}
     {data.length > 0 ? <>
       <ul className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="คำอธิบายสีกราฟ">
         {metrics.map(metric => <li key={metric} className="flex items-center gap-2"><span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: config[metric].color }} />{config[metric].label}</li>)}

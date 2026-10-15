@@ -17,11 +17,11 @@ test("future month summary uses the shared illustrated empty state without query
     plugins: [{
       name: "guard-external-analytics",
       setup(builder) {
-        builder.onLoad({ filter: /server[\\/]services[\\/]website-analytics\.tsx?$/ }, () => ({
-          contents: 'export async function loadWebsiteAnalytics(){throw new Error("Future months must not fetch analytics");}', loader: "js",
-        }));
         builder.onLoad({ filter: /server[\\/]site-analytics[\\/]registry\.tsx?$/ }, () => ({
-          contents: 'export function listAnalyticsSites(){throw new Error("Future months must not access site registry");}', loader: "js",
+          contents: 'export function listAnalyticsSites(){throw new Error("Future months must not access the site registry");}', loader: "js",
+        }));
+        builder.onLoad({ filter: /server[\\/]services[\\/]website-analytics-comparison\.tsx?$/ }, () => ({
+          contents: 'export async function loadWebsiteSummaryPeriods(){throw new Error("Future months must not fetch analytics or access the site registry");}', loader: "js",
         }));
       },
     }],

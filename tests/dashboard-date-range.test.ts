@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parseDashboardQuery } from "../lib/dashboard.ts";
-import { parseDashboardBookingsQuery, parseDashboardAgenciesQuery, parseDashboardHousesQuery, dashboardBookingsHref, dashboardAgenciesHref, dashboardHousesHref, dashboardAgencyDetailHref, parseDashboardAgencyDetailQuery } from "../lib/dashboard-routes.ts";
+import { parseDashboardBookingsQuery, parseDashboardAgenciesQuery, parseDashboardHousesQuery, dashboardBookingsHref, dashboardAgenciesHref, dashboardHousesHref, dashboardAgencyDetailHref, parseDashboardAgencyDetailQuery, dashboardPeriodParams } from "../lib/dashboard-routes.ts";
 
 const range = { dateFrom: "2026-08-29", dateTo: "2026-10-02" };
+test("applying the dashboard header range preserves enabled previous comparison without old analytics date overrides", () => {
+  assert.equal(dashboardPeriodParams({ month: "2026-10", ...range }, true).toString(), "month=2026-10&dateFrom=2026-08-29&dateTo=2026-10-02&analyticsCompare=previous");
+  assert.equal(dashboardPeriodParams({ month: "2026-10", ...range }).toString(), "month=2026-10&dateFrom=2026-08-29&dateTo=2026-10-02");
+});
 test("reporting range uses inclusive Bangkok dates across months", () => {
   const query = parseDashboardQuery({ month: "2026-09", ...range });
   assert.equal(query.start, "2026-08-28T17:00:00.000Z");

@@ -1,12 +1,14 @@
+import { websitePeriodHref } from "../../../../lib/website-analytics-comparison";
+import type { WebsiteScopeSelection } from "../../../../lib/website-analytics-scope";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "../../../ui/table";
 import { DashboardPager } from "../dashboard-list-primitives";
 import { columns, labels, MetricCells } from "./table-metrics";
-import { websiteAnalyticsHref, type AnalyticsMetrics, type WebsiteAnalyticsQuery, type WebsiteAnalyticsReport } from "../../../../lib/website-analytics";
+import { type AnalyticsMetrics, type WebsiteAnalyticsQuery, type WebsiteAnalyticsReport } from "../../../../lib/website-analytics";
 
 function MobileMetrics({ metrics }: { metrics: AnalyticsMetrics | null | undefined }) {
   return <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-4 text-sm">{columns.map(column => <div key={column.key}><dt className="text-xs text-muted-foreground">{column.label}</dt><dd className={`mt-1 font-medium tabular-nums ${column.key === "contact_clicks" ? "text-primary" : ""}`}>{metrics ? metrics[column.key].toLocaleString("th-TH") : "—"}</dd></div>)}</dl>;
 }
-export function WebsiteAnalyticsHouseList({ report, query }: { report: WebsiteAnalyticsReport; query: WebsiteAnalyticsQuery }) {
+export function WebsiteAnalyticsHouseList({ report, query, compare = false, scope }: { report: WebsiteAnalyticsReport; query: WebsiteAnalyticsQuery; compare?: boolean; scope?: WebsiteScopeSelection }) {
   return <div className="space-y-4">
     {report.searchUnavailable && <p role="alert" className="text-sm text-amber-700">ค้นหาชื่อบ้านไม่ได้ กรุณาลองใหม่ ผลที่แสดงค้นหาได้เฉพาะรหัสบ้าน</p>}
     {report.nameSortUnavailable && <p role="status" className="text-sm text-amber-700">โหลดชื่อบ้านไม่ได้ ขณะนี้เรียงตามรหัสบ้าน กรุณาลองใหม่</p>}
@@ -27,7 +29,7 @@ export function WebsiteAnalyticsHouseList({ report, query }: { report: WebsiteAn
           <div className="rounded-xl border bg-muted/20 p-3"><h2 className="text-sm font-medium text-muted-foreground">กิจกรรมที่ไม่ระบุบ้าน</h2><MobileMetrics metrics={site.unattributed} /></div>
           <div className="rounded-xl border bg-card p-3"><h2 className="text-sm font-semibold">รวมทั้งเว็บไซต์</h2><MobileMetrics metrics={site.totals} /></div>
         </div>
-        <div className="mt-4"><DashboardPager page={page.page} pages={Math.max(1, Math.ceil(page.total / 10))} total={page.total} href={number => websiteAnalyticsHref(query, { pages: { ...query.pages, [site.key]: number } })} /></div>
+        <div className="mt-4"><DashboardPager page={page.page} pages={Math.max(1, Math.ceil(page.total / 10))} total={page.total} href={number => websitePeriodHref(query, { pages: { ...query.pages, [site.key]: number } }, compare, scope)} /></div>
       </section>;
     })}
   </div>;
