@@ -1,15 +1,17 @@
+import { websitePeriodHref } from "../../../../lib/website-analytics-comparison";
+import type { WebsiteScopeSelection } from "../../../../lib/website-analytics-scope";
 import { MobileRanking } from "./mobile-ranking";
 import { columns, labels, MetricCells } from "./table-metrics";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "../../../ui/table";
 import { Badge } from "../../../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/card";
-import { WEBSITE_ANALYTICS_SORTS, websiteAnalyticsHref, type WebsiteAnalyticsQuery, type WebsiteAnalyticsReport } from "../../../../lib/website-analytics";
+import { WEBSITE_ANALYTICS_SORTS, type WebsiteAnalyticsQuery, type WebsiteAnalyticsReport } from "../../../../lib/website-analytics";
 
-export function WebsiteAnalyticsTables({ report, query }: { report: WebsiteAnalyticsReport; query: WebsiteAnalyticsQuery }) {
+export function WebsiteAnalyticsTables({ report, query, compare = false, scope }: { report: WebsiteAnalyticsReport; query: WebsiteAnalyticsQuery; compare?: boolean; scope?: WebsiteScopeSelection }) {
   const sort = WEBSITE_ANALYTICS_SORTS.find(option => option.value === (query.sort ?? "contacts")) ?? WEBSITE_ANALYTICS_SORTS[0];
   return <div className="grid min-w-0 gap-6">{report.websites.map(site => <Card key={site.key} id={`website-${site.key}`} className="min-w-0 scroll-mt-4 gap-2" aria-labelledby={`title-${site.key}`}>
-    <CardHeader className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><CardTitle><h2 id={`title-${site.key}`}>{`${sort.heading} 5 อันดับ`}</h2></CardTitle></div><div className="flex shrink-0 flex-wrap items-center gap-3">{site.villas && site.villas.total > 0 && <Link href={websiteAnalyticsHref(query, { site: site.key, view: "houses", granularity: "day", page: 1, pages: {} })} className="inline-flex items-center text-sm text-primary hover:underline focus-visible:outline-2">ดูทั้งหมด</Link>}{site.status !== "partial" && <Badge variant={site.status === "complete" ? "secondary" : "outline"}>{labels[site.status]}</Badge>}</div></CardHeader>
+    <CardHeader className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><CardTitle><h2 id={`title-${site.key}`}>{`${sort.heading} 5 อันดับ`}</h2></CardTitle></div><div className="flex shrink-0 flex-wrap items-center gap-3">{site.villas && site.villas.total > 0 && <Link href={websitePeriodHref(query, { site: site.key, view: "houses", granularity: "day", page: 1, pages: {} }, compare, scope)} className="inline-flex items-center text-sm text-primary hover:underline focus-visible:outline-2">ดูทั้งหมด</Link>}{site.status !== "partial" && <Badge variant={site.status === "complete" ? "secondary" : "outline"}>{labels[site.status]}</Badge>}</div></CardHeader>
     <CardContent className="min-w-0 space-y-3">
       {report.nameSortUnavailable && <p role="status" className="text-sm text-amber-700">โหลดชื่อบ้านไม่ได้ ขณะนี้เรียงตามรหัสบ้าน กรุณาลองใหม่</p>}
       <p className="hidden text-xs text-muted-foreground md:block">เรียงตาม{sort.label} · {sort.direction} · ยอดรวมท้ายตารางรวมบ้านทุกอันดับ</p>

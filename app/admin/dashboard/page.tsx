@@ -9,6 +9,9 @@ import { dashboardDateFilter, parseDashboardQuery } from "../../../lib/dashboard
 import { dashboardOverviewHref, legacyDashboardHref } from "../../../lib/dashboard-routes";
 import { DashboardHeader, DashboardView } from "../../../components/admin/dashboard/dashboard-view";
 import { parseAnalyticsDateRange } from "../../../lib/website-analytics";
+import { parseAnalyticsComparison } from "../../../lib/website-analytics-comparison";
+import { parseWebsiteScope } from "../../../lib/website-analytics-scope";
+import { listAnalyticsSites } from "../../../server/site-analytics/registry";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { actorId, repository } = await dashboardSession();
@@ -17,7 +20,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (!access) notFound();
   let query;
   let analyticsRange;
-  try { query = parseDashboardQuery(raw); analyticsRange = parseAnalyticsDateRange(raw.analyticsFrom, raw.analyticsTo); }
+  let analyticsCompare;
+  let analyticsScope;
+  try { query = parseDashboardQuery(raw); analyticsRange = parseAnalyticsDateRange(raw.analyticsFrom, raw.analyticsTo); analyticsCompare = parseAnalyticsComparison(raw.analyticsCompare); analyticsScope = parseWebsiteScope(raw.analyticsScope, listAnalyticsSites().map(site => site.key), new Date()); }
   catch {
     return <div className="space-y-4"><DashboardHeader month={parseDashboardQuery({}).month} /><p role="alert">ช่วงวันที่ไม่ถูกต้อง กรุณาตรวจสอบวันเริ่มต้นและวันสิ้นสุด (สถิติเข้าเว็บไซต์เลือกได้ถึงวันนี้)</p><Link href="/admin/dashboard">กลับ Dashboard</Link></div>;
   }
@@ -31,5 +36,5 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
   const today = new Date(new Date().getTime() + 7 * 3600000).toISOString().slice(0, 10);
   const summaryRange = analyticsRange ?? (query.dateFrom && query.dateTo && query.dateFrom <= today ? { from: query.dateFrom, to: query.dateTo > today ? today : query.dateTo } : undefined);
-  return <DashboardView report={report} query={query} websiteSummary={report.scope.kind === "admin" ? <Suspense key={`${query.month}:${query.dateFrom}:${query.dateTo}:${summaryRange?.from}:${summaryRange?.to}`} fallback={<WebsiteSiteSummarySkeleton />}><WebsiteSiteSummaryLoader month={!analyticsRange && query.dateFrom && query.dateFrom > today ? query.dateFrom.slice(0, 7) : query.month} range={summaryRange} /></Suspense> : undefined} />;
+  return <DashboardView report={report} query={query} websiteSummary={report.scope.kind === "admin" ? <Suspense key={`${query.month}:${query.dateFrom}:${query.dateTo}`} fallback={<WebsiteSiteSummarySkeleton />}><WebsiteSiteSummaryLoader month={!analyticsRange && query.dateFrom && query.dateFrom > today ? query.dateFrom.slice(0, 7) : query.month} range={summaryRange} compare={analyticsCompare} scope={analyticsScope} /></Suspense> : undefined} />;
 }
