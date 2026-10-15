@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/card";
 import { Badge } from "../../../ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../ui/table";
 import { columns, MetricCells } from "./table-metrics";
-import { WebsiteSiteSummaryChart } from "./site-summary-chart";
+import { WebsiteSiteSummaryGraph } from "./site-summary-graph";
 import { websiteAnalyticsHref, type AnalyticsDateRange, type WebsiteSummary } from "../../../../lib/website-analytics";
 
 import { SummaryRangeFilter } from "./summary-range-filter";
@@ -52,7 +52,7 @@ export function WebsiteSiteSummary({ sites, month, range, today }: { sites: Webs
     </CardHeader>
     <CardContent>
       {range && sites.some(site => site.status === "partial") && <p role="status" className="mb-3 text-sm text-amber-700">บางเว็บไซต์มีข้อมูลไม่ครบช่วงวันที่ที่เลือก ยอดที่แสดงรวมเฉพาะข้อมูลที่มี</p>}
-      {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryChart key={`${month}:${range?.from}:${range?.to}`} sites={sites} month={month} range={range} /><MobileSiteSummary sites={sites} month={month} range={range} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
+      {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryGraph key={`${month}:${range?.from}:${range?.to}`} sites={sites} month={month} range={range} /><MobileSiteSummary sites={sites} month={month} range={range} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
         <TableHeader><TableRow><TableHead className="min-w-48">เว็บไซต์ / โดเมน</TableHead><TableHead className="min-w-32">สถานะข้อมูล</TableHead>{columns.map(column => <TableHead key={column.key} className="text-right">{column.label}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{sites.map(site => {
           return <TableRow key={site.key}>
