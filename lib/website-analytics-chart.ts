@@ -1,4 +1,4 @@
-import type { WebsiteSummary } from "./website-analytics";
+import type { AnalyticsDateRange, WebsiteSummary } from "./website-analytics";
 
 export type WebsiteChartMetric = "page_views" | "contact_clicks" | "gallery_opens";
 export interface WebsiteChartPoint { date: string; values: Record<string, number | null> }
@@ -23,15 +23,24 @@ export function websiteComparisonData(sites: WebsiteSummary[]): WebsiteCompariso
 }
 
 /** Missing days and days outside source retention are gaps, never estimated zeros. */
-export function websiteChartData(sites: WebsiteSummary[], month: string, metric: WebsiteChartMetric, period: "day" | "month" = "day"): WebsiteChartPoint[] {
+export function websiteChartData(sites: WebsiteSummary[], month: string, metric: WebsiteChartMetric, period: "day" | "month" = "day", range?: AnalyticsDateRange): WebsiteChartPoint[] {
   if (period === "month") {
     const rows = sites.map(site => new Map((site.monthly ?? []).filter(day => day.date <= month).map(day => [day.date, day[metric] ?? null])));
     return [...new Set(rows.flatMap(row => [...row.keys()]))].sort().map(date => ({ date, values: Object.fromEntries(sites.map((site, index) => [site.key, rows[index].get(date) ?? null])) }));
   }
   const rows = sites.map(site => {
     const available = site.coverage ? new Date(new Date(site.coverage.data_available_from).getTime() + 7 * 3600000).toISOString().slice(0, 10) : "";
-    return new Map((site.totals ? site.daily ?? [] : []).filter(day => day.date.startsWith(`${month}-`) && day.date >= available).map(day => [day.date, day[metric]]));
+    return new Map((site.totals ? site.daily ?? [] : []).filter(day => (range ? day.date >= range.from && day.date <= range.to : day.date.startsWith(`${month}-`)) && day.date >= available).map(day => [day.date, day[metric]]));
   });
   const dates = [...new Set(rows.flatMap(row => [...row.keys()]))].sort();
-  return dates.map(date => ({ date, values: Object.fromEntries(sites.map((site, index) => [site.key, rows[index].get(date) ?? null])) }));
+  if (!dates.length) return [];
+  // Include absent dates so a line cannot bridge an unreported day.
+  const start = Date.parse(range?.from ?? dates[0]);
+  const end = Date.parse(range?.to ?? dates[dates.length - 1]);
+  const days: WebsiteChartPoint[] = [];
+  for (let time = start; time <= end; time += 86400000) {
+    const date = new Date(time).toISOString().slice(0, 10);
+    days.push({ date, values: Object.fromEntries(sites.map((site, index) => [site.key, rows[index].get(date) ?? null])) });
+  }
+  return days;
 }

@@ -46,3 +46,26 @@ test("monthly chart reads per-site history even when the selected month's source
     { date: "2026-09", values: { c: 4 } }, { date: "2026-10", values: { c: null } },
   ]);
 });
+
+test("daily comparison spans the selected range across months and leaves absent days as gaps", () => {
+  const input = [{ ...sites[0], daily: [
+    { ...emptyMetrics(), date: "2026-09-29", contact_clicks: 99 },
+    { ...emptyMetrics(), date: "2026-09-30", contact_clicks: 3 },
+    { ...emptyMetrics(), date: "2026-10-02", contact_clicks: 0 },
+    { ...emptyMetrics(), date: "2026-10-03", contact_clicks: 99 },
+  ] }, sites[2]];
+  assert.deepEqual(websiteChartData(input, "2026-10", "contact_clicks", "day", { from: "2026-09-30", to: "2026-10-02" }), [
+    { date: "2026-09-30", values: { a: 3, c: null } },
+    { date: "2026-10-01", values: { a: null, c: null } },
+    { date: "2026-10-02", values: { a: 0, c: null } },
+  ]);
+});
+
+test("daily range does not draw pre-retention zeroes or invent data from totals", () => {
+  assert.deepEqual(websiteChartData([sites[1]], "2026-10", "gallery_opens", "day", { from: "2026-10-01", to: "2026-10-03" }), [
+    { date: "2026-10-01", values: { b: null } },
+    { date: "2026-10-02", values: { b: 9 } },
+    { date: "2026-10-03", values: { b: null } },
+  ]);
+  assert.deepEqual(websiteChartData([{ ...sites[0], daily: undefined }], "2026-10", "page_views", "day", { from: "2026-10-01", to: "2026-10-03" }), []);
+});

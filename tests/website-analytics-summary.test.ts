@@ -107,9 +107,14 @@ test("website summary preserves selected site/month and distinguishes failure fr
   assert.equal((html.match(/เปรียบเทียบจำนวนเข้าชม การกดติดต่อ และการเปิดรูป ของแต่ละเว็บไซต์/g) ?? []).length, 1);
   assert.ok(!html.includes("สถานะข้อมูลและผลรวมในเดือนที่เลือก"));
   assert.ok(!html.includes("<h2>แยกเว็บไซต์</h2>"));
-  assert.ok(html.includes('aria-label="กราฟเปรียบเทียบสถิติทุกเว็บไซต์"'));
-  assert.ok(html.indexOf('กราฟเปรียบเทียบสถิติทุกเว็บไซต์') < html.indexOf('aria-label="สถิติแยกเว็บไซต์บนมือถือ"'));
-  assert.ok(html.includes('ไม่แสดงแท่งของเว็บไซต์ที่ไม่มีข้อมูล: Website 1 · Website 2'));
+  assert.ok(html.includes('aria-label="มุมมองกราฟเว็บไซต์"'));
+  assert.match(html, /aria-pressed="true"[^>]*>แนวโน้มรายวัน/);
+  assert.ok(html.includes('ยอดรวมแต่ละเว็บ'));
+  assert.ok(html.includes('aria-label="เลือกสถิติรายวัน"'));
+  assert.match(html, /aria-pressed="true"[^>]*>เข้าชม<\/button>/);
+  assert.ok(html.includes('aria-label="กราฟแนวโน้มรายวันแต่ละเว็บไซต์"'));
+  assert.ok(html.indexOf('กราฟแนวโน้มรายวันแต่ละเว็บไซต์') < html.indexOf('aria-label="สถิติแยกเว็บไซต์บนมือถือ"'));
+  assert.ok(html.includes('ไม่แสดงเส้นของเว็บไซต์ที่ไม่มีข้อมูล: Website 1 · Website 2'));
   for (const value of ["โหลดสำเร็จ", "โหลดไม่ได้", "ยังไม่ได้ตั้งค่า", "123", "site0.test", "month=2026-10&amp;site=site0", "month=2026-10&amp;site=site1"]) assert.ok(html.includes(value), value);
   // Both responsive layouts preserve unavailable values rather than reporting zero.
   assert.equal((html.match(/—/g) ?? []).length, 24);
