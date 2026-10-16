@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { describeComparisonPeriod, comparePeriodConditions, assessPeriodComparison, matchComparisonConditions } from "../lib/website-analytics-comparison-policy.ts";
+import { describeComparisonPeriod, comparePeriodConditions, assessPeriodComparison, matchComparisonTime } from "../lib/website-analytics-comparison-policy.ts";
 import { pairWebsitePeriods, websitePeriodChange, websitePeriodSeries, websitePeriodRows, websiteMultiPeriodPoints, type WebsitePeriodSeries } from "../lib/website-analytics-comparison.ts";
 import { emptyMetrics, type AnalyticsDateRange, type WebsiteSummary } from "../lib/website-analytics.ts";
 
@@ -44,10 +44,10 @@ test("missing sites, failures, partial retention and elapsed status suppress per
   assert.deepEqual(assessPeriodComparison({...a,status:"ongoing",asOf:"2026-10-12T03:00:00Z"},b).reasons,["ongoing"]);
   assert.equal(assessPeriodComparison(a,b).canCompare,true);
 });
-test("matching keeps the comparison end and cannot cross the minimum date", () => {
-  assert.deepEqual(matchComparisonConditions(range("RT"),{from:"2026-10-01",to:"2026-10-10"}),{from:"2026-10-08",to:"2026-10-10",timeFrom:"09:00",timeTo:"18:00"});
-  assert.deepEqual(matchComparisonConditions(range("S24"),{from:"2026-10-01",to:"2026-10-10"}),{from:"2026-10-10",to:"2026-10-10",timeFrom:"00:00",timeTo:"24:00"});
-  assert.equal(matchComparisonConditions(range("RT"),{from:"1900-01-01",to:"1900-01-01"}),undefined);
+test("matching copies clocks only, preserving both comparison dates and minimum date", () => {
+  assert.deepEqual(matchComparisonTime(range("RT"),{from:"2026-10-01",to:"2026-10-10"}),{from:"2026-10-01",to:"2026-10-10",timeFrom:"09:00",timeTo:"18:00"});
+  assert.deepEqual(matchComparisonTime(range("S24"),{from:"2026-10-01",to:"2026-10-10"}),{from:"2026-10-01",to:"2026-10-10",timeFrom:"00:00",timeTo:"24:00"});
+  assert.deepEqual(matchComparisonTime(range("RT"),{from:"1900-01-01",to:"1900-01-01"}),{from:"1900-01-01",to:"1900-01-01",timeFrom:"09:00",timeTo:"18:00"});
 });
 test("same and overlapping dates stay comparable and zero baselines stay finite", () => {
   const a=series(range("RT"),"day");

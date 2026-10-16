@@ -7,10 +7,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { AnalyticsDateRange } from "../lib/website-analytics.ts";
 import { websitePeriodHref } from "../lib/website-analytics-comparison.ts";
 
-test("comparison controls match conditions, preserve independent selections and guard legacy dates", async () => {
-  const probe: { buttons: { children?: unknown; onClick?: () => void; disabled?: boolean; "aria-label"?: string }[]; pending?: boolean; picker?: { matchPrimary?: AnalyticsDateRange; matchDisabledReason?: string; loading?: boolean; onChange: (range: AnalyticsDateRange) => void }; hrefs: string[] } = { buttons: [], hrefs: [] };
+test("comparison controls preserve independent selections and allow time copy for legacy dates", async () => {
+  const probe: { buttons: { children?: unknown; onClick?: () => void; disabled?: boolean; "aria-label"?: string }[]; pending?: boolean; picker?: { range?: AnalyticsDateRange; triggerContent?: unknown; matchPrimary?: AnalyticsDateRange; matchDisabledReason?: string; loading?: boolean; onChange: (range: AnalyticsDateRange) => void }; hrefs: string[] } = { buttons: [], hrefs: [] };
   const built=await build({entryPoints:["components/admin/dashboard/website-analytics/dataset-controls.tsx"],bundle:true,write:false,format:"cjs",platform:"node",packages:"external",plugins:[{name:"probe",setup(b){
-    b.onLoad({filter:/[\\/]website-date-range-picker\.tsx$/},()=>({loader:"js",contents:'import React from "react";import probe from "dataset-probe";export function WebsiteDateRangePicker(props){probe.picker=props;return React.createElement("span",null,props.label);}'}));
+    b.onLoad({filter:/[\\/]website-date-range-picker\.tsx$/},()=>({loader:"js",contents:'import React from "react";import probe from "dataset-probe";export function WebsiteDateRangePicker(props){probe.picker=props;return props.triggerContent?React.createElement("button",{disabled:props.loading},props.triggerContent):React.createElement("span",null,props.label);}'}));
     b.onLoad({filter:/[\\/]ui[\\/]button\.tsx$/},()=>({loader:"js",contents:'import React from "react";import probe from "dataset-probe";export function Button(props){probe.buttons.push(props);return React.createElement("button",{disabled:props.disabled,"aria-label":props["aria-label"]},props.children);}'}));
     b.onResolve({filter:/^dataset-probe$/},a=>({path:a.path,external:true}));
   }}]});
@@ -34,13 +34,19 @@ test("comparison controls match conditions, preserve independent selections and 
   const changedPrimary = new URL(websitePeriodHref(query,{from:"2026-10-05",to:"2026-10-05",timeFrom:"00:00",timeTo:"24:00"},true,{sites:["a"],comparison}),"https://local.test");
   assert.deepEqual(JSON.parse(changedPrimary.searchParams.get("analyticsScope")!).comparison,comparison);
   render({comparison:undefined,scope:{sites:["a"]}});
+  const beforeAdd=probe.hrefs.length;
   probe.buttons.find(b=>Array.isArray(b.children)&&b.children.includes("เพิ่มชุดเปรียบเทียบ"))?.onClick?.();
-  assert.deepEqual(JSON.parse(new URL(probe.hrefs.at(-1)!,"https://local.test").searchParams.get("analyticsScope")!).comparison,{from:"2026-10-11",to:"2026-10-13",timeFrom:"09:00",timeTo:"18:00",sites:["a"]});
+  assert.equal(probe.hrefs.length,beforeAdd,"opening the add picker must not navigate or fetch");
+  assert.ok(probe.picker?.triggerContent,"the existing picker renders the add trigger");
+  assert.deepEqual(probe.picker?.range,{from:"2026-10-11",to:"2026-10-13",timeFrom:"09:00",timeTo:"18:00"});
+  probe.picker?.onChange({from:"2026-10-05",to:"2026-10-06",timeFrom:"10:00",timeTo:"12:00"});
+  assert.equal(probe.hrefs.length,beforeAdd+1,"Apply performs exactly one navigation");
+  assert.deepEqual(JSON.parse(new URL(probe.hrefs.at(-1)!,"https://local.test").searchParams.get("analyticsScope")!).comparison,{from:"2026-10-05",to:"2026-10-06",timeFrom:"10:00",timeTo:"12:00",sites:["a"]});
   probe.pending=true;
-  assert.match(render(),/กำลังโหลดกราฟ/);
+  assert.doesNotMatch(render(),/กำลังโหลดกราฟ/);
   assert.equal(probe.picker?.loading,true);
   assert.ok(probe.buttons.every(button=>button.disabled));
   probe.pending=false;
   render({range:{from:"2026-10-01",to:"2026-10-01"}});
-  assert.equal(probe.picker?.matchDisabledReason,"เลือกช่วงหลักจากปฏิทินก่อนปรับเงื่อนไข");
+  assert.equal(probe.picker?.matchDisabledReason,undefined);
 });

@@ -11,6 +11,7 @@ import { WebsiteAnalyticsTables } from "./tables";
 import { scopeSearchParams, type WebsiteScopeSelection } from "../../../../lib/website-analytics-scope";
 import { analyticsDateRange } from "../../../../lib/website-analytics";
 import { isFutureAnalyticsRange } from "../../../../lib/website-analytics-time";
+import { WebsiteAnalyticsLoadingProvider } from "./analytics-loading";
 
 const headlines = [
   { key: "page_views", label: "ยอดเข้าชม", note: "รวมการเปิดหน้าเว็บไซต์ทุกครั้ง", icon: Eye },
@@ -31,7 +32,7 @@ export function WebsiteAnalyticsView({ report, query, sites, compare = false, pr
     </section>
   </DashboardDetailLayout></div>;
   const count = (key: typeof headlines[number]["key"] | typeof channels[number]["key"]) => report.totals ? report.totals[key].toLocaleString("th-TH") : "—";
-  return <div className="website-analytics-theme mx-auto min-w-0 max-w-7xl space-y-3 md:space-y-6">
+  return <WebsiteAnalyticsLoadingProvider><div className="website-analytics-theme mx-auto min-w-0 max-w-7xl space-y-3 md:space-y-6">
     <DashboardTaskHeader title="ภาพรวมผลเว็บไซต์และบ้าน" description="จำนวนครั้งที่เข้าชมและกดติดต่อ ไม่ใช่จำนวนคนไม่ซ้ำ" backHref={`/admin/dashboard?${(scope ? scopeSearchParams(backParams, scope) : backParams)}`} backLabel="กลับ Dashboard" />
     <WebsiteAnalyticsFilters key={`${query.site}:${query.month}:${query.search ?? ""}:${query.sort ?? ""}`} query={query} sites={sites} compare={compare} scope={scope} today={new Date(Date.parse(report.period.as_of) + 7 * 3600000).toISOString().slice(0, 10)} />
     {future && <p role="status" className="text-sm text-amber-700">ยังไม่ถึงช่วงเวลาที่เลือก · ยอดรวมยังไม่มีข้อมูลที่สังเกตแล้ว</p>}
@@ -50,5 +51,5 @@ export function WebsiteAnalyticsView({ report, query, sites, compare = false, pr
     <WebsitePeriodDetailChart report={report} query={query} compare={compare} previous={previous} sites={sites} scope={scope} />
     {!future && report.totals && report.totals.page_views === 0 && report.totals.contact_clicks === 0 && report.totals.gallery_opens === 0 && <p className="text-sm text-muted-foreground">{report.status === "complete" ? "ยังไม่มีเหตุการณ์ในช่วงนี้" : "ยังไม่พบเหตุการณ์ในข้อมูลที่โหลดได้"}</p>}
     <WebsiteAnalyticsTables report={report} query={query} compare={compare} scope={scope} />
-  </div>;
+  </div></WebsiteAnalyticsLoadingProvider>;
 }
