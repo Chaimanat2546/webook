@@ -40,11 +40,17 @@ test("analytics popup renders hour fields for one day and commits dates with hou
   assert.deepEqual(committed, { from: "2026-10-14", to: "2026-10-14", timeFrom: "09:00", timeTo: "18:00" });
   const multiple = render("2026-10-14", "2026-10-15");
   assert.doesNotMatch(multiple, /เวลาเริ่ม|เวลาสิ้นสุด/);
+  assert.match(multiple, /ระบุช่วงเวลา/);
+  assert.match(multiple, /aria-pressed="false"/);
+  assert.match(multiple, /เต็มวัน 24 ชั่วโมง/);
   probe.onChange?.({ from: day, to: new Date("2026-10-15T00:00:00") });
-  assert.deepEqual(committed, { from: "2026-10-14", to: "2026-10-15" });
+  assert.deepEqual(committed, { from: "2026-10-14", to: "2026-10-15", timeFrom: "00:00", timeTo: "24:00" });
   const wholeDay = render("2026-10-15", "2026-10-15");
-  assert.match(wholeDay, /00:00/);
-  assert.match(wholeDay, /24:00/);
+  assert.doesNotMatch(wholeDay, /เวลาเริ่ม|เวลาสิ้นสุด/);
+  assert.match(wholeDay, /เต็มวัน 24 ชั่วโมง/);
+  const explicitWholeDay = render("2026-10-15", "2026-10-15", { timeFrom: "00:00", timeTo: "24:00" });
+  assert.match(explicitWholeDay, /aria-pressed="false"/);
+  assert.doesNotMatch(explicitWholeDay, /เวลาเริ่ม|เวลาสิ้นสุด/);
   render("2026-10-15", "2026-10-15", { timeFrom: "18:00", timeTo: "09:00" });
   assert.equal(probe.canConfirm?.({ from: day, to: day }), false);
 });
@@ -63,6 +69,17 @@ test("date trigger summarizes hours and keeps time controls inside the popup", a
   const implicit = renderToStaticMarkup(createElement(Filter, { month: "2026-10", today: "2026-10-01", range: { from: "2026-10-01", to: "2026-10-01" } }));
   assert.doesNotMatch(implicit, /เวลาเริ่ม|ใช้เวลา/, "implicit first-day monthly report must not show hourly controls");
 });
+test("recurring time selection renders a daily graph and labels every-day hours", async () => {
+  const built = await build({ entryPoints: ["components/admin/dashboard/website-analytics/site-trend-chart.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
+  const require = createRequire(import.meta.url), loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", built.outputFiles[0].text)(require, loaded, loaded.exports);
+  const Trend = loaded.exports.WebsiteSiteTrendChart as ComponentType<Record<string, unknown>>;
+  const html = renderToStaticMarkup(createElement(Trend, { sites: [], month: "2026-10", range: { from: "2026-10-14", to: "2026-10-16", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-17T00:00:00Z", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  assert.match(html, /กราฟแนวโน้มรายวันแต่ละเว็บไซต์/);
+  assert.match(html, /ทุกวัน 09:00–18:00/);
+  assert.doesNotMatch(html, /ครั้งต่อชั่วโมง/);
+});
+
 test("completed comparison with different units reports the unit mismatch", async () => {
   const built = await build({ entryPoints: ["components/admin/dashboard/website-analytics/period-comparison-summary.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
   const require = createRequire(import.meta.url), loaded = { exports: {} as Record<string, unknown> };
@@ -91,4 +108,6 @@ test("mixed hourly and daily comparison renders separate trends and explicit uni
   assert.match(html, /ช่วงที่เลือกใช้หน่วยเวลาต่างกัน จึงแสดงกราฟแยกกัน/);
   assert.match(html, /กราฟแนวโน้มรายชั่วโมงแต่ละเว็บไซต์/);
   assert.match(html, /กราฟแนวโน้มรายวันแต่ละเว็บไซต์/);
+  const differentWindows = renderToStaticMarkup(createElement(Comparison, { sites: [site], range: { from: "2026-10-13", to: "2026-10-14", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-16T04:00:00Z", previous: { range: { from: "2026-10-13", to: "2026-10-14", timeFrom: "10:00", timeTo: "19:00" }, sites: [site] }, view: "daily", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  assert.match(differentWindows, /ช่วงเวลารายวันต่างกัน · งด % ยอดรวม/);
 });

@@ -10,9 +10,15 @@ export function atOrAfterAnalyticsTimestamp(start: string, cutoff: string): bool
 const hourMs = 3600000;
 export function parseAnalyticsTimeRange(timeFrom: unknown, timeTo: unknown, range?: { from: string; to: string }): AnalyticsTimeRange | undefined {
   if (timeFrom === undefined && timeTo === undefined) return range?.from === range?.to && range ? { timeFrom: "00:00", timeTo: "24:00" } : undefined;
-  if (!range || range.from !== range.to || typeof timeFrom !== "string" || typeof timeTo !== "string"
+  if (!range || range.from > range.to || typeof timeFrom !== "string" || typeof timeTo !== "string"
     || !/^(?:[01]\d|2[0-3]):00$/.test(timeFrom) || !/^(?:0[1-9]|1\d|2[0-4]):00$/.test(timeTo) || timeFrom >= timeTo) throw new RangeError("invalid_time_range");
   return { timeFrom, timeTo };
+}
+export function dailyWindowBounds(date: string, time: AnalyticsTimeRange): AnalyticsHourBounds {
+  parseAnalyticsTimeRange(time.timeFrom, time.timeTo, { from: date, to: date });
+  const day = Date.parse(date + "T00:00:00Z");
+  if (!Number.isFinite(day) || new Date(day).toISOString().slice(0, 10) !== date) throw new RangeError("invalid_time_range");
+  return { start: new Date(day - 7 * hourMs + Number(time.timeFrom.slice(0, 2)) * hourMs).toISOString(), end: new Date(day - 7 * hourMs + Number(time.timeTo.slice(0, 2)) * hourMs).toISOString() };
 }
 export function hourlyBounds(date: string, time: AnalyticsTimeRange, asOf: string): { start: string; end: string; effectiveEnd: string; buckets: AnalyticsHourBounds[] } {
   parseAnalyticsTimeRange(time.timeFrom, time.timeTo, { from: date, to: date });

@@ -61,14 +61,13 @@ export function ThaiDateRangePicker({ onChange, className = "", portalContainer,
   }
   return <Popover modal open={open} onOpenChange={next => { setOpen(next); onOpenChange?.(next); setDraft(value); setMonth(value?.from); setChoosingEnd(false); }}>
     <PopoverTrigger aria-label={label} disabled={loading} render={<Button className={`h-8 w-full min-w-0 justify-start border-field-border bg-field-background text-left font-normal disabled:bg-muted data-[empty=true]:text-muted-foreground dark:border-field-border dark:bg-field-background dark:disabled:bg-muted ${className}`} data-thai-date-range-picker="" data-empty={!value?.from} type="button" variant="outline" />}>
-      <CalendarDaysIcon aria-hidden /><span className="truncate">{formatRange(value)}{valueSuffix && ` · ${valueSuffix}`}</span>
+      <CalendarDaysIcon aria-hidden /><span className="truncate" title={`${formatRange(value)}${valueSuffix ? ` · ${valueSuffix}` : ""}`}>{formatRange(value)}{valueSuffix && ` · ${valueSuffix}`}</span>
     </PopoverTrigger>
     <PopoverContent className="w-auto max-w-[calc(100vw-1rem)] min-w-0 max-h-[min(90dvh,var(--available-height))] overflow-y-auto bg-background p-0" container={portalContainer} align="start">
       <div className="flex flex-col sm:flex-row">
         {renderShortcuts && <div className="border-b sm:border-r sm:border-b-0">{renderShortcuts(range => { setMonth(range.from); choose(range); }, () => { setDraft(undefined); setChoosingEnd(false); }, draft)}</div>}
-        <div className="min-w-0"><Calendar className="relative mx-auto rounded-[calc(var(--radius-xl)-1px)]" locale={th} mode="range" disabled={disabled} month={month} onMonthChange={setMonth} onSelect={selectRange} selected={buffered ? draft : value} formatters={{ formatCaption: date => thaiDate.format(date) }} />{buffered && <p role="status" className="px-3 pb-3 text-xs text-muted-foreground">{choosingEnd ? "เลือกวันสิ้นสุด" : confirmSelection && draft?.from && draft.to ? formatRange(draft) : "เลือกวันเริ่มต้น"}</p>}</div>
+        <div className="min-w-0"><Calendar className="relative mx-auto rounded-[calc(var(--radius-xl)-1px)]" locale={th} mode="range" disabled={disabled} month={month} onMonthChange={setMonth} onSelect={selectRange} selected={buffered ? draft : value} formatters={{ formatCaption: date => thaiDate.format(date) }} />{buffered && <p role="status" className="px-3 pb-3 text-xs text-muted-foreground">{choosingEnd ? "เลือกวันสิ้นสุด" : confirmSelection && draft?.from && draft.to ? formatRange(draft) : "เลือกวันเริ่มต้น"}</p>}{renderSelection?.(draft)}</div>
       </div>
-      {renderSelection?.(draft)}
       {confirmSelection && <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-background p-3">
         <Button type="button" variant="ghost" onClick={() => { setDraft(value); setChoosingEnd(false); setOpen(false); }}>ยกเลิก</Button>
         <Button type="button" disabled={loading || !draft?.from || !draft.to || choosingEnd || (canConfirm && !canConfirm(draft))} onClick={() => { if (draft?.from && draft.to) commit(draft); }}>ใช้</Button>

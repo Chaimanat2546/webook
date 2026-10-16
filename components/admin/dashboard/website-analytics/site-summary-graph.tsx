@@ -31,7 +31,7 @@ export function WebsiteSiteSummaryGraph({ sites, month, range, asOf, compare = f
   return <div className="min-w-0">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div role="group" aria-label="มุมมองกราฟเว็บไซต์" className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1">
-        <Button type="button" variant={view === "daily" ? "default" : "ghost"} aria-pressed={view === "daily"} onClick={() => setView("daily")}>{range?.timeFrom ? "แนวโน้มรายชั่วโมง" : "แนวโน้มรายวัน"}</Button>
+        <Button type="button" variant={view === "daily" ? "default" : "ghost"} aria-pressed={view === "daily"} onClick={() => setView("daily")}>{range?.from === range?.to && range?.timeFrom ? "แนวโน้มรายชั่วโมง" : "แนวโน้มรายวัน"}</Button>
         <Button type="button" variant={view === "total" ? "default" : "ghost"} aria-pressed={view === "total"} onClick={() => setView("total")}>ยอดรวมแต่ละเว็บ</Button>
       </div>
       {(view === "daily" || compare) && <div role="group" aria-label={compare ? "เลือกสถิติเปรียบเทียบ" : "เลือกสถิติรายวัน"} className="flex flex-wrap gap-1">

@@ -1,8 +1,8 @@
 "use client";
 
-import { hourLabel, hourlyRangeLabel } from "../../../../lib/website-analytics-time";
+import { dailyWindowBounds, hourLabel, hourlyRangeLabel } from "../../../../lib/website-analytics-time";
 import { ChevronDown } from "lucide-react";
-import { websitePeriodChange, type WebsitePeriodSeries } from "../../../../lib/website-analytics-comparison";
+import { sameDailyTimeWindow, websitePeriodChange, type WebsitePeriodSeries } from "../../../../lib/website-analytics-comparison";
 import type { AnalyticsDateRange } from "../../../../lib/website-analytics";
 import type { WebsiteChartMetric } from "../../../../lib/website-analytics-chart";
 import { Button } from "../../../ui/button";
@@ -23,16 +23,21 @@ export function PeriodChangeSummary({ current, previous, compact = false }: { cu
   }
 }
 
-export function periodPointLabel(date: string, asOf?: string): string {
+export function periodPointLabel(date: string, asOf?: string, range?: AnalyticsDateRange): string {
   if (!date) return "นอกช่วงที่เลือก";
-  if (date.length === 10) return periodDateLabel(date);
+  if (date.length === 10) {
+    if (!range?.timeFrom || !range.timeTo) return periodDateLabel(date);
+    const bounds = dailyWindowBounds(date, { timeFrom: range.timeFrom, timeTo: range.timeTo });
+    const clipped = asOf && Date.parse(bounds.start) < Date.parse(asOf) && Date.parse(asOf) < Date.parse(bounds.end);
+    return periodDateLabel(date) + " · ทุกวัน " + range.timeFrom + "–" + range.timeTo + (clipped ? " · ข้อมูลถึง " + hourLabel(asOf) : "");
+  }
   const end = new Date(Date.parse(date) + 3600000).toISOString();
   const clipped = asOf && Date.parse(date) < Date.parse(asOf) && Date.parse(asOf) < Date.parse(end);
   return periodDateLabel(date) + " · " + hourlyRangeLabel(date, end) + (clipped ? " · ข้อมูลถึง " + hourLabel(asOf) : "");
 }
 function PeriodStatus({ series }: { series: WebsitePeriodSeries }) {
   if (series.status === "unavailable") return <>โหลดไม่ได้</>;
-  return <>{series.availableDays}/{series.expectedDays} {series.granularity === "hour" ? "ชั่วโมง" : "วัน"}{!series.coverageComplete ? " · ข้อมูลไม่ครบ" : " · ข้อมูลครบ"}{series.status === "ongoing" && (series.granularity === "hour" ? " · ยังไม่สิ้นสุดช่วงเวลา" : " · ยังไม่สิ้นสุดวัน")}</>;
+  return <>{series.availableDays}/{series.expectedDays} {series.granularity === "hour" ? "ชั่วโมง" : "วัน"}{!series.coverageComplete ? " · ข้อมูลไม่ครบ" : " · ข้อมูลครบ"}{series.status === "ongoing" && (series.granularity === "hour" || series.range.timeFrom ? " · ยังไม่สิ้นสุดช่วงเวลา" : " · ยังไม่สิ้นสุดวัน")}</>;
 }
 
 export function PeriodComparisonDetails({ current, previous, currentSelected = true, previousSelected = true }: { current: WebsitePeriodSeries; previous: WebsitePeriodSeries; currentSelected?: boolean; previousSelected?: boolean }) {
@@ -48,7 +53,7 @@ export function PeriodComparisonDetails({ current, previous, currentSelected = t
         </>}
       </div>)}
     </dl>
-    {currentSelected && previousSelected && <p className="break-words font-medium tabular-nums">{(current.granularity ?? "day") !== (previous.granularity ?? "day") ? "หน่วยเวลาต่างกัน · งด % ยอดรวม" : current.expectedDays !== previous.expectedDays ? (current.granularity === "hour" ? "จำนวนชั่วโมงต่างกัน · งด % ยอดรวม" : "จำนวนวันต่างกัน · งด % ยอดรวม") : <PeriodChangeSummary current={current} previous={previous} />}</p>}
+    {currentSelected && previousSelected && <p className="break-words font-medium tabular-nums">{(current.granularity ?? "day") !== (previous.granularity ?? "day") ? "หน่วยเวลาต่างกัน · งด % ยอดรวม" : !sameDailyTimeWindow(current.range, previous.range) && (current.granularity ?? "day") === "day" ? "ช่วงเวลารายวันต่างกัน · งด % ยอดรวม" : current.expectedDays !== previous.expectedDays ? (current.granularity === "hour" ? "จำนวนชั่วโมงต่างกัน · งด % ยอดรวม" : "จำนวนวันต่างกัน · งด % ยอดรวม") : <PeriodChangeSummary current={current} previous={previous} />}</p>}
   </div>;
 }
 
@@ -58,7 +63,7 @@ export function PeriodComparisonSummary({ current, previous, currentSelected = t
   const failed = selected.some(series => series.status === "unavailable");
   const partial = selected.some(series => !series.coverageComplete);
   const unitsDiffer = (current.granularity ?? "day") !== (previous.granularity ?? "day");
-  const issue = unitsDiffer ? "หน่วยเวลาต่างกัน" : failed ? "โหลดไม่ได้" : partial ? "ข้อมูลไม่ครบ" : current.expectedDays !== previous.expectedDays ? "ช่วงเวลายาวต่างกัน" : current.granularity === "hour" || previous.granularity === "hour" ? "ยังไม่จบช่วงเวลา" : "ยังไม่จบวัน";
+  const issue = unitsDiffer ? "หน่วยเวลาต่างกัน" : (current.granularity ?? "day") === "day" && !sameDailyTimeWindow(current.range, previous.range) ? "ช่วงเวลารายวันต่างกัน" : failed ? "โหลดไม่ได้" : partial ? "ข้อมูลไม่ครบ" : current.expectedDays !== previous.expectedDays ? "ช่วงเวลายาวต่างกัน" : current.granularity === "hour" || previous.granularity === "hour" || current.range.timeFrom || previous.range.timeFrom ? "ยังไม่จบช่วงเวลา" : "ยังไม่จบวัน";
   const showDetails = currentSelected && previousSelected || selected.some(series => series.status !== "complete");
   return <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-0.5 text-xs" aria-live="polite">
     <dl className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1 tabular-nums">
@@ -79,7 +84,7 @@ export function shortRange(range: AnalyticsDateRange, showYear = false): string 
   const end = format.format(new Date(`${range.to}T00:00:00+07:00`));
   if (range.from === range.to) return end + (range.timeFrom && range.timeTo ? ` · ${range.timeFrom}–${range.timeTo}` : "");
   const start = range.from.slice(0, 7) === range.to.slice(0, 7) ? String(Number(range.from.slice(8))) : format.format(new Date(`${range.from}T00:00:00+07:00`));
-  return `${start}–${end}`;
+  return `${start}–${end}${range.timeFrom && range.timeTo ? ` · ทุกวัน ${range.timeFrom}–${range.timeTo}` : ""}`;
 }
 
 export function PeriodLegend({ bars = false, neutral = false, currentRange, previousRange }: { bars?: boolean; neutral?: boolean; currentRange: AnalyticsDateRange; previousRange: AnalyticsDateRange }) {

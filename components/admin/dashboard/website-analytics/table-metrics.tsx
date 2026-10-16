@@ -4,6 +4,7 @@ import type { AnalyticsMetrics, WebsiteSummary } from "../../../../lib/website-a
 export const labels: Record<WebsiteSummary["status"], string> = {
   complete: "ข้อมูลครบ", partial: "ข้อมูลไม่ครบช่วง", not_configured: "ยังไม่ได้ตั้งค่า", unauthorized: "ตรวจสอบสิทธิ์ต้นทางไม่ผ่าน",
   rate_limited: "เรียกข้อมูลเกินกำหนด", timeout: "หมดเวลารอข้อมูล", unavailable: "โหลดไม่สำเร็จ", invalid_report: "ข้อมูลต้นทางไม่ถูกต้อง",
+  time_range_unavailable: "เว็บไซต์นี้ยังไม่พร้อมกรองช่วงเวลารายวัน",
   hourly_unavailable: "เว็บไซต์นี้ยังไม่พร้อมให้ข้อมูลรายชั่วโมง",
 };
 export const columns = [{ key: "page_views", label: "เข้าชม" }, { key: "contact_clicks", label: "ติดต่อรวม" }, { key: "phone_clicks", label: "โทร" }, { key: "line_clicks", label: "LINE" }, { key: "chat_clicks", label: "Messenger" }, { key: "gallery_opens", label: "เปิดรูป" }] as const;

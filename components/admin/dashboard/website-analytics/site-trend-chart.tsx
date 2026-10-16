@@ -8,7 +8,8 @@ import { WebsiteChartLegend, websiteLineStyles as lineStyles } from "./website-c
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "../../../ui/chart";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../ui/empty";
 
-import { hourLabel, hourlyRangeLabel } from "../../../../lib/website-analytics-time";
+import { hourLabel, isFutureAnalyticsRange } from "../../../../lib/website-analytics-time";
+import { periodPointLabel } from "./period-comparison-summary";
 
 interface WebsiteSiteTrendChartProps {
   sites: WebsiteSummary[];
@@ -22,19 +23,18 @@ interface WebsiteSiteTrendChartProps {
 }
 
 const metricLabels: Record<WebsiteChartMetric, string> = { page_views: "เข้าชม", contact_clicks: "กดติดต่อรวม", gallery_opens: "เปิดรูป" };
-const fullDate = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
 
 export function WebsiteSiteTrendChart({ sites, month, range, metric, hiddenSites, onToggleSite, showLegend = true, asOf }: WebsiteSiteTrendChartProps) {
-  const hourly = Boolean(range?.timeFrom && range?.timeTo);
-  const data = websiteChartData(sites, month, metric, hourly ? "hour" : "day", range);
-  const future = hourly && range && asOf && Date.parse(`${range.from}T${range.timeFrom}:00+07:00`) >= Date.parse(asOf);
+  const hourly = Boolean(range?.from === range?.to && range?.timeFrom && range?.timeTo);
+  const data = websiteChartData(sites, month, metric, hourly ? "hour" : "day", range, asOf);
+  const future = isFutureAnalyticsRange(range, asOf);
   const config: ChartConfig = Object.fromEntries(sites.map((site, index) => [site.key, { label: site.displayName, color: `var(--chart-${index % 5 + 1})` }]));
   const available = sites.filter(site => data.some(point => point.values[site.key] !== null));
   const missing = sites.filter(site => !available.includes(site));
   const periodLabel = range ? `${range.from} ถึง ${range.to}` : new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "Asia/Bangkok" }).format(new Date(`${month}-01T00:00:00+07:00`));
 
   return <figure aria-label={hourly ? "กราฟแนวโน้มรายชั่วโมงแต่ละเว็บไซต์" : "กราฟแนวโน้มรายวันแต่ละเว็บไซต์"} className="mb-6 min-w-0 border-b pb-6">
-    <p className="mb-3 text-xs text-muted-foreground">{metricLabels[metric]} · {hourly ? "ครั้งต่อชั่วโมง" : "ครั้งต่อวัน"} · {periodLabel}{hourly && ` · ${range?.timeFrom}–${range?.timeTo}`} · เวลาไทย</p>
+    <p className="mb-3 text-xs text-muted-foreground">{metricLabels[metric]} · {hourly ? "ครั้งต่อชั่วโมง" : "ครั้งต่อวัน"} · {periodLabel}{range?.timeFrom && range.timeTo && ` · ${hourly ? "" : "ทุกวัน "}${range.timeFrom}–${range.timeTo}`} · เวลาไทย</p>
     {available.length ? <>
       {showLegend && <WebsiteChartLegend sites={sites} availableSites={available.map(site => site.key)} hiddenSites={hiddenSites} onToggleSite={onToggleSite} />}
       <ChartContainer config={config} className="h-60 w-full aspect-auto sm:h-72">
@@ -42,13 +42,7 @@ export function WebsiteSiteTrendChart({ sites, month, range, metric, hiddenSites
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
           <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} minTickGap={32} interval="preserveStartEnd" tickFormatter={(date: string) => hourly ? hourLabel(date) : `${date.slice(8)}/${date.slice(5, 7)}`} />
           <YAxis width={42} allowDecimals={false} axisLine={false} tickLine={false} tickFormatter={(value: number) => new Intl.NumberFormat("th-TH", { notation: "compact" }).format(value)} />
-          <ChartTooltip isAnimationActive={false} content={<ChartTooltipContent className="max-w-60" labelFormatter={label => {
-            const value = String(label);
-            if (!hourly) return fullDate.format(new Date(value + "T00:00:00+07:00"));
-            const end = new Date(Date.parse(value) + 3600000).toISOString();
-            const partial = asOf && Date.parse(value) < Date.parse(asOf) && Date.parse(asOf) < Date.parse(end);
-            return fullDate.format(new Date(value)) + " · " + hourlyRangeLabel(value, end) + (partial ? " · ข้อมูลถึง " + hourLabel(asOf) : "");
-          }} />} />
+          <ChartTooltip isAnimationActive={false} content={<ChartTooltipContent className="max-w-60" labelFormatter={label => periodPointLabel(String(label), asOf, range)} />} />
           {sites.map((site, index) => <Line key={site.key} name={site.key} dataKey={`values.${site.key}`} hide={hiddenSites.includes(site.key)} type="linear" stroke={config[site.key].color} strokeDasharray={showLegend ? lineStyles[index % 5] : undefined} strokeWidth={2} dot={{ r: data.length <= 45 ? 2 : 1 }} activeDot={{ r: 4 }} connectNulls={false} isAnimationActive={false} />)}
         </LineChart>
       </ChartContainer>
