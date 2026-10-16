@@ -46,7 +46,7 @@ export function SitePeriodComparison({ granularity, sites, range, asOf, previous
     {conditions.reasons.length > 0 && <p role="status" className="text-xs text-amber-700">{conditions.reasons.map(comparisonReasonLabel).join(" · ")} · งด % ยอดรวม</p>}
     <p className="text-xs text-muted-foreground">ระยะเวลาที่เลือก: ช่วงหลัก {currentPeriod.dayCount} วัน · {currentPeriod.requestedHours} ชั่วโมง / ชุดเทียบ {previousPeriod.dayCount} วัน · {previousPeriod.requestedHours} ชั่วโมง</p>
     {view === "daily" && conditions.layout === "separate" ? <>
-      <p role="status" className="text-xs text-amber-700">{mixed ? "ช่วงที่เลือกใช้หน่วยเวลาต่างกัน จึงแสดงกราฟแยกกัน" : "ช่วงเวลาต่างกัน จึงแสดงกราฟแยกกัน"}</p>
+      <p role="status" className="text-xs text-amber-700">ช่วงที่เลือกใช้หน่วยเวลาต่างกัน จึงแสดงกราฟแยกกัน</p>
       <p className="text-xs font-medium">ช่วงหลัก</p><WebsiteSiteTrendChart colorKeys={colorKeys} granularity={granularity} sites={sites} month={range.from.slice(0, 7)} range={range} asOf={asOf} metric={metric} hiddenSites={hiddenSites} onToggleSite={onToggleSite} />
       <p className="text-xs font-medium">ชุดเทียบ</p><WebsiteSiteTrendChart colorKeys={colorKeys} granularity={previous.granularity} sites={previous.sites} month={previous.range.from.slice(0, 7)} range={previous.range} asOf={asOf} metric={metric} hiddenSites={hiddenSites} onToggleSite={onToggleSite} />
     </> : view === "daily" ? <MultiSitePeriodTrendChart rows={allRows} colorKeys={colorKeys} hiddenSites={hiddenSites} onToggleSite={onToggleSite} showLegend={showLegend} /> : <>

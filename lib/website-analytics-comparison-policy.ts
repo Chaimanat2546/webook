@@ -29,7 +29,7 @@ export function comparePeriodConditions(current: ComparisonPeriodDescriptor, pre
   if (current.dayCount !== previous.dayCount) reasons.push("day_count_mismatch");
   const clocksDiffer = current.timeFrom !== previous.timeFrom || current.timeTo !== previous.timeTo;
   if (clocksDiffer) reasons.push("time_window_mismatch");
-  return { layout: current.granularity !== previous.granularity || current.granularity === "hour" && clocksDiffer ? "separate" : "overlay", reasons };
+  return { layout: current.granularity !== previous.granularity ? "separate" : "overlay", reasons };
 }
 
 export function assessPeriodComparison(current: WebsitePeriodSeries, previous: WebsitePeriodSeries, selection = { currentSelected: true, previousSelected: true }): ComparisonAssessment {

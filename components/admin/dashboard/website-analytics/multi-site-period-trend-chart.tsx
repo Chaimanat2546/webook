@@ -5,7 +5,6 @@ import { websiteMultiPeriodPoints, type WebsiteMultiPeriodPoint, type WebsitePer
 import { WebsiteChartLegend } from "./website-chart-legend";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "../../../ui/chart";
 import { periodPointLabel, periodValueLabel } from "./period-comparison-summary";
-import { hourLabel } from "../../../../lib/website-analytics-time";
 
 interface MultiSitePeriodTrendChartProps {
   rows: WebsitePeriodRow[];
@@ -42,7 +41,7 @@ export function MultiSitePeriodTrendChart({ rows, hiddenSites, onToggleSite, sho
     {!available.length ? <p role="status" className="flex min-h-60 items-center justify-center text-sm text-muted-foreground">ไม่มีข้อมูลในทั้งสองช่วง</p> : <ChartContainer config={config} className="h-60 w-full aspect-auto sm:h-72">
       <LineChart accessibilityLayer data={data} margin={{ left: 0, right: 12, top: 12, bottom: 8 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis dataKey="ordinal" axisLine={false} tickLine={false} minTickGap={32} tickMargin={10} interval="preserveStartEnd" tickFormatter={(day: number) => rows[0]?.current.granularity === "hour" ? hourLabel(data[day - 1].date || data[day - 1].previousDate) : `วันที่ ${day}`} />
+        <XAxis dataKey="ordinal" axisLine={false} tickLine={false} minTickGap={32} tickMargin={10} interval="preserveStartEnd" tickFormatter={(day: number) => rows[0]?.current.granularity === "hour" ? data[day - 1]?.hour ?? "" : `วันที่ ${day}`} />
         <YAxis width={42} allowDecimals={false} axisLine={false} tickLine={false} tickFormatter={(value: number) => new Intl.NumberFormat("th-TH", { notation: "compact" }).format(value)} />
         <ChartTooltip isAnimationActive={false} position={{ x: 0 }} wrapperStyle={{ width: "min(20rem, 100%)" }} content={props => <MultiPeriodTooltip {...props} rows={visibleRows} colors={config} />} />
         {rows.flatMap(row => [
