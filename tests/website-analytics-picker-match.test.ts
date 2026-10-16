@@ -5,7 +5,7 @@ import { build } from "esbuild";
 import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-test("match in the comparison popup edits a draft anchored to its selected end without navigation",async()=>{
+test("copy time in the comparison popup never changes draft dates or navigates",async()=>{
   interface Probe { buttons:{children?:unknown;onClick?:()=>void;disabled?:boolean}[]; selected?:{from:Date;to:Date}; draft:{from:Date;to:Date} }
   const probe:Probe={buttons:[],draft:{from:new Date("2026-10-04T00:00:00"),to:new Date("2026-10-10T00:00:00")}};
   const built=await build({entryPoints:["components/admin/dashboard/website-analytics/website-date-range-picker.tsx"],bundle:true,write:false,format:"cjs",platform:"node",packages:"external",plugins:[{name:"probe",setup(b){
@@ -18,14 +18,15 @@ test("match in the comparison popup edits a draft anchored to its selected end w
   const Picker=loaded.exports.WebsiteDateRangePicker as ComponentType<Record<string,unknown>>;
   let changes=0;
   const render=(extra:Record<string,unknown>={})=>{probe.buttons=[];return renderToStaticMarkup(createElement(Picker,{month:"2026-10",range:{from:"2026-10-01",to:"2026-10-05"},matchPrimary:{from:"2026-10-14",to:"2026-10-16",timeFrom:"09:00",timeTo:"18:00"},onChange:()=>{changes++},...extra}));};
-  assert.match(render(),/ใช้จำนวนวันและเวลาตามช่วงหลัก/);
-  probe.buttons.find(b=>b.children==="ใช้จำนวนวันและเวลาตามช่วงหลัก")?.onClick?.();
-  assert.equal(probe.selected?.from.getDate(),8);
-  assert.equal(probe.selected?.to.getDate(),10,"uses draft end rather than committed end");
+  assert.match(render(),/ใช้เวลาตามช่วงหลัก/);
+  probe.buttons.find(b=>b.children==="ใช้เวลาตามช่วงหลัก")?.onClick?.();
+  assert.equal(probe.selected,undefined,"does not call selectDraft or alter either date");
+  assert.equal(probe.draft.from.getDate(),4);
+  assert.equal(probe.draft.to.getDate(),10);
   assert.equal(changes,0,"waits for Apply");
   probe.draft={from:new Date("1900-01-01T00:00:00"),to:new Date("1900-01-01T00:00:00")};
-  assert.match(render(),/ช่วงที่ปรับจะเริ่มก่อน/);
-  assert.equal(probe.buttons.find(b=>b.children==="ใช้จำนวนวันและเวลาตามช่วงหลัก")?.disabled,true);
-  render({matchDisabledReason:"เลือกช่วงหลักจากปฏิทินก่อนปรับเงื่อนไข"});
-  assert.equal(probe.buttons.find(b=>b.children==="ใช้จำนวนวันและเวลาตามช่วงหลัก")?.disabled,true);
+  assert.doesNotMatch(render(),/ช่วงที่ปรับจะเริ่มก่อน/);
+  assert.equal(probe.buttons.find(b=>b.children==="ใช้เวลาตามช่วงหลัก")?.disabled,false);
+  render({loading:true});
+  assert.equal(probe.buttons.find(b=>b.children==="ใช้เวลาตามช่วงหลัก")?.disabled,true);
 });

@@ -99,10 +99,10 @@ export function shortRange(range: AnalyticsDateRange, showYear = false): string 
   return `${start}–${end}${range.timeFrom && range.timeTo ? ` · ทุกวัน ${range.timeFrom}–${range.timeTo}` : ""}`;
 }
 
-export function PeriodLegend({ bars = false, neutral = false, currentRange, previousRange }: { bars?: boolean; neutral?: boolean; currentRange: AnalyticsDateRange; previousRange: AnalyticsDateRange }) {
+export function PeriodLegend({ bars = false, neutral = false, distinctColors = false, currentRange, previousRange }: { bars?: boolean; neutral?: boolean; distinctColors?: boolean; currentRange: AnalyticsDateRange; previousRange: AnalyticsDateRange }) {
   const showYear = new Set([currentRange.from, currentRange.to, previousRange.from, previousRange.to].map(date => date.slice(0, 4))).size > 1;
   return <ul aria-label="คำอธิบายช่วงเปรียบเทียบ" className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-    <li className="flex items-center gap-2"><span aria-hidden className={bars ? "h-2 w-6 rounded-sm bg-[var(--chart-2)]" : neutral ? "w-6 border-t-2 border-foreground" : "w-6 border-t-2 border-[var(--chart-2)]"} />{shortRange(currentRange, showYear)}</li>
-    <li className="flex items-center gap-2"><span aria-hidden className={bars ? "h-2 w-6 rounded-sm bg-[var(--chart-2)] opacity-40" : neutral ? "w-6 border-t-2 border-dashed border-foreground opacity-60" : "w-6 border-t-2 border-dashed border-[var(--chart-2)] opacity-60"} />{shortRange(previousRange, showYear)}</li>
+    <li className="flex items-center gap-2"><span aria-hidden className={bars ? "h-2 w-6 rounded-sm bg-[var(--chart-2)]" : neutral ? "w-6 border-t-2 border-foreground" : "w-6 border-t-2 border-[var(--chart-2)]"} />{distinctColors && "ช่วงหลัก · "}{shortRange(currentRange, showYear)}</li>
+    <li className="flex items-center gap-2"><span aria-hidden className={distinctColors ? "w-6 border-t-4 border-dashed border-[var(--chart-4)]" : bars ? "h-2 w-6 rounded-sm bg-[var(--chart-2)] opacity-40" : neutral ? "w-6 border-t-2 border-dashed border-foreground opacity-60" : "w-6 border-t-2 border-dashed border-[var(--chart-2)] opacity-60"} />{distinctColors && "ชุดเทียบ · "}{shortRange(previousRange, showYear)}</li>
   </ul>;
 }

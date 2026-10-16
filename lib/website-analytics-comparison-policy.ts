@@ -46,9 +46,7 @@ export function assessPeriodComparison(current: WebsitePeriodSeries, previous: W
   return { layout: conditions.layout, canCompare: reasons.length === 0, reasons };
 }
 
-export function matchComparisonConditions(primary: AnalyticsDateRange, comparison: AnalyticsDateRange): AnalyticsDateRange | undefined {
+export function matchComparisonTime(primary: AnalyticsDateRange, comparison: AnalyticsDateRange): AnalyticsDateRange {
   const descriptor = describeComparisonPeriod(primary, "day");
-  const from = new Date(Date.parse(comparison.to) - (descriptor.dayCount - 1) * 86400000).toISOString().slice(0, 10);
-  if (from < "1900-01-01") return undefined;
-  return { from, to: comparison.to, timeFrom: descriptor.timeFrom, timeTo: descriptor.timeTo };
+  return { ...comparison, timeFrom: descriptor.timeFrom, timeTo: descriptor.timeTo };
 }

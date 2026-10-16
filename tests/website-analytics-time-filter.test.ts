@@ -32,6 +32,7 @@ test("analytics popup renders hour fields for one day and commits dates with hou
   let committed: object | undefined;
   const render = (from: string, to: string, hours = {}) => renderToStaticMarkup(createElement(Picker, { month: "2026-10", range: { from, to, ...hours }, onChange: range => { committed = range; } }));
   const single = render("2026-10-15", "2026-10-15", { timeFrom: "09:00", timeTo: "18:00" });
+  assert.match(single, /role="switch"[^>]*aria-checked="true"/);
   assert.match(single, /เวลาเริ่ม/);
   assert.match(single, /เวลาสิ้นสุด/);
   assert.doesNotMatch(single, /ใช้เวลา/);
@@ -41,7 +42,7 @@ test("analytics popup renders hour fields for one day and commits dates with hou
   const multiple = render("2026-10-14", "2026-10-15");
   assert.doesNotMatch(multiple, /เวลาเริ่ม|เวลาสิ้นสุด/);
   assert.match(multiple, /ระบุช่วงเวลา/);
-  assert.match(multiple, /aria-pressed="false"/);
+  assert.match(multiple, /role="switch"[^>]*aria-checked="false"/);
   assert.match(multiple, /เต็มวัน 24 ชั่วโมง/);
   probe.onChange?.({ from: day, to: new Date("2026-10-15T00:00:00") });
   assert.deepEqual(committed, { from: "2026-10-14", to: "2026-10-15", timeFrom: "00:00", timeTo: "24:00" });
@@ -49,7 +50,7 @@ test("analytics popup renders hour fields for one day and commits dates with hou
   assert.doesNotMatch(wholeDay, /เวลาเริ่ม|เวลาสิ้นสุด/);
   assert.match(wholeDay, /เต็มวัน 24 ชั่วโมง/);
   const explicitWholeDay = render("2026-10-15", "2026-10-15", { timeFrom: "00:00", timeTo: "24:00" });
-  assert.match(explicitWholeDay, /aria-pressed="false"/);
+  assert.match(explicitWholeDay, /role="switch"[^>]*aria-checked="false"/);
   assert.doesNotMatch(explicitWholeDay, /เวลาเริ่ม|เวลาสิ้นสุด/);
   render("2026-10-15", "2026-10-15", { timeFrom: "18:00", timeTo: "09:00" });
   assert.equal(probe.canConfirm?.({ from: day, to: day }), false);

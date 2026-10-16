@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useWebsiteAnalyticsTransition } from "./analytics-loading";
 import { useRouter } from "next/navigation";
 import type { AnalyticsDateRange } from "../../../../lib/website-analytics";
 import { WebsiteDateRangePicker } from "./website-date-range-picker";
@@ -8,7 +8,7 @@ import { parseAnalyticsTimeRange } from "../../../../lib/website-analytics-time"
 
 export function SummaryRangeFilter({ month, range, today, availableFrom }: { month: string; range: AnalyticsDateRange; today: string; availableFrom?: string }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useWebsiteAnalyticsTransition();
   function navigate(draft: AnalyticsDateRange) {
     const params = new URLSearchParams(window.location.search);
     params.set("month", month);
@@ -21,6 +21,5 @@ export function SummaryRangeFilter({ month, range, today, availableFrom }: { mon
   }
   return <div className="w-fit min-w-0 max-w-full space-y-2" aria-busy={pending}>
     <WebsiteDateRangePicker month={month} range={range} today={today} availableFrom={availableFrom} pastOnly compactShortcuts loading={pending} className="w-fit max-w-full text-xs" label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={navigate} />
-    {pending && <p role="status" className="text-xs text-muted-foreground">กำลังโหลด…</p>}
   </div>;
 }

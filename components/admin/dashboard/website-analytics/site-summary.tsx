@@ -13,6 +13,7 @@ import type { WebsiteOption } from "./filters";
 import { SummaryRangeFilter } from "./summary-range-filter";
 import { WebsiteDatasetControls } from "./dataset-controls";
 import { isFutureAnalyticsRange } from "../../../../lib/website-analytics-time";
+import { WebsiteAnalyticsLoadingProvider } from "./analytics-loading";
 
 function displayDomain(origin: string): string {
   return `www.${new URL(origin).hostname.replace(/^www\./, "")}`;
@@ -46,7 +47,7 @@ export function WebsiteSiteSummary({ granularity, sites, month, range, today, as
     const time = site.coverage ? Date.parse(site.coverage.data_available_from) : NaN;
     return Number.isFinite(time) ? [new Date(time + 7 * 3600000).toISOString().slice(0, 10)] : [];
   }).sort()[0];
-  return <Card>
+  return <WebsiteAnalyticsLoadingProvider><Card>
     <CardHeader className="flex flex-col items-start gap-3 lg:flex-row">
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <span className="shrink-0 rounded-lg bg-muted p-2 text-primary"><ChartNoAxesColumnIncreasing aria-hidden className="size-5" /></span>
@@ -71,5 +72,5 @@ export function WebsiteSiteSummary({ granularity, sites, month, range, today, as
         })}</TableBody>
       </Table></div></>}
     </CardContent>
-  </Card>;
+  </Card></WebsiteAnalyticsLoadingProvider>;
 }

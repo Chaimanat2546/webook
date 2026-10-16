@@ -14,6 +14,7 @@ import { WebsiteSiteTrendChart } from "./site-trend-chart";
 import { PeriodComparisonSummary, periodMetricLabels } from "./period-comparison-summary";
 import { useDatasetVisibility } from "./use-dataset-visibility";
 import { WebsiteDailyChart } from "./daily-chart";
+import { WebsiteChartLoading, useWebsiteAnalyticsPending } from "./analytics-loading";
 
 interface WebsitePeriodDetailChartProps {
   report: WebsiteAnalyticsReport;
@@ -26,6 +27,7 @@ interface WebsitePeriodDetailChartProps {
 
 export function WebsitePeriodDetailChart({ report, query, compare, previous, sites, scope }: WebsitePeriodDetailChartProps) {
   const [metric, setMetric] = useState<WebsiteChartMetric>("page_views");
+  const pending = useWebsiteAnalyticsPending();
   const range = analyticsDateRange(report.period);
   const options = sites ?? [...report.websites, ...(previous?.sites ?? []).filter(site => !report.websites.some(current => current.key === site.key))].map(({ key, displayName }) => ({ key, displayName }));
   const visibility = useDatasetVisibility(options, [], scope ?? { sites: report.websites.map(site => site.key) }, query.site);
@@ -37,8 +39,8 @@ export function WebsitePeriodDetailChart({ report, query, compare, previous, sit
   if (!compare || !previous || !row) return <div className="space-y-2">
     {compare && <p role="status" className="text-xs text-amber-700">ช่วงก่อนหน้าอยู่นอกวันที่ที่ระบบรองรับ</p>}
     {report.period.contract_version !== "1.0" ? <Card><CardHeader><CardTitle><h2>{report.period.contract_version === "1.1" ? "แนวโน้มรายชั่วโมง" : "แนวโน้มรายวัน"}</h2></CardTitle>{toggle}</CardHeader><CardContent>
-      <div role="group" aria-label={report.period.contract_version === "1.1" ? "เลือกสถิติรายชั่วโมง" : "เลือกสถิติรายวัน"} className="mb-3 flex flex-wrap gap-1">{(["page_views", "contact_clicks", "gallery_opens"] as const).map(key => <Button key={key} type="button" variant={metric === key ? "default" : "outline"} aria-pressed={metric === key} onClick={() => setMetric(key)}>{periodMetricLabels[key]}</Button>)}</div>
-      <WebsiteSiteTrendChart granularity={granularity} sites={report.websites} month={query.month} range={range} asOf={report.period.as_of} metric={metric} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} />
+      <div role="group" aria-label={report.period.contract_version === "1.1" ? "เลือกสถิติรายชั่วโมง" : "เลือกสถิติรายวัน"} className="mb-3 flex flex-wrap gap-1">{(["page_views", "contact_clicks", "gallery_opens"] as const).map(key => <Button key={key} type="button" disabled={pending} variant={metric === key ? "default" : "outline"} aria-pressed={metric === key} onClick={() => setMetric(key)}>{periodMetricLabels[key]}</Button>)}</div>
+      <WebsiteChartLoading><WebsiteSiteTrendChart granularity={granularity} sites={report.websites} month={query.month} range={range} asOf={report.period.as_of} metric={metric} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} /></WebsiteChartLoading>
     </CardContent></Card> : <WebsiteDailyChart points={report.daily} monthly={report.monthly} query={query} available={report.totals !== null} hidden={visibility.hidden.includes(query.site)} onShow={() => visibility.toggle(query.site)} comparisonControl={toggle} scope={scope} />}
   </div>;
   return <Card><CardHeader className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
@@ -48,11 +50,11 @@ export function WebsitePeriodDetailChart({ report, query, compare, previous, sit
       <p className="sr-only">{row.displayName} · {periodMetricLabels[metric]} · ชุดหลักเส้นทึบ ชุดเทียบเส้นประ · เวลาไทย</p>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <div role="group" aria-label="เลือกสถิติเปรียบเทียบเว็บไซต์" className="flex flex-wrap gap-1">
-          {(["page_views", "contact_clicks", "gallery_opens"] as const).map(key => <Button key={key} type="button" variant={metric === key ? "default" : "outline"} className="h-8" aria-pressed={metric === key} onClick={() => setMetric(key)}>{periodMetricLabels[key]}</Button>)}
+          {(["page_views", "contact_clicks", "gallery_opens"] as const).map(key => <Button key={key} type="button" disabled={pending} variant={metric === key ? "default" : "outline"} className="h-8" aria-pressed={metric === key} onClick={() => setMetric(key)}>{periodMetricLabels[key]}</Button>)}
         </div>
         {rows.length === 1 && <PeriodComparisonSummary current={row.current} previous={row.previous} currentSelected={row.currentSelected} previousSelected={row.previousSelected} />}
       </div>
-      <SitePeriodComparison granularity={granularity} sites={report.websites} range={range} asOf={report.period.as_of} previous={previous} view="daily" metric={metric} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} showLegend={options.length > 1} />
+      <WebsiteChartLoading><SitePeriodComparison granularity={granularity} sites={report.websites} range={range} asOf={report.period.as_of} previous={previous} view="daily" metric={metric} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} showLegend={options.length > 1} /></WebsiteChartLoading>
     </section>
   </CardContent></Card>;
 }
