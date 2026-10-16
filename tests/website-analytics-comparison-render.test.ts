@@ -31,10 +31,10 @@ test("comparison UI distinguishes complete, partial, failed, zero and ongoing re
   assert.match(html.failed, /—/);
   assert.match(html.zero, /เพิ่ม 30 ครั้งจากฐาน 0/);
   assert.doesNotMatch(html.zero, /Infinity|NaN/);
-  assert.match(html.ongoing, /ยังไม่จบวัน/);
+  assert.match(html.ongoing, /ยังไม่สิ้นสุดช่วงเวลา/);
   assert.doesNotMatch(html.ongoing, /\+50\.0%/);
   assert.match(html.ongoingPartial, /ข้อมูลไม่ครบ/);
-  assert.match(html.ongoingPartialDetails, /ยังไม่สิ้นสุดวัน/);
+  assert.match(html.ongoingPartialDetails, /ยังไม่สิ้นสุดช่วงเวลา/);
   assert.match(html.ongoingPartialDetails, /ยอดเท่าที่มีข้อมูล/);
   assert.doesNotMatch(html.ongoingPartial, /\+50\.0%/);
   assert.match(html.total, /Website a/);

@@ -41,7 +41,7 @@ function MobileSiteSummary({ sites, month, range, showCoverage = false, scope }:
   </li>)}</ul>;
 }
 
-export function WebsiteSiteSummary({ sites, month, range, today, asOf, compare = false, previous, scope }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; today?: string; asOf?: string; compare?: boolean; previous?: WebsitePreviousPeriod; scope?: WebsiteScopeSelection; options?: WebsiteOption[] }) {
+export function WebsiteSiteSummary({ granularity, sites, month, range, today, asOf, compare = false, previous, scope }: { granularity: "hour" | "day"; sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; today?: string; asOf?: string; compare?: boolean; previous?: WebsitePreviousPeriod; scope?: WebsiteScopeSelection; options?: WebsiteOption[] }) {
   const availableFrom = sites.flatMap(site => {
     const time = site.coverage ? Date.parse(site.coverage.data_available_from) : NaN;
     return Number.isFinite(time) ? [new Date(time + 7 * 3600000).toISOString().slice(0, 10)] : [];
@@ -53,15 +53,15 @@ export function WebsiteSiteSummary({ sites, month, range, today, asOf, compare =
         <div className="min-w-0"><CardTitle><h2>แนวโน้มประสิทธิภาพเว็บไซต์</h2></CardTitle><p className="mt-1 text-xs text-muted-foreground">เปรียบเทียบจำนวนเข้าชม การกดติดต่อ และการเปิดรูป ของแต่ละเว็บไซต์</p></div>
       </div>
       <span className="text-xs text-muted-foreground">{sites.length} โดเมนที่ผูกในระบบ</span>
-      {range && today && <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
-        <SummaryRangeFilter key={`${range.from}:${range.to}`} month={month} range={range} today={today} availableFrom={availableFrom} />
-        <WebsiteDatasetControls range={range} today={today} sites={sites} scope={scope} comparison={compare && previous ? { ...previous.range, sites: previous.sites.map(site => site.key) } : undefined} />
+      {range && today && <div className="flex w-full min-w-0 flex-wrap items-start gap-x-3 gap-y-2">
+        <div className="flex min-w-0 max-w-full items-center gap-1"><span className="shrink-0 text-xs text-muted-foreground">ช่วงหลัก</span><SummaryRangeFilter key={`${range.from}:${range.to}`} month={month} range={range} today={today} availableFrom={availableFrom} /></div>
+        <WebsiteDatasetControls granularity={granularity} range={range} today={today} sites={sites} scope={scope} comparison={compare && previous ? { ...previous.range, sites: previous.sites.map(site => site.key) } : undefined} />
       </div>}
     </CardHeader>
     <CardContent>
       {isFutureAnalyticsRange(range, asOf) && <p role="status" className="mb-3 text-sm text-amber-700">ยังไม่ถึงช่วงเวลาที่เลือก · ยอดรวมยังไม่มีข้อมูลที่สังเกตแล้ว</p>}
       {range && (!compare || !previous) && sites.some(site => site.status === "partial") && <p role="status" className="mb-3 text-sm text-amber-700">{compare ? "ข้อมูลบางเว็บไซต์ไม่ครบ" : "บางเว็บไซต์มีข้อมูลไม่ครบช่วงวันที่ที่เลือก ยอดที่แสดงรวมเฉพาะข้อมูลที่มี"}</p>}
-      {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryGraph sites={sites} month={month} range={range} today={today} asOf={asOf} compare={compare} previous={previous} scope={scope} /><MobileSiteSummary sites={sites} month={month} range={range} showCoverage={compare} scope={scope} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
+      {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryGraph granularity={granularity} sites={sites} month={month} range={range} today={today} asOf={asOf} compare={compare} previous={previous} scope={scope} /><MobileSiteSummary sites={sites} month={month} range={range} showCoverage={compare} scope={scope} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
         <TableHeader><TableRow><TableHead className="min-w-48">เว็บไซต์ / โดเมน</TableHead><TableHead className="min-w-32">สถานะข้อมูล</TableHead>{columns.map(column => <TableHead key={column.key} className="text-right">{column.label}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{sites.map(site => {
           return <TableRow key={site.key}>

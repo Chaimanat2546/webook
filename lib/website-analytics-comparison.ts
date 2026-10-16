@@ -5,6 +5,7 @@ import { parseWebsiteScope, scopeSearchParams, type WebsiteScopeSelection } from
 const dayMs = 86400000;
 import { dailyWindowBounds, hourlyBounds } from "./website-analytics-time.ts";
 import { websiteChartData } from "./website-analytics-chart.ts";
+import { assessPeriodComparison } from "./website-analytics-comparison-policy.ts";
 
 export interface WebsitePeriodSeries {
   range: AnalyticsDateRange;
@@ -22,6 +23,7 @@ export interface WebsitePeriodSeries {
 
 export interface WebsitePreviousPeriod {
   range: AnalyticsDateRange;
+  granularity: "hour" | "day";
   sites: WebsiteSummary[];
 }
 
@@ -70,9 +72,9 @@ export function previousAnalyticsRange(range: AnalyticsDateRange): AnalyticsDate
 }
 
 /** Keep source totals, confirmed zeroes and absent days distinct. */
-export function websitePeriodSeries(site: WebsiteSummary | undefined, range: AnalyticsDateRange, asOf: string, metric: WebsiteChartMetric): WebsitePeriodSeries {
-  if (range.from === range.to && range.timeFrom && range.timeTo) {
-    const bounds = hourlyBounds(range.from, { timeFrom: range.timeFrom, timeTo: range.timeTo }, asOf);
+export function websitePeriodSeries(site: WebsiteSummary | undefined, range: AnalyticsDateRange, asOf: string, metric: WebsiteChartMetric, granularity: "hour" | "day"): WebsitePeriodSeries {
+  if (granularity === "hour") {
+    const bounds = hourlyBounds(range.from, { timeFrom: range.timeFrom ?? "00:00", timeTo: range.timeTo ?? "24:00" }, asOf);
     const total = site?.totals?.[metric] ?? null;
     const points = websiteChartData(site ? [site] : [], range.from.slice(0, 7), metric, "hour", range).map(point => ({ date: point.date, value: site ? point.values[site.key] : null }));
     const observed = points.filter(point => point.value !== null).length;
@@ -104,13 +106,11 @@ export function websitePeriodSeries(site: WebsiteSummary | undefined, range: Ana
   const coverageComplete = Boolean(site?.status === "complete" && site.coverage?.range_complete && site.coverage.rows_complete && Number.isFinite(retentionTime)
     && availableDays === daily.length && daily.reduce((sum, row) => sum + (row.value ?? 0), 0) === total);
   const status = total === null ? "unavailable" : !today ? "partial" : range.to >= today ? "ongoing" : coverageComplete ? "complete" : "partial";
-  return { range, total, availableDays, expectedDays: daily.length, coverageComplete, status, daily };
+  return { range, total, availableDays, expectedDays: daily.length, coverageComplete, status, daily, granularity: "day", asOf };
 }
 
 export function websitePeriodChange(current: WebsitePeriodSeries, previous: WebsitePeriodSeries): WebsitePeriodChange {
-  if ((current.granularity ?? "day") === "day" && !sameDailyTimeWindow(current.range, previous.range)) return { kind: "unavailable" };
-  if ((current.granularity ?? "day") !== (previous.granularity ?? "day") || current.durationMinutes !== previous.durationMinutes) return { kind: "unavailable" };
-  if (current.status !== "complete" || previous.status !== "complete" || current.total === null || previous.total === null || current.expectedDays !== previous.expectedDays) return { kind: "unavailable" };
+  if (!assessPeriodComparison(current, previous).canCompare || current.total === null || previous.total === null) return { kind: "unavailable" };
   const difference = current.total - previous.total;
   if (previous.total === 0) return difference === 0 ? { kind: "unchanged", difference: 0 } : { kind: "zero_baseline", difference };
   return { kind: "percentage", difference, percentage: difference / previous.total * 100 };
@@ -124,11 +124,11 @@ export function pairWebsitePeriods(current: WebsitePeriodSeries, previous: Websi
   return Array.from({ length: Math.max(current.daily.length, previous.daily.length) }, (_, index) => ({ date: current.daily[index]?.date ?? "", previousDate: previous.daily[index]?.date ?? "", current: current.daily[index]?.value ?? null, previous: previous.daily[index]?.value ?? null }));
 }
 
-export function websitePeriodRows(sites: WebsiteSummary[], range: AnalyticsDateRange, previous: WebsitePreviousPeriod, asOf: string, metric: WebsiteChartMetric): WebsitePeriodRow[] {
+export function websitePeriodRows(sites: WebsiteSummary[], range: AnalyticsDateRange, previous: WebsitePreviousPeriod, asOf: string, metric: WebsiteChartMetric, granularity: "hour" | "day"): WebsitePeriodRow[] {
   const all = [...sites, ...previous.sites.filter(site => !sites.some(current => current.key === site.key))];
   return all.map(site => {
     const current = sites.find(current => current.key === site.key), prior = previous.sites.find(prior => prior.key === site.key);
-    return { key: site.key, displayName: site.displayName, currentSelected: Boolean(current), previousSelected: Boolean(prior), current: websitePeriodSeries(current, range, asOf, metric), previous: websitePeriodSeries(prior, previous.range, asOf, metric) };
+    return { key: site.key, displayName: site.displayName, currentSelected: Boolean(current), previousSelected: Boolean(prior), current: websitePeriodSeries(current, range, asOf, metric, granularity), previous: websitePeriodSeries(prior, previous.range, asOf, metric, previous.granularity) };
   });
 }
 

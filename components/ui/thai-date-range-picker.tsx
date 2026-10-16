@@ -19,7 +19,7 @@ export interface ThaiDateRangePickerProps {
   autoApply?: boolean;
   confirmSelection?: boolean;
   loading?: boolean;
-  renderSelection?: (draft: DateRange | undefined) => ReactNode;
+  renderSelection?: (draft: DateRange | undefined, selectDraft: (range: DateRange) => void) => ReactNode;
   canConfirm?: (draft: DateRange | undefined) => boolean;
   onOpenChange?: (open: boolean) => void;
   valueSuffix?: string;
@@ -66,7 +66,7 @@ export function ThaiDateRangePicker({ onChange, className = "", portalContainer,
     <PopoverContent className="w-auto max-w-[calc(100vw-1rem)] min-w-0 max-h-[min(90dvh,var(--available-height))] overflow-y-auto bg-background p-0" container={portalContainer} align="start">
       <div className="flex flex-col sm:flex-row">
         {renderShortcuts && <div className="border-b sm:border-r sm:border-b-0">{renderShortcuts(range => { setMonth(range.from); choose(range); }, () => { setDraft(undefined); setChoosingEnd(false); }, draft)}</div>}
-        <div className="min-w-0"><Calendar className="relative mx-auto rounded-[calc(var(--radius-xl)-1px)]" locale={th} mode="range" disabled={disabled} month={month} onMonthChange={setMonth} onSelect={selectRange} selected={buffered ? draft : value} formatters={{ formatCaption: date => thaiDate.format(date) }} />{buffered && <p role="status" className="px-3 pb-3 text-xs text-muted-foreground">{choosingEnd ? "เลือกวันสิ้นสุด" : confirmSelection && draft?.from && draft.to ? formatRange(draft) : "เลือกวันเริ่มต้น"}</p>}{renderSelection?.(draft)}</div>
+        <div className="min-w-0"><Calendar className="relative mx-auto rounded-[calc(var(--radius-xl)-1px)]" locale={th} mode="range" disabled={disabled} month={month} onMonthChange={setMonth} onSelect={selectRange} selected={buffered ? draft : value} formatters={{ formatCaption: date => thaiDate.format(date) }} />{buffered && <p role="status" className="px-3 pb-3 text-xs text-muted-foreground">{choosingEnd ? "เลือกวันสิ้นสุด" : confirmSelection && draft?.from && draft.to ? formatRange(draft) : "เลือกวันเริ่มต้น"}</p>}{renderSelection?.(draft, next => { setMonth(next.from); choose(next); })}</div>
       </div>
       {confirmSelection && <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-background p-3">
         <Button type="button" variant="ghost" onClick={() => { setDraft(value); setChoosingEnd(false); setOpen(false); }}>ยกเลิก</Button>

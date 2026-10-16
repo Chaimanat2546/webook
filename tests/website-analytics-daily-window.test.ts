@@ -59,10 +59,10 @@ test("daily windows mask future and microsecond retention; complete at selected 
   const retained = { ...site, coverage: { ...site.coverage, data_available_from: "2026-10-14T02:00:00.000001Z", range_complete: false } };
   assert.equal(websiteChartData([retained], "2026-10", "page_views", "day", range, period.as_of)[0].values[site.key], null);
   assert.equal(websiteChartData([{ ...retained, coverage: { ...retained.coverage, data_available_from: "2026-10-14T01:59:59.999999Z" } }], "2026-10", "page_views", "day", range, period.as_of)[0].values[site.key], 2);
-  const ended = websitePeriodSeries(site, range, "2026-10-16T11:00:00.000Z", "page_views");
+  const ended = websitePeriodSeries(site, range, "2026-10-16T11:00:00.000Z", "page_views", "day");
   assert.equal(ended.status, "complete");
-  assert.equal(websitePeriodSeries(site, range, "2026-10-16T04:30:00.000Z", "page_views").status, "ongoing");
-  const shifted = websitePeriodSeries(site, { ...range, timeFrom: "10:00", timeTo: "19:00" }, period.as_of, "page_views");
+  assert.equal(websitePeriodSeries(site, range, "2026-10-16T04:30:00.000Z", "page_views", "day").status, "ongoing");
+  const shifted = websitePeriodSeries(site, { ...range, timeFrom: "10:00", timeTo: "19:00" }, period.as_of, "page_views", "day");
   assert.deepEqual(websitePeriodChange(ended, shifted), { kind: "unavailable" });
 });
 
@@ -70,7 +70,7 @@ test("an unavailable first website retains the daily axis for healthy comparison
   const report = parseSourceReport(raw(), sites[0], period);
   const failed = { ...sites[1], status: "unavailable" as const, totals: null, coverage: null };
   const healthy = { ...sites[0], status: "complete" as const, totals: report.totals, daily: report.daily, coverage: report.coverage };
-  const rows = websitePeriodRows([failed, healthy], range, { range, sites: [failed, healthy] }, period.as_of, "page_views");
+  const rows = websitePeriodRows([failed, healthy], range, { range, granularity: "day", sites: [failed, healthy] }, period.as_of, "page_views", "day");
   const points = websiteMultiPeriodPoints(rows);
   assert.deepEqual(points.map(p => p.date), ["2026-10-14", "2026-10-15", "2026-10-16"]);
   assert.equal(points[0].values[healthy.key].current, 2);
@@ -100,8 +100,8 @@ test("chunk failures do not return partial success and microsecond watermarks us
 test("full-day legacy and recurring daily windows can compare when complete", () => {
   const report = parseSourceReport(raw(), sites[0], period);
   const site = { ...sites[0], status: "complete" as const, totals: report.totals, daily: report.daily, coverage: report.coverage };
-  const full = websitePeriodSeries(site, { ...range, timeFrom: "00:00", timeTo: "24:00" }, period.as_of, "page_views");
-  const legacy = websitePeriodSeries(site, { from: range.from, to: range.to }, period.as_of, "page_views");
+  const full = websitePeriodSeries(site, { ...range, timeFrom: "00:00", timeTo: "24:00" }, period.as_of, "page_views", "day");
+  const legacy = websitePeriodSeries(site, { from: range.from, to: range.to }, period.as_of, "page_views", "day");
   assert.equal(full.status, "complete");
   assert.equal(websitePeriodChange(full, legacy).kind, "percentage");
 });

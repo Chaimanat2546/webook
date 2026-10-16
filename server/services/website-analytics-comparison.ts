@@ -1,5 +1,5 @@
 import "server-only";
-import { analyticsDateRange, analyticsPeriod, type AnalyticsPeriod, type WebsiteAnalyticsQuery, type WebsiteSummary } from "../../lib/website-analytics.ts";
+import { analyticsDateRange, analyticsPeriod, analyticsPeriodGranularity, type AnalyticsPeriod, type WebsiteAnalyticsQuery, type WebsiteSummary } from "../../lib/website-analytics.ts";
 import { previousAnalyticsRange, type WebsitePreviousPeriod } from "../../lib/website-analytics-comparison.ts";
 import { listAnalyticsSites } from "../site-analytics/registry.ts";
 import { loadWebsiteAnalytics, type WebsiteAnalyticsDependencies } from "./website-analytics.ts";
@@ -32,7 +32,8 @@ export async function loadWebsiteSummaryPeriods(query: WebsiteAnalyticsQuery, co
   const previousRange = scope ? scope.comparison : compare ? previousAnalyticsRange(selectedRange) : undefined;
   // Sequential period groups preserve the existing maximum of two upstream calls.
   const priorTargets = scope?.comparison ? registry.filter(site => scope.comparison?.sites.includes(site.key)) : sites;
-  const previous = previousRange ? { range: analyticsDateRange(analyticsPeriod({ ...summaryQuery, timeFrom: undefined, timeTo: undefined, ...previousRange }, now)), sites: await read({ ...summaryQuery, timeFrom: undefined, timeTo: undefined, ...previousRange, month: previousRange.to.slice(0, 7) }, priorTargets) } : undefined;
+  const previousPeriod = previousRange ? analyticsPeriod({ ...summaryQuery, timeFrom: undefined, timeTo: undefined, ...previousRange }, now) : undefined;
+  const previous = previousRange && previousPeriod ? { range: analyticsDateRange(previousPeriod), granularity: analyticsPeriodGranularity(previousPeriod), sites: await read({ ...summaryQuery, timeFrom: undefined, timeTo: undefined, ...previousRange, month: previousRange.to.slice(0, 7) }, priorTargets) } : undefined;
   return { period, sites: current, ...(previous ? { previous } : {}) };
 }
 
@@ -42,5 +43,5 @@ export async function loadPreviousWebsitePeriod(query: WebsiteAnalyticsQuery, pe
   const range = selection ?? previousAnalyticsRange(analyticsDateRange(period));
   if (!range) return undefined;
   const previous = await loadWebsiteSummaryPeriods({ ...query, timeFrom: undefined, timeTo: undefined, ...range, month: range.to.slice(0, 7) }, false, { ...dependencies, now: () => new Date(period.as_of) }, selection ? { sites: selection.sites } : undefined);
-  return { range: analyticsDateRange(previous.period), sites: previous.sites };
+  return { range: analyticsDateRange(previous.period), granularity: analyticsPeriodGranularity(previous.period), sites: previous.sites };
 }
