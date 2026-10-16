@@ -31,15 +31,15 @@ export function WebsiteSiteSummaryGraph({ sites, month, range, asOf, compare = f
   return <div className="min-w-0">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div role="group" aria-label="มุมมองกราฟเว็บไซต์" className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1">
-        <Button type="button" variant={view === "daily" ? "default" : "ghost"} className="min-h-11" aria-pressed={view === "daily"} onClick={() => setView("daily")}>แนวโน้มรายวัน</Button>
-        <Button type="button" variant={view === "total" ? "default" : "ghost"} className="min-h-11" aria-pressed={view === "total"} onClick={() => setView("total")}>ยอดรวมแต่ละเว็บ</Button>
+        <Button type="button" variant={view === "daily" ? "default" : "ghost"} aria-pressed={view === "daily"} onClick={() => setView("daily")}>แนวโน้มรายวัน</Button>
+        <Button type="button" variant={view === "total" ? "default" : "ghost"} aria-pressed={view === "total"} onClick={() => setView("total")}>ยอดรวมแต่ละเว็บ</Button>
       </div>
       {(view === "daily" || compare) && <div role="group" aria-label={compare ? "เลือกสถิติเปรียบเทียบ" : "เลือกสถิติรายวัน"} className="flex flex-wrap gap-1">
         {([
           ["contact_clicks", "กดติดต่อรวม"],
           ["page_views", "เข้าชม"],
           ["gallery_opens", "เปิดรูป"],
-        ] as const).map(([key, label]) => <Button key={key} type="button" variant={metric === key ? "default" : "outline"} className="min-h-11" aria-pressed={metric === key} onClick={() => setMetric(key)}>{label}</Button>)}
+        ] as const).map(([key, label]) => <Button key={key} type="button" variant={metric === key ? "default" : "outline"} aria-pressed={metric === key} onClick={() => setMetric(key)}>{label}</Button>)}
       </div>}
     </div>
     {compare && range && asOf && previous ? <SitePeriodComparison sites={sites} range={range} asOf={asOf} previous={previous} view={view} metric={metric} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} /> : <>

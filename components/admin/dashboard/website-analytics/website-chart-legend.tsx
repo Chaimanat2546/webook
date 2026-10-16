@@ -21,9 +21,9 @@ export function WebsiteChartLegend({ sites, availableSites, hiddenSites, onToggl
   return <div role="group" aria-label={label} className="mb-3 flex flex-wrap gap-x-2 gap-y-1">
     {sites.map(site => {
       const index = Math.max(0, colorKeys.indexOf(site.key)), hasData = availableSites.includes(site.key), visible = !hiddenSites.includes(site.key);
-      return <Button key={site.key} type="button" variant="ghost" className="h-auto min-h-11 min-w-0 max-w-full justify-start gap-2 whitespace-normal px-2 text-left text-xs" aria-pressed={hasData && visible} disabled={!hasData || (visible && visibleCount === 1)} onClick={() => onToggleSite(site.key)}>
+      return <Button key={site.key} type="button" variant="ghost" className="min-w-0 max-w-full justify-start gap-2 px-2 text-left text-xs" title={site.displayName} aria-pressed={hasData && visible} disabled={!hasData || (visible && visibleCount === 1)} onClick={() => onToggleSite(site.key)}>
         <svg aria-hidden="true" className="h-3 w-6 shrink-0" viewBox="0 0 24 12"><line x1="1" y1="6" x2="23" y2="6" stroke={`var(--chart-${index % 5 + 1})`} strokeWidth="2" strokeDasharray={lineStyles ? websiteLineStyles[index % 5] : undefined} /></svg>
-        <span className={`min-w-0 break-words ${hasData && !visible ? "line-through opacity-50" : ""}`}>{site.displayName}{!hasData && " (ไม่มีข้อมูล)"}</span>
+        <span className={`min-w-0 truncate ${hasData && !visible ? "line-through opacity-50" : ""}`}>{site.displayName}{!hasData && " (ไม่มีข้อมูล)"}</span>
       </Button>;
     })}
   </div>;

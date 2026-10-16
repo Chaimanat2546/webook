@@ -11,6 +11,7 @@ interface RangeShortcutsProps {
   today: string;
   availableFrom?: string;
   selected?: AnalyticsDateRange;
+  compact?: boolean;
   onSelect: (range: DateRange) => void;
   onCustom: () => void;
 }
@@ -31,10 +32,10 @@ function TrailingDays({ today, yesterday, onSelect, onCustom }: Pick<RangeShortc
   </div>;
 }
 
-export function RangeShortcuts({ today, availableFrom, selected, onSelect, onCustom }: RangeShortcutsProps) {
+export function RangeShortcuts({ today, availableFrom, selected, compact = false, onSelect, onCustom }: RangeShortcutsProps) {
   const presets = analyticsDatePresets(today, availableFrom);
   const active = selected ? presets.find(preset => preset.range?.from === selected.from && preset.range.to === selected.to)?.id : undefined;
-  return <div className="w-full space-y-2 p-2 sm:w-60">
+  return <div className={`w-full space-y-2 p-2 sm:w-60 ${compact ? "[&_button]:h-8 [&_button]:min-h-8 [&_button]:whitespace-nowrap" : ""}`}>
     <div className="grid grid-cols-2 gap-1 sm:grid-cols-1" aria-label="ช่วงวันที่สำเร็จรูป">
       <Button type="button" variant={!active ? "secondary" : "ghost"} aria-pressed={!active} className="h-auto min-h-10 justify-start whitespace-normal text-left text-xs" onClick={onCustom}>กำหนดเอง</Button>
       {presets.map(preset => <Button key={preset.id} type="button" variant={active === preset.id ? "secondary" : "ghost"} aria-pressed={active === preset.id} disabled={!preset.range} title={!preset.range ? "ยังไม่ทราบวันเริ่มเก็บข้อมูล" : undefined} className="h-auto min-h-10 justify-start whitespace-normal text-left text-xs" onClick={() => {
