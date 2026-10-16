@@ -6,16 +6,58 @@ import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { emptyMetrics } from "../lib/website-analytics.ts";
 
-test("single-day filter exposes start and end hours but multi-day filter does not", async () => {
+test("analytics popup renders hour fields for one day and commits dates with hours", async () => {
+  interface PickerProbe {
+    onChange?: (range: { from: Date; to: Date }) => void;
+    canConfirm?: (range: { from: Date; to: Date }) => boolean;
+  }
+  const probe: PickerProbe = {};
+  const built = await build({
+    entryPoints: ["components/admin/dashboard/website-analytics/website-date-range-picker.tsx"],
+    bundle: true, write: false, format: "cjs", platform: "node", packages: "external",
+    plugins: [{ name: "open-calendar", setup(builder) {
+      builder.onLoad({ filter: /[\\/]thai-date-range-picker\.tsx$/ }, () => ({ loader: "js", contents: `
+        import React from "react";
+        import probe from "picker-probe";
+        export function ThaiDateRangePicker(props) {
+          Object.assign(probe, props);
+          return React.createElement("section", null, props.renderSelection(props.value));
+        }` }));
+      builder.onResolve({ filter: /^picker-probe$/ }, args => ({ path: args.path, external: true }));
+    } }],
+  });
+  const require = createRequire(import.meta.url), loaded = { exports: {} as Record<string, unknown> };
+  new Function("require", "module", "exports", built.outputFiles[0].text)((name: string) => name === "picker-probe" ? probe : require(name), loaded, loaded.exports);
+  const Picker = loaded.exports.WebsiteDateRangePicker as ComponentType<{ month: string; range: { from: string; to: string; timeFrom?: string; timeTo?: string }; onChange: (range: object) => void }>;
+  let committed: object | undefined;
+  const render = (from: string, to: string, hours = {}) => renderToStaticMarkup(createElement(Picker, { month: "2026-10", range: { from, to, ...hours }, onChange: range => { committed = range; } }));
+  const single = render("2026-10-15", "2026-10-15", { timeFrom: "09:00", timeTo: "18:00" });
+  assert.match(single, /เวลาเริ่ม/);
+  assert.match(single, /เวลาสิ้นสุด/);
+  assert.doesNotMatch(single, /ใช้เวลา/);
+  const day = new Date("2026-10-14T00:00:00");
+  probe.onChange?.({ from: day, to: day });
+  assert.deepEqual(committed, { from: "2026-10-14", to: "2026-10-14", timeFrom: "09:00", timeTo: "18:00" });
+  const multiple = render("2026-10-14", "2026-10-15");
+  assert.doesNotMatch(multiple, /เวลาเริ่ม|เวลาสิ้นสุด/);
+  probe.onChange?.({ from: day, to: new Date("2026-10-15T00:00:00") });
+  assert.deepEqual(committed, { from: "2026-10-14", to: "2026-10-15" });
+  const wholeDay = render("2026-10-15", "2026-10-15");
+  assert.match(wholeDay, /00:00/);
+  assert.match(wholeDay, /24:00/);
+  render("2026-10-15", "2026-10-15", { timeFrom: "18:00", timeTo: "09:00" });
+  assert.equal(probe.canConfirm?.({ from: day, to: day }), false);
+});
+
+test("date trigger summarizes hours and keeps time controls inside the popup", async () => {
   const built = await build({ entryPoints: ["components/admin/dashboard/website-analytics/summary-range-filter.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external" });
   const require = createRequire(import.meta.url);
   const loaded = { exports: {} as Record<string, unknown> };
   new Function("require", "module", "exports", built.outputFiles[0].text)((name: string) => name === "next/navigation" ? { useRouter: () => ({ push() {} }) } : require(name), loaded, loaded.exports);
   const Filter = loaded.exports.SummaryRangeFilter as ComponentType<{ month: string; today: string; range: { from: string; to: string; timeFrom?: string; timeTo?: string } }>;
   const html = renderToStaticMarkup(createElement(Filter, { month: "2026-10", today: "2026-10-16", range: { from: "2026-10-15", to: "2026-10-15", timeFrom: "09:00", timeTo: "18:00" } }));
-  assert.match(html, /เวลาเริ่ม/);
-  assert.match(html, /เวลาสิ้นสุด/);
-  assert.match(html, /ใช้เวลา/);
+  assert.match(html, /09:00–18:00/);
+  assert.doesNotMatch(html, /เวลาเริ่ม|เวลาสิ้นสุด|ใช้เวลา/);
   const multiple = renderToStaticMarkup(createElement(Filter, { month: "2026-10", today: "2026-10-16", range: { from: "2026-10-14", to: "2026-10-15" } }));
   assert.doesNotMatch(multiple, /เวลาเริ่ม|ใช้เวลา/);
   const implicit = renderToStaticMarkup(createElement(Filter, { month: "2026-10", today: "2026-10-01", range: { from: "2026-10-01", to: "2026-10-01" } }));
