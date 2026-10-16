@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/patch-braces-depth.mjs",
     "dev": "node --use-system-ca ./node_modules/next/dist/bin/next dev --webpack",
     "build": "npm run build:pwa && node --use-system-ca ./node_modules/next/dist/bin/next build --webpack",
     "build:pwa": "node scripts/build-pwa.mjs",
