@@ -1,5 +1,5 @@
 import "server-only";
-import { analyticsPeriod, type AnalyticsPeriod, type WebsiteAnalyticsQuery, type WebsiteSummary } from "../../lib/website-analytics.ts";
+import { analyticsDateRange, analyticsPeriod, type AnalyticsPeriod, type WebsiteAnalyticsQuery, type WebsiteSummary } from "../../lib/website-analytics.ts";
 import { previousAnalyticsRange, type WebsitePreviousPeriod } from "../../lib/website-analytics-comparison.ts";
 import { listAnalyticsSites } from "../site-analytics/registry.ts";
 import { loadWebsiteAnalytics, type WebsiteAnalyticsDependencies } from "./website-analytics.ts";
@@ -17,7 +17,8 @@ export async function loadWebsiteSummaryPeriods(query: WebsiteAnalyticsQuery, co
   const period = analyticsPeriod(query, now);
   const registry = (dependencies.sites ?? listAnalyticsSites)();
   const sites = registry.filter(site => scope ? scope.sites.includes(site.key) : query.site === "all" || query.site === site.key);
-  const summaryQuery = { month: query.month, from: period.from_date, to: period.to_date, site: query.site, page: 1, granularity: "day" as const };
+  const selectedRange = analyticsDateRange(period);
+  const summaryQuery = { month: query.month, ...(query.from && query.to ? selectedRange : {}), site: query.site, page: 1, granularity: "day" as const };
   async function read(selected: WebsiteAnalyticsQuery, targets = sites): Promise<WebsiteSummary[]> {
     if (!targets.length) return [];
     try {
@@ -28,18 +29,18 @@ export async function loadWebsiteSummaryPeriods(query: WebsiteAnalyticsQuery, co
     }
   }
   const current = await read(summaryQuery);
-  const previousRange = scope ? scope.comparison : compare ? previousAnalyticsRange({ from: period.from_date, to: period.to_date }) : undefined;
+  const previousRange = scope ? scope.comparison : compare ? previousAnalyticsRange(selectedRange) : undefined;
   // Sequential period groups preserve the existing maximum of two upstream calls.
   const priorTargets = scope?.comparison ? registry.filter(site => scope.comparison?.sites.includes(site.key)) : sites;
-  const previous = previousRange ? { range: { from: previousRange.from, to: previousRange.to }, sites: await read({ ...summaryQuery, from: previousRange.from, to: previousRange.to, month: previousRange.to.slice(0, 7) }, priorTargets) } : undefined;
+  const previous = previousRange ? { range: analyticsDateRange(analyticsPeriod({ ...summaryQuery, timeFrom: undefined, timeTo: undefined, ...previousRange }, now)), sites: await read({ ...summaryQuery, timeFrom: undefined, timeTo: undefined, ...previousRange, month: previousRange.to.slice(0, 7) }, priorTargets) } : undefined;
   return { period, sites: current, ...(previous ? { previous } : {}) };
 }
 
 /** Reuse the authorized current report's timestamp without loading it again. */
 export async function loadPreviousWebsitePeriod(query: WebsiteAnalyticsQuery, period: AnalyticsPeriod, dependencies: WebsiteAnalyticsDependencies = {}, selection?: WebsiteDatasetSelection): Promise<WebsitePreviousPeriod | undefined> {
   if (query.view === "houses") return undefined;
-  const range = selection ?? previousAnalyticsRange({ from: period.from_date, to: period.to_date });
+  const range = selection ?? previousAnalyticsRange(analyticsDateRange(period));
   if (!range) return undefined;
-  const previous = await loadWebsiteSummaryPeriods({ ...query, from: range.from, to: range.to, month: range.to.slice(0, 7) }, false, { ...dependencies, now: () => new Date(period.as_of) }, selection ? { sites: selection.sites } : undefined);
-  return { range: { from: range.from, to: range.to }, sites: previous.sites };
+  const previous = await loadWebsiteSummaryPeriods({ ...query, timeFrom: undefined, timeTo: undefined, ...range, month: range.to.slice(0, 7) }, false, { ...dependencies, now: () => new Date(period.as_of) }, selection ? { sites: selection.sites } : undefined);
+  return { range: analyticsDateRange(previous.period), sites: previous.sites };
 }

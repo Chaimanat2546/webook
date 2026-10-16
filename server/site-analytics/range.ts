@@ -4,6 +4,7 @@ import { addMetrics, type AnalyticsPeriod, type AnalyticsSite, type AnalyticsVil
 // Upstream reports accept at most 90 inclusive days. Keep one snapshot and
 // sequential chunks per site; the caller already bounds site concurrency.
 export async function readSiteRange(site: AnalyticsSite, period: AnalyticsPeriod, read: (site: AnalyticsSite, period: AnalyticsPeriod) => Promise<SiteReportResult>): Promise<SiteReportResult> {
+  if (period.contract_version === "1.1") return read(site, period);
   const end = Date.parse(period.to_date);
   let combined: SourceReport | undefined;
   const villas = new Map<string, AnalyticsVilla>();

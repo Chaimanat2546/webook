@@ -3,6 +3,8 @@ import type { WebsiteChartMetric } from "./website-analytics-chart.ts";
 import { parseWebsiteScope, scopeSearchParams, type WebsiteScopeSelection } from "./website-analytics-scope.ts";
 
 const dayMs = 86400000;
+import { hourlyBounds } from "./website-analytics-time.ts";
+import { websiteChartData } from "./website-analytics-chart.ts";
 
 export interface WebsitePeriodSeries {
   range: AnalyticsDateRange;
@@ -12,6 +14,10 @@ export interface WebsitePeriodSeries {
   coverageComplete: boolean;
   status: "complete" | "partial" | "unavailable" | "ongoing";
   daily: { date: string; value: number | null }[];
+  granularity?: "hour" | "day";
+  asOf?: string;
+  durationMinutes?: number;
+  requestedEnd?: string;
 }
 
 export interface WebsitePreviousPeriod {
@@ -60,11 +66,20 @@ export function previousAnalyticsRange(range: AnalyticsDateRange): AnalyticsDate
   if (!Number.isFinite(length) || length < dayMs) return undefined;
   const from = new Date(start - length).toISOString().slice(0, 10);
   if (from < "1900-01-01") return undefined;
-  return { from, to: new Date(start - dayMs).toISOString().slice(0, 10) };
+  return { from, to: new Date(start - dayMs).toISOString().slice(0, 10), ...(range.timeFrom && range.timeTo ? { timeFrom: range.timeFrom, timeTo: range.timeTo } : {}) };
 }
 
 /** Keep source totals, confirmed zeroes and absent days distinct. */
 export function websitePeriodSeries(site: WebsiteSummary | undefined, range: AnalyticsDateRange, asOf: string, metric: WebsiteChartMetric): WebsitePeriodSeries {
+  if (range.from === range.to && range.timeFrom && range.timeTo) {
+    const bounds = hourlyBounds(range.from, { timeFrom: range.timeFrom, timeTo: range.timeTo }, asOf);
+    const total = site?.totals?.[metric] ?? null;
+    const points = websiteChartData(site ? [site] : [], range.from.slice(0, 7), metric, "hour", range).map(point => ({ date: point.date, value: site ? point.values[site.key] : null }));
+    const observed = points.filter(point => point.value !== null).length;
+    const complete = Boolean(site?.status === "complete" && site.coverage?.range_complete && site.coverage.rows_complete && observed === points.length && points.reduce((sum, point) => sum + (point.value ?? 0), 0) === total);
+    const status = total === null ? "unavailable" : Date.parse(asOf) < Date.parse(bounds.end) ? "ongoing" : complete ? "complete" : "partial";
+    return { range, total, daily: points, expectedDays: points.length, availableDays: observed, coverageComplete: complete, status, asOf, granularity: "hour", durationMinutes: points.length * 60, requestedEnd: bounds.end };
+  }
   const total = site?.totals?.[metric] ?? null;
   const retentionTime = site?.coverage ? Date.parse(site.coverage.data_available_from) : NaN;
   const availableFrom = Number.isFinite(retentionTime) ? new Date(retentionTime + 7 * 3600000).toISOString().slice(0, 10) : "";
@@ -84,6 +99,7 @@ export function websitePeriodSeries(site: WebsiteSummary | undefined, range: Ana
 }
 
 export function websitePeriodChange(current: WebsitePeriodSeries, previous: WebsitePeriodSeries): WebsitePeriodChange {
+  if ((current.granularity ?? "day") !== (previous.granularity ?? "day") || current.durationMinutes !== previous.durationMinutes) return { kind: "unavailable" };
   if (current.status !== "complete" || previous.status !== "complete" || current.total === null || previous.total === null || current.expectedDays !== previous.expectedDays) return { kind: "unavailable" };
   const difference = current.total - previous.total;
   if (previous.total === 0) return difference === 0 ? { kind: "unchanged", difference: 0 } : { kind: "zero_baseline", difference };

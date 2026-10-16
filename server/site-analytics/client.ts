@@ -47,7 +47,7 @@ export async function fetchSiteReport(site: AnalyticsSite, period: AnalyticsPeri
     if (!response.ok) {
       console.warn("analytics_upstream_http", { site: allowed.key, status: response.status });
       await response.body?.cancel();
-      return { ok: false, reason: response.status === 401 || response.status === 403 ? "unauthorized" : response.status === 429 ? "rate_limited" : "unavailable" };
+      return { ok: false, reason: response.status === 401 || response.status === 403 ? "unauthorized" : response.status === 429 ? "rate_limited" : response.status === 422 && period.contract_version === "1.1" ? "hourly_unavailable" : "unavailable" };
     }
     return { ok: true, report: parseSourceReport(await boundedJson(response), allowed, period) };
   } catch (error) {
