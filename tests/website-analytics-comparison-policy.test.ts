@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { describeComparisonPeriod, comparePeriodConditions, assessPeriodComparison, matchComparisonConditions } from "../lib/website-analytics-comparison-policy.ts";
-import { websitePeriodChange, websitePeriodSeries, websitePeriodRows, websiteMultiPeriodPoints, type WebsitePeriodSeries } from "../lib/website-analytics-comparison.ts";
+import { pairWebsitePeriods, websitePeriodChange, websitePeriodSeries, websitePeriodRows, websiteMultiPeriodPoints, type WebsitePeriodSeries } from "../lib/website-analytics-comparison.ts";
 import { emptyMetrics, type AnalyticsDateRange, type WebsiteSummary } from "../lib/website-analytics.ts";
 
 const kinds = ["S24", "ST", "R24", "RT"] as const;
@@ -17,14 +17,14 @@ test("all sixteen ordered selection pairs share one structural policy", async t 
     const ga = a.startsWith("S") ? "hour" : "day", gb = b.startsWith("S") ? "hour" : "day";
     const reasons = [ ...(ga !== gb ? ["granularity_mismatch", "day_count_mismatch"] : []), ...(a.endsWith("T") !== b.endsWith("T") ? ["time_window_mismatch"] : []) ];
     const result = comparePeriodConditions(describeComparisonPeriod(range(a), ga), describeComparisonPeriod(range(b, true), gb));
-    assert.deepEqual(result, { layout: ga !== gb || ga === "hour" && a !== b ? "separate" : "overlay", reasons });
+    assert.deepEqual(result, { layout: ga !== gb ? "separate" : "overlay", reasons });
     assert.equal(assessPeriodComparison(series(range(a), ga), series(range(b,true), gb)).canCompare, !reasons.length);
   });
 });
 test("equal duration at different clock times cannot produce a percentage", () => {
   const a = series({ from:"2026-10-14",to:"2026-10-14",timeFrom:"09:00",timeTo:"12:00" },"hour");
   const b = series({ from:"2026-10-13",to:"2026-10-13",timeFrom:"18:00",timeTo:"21:00" },"hour",10);
-  assert.equal(assessPeriodComparison(a,b).layout,"separate");
+  assert.equal(assessPeriodComparison(a,b).layout,"overlay");
   assert.deepEqual(websitePeriodChange(a,b),{kind:"unavailable"});
   assert.deepEqual(assessPeriodComparison({...a,granularity:"day"},{...b,granularity:"day"}).reasons,["time_window_mismatch"]);
 });
@@ -85,4 +85,22 @@ test("seven requested days survive failed first site and retain null beyond a sh
   const points=websiteMultiPeriodPoints(rows);
   assert.equal(points.length,7);assert.equal(points[0].values.a.current,null);assert.equal(points[0].values.b.current,0);
   assert.equal(points[6].date,"");assert.equal(points[6].previousDate,"2026-10-07");assert.equal(points[6].values.b.current,null);assert.equal(points[6].values.b.previous,0);
+});
+
+test("hourly overlays align Thai hours and retain gaps, zeroes and dates", () => {
+  const hourly=(date:string,start:number,end:number):WebsitePeriodSeries=>({...series({from:date,to:date,timeFrom:String(start).padStart(2,"0")+":00",timeTo:String(end).padStart(2,"0")+":00"},"hour"),daily:Array.from({length:end-start},(_,i)=>({date:date+"T"+String(start+i).padStart(2,"0")+":00:00+07:00",value:i}))});
+  const morning=hourly("2026-10-15",9,12),evening=hourly("2026-10-14",18,21);
+  const points=pairWebsitePeriods(morning,evening);
+  assert.equal(points.length,12);
+  assert.deepEqual(points[0],{hour:"09:00",date:morning.daily[0].date,previousDate:"",current:0,previous:null});
+  assert.deepEqual(points[5],{hour:"14:00",date:"",previousDate:"",current:null,previous:null});
+  assert.deepEqual(points[9],{hour:"18:00",date:"",previousDate:evening.daily[0].date,current:null,previous:0});
+  const reverse=pairWebsitePeriods(evening,morning); assert.equal(reverse[0].hour,"09:00"); assert.equal(reverse[0].previous,0);
+  const overlap=pairWebsitePeriods(morning,hourly("2026-10-14",10,13));
+  assert.equal(overlap.length,4);assert.equal(overlap[1].current,1);assert.equal(overlap[1].previous,0);
+  const full=pairWebsitePeriods(hourly("2026-10-15",0,24),evening);assert.equal(full.length,24);assert.equal(full[23].hour,"23:00");
+  const failed=(value:WebsitePeriodSeries)=>({...value,total:null,status:"unavailable" as const,daily:value.daily.map(point=>({...point,value:null}))});
+  const row={key:"failed",displayName:"Failed",currentSelected:true,previousSelected:true,current:failed(morning),previous:failed(evening)};
+  const multi=websiteMultiPeriodPoints([row,{...row,key:"healthy",current:morning,previous:evening}]);
+  assert.equal(multi.length,12);assert.equal(multi[5].hour,"14:00");assert.equal(multi[0].values.failed.current,null);assert.equal(multi[0].values.healthy.current,0);
 });

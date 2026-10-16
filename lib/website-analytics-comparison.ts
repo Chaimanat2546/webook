@@ -3,7 +3,7 @@ import type { WebsiteChartMetric } from "./website-analytics-chart.ts";
 import { parseWebsiteScope, scopeSearchParams, type WebsiteScopeSelection } from "./website-analytics-scope.ts";
 
 const dayMs = 86400000;
-import { dailyWindowBounds, hourlyBounds } from "./website-analytics-time.ts";
+import { dailyWindowBounds, hourlyBounds, hourLabel } from "./website-analytics-time.ts";
 import { websiteChartData } from "./website-analytics-chart.ts";
 import { assessPeriodComparison } from "./website-analytics-comparison-policy.ts";
 
@@ -28,6 +28,7 @@ export interface WebsitePreviousPeriod {
 }
 
 export interface WebsitePeriodPoint {
+  hour?: string;
   date: string;
   previousDate: string;
   current: number | null;
@@ -44,6 +45,7 @@ export interface WebsitePeriodRow {
 }
 
 export interface WebsiteMultiPeriodPoint {
+  hour?: string;
   date: string;
   previousDate: string;
   values: Record<string, { current: number | null; previous: number | null }>;
@@ -121,6 +123,17 @@ export function sameDailyTimeWindow(a: AnalyticsDateRange, b: AnalyticsDateRange
 }
 
 export function pairWebsitePeriods(current: WebsitePeriodSeries, previous: WebsitePeriodSeries): WebsitePeriodPoint[] {
+  if (current.granularity === "hour" && previous.granularity === "hour") {
+    const start = Math.min(Number((current.range.timeFrom ?? "00:00").slice(0, 2)), Number((previous.range.timeFrom ?? "00:00").slice(0, 2)));
+    const end = Math.max(Number((current.range.timeTo ?? "24:00").slice(0, 2)), Number((previous.range.timeTo ?? "24:00").slice(0, 2)));
+    const currentHours = new Map(current.daily.map(point => [hourLabel(point.date), point]));
+    const previousHours = new Map(previous.daily.map(point => [hourLabel(point.date), point]));
+    return Array.from({ length: end - start }, (_, index) => {
+      const hour = String(start + index).padStart(2, "0") + ":00";
+      const a = currentHours.get(hour), b = previousHours.get(hour);
+      return { hour, date: a?.date ?? "", previousDate: b?.date ?? "", current: a?.value ?? null, previous: b?.value ?? null };
+    });
+  }
   return Array.from({ length: Math.max(current.daily.length, previous.daily.length) }, (_, index) => ({ date: current.daily[index]?.date ?? "", previousDate: previous.daily[index]?.date ?? "", current: current.daily[index]?.value ?? null, previous: previous.daily[index]?.value ?? null }));
 }
 
@@ -134,7 +147,7 @@ export function websitePeriodRows(sites: WebsiteSummary[], range: AnalyticsDateR
 
 export function websiteMultiPeriodPoints(rows: WebsitePeriodRow[]): WebsiteMultiPeriodPoint[] {
   const paired = rows.map(row => pairWebsitePeriods(row.current, row.previous));
-  return (paired[0] ?? []).map((point, index) => ({ date: point.date, previousDate: point.previousDate, values: Object.fromEntries(rows.map((row, rowIndex) => [row.key, { current: paired[rowIndex][index]?.current ?? null, previous: paired[rowIndex][index]?.previous ?? null }])) }));
+  return (paired[0] ?? []).map((point, index) => ({ ...(point.hour ? { hour: point.hour } : {}), date: point.date, previousDate: point.previousDate, values: Object.fromEntries(rows.map((row, rowIndex) => [row.key, { current: paired[rowIndex][index]?.current ?? null, previous: paired[rowIndex][index]?.previous ?? null }])) }));
 }
 
 /** One website toggle hides both periods without altering the source reports. */

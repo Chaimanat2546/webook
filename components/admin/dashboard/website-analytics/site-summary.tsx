@@ -47,13 +47,12 @@ export function WebsiteSiteSummary({ granularity, sites, month, range, today, as
     return Number.isFinite(time) ? [new Date(time + 7 * 3600000).toISOString().slice(0, 10)] : [];
   }).sort()[0];
   return <Card>
-    <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex min-w-0 w-full items-start gap-3 sm:w-auto sm:flex-1">
+    <CardHeader className="flex flex-col items-start gap-3 lg:flex-row">
+      <div className="flex min-w-0 flex-1 items-start gap-3">
         <span className="shrink-0 rounded-lg bg-muted p-2 text-primary"><ChartNoAxesColumnIncreasing aria-hidden className="size-5" /></span>
-        <div className="min-w-0"><CardTitle><h2>แนวโน้มประสิทธิภาพเว็บไซต์</h2></CardTitle><p className="mt-1 text-xs text-muted-foreground">เปรียบเทียบจำนวนเข้าชม การกดติดต่อ และการเปิดรูป ของแต่ละเว็บไซต์</p></div>
+        <div className="min-w-0"><CardTitle><h2>แนวโน้มประสิทธิภาพเว็บไซต์</h2></CardTitle><p className="mt-1 text-xs text-muted-foreground">เปรียบเทียบจำนวนเข้าชม การกดติดต่อ และการเปิดรูป ของแต่ละเว็บไซต์</p><p className="mt-1 text-xs text-muted-foreground">{sites.length} โดเมนที่ผูกในระบบ</p></div>
       </div>
-      <span className="text-xs text-muted-foreground">{sites.length} โดเมนที่ผูกในระบบ</span>
-      {range && today && <div className="flex w-full min-w-0 flex-wrap items-start gap-x-3 gap-y-2">
+      {range && today && <div className="ml-auto flex w-fit min-w-0 max-w-full flex-wrap items-start justify-end gap-x-3 gap-y-2">
         <div className="flex min-w-0 max-w-full items-center gap-1"><span className="shrink-0 text-xs text-muted-foreground">ช่วงหลัก</span><SummaryRangeFilter key={`${range.from}:${range.to}`} month={month} range={range} today={today} availableFrom={availableFrom} /></div>
         <WebsiteDatasetControls granularity={granularity} range={range} today={today} sites={sites} scope={scope} comparison={compare && previous ? { ...previous.range, sites: previous.sites.map(site => site.key) } : undefined} />
       </div>}
