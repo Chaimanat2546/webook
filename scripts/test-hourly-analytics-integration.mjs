@@ -63,15 +63,16 @@ try {
       }
       if (url.pathname === "/data") {
         const params = url.searchParams;
+        const fixtureNow = params.get("fixtureCase") === "legacy" ? new Date("2026-10-01T03:00:00Z") : now;
         const from = params.get("analyticsFrom") ?? params.get("from") ?? "2026-10-15";
         const to = params.get("analyticsTo") ?? params.get("to") ?? "2026-10-15";
         const timeFrom = params.get("analyticsTimeFrom") ?? params.get("timeFrom");
         const timeTo = params.get("analyticsTimeTo") ?? params.get("timeTo");
-        const query = parseWebsiteAnalyticsQuery({ month: "2026-10", from, to, site: site.key, ...(timeFrom !== null || timeTo !== null ? { timeFrom: timeFrom ?? undefined, timeTo: timeTo ?? undefined } : {}), ...(params.has("view") ? { view: params.get("view") } : {}) }, [site.key], now);
-        const scope = parseWebsiteScope(params.get("analyticsScope") ?? undefined, [site.key], now);
-        const report = await loadWebsiteSummaryPeriods(query, false, { now: () => now, sites: () => [site], read }, scope);
-        const detail = serve ? await loadWebsiteAnalytics(query, { now: () => now, sites: () => [site], read, titles: async () => new Map([["9", "บ้านทดสอบข้อมูลรายชั่วโมง"]]) }) : undefined;
-        json(response, 200, { ...report, detail, query, range: analyticsDateRange(report.period), month: "2026-10", today: "2026-10-16", scope }); return;
+        const query = parseWebsiteAnalyticsQuery({ month: "2026-10", ...(params.get("fixtureCase") === "legacy" ? {} : { from, to, ...(timeFrom !== null || timeTo !== null ? { timeFrom: timeFrom ?? undefined, timeTo: timeTo ?? undefined } : {}) }), site: site.key, ...(params.has("view") ? { view: params.get("view") } : {}) }, [site.key], fixtureNow);
+        const scope = parseWebsiteScope(params.get("analyticsScope") ?? undefined, [site.key], fixtureNow);
+        const report = await loadWebsiteSummaryPeriods(query, false, { now: () => fixtureNow, sites: () => [site], read }, scope);
+        const detail = serve ? await loadWebsiteAnalytics(query, { now: () => fixtureNow, sites: () => [site], read, titles: async () => new Map([["9", "บ้านทดสอบข้อมูลรายชั่วโมง"]]) }) : undefined;
+        json(response, 200, { ...report, detail, query, caseName: params.get("caseName") ?? "custom", range: analyticsDateRange(report.period), month: "2026-10", today: new Date(fixtureNow.getTime()+7*3600000).toISOString().slice(0,10), scope }); return;
       }
       if (serve && url.pathname === "/bundle.js") { response.setHeader("content-type", "text/javascript"); response.end(await readFile(".superpowers/hourly/browser/bundle.js")); return; }
       if (serve && url.pathname.startsWith("/_next/static/")) {

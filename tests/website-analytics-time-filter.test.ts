@@ -74,7 +74,7 @@ test("recurring time selection renders a daily graph and labels every-day hours"
   const require = createRequire(import.meta.url), loaded = { exports: {} as Record<string, unknown> };
   new Function("require", "module", "exports", built.outputFiles[0].text)(require, loaded, loaded.exports);
   const Trend = loaded.exports.WebsiteSiteTrendChart as ComponentType<Record<string, unknown>>;
-  const html = renderToStaticMarkup(createElement(Trend, { sites: [], month: "2026-10", range: { from: "2026-10-14", to: "2026-10-16", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-17T00:00:00Z", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  const html = renderToStaticMarkup(createElement(Trend, { granularity: "day", sites: [], month: "2026-10", range: { from: "2026-10-14", to: "2026-10-16", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-17T00:00:00Z", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
   assert.match(html, /กราฟแนวโน้มรายวันแต่ละเว็บไซต์/);
   assert.match(html, /ทุกวัน 09:00–18:00/);
   assert.doesNotMatch(html, /ครั้งต่อชั่วโมง/);
@@ -95,7 +95,7 @@ test("future hourly range is described as not reached rather than observed zero"
   const require = createRequire(import.meta.url), loaded = { exports: {} as Record<string, unknown> };
   new Function("require", "module", "exports", built.outputFiles[0].text)(require, loaded, loaded.exports);
   const Trend = loaded.exports.WebsiteSiteTrendChart as ComponentType<Record<string, unknown>>;
-  const html = renderToStaticMarkup(createElement(Trend, { sites: [], month: "2026-10", range: { from: "2026-10-16", to: "2026-10-16", timeFrom: "18:00", timeTo: "24:00" }, asOf: "2026-10-16T04:00:00Z", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  const html = renderToStaticMarkup(createElement(Trend, { granularity: "hour", sites: [], month: "2026-10", range: { from: "2026-10-16", to: "2026-10-16", timeFrom: "18:00", timeTo: "24:00" }, asOf: "2026-10-16T04:00:00Z", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
   assert.ok(html.includes("ยังไม่ถึงช่วงเวลาที่เลือก"));
 });
 test("mixed hourly and daily comparison renders separate trends and explicit units", async () => {
@@ -104,10 +104,16 @@ test("mixed hourly and daily comparison renders separate trends and explicit uni
   new Function("require", "module", "exports", built.outputFiles[0].text)(require, loaded, loaded.exports);
   const Comparison = loaded.exports.SitePeriodComparison as ComponentType<Record<string, unknown>>;
   const site = { key: "a", displayName: "A", origin: "https://a.test", status: "complete", coverage: { data_available_from: "2026-09-01T00:00:00Z", range_complete: true, rows_complete: true }, totals: emptyMetrics(), daily: [{ date: "2026-10-14", ...emptyMetrics() }], hourly: [] };
-  const html = renderToStaticMarkup(createElement(Comparison, { sites: [site], range: { from: "2026-10-15", to: "2026-10-15", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-16T04:00:00Z", previous: { range: { from: "2026-10-13", to: "2026-10-14" }, sites: [site] }, view: "daily", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  const html = renderToStaticMarkup(createElement(Comparison, { granularity: "hour", sites: [site], range: { from: "2026-10-15", to: "2026-10-15", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-16T04:00:00Z", previous: { granularity: "day", range: { from: "2026-10-13", to: "2026-10-14" }, sites: [site] }, view: "daily", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
   assert.match(html, /ช่วงที่เลือกใช้หน่วยเวลาต่างกัน จึงแสดงกราฟแยกกัน/);
   assert.match(html, /กราฟแนวโน้มรายชั่วโมงแต่ละเว็บไซต์/);
   assert.match(html, /กราฟแนวโน้มรายวันแต่ละเว็บไซต์/);
-  const differentWindows = renderToStaticMarkup(createElement(Comparison, { sites: [site], range: { from: "2026-10-13", to: "2026-10-14", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-16T04:00:00Z", previous: { range: { from: "2026-10-13", to: "2026-10-14", timeFrom: "10:00", timeTo: "19:00" }, sites: [site] }, view: "daily", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  const differentWindows = renderToStaticMarkup(createElement(Comparison, { granularity: "day", sites: [site], range: { from: "2026-10-13", to: "2026-10-14", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-16T04:00:00Z", previous: { granularity: "day", range: { from: "2026-10-13", to: "2026-10-14", timeFrom: "10:00", timeTo: "19:00" }, sites: [site] }, view: "daily", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
   assert.match(differentWindows, /ช่วงเวลารายวันต่างกัน · งด % ยอดรวม/);
+  const hourlyWindows = renderToStaticMarkup(createElement(Comparison, { granularity: "hour", sites: [site], range: { from: "2026-10-15", to: "2026-10-15", timeFrom: "09:00", timeTo: "12:00" }, asOf: "2026-10-16T04:00:00Z", previous: { granularity: "hour", range: { from: "2026-10-14", to: "2026-10-14", timeFrom: "18:00", timeTo: "21:00" }, sites: [site] }, view: "daily", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  assert.equal((hourlyWindows.match(/aria-label="กราฟแนวโน้มรายชั่วโมงแต่ละเว็บไซต์"/g) ?? []).length,2);
+  assert.match(hourlyWindows,/ช่วงเวลารายวันต่างกัน · งด % ยอดรวม/);
+  const severalReasons = renderToStaticMarkup(createElement(Comparison, { granularity: "day", sites: [site], range: { from: "2026-10-12", to: "2026-10-14", timeFrom: "09:00", timeTo: "18:00" }, asOf: "2026-10-16T04:00:00Z", previous: { granularity: "day", range: { from: "2026-10-01", to: "2026-10-07", timeFrom: "00:00", timeTo: "24:00" }, sites: [site] }, view: "daily", metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  assert.match(severalReasons,/จำนวนวันต่างกัน/);
+  assert.match(severalReasons,/ช่วงเวลารายวันต่างกัน/);
 });

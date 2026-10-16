@@ -1,0 +1,46 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { createRequire } from "node:module";
+import { build } from "esbuild";
+import { createElement, type ComponentType } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import type { AnalyticsDateRange } from "../lib/website-analytics.ts";
+import { websitePeriodHref } from "../lib/website-analytics-comparison.ts";
+
+test("comparison controls match conditions, preserve independent selections and guard legacy dates", async () => {
+  const probe: { buttons: { children?: unknown; onClick?: () => void; disabled?: boolean; "aria-label"?: string }[]; pending?: boolean; picker?: { matchPrimary?: AnalyticsDateRange; matchDisabledReason?: string; loading?: boolean; onChange: (range: AnalyticsDateRange) => void }; hrefs: string[] } = { buttons: [], hrefs: [] };
+  const built=await build({entryPoints:["components/admin/dashboard/website-analytics/dataset-controls.tsx"],bundle:true,write:false,format:"cjs",platform:"node",packages:"external",plugins:[{name:"probe",setup(b){
+    b.onLoad({filter:/[\\/]website-date-range-picker\.tsx$/},()=>({loader:"js",contents:'import React from "react";import probe from "dataset-probe";export function WebsiteDateRangePicker(props){probe.picker=props;return React.createElement("span",null,props.label);}'}));
+    b.onLoad({filter:/[\\/]ui[\\/]button\.tsx$/},()=>({loader:"js",contents:'import React from "react";import probe from "dataset-probe";export function Button(props){probe.buttons.push(props);return React.createElement("button",{disabled:props.disabled,"aria-label":props["aria-label"]},props.children);}'}));
+    b.onResolve({filter:/^dataset-probe$/},a=>({path:a.path,external:true}));
+  }}]});
+  const require=createRequire(import.meta.url),loaded={exports:{} as Record<string,unknown>};
+  new Function("require","module","exports",built.outputFiles[0].text)((name:string)=>name==="dataset-probe"?probe:name==="react"?{...require("react"),useTransition:()=>[Boolean(probe.pending),(fn:()=>void)=>fn()]}:name==="next/navigation"?{useRouter:()=>({replace:(href:string)=>probe.hrefs.push(href)})}:require(name),loaded,loaded.exports);
+  const Controls=loaded.exports.WebsiteDatasetControls as ComponentType<Record<string,unknown>>;
+  const range={from:"2026-10-14",to:"2026-10-16",timeFrom:"09:00",timeTo:"18:00"};
+  const comparison={from:"2026-10-01",to:"2026-10-10",timeFrom:"18:00",timeTo:"21:00",sites:["b"]};
+  const query={month:"2026-10",...range,site:"a",page:1};
+  const render=(extra:Record<string,unknown>={})=>{probe.buttons=[];return renderToStaticMarkup(createElement(Controls,{range,granularity:"day",today:"2026-10-17",sites:[{key:"a",displayName:"A"},{key:"b",displayName:"B"}],query,scope:{sites:["a"],comparison},comparison,...extra}));};
+  const html=render();assert.doesNotMatch(html,/ใช้เงื่อนไขเดียวกับช่วงหลัก|ใช้จำนวนวันและเวลาตามช่วงหลัก/);
+  assert.deepEqual(probe.picker?.matchPrimary,range,"matching action belongs inside the picker");
+  probe.picker?.onChange({from:"2026-10-08",to:"2026-10-10",timeFrom:"09:00",timeTo:"18:00"});
+  const matched=new URL(probe.hrefs.at(-1)!,"https://local.test");const scope=JSON.parse(matched.searchParams.get("analyticsScope")!);
+  assert.deepEqual(scope,{sites:["a"],comparison:{from:"2026-10-08",to:"2026-10-10",timeFrom:"09:00",timeTo:"18:00",sites:["b"]}});
+  assert.equal(matched.searchParams.get("from"),range.from);assert.equal(matched.searchParams.get("timeFrom"),"09:00");
+  probe.picker?.onChange({from:"2026-10-05",to:"2026-10-05",timeFrom:"00:00",timeTo:"24:00"});
+  const edited=new URL(probe.hrefs.at(-1)!,"https://local.test");assert.deepEqual(JSON.parse(edited.searchParams.get("analyticsScope")!).comparison.sites,["b"]);assert.equal(edited.searchParams.get("to"),range.to);
+  probe.buttons.find(b=>b["aria-label"]==="เอาชุดเปรียบเทียบออก")?.onClick?.();
+  assert.deepEqual(JSON.parse(new URL(probe.hrefs.at(-1)!,"https://local.test").searchParams.get("analyticsScope")!),{sites:["a"]});
+  const changedPrimary = new URL(websitePeriodHref(query,{from:"2026-10-05",to:"2026-10-05",timeFrom:"00:00",timeTo:"24:00"},true,{sites:["a"],comparison}),"https://local.test");
+  assert.deepEqual(JSON.parse(changedPrimary.searchParams.get("analyticsScope")!).comparison,comparison);
+  render({comparison:undefined,scope:{sites:["a"]}});
+  probe.buttons.find(b=>Array.isArray(b.children)&&b.children.includes("เพิ่มชุดเปรียบเทียบ"))?.onClick?.();
+  assert.deepEqual(JSON.parse(new URL(probe.hrefs.at(-1)!,"https://local.test").searchParams.get("analyticsScope")!).comparison,{from:"2026-10-11",to:"2026-10-13",timeFrom:"09:00",timeTo:"18:00",sites:["a"]});
+  probe.pending=true;
+  assert.match(render(),/กำลังโหลดกราฟ/);
+  assert.equal(probe.picker?.loading,true);
+  assert.ok(probe.buttons.every(button=>button.disabled));
+  probe.pending=false;
+  render({range:{from:"2026-10-01",to:"2026-10-01"}});
+  assert.equal(probe.picker?.matchDisabledReason,"เลือกช่วงหลักจากปฏิทินก่อนปรับเงื่อนไข");
+});

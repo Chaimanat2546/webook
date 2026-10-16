@@ -1,7 +1,7 @@
 import { parseDashboardQuery } from "../../../../lib/dashboard";
 import { loadWebsiteSummaryPeriods } from "../../../../server/services/website-analytics-comparison";
 import { WebsiteSiteSummary } from "./site-summary";
-import { analyticsDateRange, type AnalyticsDateRange } from "../../../../lib/website-analytics";
+import { analyticsPeriodGranularity, analyticsDateRange, type AnalyticsDateRange } from "../../../../lib/website-analytics";
 import type { WebsiteScopeSelection } from "../../../../lib/website-analytics-scope";
 import { listAnalyticsSites } from "../../../../server/site-analytics/registry";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/card";
@@ -30,5 +30,5 @@ export async function WebsiteSiteSummaryLoader({ month, range, compare = false, 
   const { sites, period, previous } = await loadWebsiteSummaryPeriods(query, compare, { now: () => now }, readScope);
   const selectedRange = analyticsDateRange(period);
   const today = new Date(now.getTime() + 7 * 3600000).toISOString().slice(0, 10);
-  return <WebsiteSiteSummary sites={sites} month={month} range={selectedRange} today={today} asOf={period.as_of} compare={scope ? Boolean(scope.comparison) : compare} previous={previous} scope={scope} options={options} />;
+  return <WebsiteSiteSummary granularity={analyticsPeriodGranularity(period)} sites={sites} month={month} range={selectedRange} today={today} asOf={period.as_of} compare={scope ? Boolean(scope.comparison) : compare} previous={previous} scope={scope} options={options} />;
 }

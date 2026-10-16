@@ -1,12 +1,22 @@
 # สถิติเข้าเว็บไซต์
 
+## Independent comparison conditions
+
+Primary and comparison dates/clocks are independent after adding a comparison. The initial comparison uses adjacent preceding dates, then remains unchanged when the primary range changes. **ใช้จำนวนวันและเวลาตามช่วงหลัก** explicitly copies the primary day count and normalized clocks, anchoring the comparison to its existing end date and preserving both site selections. Removing a comparison preserves the primary query. Draft date/time edits load nothing until Apply; cancellation restores committed state. Controls remain 32px with 32×32 month navigation and clocks below the calendar.
+
+`lib/website-analytics-comparison-policy.ts` owns layout, compatibility reasons and condition matching. Source unit comes from the actual report contract (1.1/hour, 1.0 or 1.2/day), not date count. This preserves daily implicit monthly reports on the first day of a month. For that legacy one-day monthly case, condition matching is disabled with an explanation until the primary is explicitly selected from the calendar.
+
+Different units, or two hourly selections with different clock windows, use separate labelled graphs. Daily selections overlay by ordinal day, even with different durations/windows, and report all structural mismatch reasons. Matching hourly selections show actual clock ticks. Tooltips show both real dates/windows; unavailable/out-of-range/retention gaps are null, observed zero remains zero, and failed first sources do not erase another source's axis. Website colors/visibility are shared across both periods.
+
+Percentages require the website on both sides, equal units/day counts/normalized clocks, complete coverage and elapsed windows. Every view uses the same policy and reason labels. A zero baseline shows an absolute increase or zero-to-zero unchanged, without division by zero. Requested days/hours are labelled separately from coverage and as_of; totals remain actual reported values even when a comparison percentage is unavailable. No hourly averages, producer API changes, per-day requests or new dependencies were introduced.
+
 ## ขอบเขตกราฟและชุดเปรียบเทียบ
 
 Dashboard เริ่มด้วยกราฟปกติของทุกเว็บไซต์และสถิติเข้าชม ไม่มีปุ่ม “ทุกเว็บไซต์” หรือหน้าต่างเลือกเว็บซ้ำ ใช้รายชื่อเว็บไซต์เพียงชุดเดียว กดซ่อน/แสดงเว็บใดจะมีผลกับทั้งช่วงหลักและช่วงเทียบพร้อมกัน ทั้งกราฟรายวันและยอดรวม การซ่อนมีผลเฉพาะกราฟ ไม่แก้ยอดในตารางสรุป และต้องเหลืออย่างน้อยหนึ่งเว็บที่แสดง
 
 คงตัวเลือกวันที่หลักไว้ที่หัวการ์ดและรายชื่อเว็บไว้ใน legend เหนือกราฟตาม UI เดิม ปุ่ม “เพิ่มชุดเปรียบเทียบ” อยู่ข้างตัวเลือกวันที่เดิมและเพิ่มเฉพาะตัวเลือกวันที่เทียบ โดยเริ่มจากช่วงก่อนหน้าที่มีจำนวนวันเท่ากัน ทั้งสองช่วงเลือกวันที่เองและยืนยันใช้ หรือยกเลิกได้อิสระ ใช้รายชื่อเว็บร่วมกันเสมอ เส้นทึบเป็นช่วงหลัก เส้นประเป็นช่วงเทียบ ไม่มีรายการชื่อเว็บซ้ำสำหรับแต่ละช่วง
 
-การเปลี่ยนวันที่ สลับรายวัน/ยอดรวม และเพิ่ม/เอาชุดเทียบออก คงสถานะการซ่อนร่วมไว้ ปุ่ม × เอาออกเฉพาะช่วงเทียบและหยุดอ่านช่วงนั้น รายชื่อเว็บใช้ flex-wrap และรูปแบบเส้นของ legend เดิม โดยปุ่มสูงอย่างน้อย 44px สถานะซ่อนแสดงด้วยชื่อขีดฆ่าและ aria-pressed ไม่อาศัยสีเพียงอย่างเดียว การซ่อนเป็น state ชั่วคราวในกราฟ ไม่เขียน URL ทุกครั้งที่กดชื่อเว็บ
+การเปลี่ยนวันที่ สลับรายวัน/ยอดรวม และเพิ่ม/เอาชุดเทียบออก คงสถานะการซ่อนร่วมไว้ ปุ่ม × เอาออกเฉพาะช่วงเทียบและหยุดอ่านช่วงนั้น รายชื่อเว็บใช้ flex-wrap และรูปแบบเส้นของ legend เดิม โดยปุ่มสูง 32px สถานะซ่อนแสดงด้วยชื่อขีดฆ่าและ aria-pressed ไม่อาศัยสีเพียงอย่างเดียว การซ่อนเป็น state ชั่วคราวในกราฟ ไม่เขียน URL ทุกครั้งที่กดชื่อเว็บ
 
 - รายวันจับคู่วันตามลำดับ 1..N เส้นทึบเป็นชุดหลัก เส้นประเป็นชุดเทียบ tooltip แสดงวันที่จริงของแต่ละชุด เว็บไซต์ที่ไม่ได้เลือกในอีกชุดแสดงจุด “ไม่อยู่ในชุด” แยกจากข้อมูลที่โหลดไม่ได้ (`—`) หากช่วงยาวไม่เท่ากันจะคงทุกวันของช่วงที่ยาวกว่า และระบุว่านอกช่วงสำหรับฝั่งที่สั้นกว่า ไม่สร้างวันที่หรือเติมศูนย์
 - ยอดรวมแสดงแท่งและยอดของเว็บที่เปิดแสดงทั้งสองช่วง บนสเกลร่วมกัน ตารางใต้ Dashboard แสดงชุดหลักเท่านั้น
@@ -201,3 +211,5 @@ Producer tenant migration and actual authenticated1.2 readiness checks must prec
 # Optional time selection
 
 The calendar popup defaults to **เต็มวัน 24 ชั่วโมง** when no narrower clock range is selected. The existing 32px Button toggles **ระบุช่วงเวลา**; only its enabled state shows the start/end selectors below the calendar. Disabling it resets the draft to 00:00–24:00. Apply commits that full-day range using the existing API contracts, so one-day reports retain hourly buckets and multi-day reports retain daily buckets. Cancel, Escape and outside click discard the draft. Existing URLs with a narrower range reopen with time selection enabled; 00:00–24:00 reopens as full day. No API or database upgrade is needed for this UI option.
+
+The comparison popup contains **ใช้จำนวนวันและเวลาตามช่วงหลัก** beneath its calendar. It copies the primary day count and clocks into the comparison draft, anchored to the draft end date. It does not navigate until Apply; cancel/Escape/outside discard these edits. The two Dashboard date triggers use content-sized widths on one desktop row beneath the title, without equal-column stretching. Their groups wrap only when space is insufficient and shrink/truncate long date labels within mobile bounds; all controls remain 32px.

@@ -19,8 +19,8 @@ export function SummaryRangeFilter({ month, range, today, availableFrom }: { mon
     else { params.delete("analyticsTimeFrom"); params.delete("analyticsTimeTo"); }
     startTransition(() => router.push(`/admin/dashboard?${params}`, { scroll: false }));
   }
-  return <div className="w-full min-w-0 max-w-full space-y-2 sm:w-auto" aria-busy={pending}>
-    <WebsiteDateRangePicker month={month} range={range} today={today} availableFrom={availableFrom} pastOnly compactShortcuts loading={pending} label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={navigate} />
+  return <div className="w-fit min-w-0 max-w-full space-y-2" aria-busy={pending}>
+    <WebsiteDateRangePicker month={month} range={range} today={today} availableFrom={availableFrom} pastOnly compactShortcuts loading={pending} className="w-fit max-w-full text-xs" label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={navigate} />
     {pending && <p role="status" className="text-xs text-muted-foreground">กำลังโหลด…</p>}
   </div>;
 }

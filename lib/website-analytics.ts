@@ -18,6 +18,9 @@ export interface AnalyticsDailyPeriod extends AnalyticsPeriodFields { contract_v
 export interface AnalyticsHourlyPeriod extends AnalyticsPeriodFields { contract_version: "1.1"; granularity: "hour"; from_time: string; to_time: string }
 export interface AnalyticsDailyWindowPeriod extends AnalyticsPeriodFields { contract_version: "1.2"; granularity: "day"; from_time: string; to_time: string }
 export type AnalyticsPeriod = AnalyticsDailyPeriod | AnalyticsHourlyPeriod | AnalyticsDailyWindowPeriod;
+export function analyticsPeriodGranularity(period: AnalyticsPeriod): "hour" | "day" {
+  return period.contract_version === "1.1" ? "hour" : "day";
+}
 export interface AnalyticsMetrics {
   page_views: number; phone_clicks: number; chat_clicks: number;
   line_clicks: number; gallery_opens: number; contact_clicks: number;

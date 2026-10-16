@@ -1,4 +1,9 @@
 import assert from "node:assert/strict";
+
+test("different hourly clock windows cannot produce growth percentages", () => {
+  const base = { range: { from: "2026-10-14", to: "2026-10-14", timeFrom: "09:00", timeTo: "12:00" }, total: 20, availableDays: 3, expectedDays: 3, coverageComplete: true, status: "complete" as const, daily: [], granularity: "hour" as const, durationMinutes: 180 };
+  assert.deepEqual(websitePeriodChange(base, { ...base, total: 10, range: { ...base.range, from: "2026-10-13", to: "2026-10-13", timeFrom: "18:00", timeTo: "21:00" } }), { kind: "unavailable" });
+});
 import { test } from "node:test";
 import { emptyMetrics, type AnalyticsDateRange, type WebsiteSummary } from "../lib/website-analytics.ts";
 import { previousAnalyticsRange, websitePeriodSeries, websitePeriodChange, pairWebsitePeriods, parseAnalyticsComparison, websitePeriodRows, websiteMultiPeriodPoints, websitePeriodHref, parseWebsiteComparisonQuery } from "../lib/website-analytics-comparison.ts";
@@ -11,7 +16,7 @@ function site(values: number[] = [12, 18], selected: AnalyticsDateRange = range)
     totals: { ...emptyMetrics(), page_views: values.reduce((a, b) => a + b, 0) },
     daily: values.map((page_views, i) => ({ ...emptyMetrics(), page_views, date: new Date(Date.parse(selected.from) + i * 86400000).toISOString().slice(0, 10) })) };
 }
-const series = (input = site(), selected = range, snapshot = asOf) => websitePeriodSeries(input, selected, snapshot, "page_views");
+const series = (input = site(), selected = range, snapshot = asOf) => websitePeriodSeries(input, selected, snapshot, "page_views", "day");
 
 test("previous period is inclusive, adjacent and handles leap days and year boundaries", () => {
   for (const [current, expected] of [
@@ -107,8 +112,8 @@ test("daily points pair by date offset and retain actual dates and gaps", () => 
 test("overview aligns every website without copying failed values or confusing zero with a gap", () => {
   const previousRange = { from: "2026-10-06", to: "2026-10-07" };
   const current = [site(), { ...site([0]), key: "b", displayName: "B" }];
-  const previous = { range: previousRange, sites: [site([10, 10], previousRange), { ...site(), key: "b", totals: null, status: "timeout" as const }] };
-  const rows = websitePeriodRows(current, range, previous, asOf, "page_views");
+  const previous = { granularity: "day" as const, range: previousRange, sites: [site([10, 10], previousRange), { ...site(), key: "b", totals: null, status: "timeout" as const }] };
+  const rows = websitePeriodRows(current, range, previous, asOf, "page_views", "day");
   assert.deepEqual(rows.map(row => row.key), ["a", "b"]);
   assert.deepEqual(websiteMultiPeriodPoints(rows), [
     { date: "2026-10-08", previousDate: "2026-10-06", values: { a: { current: 12, previous: 10 }, b: { current: 0, previous: null } } },
