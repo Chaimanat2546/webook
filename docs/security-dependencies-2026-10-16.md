@@ -11,6 +11,11 @@ existing R2 cache configuration and Next.js `16.3.8` unchanged. Newer adapter
 patches selected by `^1.20.2` currently require Next.js `16.4.1` or later, so the
 exact pin avoids combining this security fix with a framework upgrade.
 
+Regenerate and commit `public/sw.js` after changing shipped source or the
+lockfile. The PWA reproducibility test runs before the build in CI and compares
+the committed worker with the current source fingerprint. A stale committed
+revision caused the first post-upgrade CI run to stop at this test.
+
 `npm run audit:security` reports zero production dependency vulnerabilities after
 the upgrade. The separate full audit still reports eight high findings through
 development tooling (`braces`, `micromatch`, `fast-glob`, ESLint and shadcn);
