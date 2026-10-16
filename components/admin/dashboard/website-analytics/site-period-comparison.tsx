@@ -2,7 +2,7 @@
 
 import type { AnalyticsDateRange, WebsiteSummary } from "../../../../lib/website-analytics";
 import type { WebsiteChartMetric } from "../../../../lib/website-analytics-chart";
-import { visibleWebsitePeriodRows, websitePeriodRows, type WebsitePreviousPeriod } from "../../../../lib/website-analytics-comparison";
+import { sameDailyTimeWindow, visibleWebsitePeriodRows, websitePeriodRows, type WebsitePreviousPeriod } from "../../../../lib/website-analytics-comparison";
 import { PeriodLegend, periodDateLabel, periodMetricLabels } from "./period-comparison-summary";
 import { MultiSitePeriodTrendChart } from "./multi-site-period-trend-chart";
 import { PeriodComparisonIssues } from "./period-comparison-issues";
@@ -28,8 +28,9 @@ export function SitePeriodComparison({ sites, range, asOf, previous, view, metri
   const allRows = websitePeriodRows(sites, range, previous, asOf, metric);
   const rows = visibleWebsitePeriodRows(allRows, hiddenSites);
   if (!allRows.length) return null;
-  const hourly = Boolean(range.timeFrom);
-  const mixed = hourly !== Boolean(previous.range.timeFrom);
+  const hourly = Boolean(range.from === range.to && range.timeFrom);
+  const previousHourly = Boolean(previous.range.from === previous.range.to && previous.range.timeFrom);
+  const mixed = hourly !== previousHourly;
   const unequal = allRows[0].current.expectedDays !== allRows[0].previous.expectedDays;
   return <figure aria-label={view === "daily" ? hourly ? "กราฟรายชั่วโมงเทียบชุดข้อมูล" : "กราฟรายวันเทียบชุดข้อมูล" : "กราฟยอดรวมเทียบชุดข้อมูล"} className="mb-6 min-w-0 space-y-2 border-b pb-4">
     {isFutureAnalyticsRange(previous.range, asOf) && <p role="status" className="text-xs text-amber-700">ชุดเทียบ: ยังไม่ถึงช่วงเวลาที่เลือก</p>}
@@ -37,7 +38,8 @@ export function SitePeriodComparison({ sites, range, asOf, previous, view, metri
       {periodMetricLabels[metric]} · {view === "daily" ? hourly ? "ครั้งต่อชั่วโมง" : "ครั้งต่อวัน" : "ครั้งทั้งช่วง"} · เวลาไทย · ช่วงที่เลือก {periodDateLabel(range.from)} – {periodDateLabel(range.to)} เทียบกับ {periodDateLabel(previous.range.from)} – {periodDateLabel(previous.range.to)}
     </figcaption>
     <div className="flex flex-wrap items-center justify-between gap-2"><PeriodLegend bars={view === "total"} neutral={view === "daily"} currentRange={range} previousRange={previous.range} /><div className="flex flex-wrap items-center gap-2">{view === "daily" && <PeriodComparisonIssues rows={rows} />}<span className="text-xs text-muted-foreground">{view === "daily" ? hourly ? "ครั้ง/ชั่วโมง" : "ครั้ง/วัน" : "ครั้ง"}</span></div></div>
-    {unequal && <p className="text-xs text-amber-700">ช่วงหลัก {allRows[0].current.expectedDays} {hourly ? "ชั่วโมง" : "วัน"} · ชุดเทียบ {allRows[0].previous.expectedDays} {previous.range.timeFrom ? "ชั่วโมง" : "วัน"} · งด % ยอดรวม</p>}
+    {unequal && <p className="text-xs text-amber-700">ช่วงหลัก {allRows[0].current.expectedDays} {hourly ? "ชั่วโมง" : "วัน"} · ชุดเทียบ {allRows[0].previous.expectedDays} {previousHourly ? "ชั่วโมง" : "วัน"} · งด % ยอดรวม</p>}
+    {!mixed && !hourly && !sameDailyTimeWindow(range, previous.range) && <p className="text-xs text-amber-700">ช่วงเวลารายวันต่างกัน · งด % ยอดรวม</p>}
     {view === "daily" && mixed ? <>
       <p role="status" className="text-xs text-amber-700">ช่วงที่เลือกใช้หน่วยเวลาต่างกัน จึงแสดงกราฟแยกกัน</p>
       <p className="text-xs font-medium">ช่วงหลัก</p><WebsiteSiteTrendChart sites={sites} month={range.from.slice(0, 7)} range={range} asOf={asOf} metric={metric} hiddenSites={hiddenSites} onToggleSite={onToggleSite} />

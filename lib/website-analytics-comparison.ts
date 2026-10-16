@@ -3,7 +3,7 @@ import type { WebsiteChartMetric } from "./website-analytics-chart.ts";
 import { parseWebsiteScope, scopeSearchParams, type WebsiteScopeSelection } from "./website-analytics-scope.ts";
 
 const dayMs = 86400000;
-import { hourlyBounds } from "./website-analytics-time.ts";
+import { dailyWindowBounds, hourlyBounds } from "./website-analytics-time.ts";
 import { websiteChartData } from "./website-analytics-chart.ts";
 
 export interface WebsitePeriodSeries {
@@ -81,6 +81,15 @@ export function websitePeriodSeries(site: WebsiteSummary | undefined, range: Ana
     return { range, total, daily: points, expectedDays: points.length, availableDays: observed, coverageComplete: complete, status, asOf, granularity: "hour", durationMinutes: points.length * 60, requestedEnd: bounds.end };
   }
   const total = site?.totals?.[metric] ?? null;
+  if (range.timeFrom && range.timeTo) {
+    const points = websiteChartData(site ? [site] : [], range.from.slice(0, 7), metric, "day", range, asOf).map(point => ({ date: point.date, value: site ? point.values[site.key] : null }));
+    const expectedDays = (Date.parse(range.to) - Date.parse(range.from)) / dayMs + 1;
+    const availableDays = points.filter(point => point.value !== null).length;
+    const coverageComplete = Boolean(site?.status === "complete" && site.coverage?.range_complete && site.coverage.rows_complete && availableDays === expectedDays && points.reduce((sum, point) => sum + (point.value ?? 0), 0) === total);
+    const end = dailyWindowBounds(range.to, { timeFrom: range.timeFrom, timeTo: range.timeTo }).end;
+    const status = total === null ? "unavailable" : Date.parse(asOf) < Date.parse(end) ? "ongoing" : coverageComplete ? "complete" : "partial";
+    return { range, total, daily: points, expectedDays, availableDays, coverageComplete, status, asOf, granularity: "day", requestedEnd: end };
+  }
   const retentionTime = site?.coverage ? Date.parse(site.coverage.data_available_from) : NaN;
   const availableFrom = Number.isFinite(retentionTime) ? new Date(retentionTime + 7 * 3600000).toISOString().slice(0, 10) : "";
   const rows = new Map((total === null ? [] : site?.daily ?? []).filter(row => row.date >= availableFrom).map(row => [row.date, row[metric]]));
@@ -99,11 +108,16 @@ export function websitePeriodSeries(site: WebsiteSummary | undefined, range: Ana
 }
 
 export function websitePeriodChange(current: WebsitePeriodSeries, previous: WebsitePeriodSeries): WebsitePeriodChange {
+  if ((current.granularity ?? "day") === "day" && !sameDailyTimeWindow(current.range, previous.range)) return { kind: "unavailable" };
   if ((current.granularity ?? "day") !== (previous.granularity ?? "day") || current.durationMinutes !== previous.durationMinutes) return { kind: "unavailable" };
   if (current.status !== "complete" || previous.status !== "complete" || current.total === null || previous.total === null || current.expectedDays !== previous.expectedDays) return { kind: "unavailable" };
   const difference = current.total - previous.total;
   if (previous.total === 0) return difference === 0 ? { kind: "unchanged", difference: 0 } : { kind: "zero_baseline", difference };
   return { kind: "percentage", difference, percentage: difference / previous.total * 100 };
+}
+
+export function sameDailyTimeWindow(a: AnalyticsDateRange, b: AnalyticsDateRange): boolean {
+  return (a.timeFrom ?? "00:00") === (b.timeFrom ?? "00:00") && (a.timeTo ?? "24:00") === (b.timeTo ?? "24:00");
 }
 
 export function pairWebsitePeriods(current: WebsitePeriodSeries, previous: WebsitePeriodSeries): WebsitePeriodPoint[] {

@@ -26,11 +26,11 @@ test("time changes reset pages but page changes preserve times", () => {
   const next = new URL(websiteAnalyticsHref(query, { month: "2026-10", from: "2026-10-14", to: "2026-10-14" }), "http://local");
   assert.equal(next.searchParams.get("from"), "2026-10-14");
 });
-test("invalid or partial time filters cannot be used for multiple days", () => {
+test("invalid or partial time filters are rejected while recurring ranges are accepted", () => {
   for (const extra of [{ timeFrom: "09:00" }, { timeFrom: "09:30", timeTo: "18:00" }, { timeFrom: "24:00", timeTo: "24:00" }, { timeFrom: "18:00", timeTo: "09:00" }]) {
     assert.throws(() => parseWebsiteAnalyticsQuery({ from: "2026-10-15", to: "2026-10-15", ...extra }, ["a"], now));
   }
-  assert.throws(() => parseWebsiteAnalyticsQuery({ from: "2026-10-14", to: "2026-10-15", timeFrom: "09:00", timeTo: "18:00" }, ["a"], now));
+  assert.equal(analyticsPeriod(parseWebsiteAnalyticsQuery({ from: "2026-10-14", to: "2026-10-15", timeFrom: "09:00", timeTo: "18:00" }, ["a"], now), now).contract_version, "1.2");
   const scope = parseWebsiteScope(JSON.stringify({ sites: ["a"], comparison: { sites: ["a"], from: "2026-10-14", to: "2026-10-14", timeFrom: "10:00", timeTo: "24:00" } }), ["a"], now);
   assert.equal(scope?.comparison?.timeTo, "24:00");
 });

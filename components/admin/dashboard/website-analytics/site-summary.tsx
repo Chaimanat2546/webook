@@ -22,7 +22,7 @@ function SiteStatus({ site, showCoverage = false }: { site: WebsiteSummary; show
   const loaded = site.status === "complete" || site.status === "partial";
   const unconfigured = site.status === "not_configured";
   const partial = showCoverage && site.status === "partial";
-  return <Badge variant="outline" className={partial || unconfigured ? "border-amber-200 bg-amber-50 text-amber-700" : loaded ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}>{partial ? "ข้อมูลไม่ครบ" : loaded ? "โหลดสำเร็จ" : unconfigured ? "ยังไม่ได้ตั้งค่า" : site.status === "hourly_unavailable" ? labels.hourly_unavailable : "โหลดไม่ได้"}</Badge>;
+  return <Badge variant="outline" className={partial || unconfigured ? "border-amber-200 bg-amber-50 text-amber-700" : loaded ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}>{partial ? "ข้อมูลไม่ครบ" : loaded ? "โหลดสำเร็จ" : unconfigured ? "ยังไม่ได้ตั้งค่า" : (site.status === "hourly_unavailable" || site.status === "time_range_unavailable") ? labels[site.status] : "โหลดไม่ได้"}</Badge>;
 }
 
 function MobileSiteSummary({ sites, month, range, showCoverage = false, scope }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; showCoverage?: boolean; scope?: WebsiteScopeSelection }) {

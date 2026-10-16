@@ -1,4 +1,5 @@
 import "server-only";
+import { atOrAfterAnalyticsTimestamp } from "../../lib/website-analytics-time.ts";
 import { addMetrics, type AnalyticsPeriod, type AnalyticsSite, type AnalyticsVilla, type SiteReportResult, type SourceReport } from "../../lib/website-analytics.ts";
 
 // Upstream reports accept at most 90 inclusive days. Keep one snapshot and
@@ -25,7 +26,7 @@ export async function readSiteRange(site: AnalyticsSite, period: AnalyticsPeriod
       combined.daily.push(...report.daily);
       combined.coverage.range_complete &&= report.coverage.range_complete;
       combined.coverage.rows_complete &&= report.coverage.rows_complete;
-      if (Date.parse(report.coverage.data_available_from) > Date.parse(combined.coverage.data_available_from)) {
+      if (!atOrAfterAnalyticsTimestamp(combined.coverage.data_available_from, report.coverage.data_available_from)) {
         combined.coverage.data_available_from = report.coverage.data_available_from;
         combined.coverage.range_complete = false;
       }

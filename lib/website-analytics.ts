@@ -16,7 +16,8 @@ interface AnalyticsPeriodFields {
 }
 export interface AnalyticsDailyPeriod extends AnalyticsPeriodFields { contract_version: "1.0" }
 export interface AnalyticsHourlyPeriod extends AnalyticsPeriodFields { contract_version: "1.1"; granularity: "hour"; from_time: string; to_time: string }
-export type AnalyticsPeriod = AnalyticsDailyPeriod | AnalyticsHourlyPeriod;
+export interface AnalyticsDailyWindowPeriod extends AnalyticsPeriodFields { contract_version: "1.2"; granularity: "day"; from_time: string; to_time: string }
+export type AnalyticsPeriod = AnalyticsDailyPeriod | AnalyticsHourlyPeriod | AnalyticsDailyWindowPeriod;
 export interface AnalyticsMetrics {
   page_views: number; phone_clicks: number; chat_clicks: number;
   line_clicks: number; gallery_opens: number; contact_clicks: number;
@@ -31,7 +32,7 @@ export interface SourceReport {
   totals: AnalyticsMetrics; unattributed: AnalyticsMetrics;
   daily: AnalyticsDay[]; hourly?: AnalyticsHour[]; villas: AnalyticsVilla[]; coverage: AnalyticsCoverage;
 }
-export type SiteFailureReason = "not_configured" | "unauthorized" | "rate_limited" | "timeout" | "unavailable" | "invalid_report" | "hourly_unavailable";
+export type SiteFailureReason = "not_configured" | "unauthorized" | "rate_limited" | "timeout" | "unavailable" | "invalid_report" | "hourly_unavailable" | "time_range_unavailable";
 export type SiteReportResult = { ok: true; report: SourceReport } | { ok: false; reason: SiteFailureReason };
 export interface WebsiteSummary {
   key: string; displayName: string; origin: string; status: "complete" | "partial" | SiteFailureReason;
@@ -83,7 +84,7 @@ export function parseWebsiteAnalyticsQuery(raw: Record<string, unknown>, allowed
       typeof page !== "string" || !/^[1-9]\d{0,15}$/.test(page) || !Number.isSafeInteger(Number(page))) {
     throw new WebsiteAnalyticsError("invalid_query", 400);
   }
-  if (raw.granularity !== undefined && raw.granularity !== "hour" && raw.granularity !== "day" && raw.granularity !== "month" || raw.granularity === "hour" && !time) throw new WebsiteAnalyticsError("invalid_query", 400);
+  if (raw.granularity !== undefined && raw.granularity !== "hour" && raw.granularity !== "day" && raw.granularity !== "month" || raw.granularity === "hour" && (!time || range?.from !== range?.to)) throw new WebsiteAnalyticsError("invalid_query", 400);
   if (raw.view !== undefined && raw.view !== "houses") throw new WebsiteAnalyticsError("invalid_query", 400);
   if (raw.search !== undefined && (typeof raw.search !== "string" || raw.search.length > 100)) throw new WebsiteAnalyticsError("invalid_query", 400);
   const search = typeof raw.search === "string" ? raw.search.trim() : "";
@@ -116,12 +117,11 @@ export function analyticsPeriod(query: WebsiteAnalyticsQuery, now: Date): Analyt
   const [year, month] = query.month.split("-").map(Number);
   const last = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
   const fields = { from_date: range?.from ?? `${query.month}-01`, to_date: range?.to ?? (last < today ? last : today), timezone: "Asia/Bangkok" as const, as_of: now.toISOString(), villa_id: null };
-  return time ? { ...fields, contract_version: "1.1", granularity: "hour", from_time: time.timeFrom, to_time: time.timeTo } : { ...fields, contract_version: "1.0" };
+  return time ? { ...fields, ...(range?.from === range?.to ? { contract_version: "1.1" as const, granularity: "hour" as const } : { contract_version: "1.2" as const, granularity: "day" as const }), from_time: time.timeFrom, to_time: time.timeTo } : { ...fields, contract_version: "1.0" };
 }
 export function websiteAnalyticsHref(query: WebsiteAnalyticsQuery, changes: Partial<WebsiteAnalyticsQuery> = {}): string {
   const next = { ...query, ...changes };
   if (changes.month !== undefined && changes.from === undefined && changes.to === undefined) { delete next.from; delete next.to; delete next.timeFrom; delete next.timeTo; }
-  if (next.from !== next.to) { delete next.timeFrom; delete next.timeTo; }
   if (changes.month !== undefined || changes.from !== undefined || changes.to !== undefined || changes.timeFrom !== undefined || changes.timeTo !== undefined || changes.site !== undefined || changes.sort !== undefined || changes.search !== undefined) { next.page = 1; next.pages = {}; }
   const params = new URLSearchParams({ month: next.month, site: next.site });
   if (next.from && next.to) { params.set("from", next.from); params.set("to", next.to); }
@@ -135,7 +135,7 @@ export function websiteAnalyticsHref(query: WebsiteAnalyticsQuery, changes: Part
   return `/admin/dashboard/websites?${params}`;
 }
 export function analyticsDateRange(period: AnalyticsPeriod): AnalyticsDateRange {
-  return { from: period.from_date, to: period.to_date, ...(period.contract_version === "1.1" ? { timeFrom: period.from_time, timeTo: period.to_time } : {}) };
+  return { from: period.from_date, to: period.to_date, ...(period.contract_version !== "1.0" ? { timeFrom: period.from_time, timeTo: period.to_time } : {}) };
 }
 
 const houseCodeOrder = new Intl.Collator("en", { numeric: true });

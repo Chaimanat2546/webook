@@ -48,7 +48,7 @@ export function WebsiteSiteSummaryChart({ sites, month, range, legend }: { sites
   const monthLabel = new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "Asia/Bangkok" }).format(new Date(`${month}-01T00:00:00+07:00`));
 
   return <figure aria-label="กราฟเปรียบเทียบสถิติทุกเว็บไซต์" className="mb-6 min-w-0 border-b pb-6">
-    <p className="mb-3 text-xs text-muted-foreground">เปรียบเทียบผลรวมแต่ละเว็บไซต์ · {range ? `${range.from} ถึง ${range.to} · เวลาไทย` : monthLabel}</p>
+    <p className="mb-3 text-xs text-muted-foreground">เปรียบเทียบผลรวมแต่ละเว็บไซต์ · {range ? `${range.from} ถึง ${range.to}${range.timeFrom && range.timeTo ? ` · ${range.from === range.to ? "" : "ทุกวัน "}${range.timeFrom}–${range.timeTo}` : ""} · เวลาไทย` : monthLabel}</p>
     {legend}
     {data.length > 0 ? <>
       <ul className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="คำอธิบายสีกราฟ">

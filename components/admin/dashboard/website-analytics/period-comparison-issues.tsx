@@ -11,7 +11,7 @@ export function PeriodComparisonIssues({ rows }: { rows: WebsitePeriodRow[] }) {
   if (!issues.length) return null;
   const failed = issues.some(row => row.currentSelected && row.current.status === "unavailable" || row.previousSelected && row.previous.status === "unavailable");
   const partial = issues.some(row => row.currentSelected && !row.current.coverageComplete || row.previousSelected && !row.previous.coverageComplete);
-  const label = failed ? `โหลดไม่ครบ (${issues.length} เว็บ)` : partial ? `ข้อมูลไม่ครบ (${issues.length} เว็บ)` : "ยังไม่จบวัน";
+  const label = failed ? `โหลดไม่ครบ (${issues.length} เว็บ)` : partial ? `ข้อมูลไม่ครบ (${issues.length} เว็บ)` : issues.some(row => row.current.range.timeFrom || row.previous.range.timeFrom) ? "ยังไม่จบช่วงเวลา" : "ยังไม่จบวัน";
   return <Popover>
     <PopoverTrigger render={<Button type="button" variant="ghost" className="max-w-full gap-1 px-1 text-xs text-amber-700 dark:text-amber-400" />}>
       {label}<span className="sr-only"> ดูรายละเอียด</span><ChevronDown aria-hidden className="size-3" />
