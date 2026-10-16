@@ -3,14 +3,12 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { AnalyticsDateRange } from "../../../../lib/website-analytics";
-import { ReportDateRangePicker } from "../report-date-range-picker";
+import { WebsiteDateRangePicker } from "./website-date-range-picker";
 import { parseAnalyticsTimeRange } from "../../../../lib/website-analytics-time";
-import { WebsiteTimeRangeFilter } from "./website-time-range-filter";
 
 export function SummaryRangeFilter({ month, range, today, availableFrom }: { month: string; range: AnalyticsDateRange; today: string; availableFrom?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const time = range.timeFrom && range.timeTo ? parseAnalyticsTimeRange(range.timeFrom, range.timeTo, range) : undefined;
   function navigate(draft: AnalyticsDateRange) {
     const params = new URLSearchParams(window.location.search);
     params.set("month", month);
@@ -22,11 +20,7 @@ export function SummaryRangeFilter({ month, range, today, availableFrom }: { mon
     startTransition(() => router.push(`/admin/dashboard?${params}`, { scroll: false }));
   }
   return <div className="w-full min-w-0 max-w-full space-y-2 sm:w-auto" aria-busy={pending}>
-    <ReportDateRangePicker month={month} range={range} today={today} availableFrom={availableFrom} pastOnly compactShortcuts loading={pending} label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={draft => {
-      if (draft.from === range.from && draft.to === range.to) return;
-      navigate({ ...draft, ...(draft.from === draft.to ? time : {}) });
-    }} />
-    {time && <WebsiteTimeRangeFilter key={`${range.from}:${time.timeFrom}:${time.timeTo}`} idPrefix="analytics-primary" value={time} pending={pending} onApply={next => navigate({ ...range, ...next })} />}
+    <WebsiteDateRangePicker month={month} range={range} today={today} availableFrom={availableFrom} pastOnly compactShortcuts loading={pending} label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={navigate} />
     {pending && <p role="status" className="text-xs text-muted-foreground">กำลังโหลด…</p>}
   </div>;
 }
