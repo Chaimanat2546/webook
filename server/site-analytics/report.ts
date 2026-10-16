@@ -1,7 +1,7 @@
 import "server-only";
 import { addMetrics, emptyMetrics, METRIC_KEYS, type AnalyticsMetrics, type AnalyticsPeriod, type AnalyticsSite, type SourceReport } from "../../lib/website-analytics.ts";
 
-import { atOrAfterAnalyticsTimestamp, hourlyBounds } from "../../lib/website-analytics-time.ts";
+import { atOrAfterAnalyticsTimestamp, dailyWindowBounds, hourlyBounds } from "../../lib/website-analytics-time.ts";
 function invalid(): never { throw new Error("invalid_report"); }
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return invalid();
@@ -30,9 +30,11 @@ export function parseSourceReport(value: unknown, site: AnalyticsSite, period: A
   if (row.contract_version !== period.contract_version || row.site_id !== site.siteId || query.contract_version !== period.contract_version || query.from_date !== period.from_date || query.to_date !== period.to_date || query.timezone !== period.timezone || query.villa_id !== null || query.as_of !== period.as_of) invalid();
   const bounds = period.contract_version === "1.1" ? hourlyBounds(period.from_date, { timeFrom: period.from_time, timeTo: period.to_time }, period.as_of) : undefined;
   if (period.contract_version === "1.1" && (query.granularity !== "hour" || query.from_time !== period.from_time || query.to_time !== period.to_time || period.from_date !== period.to_date)) invalid();
+  if (period.contract_version === "1.2" && (query.granularity !== "day" || query.from_time !== period.from_time || query.to_time !== period.to_time)) invalid();
   timestamp(row.generated_at);
   const available = timestamp(coverage.data_available_from);
-  const rangeComplete = atOrAfterAnalyticsTimestamp(bounds?.start ?? `${period.from_date}T00:00:00+07:00`, available);
+  const selectedStart = period.contract_version === "1.2" ? dailyWindowBounds(period.from_date, { timeFrom: period.from_time, timeTo: period.to_time }).start : bounds?.start ?? `${period.from_date}T00:00:00+07:00`;
+  const rangeComplete = atOrAfterAnalyticsTimestamp(selectedStart, available);
   if (typeof coverage.range_complete !== "boolean" || typeof coverage.rows_complete !== "boolean" || coverage.range_complete !== rangeComplete) invalid();
   if (!Array.isArray(row.daily) || !Array.isArray(row.villas)) invalid();
   const totals = metrics(row.totals), unattributed = metrics(row.unattributed);
@@ -41,7 +43,9 @@ export function parseSourceReport(value: unknown, site: AnalyticsSite, period: A
     const day = object(value);
     if (typeof day.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day.date) || day.date < period.from_date || day.date > period.to_date || days.has(day.date) || new Date(`${day.date}T00:00:00Z`).toISOString().slice(0, 10) !== day.date) invalid();
     days.add(day.date);
-    return { ...metrics(day), date: day.date };
+    const values = metrics(day);
+    if (period.contract_version === "1.2" && Date.parse(dailyWindowBounds(day.date, { timeFrom: period.from_time, timeTo: period.to_time }).start) >= Date.parse(period.as_of) && METRIC_KEYS.some(key => values[key] !== 0)) invalid();
+    return { ...values, date: day.date };
   }).sort((a, b) => a.date.localeCompare(b.date));
   const expectedDays = (Date.parse(period.to_date) - Date.parse(period.from_date)) / 86400000 + 1;
   if (days.size !== expectedDays) invalid();

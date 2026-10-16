@@ -70,8 +70,8 @@ test("retention watermark preserves PostgreSQL microseconds at an exact hour", (
 test("completed hours today can compare but ongoing or unequal durations cannot", () => {
   const site = { ...sites[0], status: "complete" as const, coverage: hourlySource().coverage, totals: metrics(5), hourly: parseSourceReport(hourlySource(), sites[0], hourlyPeriod).hourly };
   const range = { from: "2026-10-15", to: "2026-10-15", timeFrom: "09:00", timeTo: "11:00" };
-  const complete = websitePeriodSeries(site, range, "2026-10-15T05:00:00.000Z", "page_views");
+  const complete = websitePeriodSeries(site, range, "2026-10-15T05:00:00.000Z", "page_views", "hour");
   assert.equal(complete.status, "complete");
   assert.deepEqual(websitePeriodChange(complete, complete), { kind: "percentage", difference: 0, percentage: 0 });
-  assert.equal(websitePeriodChange(complete, websitePeriodSeries(site, { ...range, timeTo: "12:00" }, hourlyPeriod.as_of, "page_views")).kind, "unavailable");
+  assert.equal(websitePeriodChange(complete, websitePeriodSeries(site, { ...range, timeTo: "12:00" }, hourlyPeriod.as_of, "page_views", "hour")).kind, "unavailable");
 });

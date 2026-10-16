@@ -1,12 +1,40 @@
 # สถิติเข้าเว็บไซต์
 
+## สถานะโหลดของกราฟ
+
+การยืนยันช่วงหลักหรือเพิ่ม/แก้/ลบชุดเทียบใช้ transition ร่วมกันภายในการ์ด Dashboard และหน้ารายละเอียดเว็บไซต์ Skeleton แสดงทับเฉพาะพื้นที่กราฟตามขนาดเดิม ข้อมูลเก่าถูกซ่อนจากสายตาและ screen reader และไม่รับการโต้ตอบขณะรอ ตัวเลือกวันเวลาและโหมดกราฟปิดชั่วคราวจน transition จบ ไม่มีข้อความ loading แยกใต้ datepicker
+
+คงกราฟเดิมไว้เบื้องหลังเพื่อรักษาความสูง รวมถึงกราฟแยกสองหน่วย และเก็บโหมด สถิติ และการซ่อนเว็บไซต์ไว้ การเปิดปฏิทินหรือแก้ draft ยังไม่โหลดข้อมูล การสลับโหมด สถิติ และซ่อนเว็บเมื่อไม่มี request เปลี่ยนทันที ไม่มีการหน่วงเวลาหรือเพิ่ม fetch เมื่อโหลดสำเร็จหรือได้ผลลัพธ์ว่าโหลดไม่ได้ Skeleton จะหายไปและแสดงผลข้อมูล/ข้อผิดพลาดตามเดิม การโหลดหน้าแรกยังใช้ Suspense skeleton ที่มีอยู่
+
+## แนวโน้มรวมทุกเว็บ
+
+ปุ่มที่สาม “แนวโน้มรวมทุกเว็บ” อยู่ถัดจาก “ยอดรวมแต่ละเว็บ” ในชุดมุมมองเดิม ใช้ปุ่มสูง 32px และคงมุมมองแยกเว็บไซต์เป็นค่าเริ่มต้น โหมดใหม่นี้แสดงแนวโน้มเท่านั้น ไม่เพิ่มการ์ดยอดรวมทั้งช่วง เลือกเข้าชม กดติดต่อรวม หรือเปิดรูปได้ และไม่เรียก API เพิ่มเมื่อสลับมุมมองหรือสถิติ
+
+รวมค่าจากทุกเว็บไซต์ในชุดข้อมูลของแต่ละช่วงโดยไม่ขึ้นกับการซ่อนเส้นในมุมมองแยกเว็บ แต่ละชั่วโมง/วันรวมเฉพาะค่าที่มีข้อมูล ยืนยันค่า 0 ตามต้นทาง หากไม่มีข้อมูลทุกเว็บในจุดนั้นจะแสดงเป็นช่องว่าง แจ้งจำนวนเว็บที่โหลดข้อมูลได้และสถานะข้อมูลไม่ครบ พร้อมแสดงจำนวนเว็บที่มีข้อมูลของแต่ละจุดใน tooltip ตารางรายเว็บไซต์ยังแสดงยอดเดิม
+
+กราฟแนวโน้มปกติและช่วงหลักใช้เส้นทึบทุกเว็บไซต์ โดยใช้สีแยกเว็บไซต์ เส้นประสงวนไว้สำหรับชุดเทียบ รวมถึงกราฟที่แยกเพราะหน่วยเวลาต่างกัน ตัวอย่างเส้นใน legend ใช้รูปแบบเดียวกับเส้นข้อมูล
+
+Tooltip ของกราฟแนวโน้มรวมและกราฟเทียบแยกเว็บติดตามจุดที่ชี้หรือเลือกด้วยคีย์บอร์ด ใช้การพลิกด้านและจำกัดขอบเขตของ Recharts แทนการล็อกตำแหน่งซ้ายสุด โดยจำกัดความกว้างให้เหลือพื้นที่แกน Y และขอบขวาของกราฟบนมือถือ
+
+เมื่อมีชุดเทียบ ใช้เส้นทึบสำหรับผลรวมช่วงหลักและเส้นประอีกสีสำหรับผลรวมชุดเทียบ พร้อมระบุชื่อช่วงใน legend ชุดเทียบวาดด้านหลังด้วยเส้นที่หนากว่าและจุดวงแหวน เพื่อให้ยังแยกสองเส้นได้เมื่อค่าตรงกัน โดยไม่เลื่อนค่าหรือตำแหน่งข้อมูล รายชั่วโมงจับคู่ตามเวลาไทยจริงแม้เลือกช่วงเวลาต่างกัน รายวันจับคู่ตามลำดับวัน และแยกกราฟเมื่อหน่วยรายชั่วโมง/รายวันต่างกัน โหมดแนวโน้มรวมไม่แสดงเปอร์เซ็นต์การเปลี่ยนแปลง
+
+## Independent comparison conditions
+
+Primary and comparison dates/clocks are independent after adding a comparison. The add-comparison button opens the existing date/time picker immediately without navigation or analytics fetching. Adjacent preceding dates are only the initial draft (falling back to the primary at the minimum supported date). Only Apply writes the comparison URL and fetches the chosen report; Cancel, Escape and outside dismissal leave the graph and URL unchanged. Once committed, the comparison remains unchanged when the primary range changes. **ใช้เวลาตามช่วงหลัก** copies only the normalized clock window. Both comparison draft dates and its day count stay exactly as selected, including ranges longer or shorter than the primary. Full-day primary selections copy 00:00–24:00 and turn off the optional time fields. Both site selections are preserved. Removing a comparison preserves the primary query. Draft date/time edits load nothing until Apply; cancellation restores committed state. Controls remain 32px with 32×32 month navigation and clocks below the calendar.
+
+`lib/website-analytics-comparison-policy.ts` owns layout, compatibility reasons and condition matching. Source unit comes from the actual report contract (1.1/hour, 1.0 or 1.2/day), not date count. This preserves daily implicit monthly reports on the first day of a month. Copying clocks remains available for legacy one-day monthly reports because it no longer changes dates or units. Copying clocks does not make unequal day counts or units comparable.
+
+Different units use separate labelled graphs. Hourly selections overlay on a shared Thai clock axis even when their windows differ; the axis spans both windows and keeps unselected hours null, including gaps between disjoint windows. Daily selections overlay by ordinal day, even with different durations/windows, and report all structural mismatch reasons. Hourly selections show actual clock ticks. The compact primary and comparison controls sit at the top right of the card, wrapping on narrow screens, with 32px controls. Tooltips show both real dates/windows; unavailable/out-of-range/retention gaps are null, observed zero remains zero, and failed first sources do not erase another source's axis. Website colors/visibility are shared across both periods.
+
+Percentages require the website on both sides, equal units/day counts/normalized clocks, complete coverage and elapsed windows. Every view uses the same policy and reason labels. A zero baseline shows an absolute increase or zero-to-zero unchanged, without division by zero. Requested days/hours are labelled separately from coverage and as_of; totals remain actual reported values even when a comparison percentage is unavailable. No hourly averages, producer API changes, per-day requests or new dependencies were introduced.
+
 ## ขอบเขตกราฟและชุดเปรียบเทียบ
 
 Dashboard เริ่มด้วยกราฟปกติของทุกเว็บไซต์และสถิติเข้าชม ไม่มีปุ่ม “ทุกเว็บไซต์” หรือหน้าต่างเลือกเว็บซ้ำ ใช้รายชื่อเว็บไซต์เพียงชุดเดียว กดซ่อน/แสดงเว็บใดจะมีผลกับทั้งช่วงหลักและช่วงเทียบพร้อมกัน ทั้งกราฟรายวันและยอดรวม การซ่อนมีผลเฉพาะกราฟ ไม่แก้ยอดในตารางสรุป และต้องเหลืออย่างน้อยหนึ่งเว็บที่แสดง
 
 คงตัวเลือกวันที่หลักไว้ที่หัวการ์ดและรายชื่อเว็บไว้ใน legend เหนือกราฟตาม UI เดิม ปุ่ม “เพิ่มชุดเปรียบเทียบ” อยู่ข้างตัวเลือกวันที่เดิมและเพิ่มเฉพาะตัวเลือกวันที่เทียบ โดยเริ่มจากช่วงก่อนหน้าที่มีจำนวนวันเท่ากัน ทั้งสองช่วงเลือกวันที่เองและยืนยันใช้ หรือยกเลิกได้อิสระ ใช้รายชื่อเว็บร่วมกันเสมอ เส้นทึบเป็นช่วงหลัก เส้นประเป็นช่วงเทียบ ไม่มีรายการชื่อเว็บซ้ำสำหรับแต่ละช่วง
 
-การเปลี่ยนวันที่ สลับรายวัน/ยอดรวม และเพิ่ม/เอาชุดเทียบออก คงสถานะการซ่อนร่วมไว้ ปุ่ม × เอาออกเฉพาะช่วงเทียบและหยุดอ่านช่วงนั้น รายชื่อเว็บใช้ flex-wrap และรูปแบบเส้นของ legend เดิม โดยปุ่มสูงอย่างน้อย 44px สถานะซ่อนแสดงด้วยชื่อขีดฆ่าและ aria-pressed ไม่อาศัยสีเพียงอย่างเดียว การซ่อนเป็น state ชั่วคราวในกราฟ ไม่เขียน URL ทุกครั้งที่กดชื่อเว็บ
+การเปลี่ยนวันที่ สลับรายวัน/ยอดรวม และเพิ่ม/เอาชุดเทียบออก คงสถานะการซ่อนร่วมไว้ ปุ่ม × เอาออกเฉพาะช่วงเทียบและหยุดอ่านช่วงนั้น รายชื่อเว็บใช้ flex-wrap และรูปแบบเส้นของ legend เดิม โดยปุ่มสูง 32px สถานะซ่อนแสดงด้วยชื่อขีดฆ่าและ aria-pressed ไม่อาศัยสีเพียงอย่างเดียว การซ่อนเป็น state ชั่วคราวในกราฟ ไม่เขียน URL ทุกครั้งที่กดชื่อเว็บ
 
 - รายวันจับคู่วันตามลำดับ 1..N เส้นทึบเป็นชุดหลัก เส้นประเป็นชุดเทียบ tooltip แสดงวันที่จริงของแต่ละชุด เว็บไซต์ที่ไม่ได้เลือกในอีกชุดแสดงจุด “ไม่อยู่ในชุด” แยกจากข้อมูลที่โหลดไม่ได้ (`—`) หากช่วงยาวไม่เท่ากันจะคงทุกวันของช่วงที่ยาวกว่า และระบุว่านอกช่วงสำหรับฝั่งที่สั้นกว่า ไม่สร้างวันที่หรือเติมศูนย์
 - ยอดรวมแสดงแท่งและยอดของเว็บที่เปิดแสดงทั้งสองช่วง บนสเกลร่วมกัน ตารางใต้ Dashboard แสดงชุดหลักเท่านั้น
@@ -170,13 +198,13 @@ Primary website-analytics month controls use `ReportDateRangePicker` with shortc
 
 ## Hourly website reports (2026-10-16)
 
-Implemented source changes, not evidence of online rollout. Selecting an explicit single date uses upstream contract 1.1 and an hourly chart. Select the start/end clock hour in Thai time, default 00:00–24:00; 24:00 is end-only. The interval includes start and excludes end. Apply time once after editing; primary and comparison clocks are independent. Multiple dates keep daily reports, and implicit month reports remain daily even on the first day of the month.
+Implemented source changes, not evidence of online rollout. Selecting an explicit single date uses upstream contract 1.1 and an hourly chart. Select the start/end clock hour in Thai time, default 00:00–24:00; 24:00 is end-only. The interval includes start and excludes end. The existing date popup includes start/end hour fields below the calendar only when its draft selects a single day. Its single “ใช้” button commits dates and hours together; “ยกเลิก”, Escape and outside dismissal discard drafts. Invalid or reversed hours disable Apply. The closed trigger summarizes the committed date and hours. Primary and comparison clocks are independent. Multiple dates with explicit hours use contract1.2 daily-window reports (see below); implicit month reports remain daily even on the first day of the month.
 
-Dashboard URLs use analyticsTimeFrom/analyticsTimeTo alongside analyticsFrom/analyticsTo. Website details/admin API use timeFrom/timeTo alongside from/to; comparison clocks live in analyticsScope.comparison. Paired canonical HH:00 fields are required if either is sent; reject incomplete, reversed, non-hourly or multi-day times. Changing business dates preserves an explicit analytics range. Changing analytics dates to multiple days clears only that dataset's clocks; pagination/site/search/sort links preserve the selected time.
+Dashboard URLs use analyticsTimeFrom/analyticsTimeTo alongside analyticsFrom/analyticsTo. Website details/admin API use timeFrom/timeTo alongside from/to; comparison clocks live in analyticsScope.comparison. Paired canonical HH:00 fields are required if either is sent; reject incomplete, reversed, non-hourly times. Changing business dates preserves an explicit analytics range. Changing analytics dates preserves that dataset's clocks; pagination/site/search/sort links preserve the selected time.
 
 The producer's SQL filters the same events for hourly/daily/totals/villas/unattributed, so charts and tables share the exact chosen-hour totals. Timestamps represent database ingestion time. The consumer validates echoed query, site, canonical hour bounds (including sub-millisecond spoofing), expected elapsed buckets and sum invariants. PostgreSQL microsecond retention watermarks are respected. Future/pre-retention buckets are gaps; elapsed event-free buckets are true zeroes. Current-hour tooltips display the as_of cut-off, and future selections retain a notice in total/detail views.
 
-Two hourly periods pair by ordinal hour with actual dates/times in the tooltip; mixed daily/hourly periods use separate charts. Percentages require both complete, elapsed, equally long and equally granular periods. Upstream 422 for a valid 1.1 query yields hourly_unavailable (not a daily fallback); authorization/rate-limit/timeout/invalid-report errors remain distinct. Old contract 1.0 reports still parse normally. Producer deployment/migration must precede consumer production rollout.
+Two hourly periods pair by Thai clock hour with actual dates/times in the tooltip; mixed daily/hourly periods use separate charts. Percentages require both complete, elapsed, equally long and equally granular periods. Upstream 422 for a valid 1.1 query yields hourly_unavailable (not a daily fallback); authorization/rate-limit/timeout/invalid-report errors remain distinct. Old contract 1.0 reports still parse normally. Producer deployment/migration must precede consumer production rollout.
 
 Controls reuse existing Select/Button/Input/Calendar: height 32 CSS px, icon/calendar arrows 32 × 32 CSS px, wrapping on narrow screens. No new runtime dependency or collector/storage field was added.
 
@@ -185,3 +213,21 @@ Focused checks: node --import ./tests/register-server-only.mjs --test "tests/web
 ## Pull request validation
 
 PRs targeting `staging` and `main` run the same security audit, type check, lint, tests, Next/OpenNext builds and Worker dry-run. The dry-run uses the target branch's Wrangler config with placeholder Supabase settings and no deployment credentials. PR validation does not apply migrations or publish a Worker.
+
+
+## Recurring daily time windows (contract 1.2)
+
+Selecting multiple inclusive dates and09:00–18:00 applies that window independently to every Thai day, excluding all other hours, including nights between dates. Dates and clocks are drafts until the popup’s single Apply action. The clocks sit directly under the calendar in the same column (shortcuts stay left on desktop); mobile stacks the same sections with an internal scroll and sticky confirmation footer. Controls remain32px and calendar arrows32×32px. Switching single/range preserves draft hours; cancel/Escape/outside dismissal restores committed dates and hours.
+
+Explicit single dates retain contract1.1/hour. Multiple dates plus clocks use1.2/day and show daily graph points filtered to those hours, with an every-day label. Legacy multi-date/month URLs without clocks retain1.0; applying a multi-date popup makes its hours explicit (default00:00–24:00). Start must precede end, end24:00 means next midnight, and overnight/minute-level windows are rejected. Navigation and comparison scopes retain clocks.
+
+Source1.2 echoes day granularity/clocks/query/site and returns daily/totals/villas/unattributed/coverage without hourly. Webook validates exact sums and future-window zeroes, uses90-day chunks including a final one-day1.2 chunk, and preserves the shared snapshot and concurrency2. Unsupported1.2 returns time_range_unavailable with no full-day fallback.
+
+Daily graphs mask not-yet-started windows and retention gaps using exact timestamp bounds; current windows show the as_of cutoff. A completed window today can be complete before midnight. Comparison percentages require complete elapsed periods of equal length and matching daily clock windows; full-day1.0 and1.2 remain comparable. Unavailable first websites retain the requested date axis so healthy websites remain visible.
+
+Producer tenant migration and actual authenticated1.2 readiness checks must precede consumer rollout. Implementation or local tests are not proof of online deployment. The existing local SQL/HTTP integration runner tests1.0/1.1/1.2 and confirms three filtered days[2,2,2]=6 views versus12 full-day views, with one range request.
+# Optional time selection
+
+The calendar popup defaults to **เต็มวัน 24 ชั่วโมง** when no narrower clock range is selected. The existing shared Switch toggles **ระบุช่วงเวลา** in a 32px row; only its enabled state shows the start/end selectors below the calendar. Disabling it resets the draft to 00:00–24:00. Apply commits that full-day range using the existing API contracts, so one-day reports retain hourly buckets and multi-day reports retain daily buckets. Cancel, Escape and outside click discard the draft. Existing URLs with a narrower range reopen with time selection enabled; 00:00–24:00 reopens as full day. No API or database upgrade is needed for this UI option.
+
+The comparison popup contains **ใช้เวลาตามช่วงหลัก** beneath its calendar. It copies only the primary clocks into the draft without calling the calendar date-selection callback. It does not navigate until Apply; cancel/Escape/outside discard these edits. The two Dashboard date triggers use content-sized widths on one desktop row at the top right of the card, without equal-column stretching. Their groups wrap only when space is insufficient and shrink/truncate long date labels within mobile bounds; all controls remain 32px.

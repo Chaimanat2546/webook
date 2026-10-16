@@ -6,6 +6,14 @@ import { sites } from "./fixtures/website-analytics.ts";
 
 const query = { month: "2026-10", from: "2026-10-08", to: "2026-10-14", site: "all", page: 1 };
 const now = () => new Date("2026-10-15T03:00:00.000Z");
+test("implicit month first day retains daily source while an explicit single comparison is hourly", async () => {
+  const result = await loadWebsiteSummaryPeriods({ month: "2026-10", site: "all", page: 1 }, true, {
+    now: () => new Date("2026-10-01T03:00:00Z"), sites: () => sites,
+    read: async (site, period) => report(site, period),
+  }, { sites: [sites[0].key], comparison: { from: "2026-09-30", to: "2026-09-30", sites: [sites[0].key] } });
+  assert.equal(result.period.contract_version, "1.0");
+  assert.equal(result.previous?.granularity, "hour");
+});
 test("custom datasets load only their independent sites and dates at one snapshot", async () => {
   const reads: string[][] = [];
   const scope = { sites: [sites[0].key], comparison: { from: "2026-09-01", to: "2026-09-03", sites: [sites[1].key] } };

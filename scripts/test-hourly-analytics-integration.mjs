@@ -32,11 +32,12 @@ const { validateReportQuery } = await import("data:text/javascript;base64," + Bu
 const { guardAnalyticsRequest } = await import(pathToFileURL(join(producer, "worker-analytics-access.js")).href);
 const base = await readFile(join(producer, "supabase/migrations/20261006000000_create_site_analytics.sql"), "utf8");
 const upgrade = await readFile(join(producer, "supabase/migrations/20261016000000_add_hourly_site_analytics.sql"), "utf8");
+const dailyUpgrade = await readFile(join(producer, "supabase/migrations/20261016010000_add_daily_time_window_analytics.sql"), "utf8");
 docker(["createdb", "-U", "postgres", database]);
 let server;
 function cleanup() { if (server) server.close(); docker(["dropdb", "-U", "postgres", database]); }
 try {
-  sql(base + upgrade + `
+  sql(base + upgrade + dailyUpgrade + `
     select private.analytics_initialize('${site.siteId}');
     update public.analytics_metadata set data_available_from='2026-09-01T00:00:00Z';
     insert into public.analytics_events(event_id,site_id,villa_id,event_name,page_path,occurred_at)
@@ -44,7 +45,8 @@ try {
     from unnest(array['2026-10-13T17:00:00Z','2026-10-14T17:00:00Z','2026-10-15T17:00:00Z']) d
     cross join generate_series(0,23) h cross join generate_series(1,3) n where n<=h%3+1;`);
   const local = "http://127.0.0.1:3102";
-  const read = (selected, period) => fetchSiteReport(selected, period, { token: async () => token, fetch: (_url, init) => fetch(local + "/api/analytics/v1/report", init) });
+  let reportReads = 0;
+  const read = (selected, period) => { reportReads++; return fetchSiteReport(selected, period, { token: async () => token, fetch: (_url, init) => fetch(local + "/api/analytics/v1/report", init) }); };
   const json = (response, status, value) => { response.writeHead(status, { "content-type": "application/json", "cache-control": "private, no-store" }); response.end(JSON.stringify(value)); };
   server = createServer(async (request, response) => {
     try {
@@ -61,15 +63,16 @@ try {
       }
       if (url.pathname === "/data") {
         const params = url.searchParams;
+        const fixtureNow = params.get("fixtureCase") === "legacy" ? new Date("2026-10-01T03:00:00Z") : now;
         const from = params.get("analyticsFrom") ?? params.get("from") ?? "2026-10-15";
         const to = params.get("analyticsTo") ?? params.get("to") ?? "2026-10-15";
         const timeFrom = params.get("analyticsTimeFrom") ?? params.get("timeFrom");
         const timeTo = params.get("analyticsTimeTo") ?? params.get("timeTo");
-        const query = parseWebsiteAnalyticsQuery({ month: "2026-10", from, to, site: site.key, ...(timeFrom !== null || timeTo !== null ? { timeFrom: timeFrom ?? undefined, timeTo: timeTo ?? undefined } : {}), ...(params.has("view") ? { view: params.get("view") } : {}) }, [site.key], now);
-        const scope = parseWebsiteScope(params.get("analyticsScope") ?? undefined, [site.key], now);
-        const report = await loadWebsiteSummaryPeriods(query, false, { now: () => now, sites: () => [site], read }, scope);
-        const detail = serve ? await loadWebsiteAnalytics(query, { now: () => now, sites: () => [site], read, titles: async () => new Map([["9", "บ้านทดสอบข้อมูลรายชั่วโมง"]]) }) : undefined;
-        json(response, 200, { ...report, detail, query, range: analyticsDateRange(report.period), month: "2026-10", today: "2026-10-16", scope }); return;
+        const query = parseWebsiteAnalyticsQuery({ month: "2026-10", ...(params.get("fixtureCase") === "legacy" ? {} : { from, to, ...(timeFrom !== null || timeTo !== null ? { timeFrom: timeFrom ?? undefined, timeTo: timeTo ?? undefined } : {}) }), site: site.key, ...(params.has("view") ? { view: params.get("view") } : {}) }, [site.key], fixtureNow);
+        const scope = parseWebsiteScope(params.get("analyticsScope") ?? undefined, [site.key], fixtureNow);
+        const report = await loadWebsiteSummaryPeriods(query, false, { now: () => fixtureNow, sites: () => [site], read }, scope);
+        const detail = serve ? await loadWebsiteAnalytics(query, { now: () => fixtureNow, sites: () => [site], read, titles: async () => new Map([["9", "บ้านทดสอบข้อมูลรายชั่วโมง"]]) }) : undefined;
+        json(response, 200, { ...report, detail, query, caseName: params.get("caseName") ?? "custom", range: analyticsDateRange(report.period), month: "2026-10", today: new Date(fixtureNow.getTime()+7*3600000).toISOString().slice(0,10), scope }); return;
       }
       if (serve && url.pathname === "/bundle.js") { response.setHeader("content-type", "text/javascript"); response.end(await readFile(".superpowers/hourly/browser/bundle.js")); return; }
       if (serve && url.pathname.startsWith("/_next/static/")) {
@@ -99,9 +102,22 @@ try {
   assert.equal(report.sites[0].totals.page_views, 18);
   const midnight = await loadWebsiteSummaryPeriods({ ...selected, timeFrom: "23:00", timeTo: "24:00" }, false, { now: () => now, sites: () => [site], read });
   assert.equal(midnight.sites[0].totals.page_views, 3);
+  sql(`delete from public.analytics_events;
+    insert into public.analytics_events(event_id,site_id,villa_id,event_name,page_path,occurred_at)
+    select gen_random_uuid(),'${site.siteId}','9','page_view','/villas/9',(d||'T'||h||'+07:00')::timestamptz
+    from unnest(array['2026-10-12','2026-10-13','2026-10-14']) d cross join unnest(array['08:59:59.999999','09:00:00','17:59:59.999999','18:00:00']) h;`);
+  const beforeDaily = reportReads;
+  const recurring = await loadWebsiteSummaryPeriods({ ...selected, from: "2026-10-12", to: "2026-10-14" }, false, { now: () => now, sites: () => [site], read });
+  assert.equal(reportReads - beforeDaily, 1, "one range request, not one per day");
+  assert.equal(recurring.period.contract_version, "1.2");
+  assert.deepEqual(recurring.sites[0].daily.map(day => day.page_views), [2, 2, 2]);
+  assert.equal(recurring.sites[0].totals.page_views, 6);
+  const wholeDays = await loadWebsiteSummaryPeriods({ ...selected, from: "2026-10-12", to: "2026-10-14", timeFrom: undefined, timeTo: undefined }, false, { now: () => now, sites: () => [site], read });
+  assert.equal(wholeDays.period.contract_version, "1.0");
+  assert.equal(wholeDays.sites[0].totals.page_views, 12);
   const denied = await fetch(local + "/api/analytics/v1/report", { method: "POST", body: "{}" });
   assert.equal(denied.status, 401);
-  console.log("PASS: real producer SQL + validation + HTTP guard -> Webook client/parser/service; 9 selected hours=18 views; 23–24=3; unauthorized=401");
+  console.log("PASS: real producer SQL + validation + HTTP guard -> Webook client/parser/service; 9 selected hours=18 views; 23–24=3; unauthorized=401; recurring daily[2,2,2]=6 vs full-day12; one range request");
   if (serve) {
     console.log("Local fixture browser: http://127.0.0.1:3102 (owns disposable DB; Ctrl+C cleans up)");
     process.once("SIGINT", () => { cleanup(); process.exit(0); });

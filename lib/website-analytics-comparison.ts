@@ -3,8 +3,9 @@ import type { WebsiteChartMetric } from "./website-analytics-chart.ts";
 import { parseWebsiteScope, scopeSearchParams, type WebsiteScopeSelection } from "./website-analytics-scope.ts";
 
 const dayMs = 86400000;
-import { hourlyBounds } from "./website-analytics-time.ts";
+import { dailyWindowBounds, hourlyBounds, hourLabel } from "./website-analytics-time.ts";
 import { websiteChartData } from "./website-analytics-chart.ts";
+import { assessPeriodComparison } from "./website-analytics-comparison-policy.ts";
 
 export interface WebsitePeriodSeries {
   range: AnalyticsDateRange;
@@ -22,10 +23,12 @@ export interface WebsitePeriodSeries {
 
 export interface WebsitePreviousPeriod {
   range: AnalyticsDateRange;
+  granularity: "hour" | "day";
   sites: WebsiteSummary[];
 }
 
 export interface WebsitePeriodPoint {
+  hour?: string;
   date: string;
   previousDate: string;
   current: number | null;
@@ -42,6 +45,7 @@ export interface WebsitePeriodRow {
 }
 
 export interface WebsiteMultiPeriodPoint {
+  hour?: string;
   date: string;
   previousDate: string;
   values: Record<string, { current: number | null; previous: number | null }>;
@@ -70,9 +74,9 @@ export function previousAnalyticsRange(range: AnalyticsDateRange): AnalyticsDate
 }
 
 /** Keep source totals, confirmed zeroes and absent days distinct. */
-export function websitePeriodSeries(site: WebsiteSummary | undefined, range: AnalyticsDateRange, asOf: string, metric: WebsiteChartMetric): WebsitePeriodSeries {
-  if (range.from === range.to && range.timeFrom && range.timeTo) {
-    const bounds = hourlyBounds(range.from, { timeFrom: range.timeFrom, timeTo: range.timeTo }, asOf);
+export function websitePeriodSeries(site: WebsiteSummary | undefined, range: AnalyticsDateRange, asOf: string, metric: WebsiteChartMetric, granularity: "hour" | "day"): WebsitePeriodSeries {
+  if (granularity === "hour") {
+    const bounds = hourlyBounds(range.from, { timeFrom: range.timeFrom ?? "00:00", timeTo: range.timeTo ?? "24:00" }, asOf);
     const total = site?.totals?.[metric] ?? null;
     const points = websiteChartData(site ? [site] : [], range.from.slice(0, 7), metric, "hour", range).map(point => ({ date: point.date, value: site ? point.values[site.key] : null }));
     const observed = points.filter(point => point.value !== null).length;
@@ -81,6 +85,15 @@ export function websitePeriodSeries(site: WebsiteSummary | undefined, range: Ana
     return { range, total, daily: points, expectedDays: points.length, availableDays: observed, coverageComplete: complete, status, asOf, granularity: "hour", durationMinutes: points.length * 60, requestedEnd: bounds.end };
   }
   const total = site?.totals?.[metric] ?? null;
+  if (range.timeFrom && range.timeTo) {
+    const points = websiteChartData(site ? [site] : [], range.from.slice(0, 7), metric, "day", range, asOf).map(point => ({ date: point.date, value: site ? point.values[site.key] : null }));
+    const expectedDays = (Date.parse(range.to) - Date.parse(range.from)) / dayMs + 1;
+    const availableDays = points.filter(point => point.value !== null).length;
+    const coverageComplete = Boolean(site?.status === "complete" && site.coverage?.range_complete && site.coverage.rows_complete && availableDays === expectedDays && points.reduce((sum, point) => sum + (point.value ?? 0), 0) === total);
+    const end = dailyWindowBounds(range.to, { timeFrom: range.timeFrom, timeTo: range.timeTo }).end;
+    const status = total === null ? "unavailable" : Date.parse(asOf) < Date.parse(end) ? "ongoing" : coverageComplete ? "complete" : "partial";
+    return { range, total, daily: points, expectedDays, availableDays, coverageComplete, status, asOf, granularity: "day", requestedEnd: end };
+  }
   const retentionTime = site?.coverage ? Date.parse(site.coverage.data_available_from) : NaN;
   const availableFrom = Number.isFinite(retentionTime) ? new Date(retentionTime + 7 * 3600000).toISOString().slice(0, 10) : "";
   const rows = new Map((total === null ? [] : site?.daily ?? []).filter(row => row.date >= availableFrom).map(row => [row.date, row[metric]]));
@@ -95,32 +108,46 @@ export function websitePeriodSeries(site: WebsiteSummary | undefined, range: Ana
   const coverageComplete = Boolean(site?.status === "complete" && site.coverage?.range_complete && site.coverage.rows_complete && Number.isFinite(retentionTime)
     && availableDays === daily.length && daily.reduce((sum, row) => sum + (row.value ?? 0), 0) === total);
   const status = total === null ? "unavailable" : !today ? "partial" : range.to >= today ? "ongoing" : coverageComplete ? "complete" : "partial";
-  return { range, total, availableDays, expectedDays: daily.length, coverageComplete, status, daily };
+  return { range, total, availableDays, expectedDays: daily.length, coverageComplete, status, daily, granularity: "day", asOf };
 }
 
 export function websitePeriodChange(current: WebsitePeriodSeries, previous: WebsitePeriodSeries): WebsitePeriodChange {
-  if ((current.granularity ?? "day") !== (previous.granularity ?? "day") || current.durationMinutes !== previous.durationMinutes) return { kind: "unavailable" };
-  if (current.status !== "complete" || previous.status !== "complete" || current.total === null || previous.total === null || current.expectedDays !== previous.expectedDays) return { kind: "unavailable" };
+  if (!assessPeriodComparison(current, previous).canCompare || current.total === null || previous.total === null) return { kind: "unavailable" };
   const difference = current.total - previous.total;
   if (previous.total === 0) return difference === 0 ? { kind: "unchanged", difference: 0 } : { kind: "zero_baseline", difference };
   return { kind: "percentage", difference, percentage: difference / previous.total * 100 };
 }
 
+export function sameDailyTimeWindow(a: AnalyticsDateRange, b: AnalyticsDateRange): boolean {
+  return (a.timeFrom ?? "00:00") === (b.timeFrom ?? "00:00") && (a.timeTo ?? "24:00") === (b.timeTo ?? "24:00");
+}
+
 export function pairWebsitePeriods(current: WebsitePeriodSeries, previous: WebsitePeriodSeries): WebsitePeriodPoint[] {
+  if (current.granularity === "hour" && previous.granularity === "hour") {
+    const start = Math.min(Number((current.range.timeFrom ?? "00:00").slice(0, 2)), Number((previous.range.timeFrom ?? "00:00").slice(0, 2)));
+    const end = Math.max(Number((current.range.timeTo ?? "24:00").slice(0, 2)), Number((previous.range.timeTo ?? "24:00").slice(0, 2)));
+    const currentHours = new Map(current.daily.map(point => [hourLabel(point.date), point]));
+    const previousHours = new Map(previous.daily.map(point => [hourLabel(point.date), point]));
+    return Array.from({ length: end - start }, (_, index) => {
+      const hour = String(start + index).padStart(2, "0") + ":00";
+      const a = currentHours.get(hour), b = previousHours.get(hour);
+      return { hour, date: a?.date ?? "", previousDate: b?.date ?? "", current: a?.value ?? null, previous: b?.value ?? null };
+    });
+  }
   return Array.from({ length: Math.max(current.daily.length, previous.daily.length) }, (_, index) => ({ date: current.daily[index]?.date ?? "", previousDate: previous.daily[index]?.date ?? "", current: current.daily[index]?.value ?? null, previous: previous.daily[index]?.value ?? null }));
 }
 
-export function websitePeriodRows(sites: WebsiteSummary[], range: AnalyticsDateRange, previous: WebsitePreviousPeriod, asOf: string, metric: WebsiteChartMetric): WebsitePeriodRow[] {
+export function websitePeriodRows(sites: WebsiteSummary[], range: AnalyticsDateRange, previous: WebsitePreviousPeriod, asOf: string, metric: WebsiteChartMetric, granularity: "hour" | "day"): WebsitePeriodRow[] {
   const all = [...sites, ...previous.sites.filter(site => !sites.some(current => current.key === site.key))];
   return all.map(site => {
     const current = sites.find(current => current.key === site.key), prior = previous.sites.find(prior => prior.key === site.key);
-    return { key: site.key, displayName: site.displayName, currentSelected: Boolean(current), previousSelected: Boolean(prior), current: websitePeriodSeries(current, range, asOf, metric), previous: websitePeriodSeries(prior, previous.range, asOf, metric) };
+    return { key: site.key, displayName: site.displayName, currentSelected: Boolean(current), previousSelected: Boolean(prior), current: websitePeriodSeries(current, range, asOf, metric, granularity), previous: websitePeriodSeries(prior, previous.range, asOf, metric, previous.granularity) };
   });
 }
 
 export function websiteMultiPeriodPoints(rows: WebsitePeriodRow[]): WebsiteMultiPeriodPoint[] {
   const paired = rows.map(row => pairWebsitePeriods(row.current, row.previous));
-  return (paired[0] ?? []).map((point, index) => ({ date: point.date, previousDate: point.previousDate, values: Object.fromEntries(rows.map((row, rowIndex) => [row.key, { current: paired[rowIndex][index]?.current ?? null, previous: paired[rowIndex][index]?.previous ?? null }])) }));
+  return (paired[0] ?? []).map((point, index) => ({ ...(point.hour ? { hour: point.hour } : {}), date: point.date, previousDate: point.previousDate, values: Object.fromEntries(rows.map((row, rowIndex) => [row.key, { current: paired[rowIndex][index]?.current ?? null, previous: paired[rowIndex][index]?.previous ?? null }])) }));
 }
 
 /** One website toggle hides both periods without altering the source reports. */

@@ -51,7 +51,7 @@ test("different website sets retain every selected line, with unselected disting
     totals: { ...emptyMetrics(), page_views: values.reduce((a, b) => a + b, 0) }, coverage: { data_available_from: "2026-01-01T00:00:00Z", range_complete: true, rows_complete: true },
     daily: values.map((page_views, i) => ({ ...emptyMetrics(), page_views, date: new Date(Date.parse(from) + i * 86400000).toISOString().slice(0, 10) })) });
   const rows = websitePeriodRows([site("a", "2026-10-08", [10, 20])], { from: "2026-10-08", to: "2026-10-09" },
-    { range: { from: "2026-09-01", to: "2026-09-03" }, sites: [site("b", "2026-09-01", [0, 5, 7])] }, now.toISOString(), "page_views");
+    { granularity: "day", range: { from: "2026-09-01", to: "2026-09-03" }, sites: [site("b", "2026-09-01", [0, 5, 7])] }, now.toISOString(), "page_views", "day");
   assert.deepEqual(rows.map(row => [row.key, row.currentSelected, row.previousSelected]), [["a", true, false], ["b", false, true]]);
   const points = websiteMultiPeriodPoints(rows);
   assert.equal(points.length, 3, "the longer comparison must not be truncated");

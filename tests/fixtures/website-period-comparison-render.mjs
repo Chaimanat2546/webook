@@ -26,19 +26,19 @@ function render(sites, previousSites, view, asOf = "2026-10-10T03:00:00Z") {
     websites: sites, daily: sites[0]?.daily ?? [], villas: { rows: [], total: 0, page: 1, pageSize: 10 } };
   const query = { month: "2026-10", ...range, site: sites[0]?.key, page: 1 };
   return renderToStaticMarkup(React.createElement(AppRouterContext.Provider, { value: { push() {}, replace() {} } },
-    React.createElement(WebsitePeriodDetailChart, { report, query, compare: view !== "normalHidden", previous: view === "normalHidden" ? undefined : { range: priorRange, sites: previousSites }, ...(view === "normalHidden" ? { sites: [{ key: "a", displayName: "Website a" }, { key: "b", displayName: "Website b" }], scope: { sites: ["b"] } } : {}) })));
+    React.createElement(WebsitePeriodDetailChart, { report, query, compare: view !== "normalHidden", previous: view === "normalHidden" ? undefined : { granularity: "day", range: priorRange, sites: previousSites }, ...(view === "normalHidden" ? { sites: [{ key: "a", displayName: "Website a" }, { key: "b", displayName: "Website b" }], scope: { sites: ["b"] } } : {}) })));
 }
 function overview(sites, previousSites, view = "daily", asOf = "2026-10-10T03:00:00Z") {
-  return renderToStaticMarkup(React.createElement(SitePeriodComparison, { sites, range, previous: { range: priorRange, sites: previousSites }, view, asOf, metric: "page_views", hiddenSites: [], onToggleSite() {} }));
+  return renderToStaticMarkup(React.createElement(SitePeriodComparison, { granularity: "day", sites, range, previous: { granularity: "day", range: priorRange, sites: previousSites }, view, asOf, metric: "page_views", hiddenSites: [], onToggleSite() {} }));
 }
 function details(currentSite, previousSite, asOf = "2026-10-10T03:00:00Z") {
   return renderToStaticMarkup(React.createElement(PeriodComparisonDetails, {
-    current: websitePeriodSeries(currentSite, range, asOf, "page_views"),
-    previous: websitePeriodSeries(previousSite, priorRange, asOf, "page_views"),
+    current: websitePeriodSeries(currentSite, range, asOf, "page_views", "day"),
+    previous: websitePeriodSeries(previousSite, priorRange, asOf, "page_views", "day"),
   }));
 }
 function summary(previous) {
-  return renderToStaticMarkup(React.createElement(WebsiteSiteSummary, { sites: [current, site("b", 12, range, "partial")], month: "2026-10", range, compare: true,
+  return renderToStaticMarkup(React.createElement(WebsiteSiteSummary, { granularity: "day", sites: [current, site("b", 12, range, "partial")], month: "2026-10", range, compare: true,
     asOf: "2026-10-10T03:00:00Z", previous }));
 }
 function navigation(view) {
@@ -62,7 +62,7 @@ console.log(JSON.stringify({
   ongoingPartial: render([{ ...current, status: "partial", coverage: { ...current.coverage, rows_complete: false } }], [prior], "daily", "2026-10-09T03:00:00Z"),
   ongoingPartialDetails: details({ ...current, status: "partial", coverage: { ...current.coverage, rows_complete: false } }, prior, "2026-10-09T03:00:00Z"),
   total: render([current, site("b", 12, range)], [prior, site("b", null, priorRange, "timeout")], "total"),
-  unselectedPartial: summary({ range: priorRange, sites: [prior, site("b", 10, priorRange)] }),
+  unselectedPartial: summary({ granularity: "day", range: priorRange, sites: [prior, site("b", 10, priorRange)] }),
   fallbackPartial: summary(undefined),
   overview: overview([current, site("b", 12, range)], [prior, site("b", 10, priorRange)]),
   detailNavigation: navigation(undefined),
