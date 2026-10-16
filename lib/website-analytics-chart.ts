@@ -1,4 +1,5 @@
 import type { AnalyticsDateRange, WebsiteSummary } from "./website-analytics";
+import { atOrAfterAnalyticsTimestamp, hourlyBounds, parseAnalyticsTimeRange } from "./website-analytics-time.ts";
 
 export type WebsiteChartMetric = "page_views" | "contact_clicks" | "gallery_opens";
 export interface WebsiteChartPoint { date: string; values: Record<string, number | null> }
@@ -23,7 +24,17 @@ export function websiteComparisonData(sites: WebsiteSummary[]): WebsiteCompariso
 }
 
 /** Missing days and days outside source retention are gaps, never estimated zeros. */
-export function websiteChartData(sites: WebsiteSummary[], month: string, metric: WebsiteChartMetric, period: "day" | "month" = "day", range?: AnalyticsDateRange): WebsiteChartPoint[] {
+export function websiteChartData(sites: WebsiteSummary[], month: string, metric: WebsiteChartMetric, period: "hour" | "day" | "month" = "day", range?: AnalyticsDateRange): WebsiteChartPoint[] {
+  if (period === "hour") {
+    const time = parseAnalyticsTimeRange(range?.timeFrom, range?.timeTo, range);
+    if (!range || !time) return [];
+    const requested = hourlyBounds(range.from, time, `${range.from}T23:59:59.999+07:00`);
+    return requested.buckets.map(bucket => ({ date: bucket.start, values: Object.fromEntries(sites.map(site => {
+      const row = site.totals ? site.hourly?.find(hour => hour.start === bucket.start) : undefined;
+      const retained = !site.coverage || atOrAfterAnalyticsTimestamp(bucket.start, site.coverage.data_available_from);
+      return [site.key, row && retained ? row[metric] : null];
+    })) }));
+  }
   if (period === "month") {
     const rows = sites.map(site => new Map((site.monthly ?? []).filter(day => day.date <= month).map(day => [day.date, day[metric] ?? null])));
     return [...new Set(rows.flatMap(row => [...row.keys()]))].sort().map(date => ({ date, values: Object.fromEntries(sites.map((site, index) => [site.key, rows[index].get(date) ?? null])) }));

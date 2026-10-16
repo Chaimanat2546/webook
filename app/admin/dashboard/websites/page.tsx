@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireWebsiteAnalyticsAccess } from "../../../../server/auth/website-analytics";
 import { loadWebsiteAnalytics } from "../../../../server/services/website-analytics";
 import { listAnalyticsSites } from "../../../../server/site-analytics/registry";
-import { WebsiteAnalyticsError, type WebsiteAnalyticsQuery, type WebsiteAnalyticsReport } from "../../../../lib/website-analytics";
+import { WebsiteAnalyticsError, analyticsDateRange, type WebsiteAnalyticsQuery, type WebsiteAnalyticsReport } from "../../../../lib/website-analytics";
 import { parseWebsiteComparisonQuery, previousAnalyticsRange } from "../../../../lib/website-analytics-comparison";
 import { loadPreviousWebsitePeriod } from "../../../../server/services/website-analytics-comparison";
 import { WebsiteAnalyticsView } from "../../../../components/admin/dashboard/website-analytics/view";
@@ -32,9 +32,9 @@ export default async function WebsiteAnalyticsPage({ searchParams }: { searchPar
     report = await loadWebsiteAnalytics(query, { now: () => now });
   } catch (error) {
     if (!(error instanceof WebsiteAnalyticsError) || error.status !== 400) throw error;
-    return <div role="alert" className="space-y-3 rounded-lg border p-6"><h1 className="text-xl font-semibold">ตัวกรองสถิติไม่ถูกต้อง</h1><p>กรุณาเลือกเดือน เว็บไซต์ หรือเลขหน้าใหม่</p><Link className="underline" href="/admin/dashboard/websites">กลับหน้าสถิติ</Link></div>;
+    return <div role="alert" className="space-y-3 rounded-lg border p-6"><h1 className="text-xl font-semibold">ตัวกรองสถิติไม่ถูกต้อง</h1><p>กรุณาเลือกวันที่ เวลา เว็บไซต์ หรือเลขหน้าใหม่</p><Link className="underline" href="/admin/dashboard/websites">กลับหน้าสถิติ</Link></div>;
   }
-  const comparisonRange = scope?.comparison ?? previousAnalyticsRange({ from: report.period.from_date, to: report.period.to_date });
+  const comparisonRange = scope?.comparison ?? previousAnalyticsRange(analyticsDateRange(report.period));
   const previous = compare && comparisonRange ? await loadPreviousWebsitePeriod(query, report.period, { sites: () => sites }, { ...comparisonRange, sites: sites.map(site => site.key) }) : undefined;
   return <WebsiteAnalyticsView report={report} query={query} compare={compare} previous={previous} scope={scope} sites={sites.map(({ key, displayName }) => ({ key, displayName }))} />;
 }

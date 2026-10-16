@@ -9,6 +9,8 @@ import { WebsitePeriodDetailChart } from "./website-period-detail-chart";
 import { websitePeriodHref, type WebsitePreviousPeriod } from "../../../../lib/website-analytics-comparison";
 import { WebsiteAnalyticsTables } from "./tables";
 import { scopeSearchParams, type WebsiteScopeSelection } from "../../../../lib/website-analytics-scope";
+import { analyticsDateRange } from "../../../../lib/website-analytics";
+import { isFutureAnalyticsRange } from "../../../../lib/website-analytics-time";
 
 const headlines = [
   { key: "page_views", label: "ยอดเข้าชม", note: "รวมการเปิดหน้าเว็บไซต์ทุกครั้ง", icon: Eye },
@@ -18,7 +20,9 @@ const headlines = [
 const channels = [{ key: "phone_clicks", label: "กดโทร", icon: Phone }, { key: "line_clicks", label: "LINE", icon: MessageCircle }, { key: "chat_clicks", label: "Messenger", icon: MessageCircle }] as const;
 export function WebsiteAnalyticsView({ report, query, sites, compare = false, previous, scope }: { report: WebsiteAnalyticsReport; query: WebsiteAnalyticsQuery; sites: WebsiteOption[]; compare?: boolean; previous?: WebsitePreviousPeriod; scope?: WebsiteScopeSelection }) {
   const full = query.view === "houses";
+  const future = isFutureAnalyticsRange(analyticsDateRange(report.period), report.period.as_of);
   const backParams = new URLSearchParams({ month: query.month, ...(query.from && query.to ? { analyticsFrom: query.from, analyticsTo: query.to } : {}), ...(compare ? { analyticsCompare: "previous" } : {}) });
+  if (query.timeFrom && query.timeTo) { backParams.set("analyticsTimeFrom", query.timeFrom); backParams.set("analyticsTimeTo", query.timeTo); }
   if (full) return <div className="website-analytics-theme"><DashboardDetailLayout>
     <DashboardTaskHeader title="สถิติบ้านทั้งหมด" description={`${report.websites[0]?.displayName ?? "เว็บไซต์"} · จำนวนครั้งที่เข้าชมและกดติดต่อ`} backHref={websitePeriodHref(query, { view: undefined, sort: undefined, search: undefined, page: 1, pages: {} }, compare, scope)} backLabel="กลับไปภาพรวม" />
     <section>
@@ -30,6 +34,7 @@ export function WebsiteAnalyticsView({ report, query, sites, compare = false, pr
   return <div className="website-analytics-theme mx-auto min-w-0 max-w-7xl space-y-3 md:space-y-6">
     <DashboardTaskHeader title="ภาพรวมผลเว็บไซต์และบ้าน" description="จำนวนครั้งที่เข้าชมและกดติดต่อ ไม่ใช่จำนวนคนไม่ซ้ำ" backHref={`/admin/dashboard?${(scope ? scopeSearchParams(backParams, scope) : backParams)}`} backLabel="กลับ Dashboard" />
     <WebsiteAnalyticsFilters key={`${query.site}:${query.month}:${query.search ?? ""}:${query.sort ?? ""}`} query={query} sites={sites} compare={compare} scope={scope} today={new Date(Date.parse(report.period.as_of) + 7 * 3600000).toISOString().slice(0, 10)} />
+    {future && <p role="status" className="text-sm text-amber-700">ยังไม่ถึงช่วงเวลาที่เลือก · ยอดรวมยังไม่มีข้อมูลที่สังเกตแล้ว</p>}
     <div className="hidden flex-wrap justify-between gap-2 text-xs text-muted-foreground md:flex"><span>{report.period.from_date} ถึง {report.period.to_date} · เวลาไทย</span><span>ข้อมูลถึง {new Date(report.period.as_of).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</span></div>
     {report.availableSites < report.selectedSites && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
       {report.status === "unavailable" ? "ยังโหลดสถิติไม่ได้ กรุณาตรวจสอบสถานะแต่ละเว็บไซต์แล้วลองใหม่" : `บางเว็บไซต์โหลดไม่ได้: โหลดได้ ${report.availableSites} จาก ${report.selectedSites} เว็บไซต์ กรุณาลองใหม่`}
@@ -43,7 +48,7 @@ export function WebsiteAnalyticsView({ report, query, sites, compare = false, pr
       <div className="grid grid-cols-3 items-center gap-1 border-t pt-3 md:flex md:flex-wrap md:gap-3 md:pt-4"><p className="mr-auto hidden text-sm text-muted-foreground md:block">ช่องทางติดต่อ</p>{channels.map(({key, label, icon: Icon}) => <div key={key} className="flex min-w-0 flex-wrap items-center justify-center gap-1 text-[11px] md:gap-2 md:rounded-lg md:border md:bg-muted/30 md:px-3 md:py-2 md:text-sm"><Icon aria-hidden className="size-4 text-primary" /><span>{key === "chat_clicks" ? "แชท" : label}</span><strong className="tabular-nums">{count(key)}</strong><span className="hidden text-xs text-muted-foreground md:inline">ครั้ง</span></div>)}</div>
     </CardContent></Card>
     <WebsitePeriodDetailChart report={report} query={query} compare={compare} previous={previous} sites={sites} scope={scope} />
-    {report.totals && report.totals.page_views === 0 && report.totals.contact_clicks === 0 && report.totals.gallery_opens === 0 && <p className="text-sm text-muted-foreground">{report.status === "complete" ? "ยังไม่มีเหตุการณ์ในช่วงนี้" : "ยังไม่พบเหตุการณ์ในข้อมูลที่โหลดได้"}</p>}
+    {!future && report.totals && report.totals.page_views === 0 && report.totals.contact_clicks === 0 && report.totals.gallery_opens === 0 && <p className="text-sm text-muted-foreground">{report.status === "complete" ? "ยังไม่มีเหตุการณ์ในช่วงนี้" : "ยังไม่พบเหตุการณ์ในข้อมูลที่โหลดได้"}</p>}
     <WebsiteAnalyticsTables report={report} query={query} compare={compare} scope={scope} />
   </div>;
 }

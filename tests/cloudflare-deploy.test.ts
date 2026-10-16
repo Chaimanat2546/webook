@@ -101,7 +101,7 @@ describe("Cloudflare deployment boundary", () => {
     assert.equal(packageJson.scripts?.["deploy:cf"], "opennextjs-cloudflare build && opennextjs-cloudflare deploy");
   });
 
-  it("validates pull requests to main without credentials and deploys main only through production approval", () => {
+  it("validates pull requests to main and staging without credentials and deploys main only through production approval", () => {
     const pullRequestWorkflowPath = new URL("../.github/workflows/pull-request-main.yml", import.meta.url);
     const productionWorkflowPath = new URL("../.github/workflows/deploy-production.yml", import.meta.url);
 
@@ -110,6 +110,10 @@ describe("Cloudflare deployment boundary", () => {
 
     const pullRequestWorkflow = readFileSync(pullRequestWorkflowPath, "utf8");
     assert.match(pullRequestWorkflow, /pull_request:\s*\n\s*branches:\s*\n\s*- main/);
+    assert.match(pullRequestWorkflow, /pull_request:\s*\n\s*branches:\s*\n\s*- main\s*\n\s*- staging/);
+    assert.match(pullRequestWorkflow, /WRANGLER_CONFIG: \$\{\{ github\.base_ref == 'staging' && 'wrangler\.staging\.jsonc' \|\| 'wrangler\.jsonc' \}\}/);
+    assert.match(pullRequestWorkflow, /wrangler deploy --dry-run[^\n]*-c "\$WRANGLER_CONFIG"/);
+    assert.doesNotMatch(pullRequestWorkflow, /secrets\.|environment:|supabase.*migration/i);
     assert.match(pullRequestWorkflow, /npm run verify/);
     assert.match(pullRequestWorkflow, /npm run build/);
     assert.match(pullRequestWorkflow, /wrangler deploy --dry-run/);

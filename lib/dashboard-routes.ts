@@ -232,10 +232,14 @@ export function legacyDashboardHref(query: DashboardQuery): string {
   return dashboardOverviewHref(query);
 }
 
-export function dashboardPeriodParams(query: DashboardDateFilter & { month: string }, comparePrevious = false): URLSearchParams {
+export function dashboardPeriodParams(query: DashboardDateFilter & { month: string }, comparePrevious = false, analytics?: URLSearchParams): URLSearchParams {
   const params = new URLSearchParams({ month: query.month });
   if (query.dateFrom && query.dateTo) { params.set("dateFrom", query.dateFrom); params.set("dateTo", query.dateTo); }
   if (comparePrevious) params.set("analyticsCompare", "previous");
+  for (const key of ["analyticsFrom", "analyticsTo", "analyticsTimeFrom", "analyticsTimeTo", "analyticsScope"]) {
+    const value = analytics?.get(key);
+    if (value) params.set(key, value);
+  }
   return params;
 }
 export function dashboardOverviewHref(query: DashboardDateFilter & { month: string }): string {

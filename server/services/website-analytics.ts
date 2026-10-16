@@ -33,6 +33,7 @@ export async function loadWebsiteAnalytics(query: WebsiteAnalyticsQuery, depende
   await Promise.all([work(), work()]);
   let totals = emptyMetrics(), unattributed = emptyMetrics(), availableSites = 0;
   const days = new Map<string, AnalyticsDay>(), villas: WebsiteVilla[] = [], websites: WebsiteSummary[] = [];
+  const hours = new Map<string, NonNullable<WebsiteSummary["hourly"]>[number]>();
   for (const site of sites) {
     const result = results.get(site.key);
     const identity = { key: site.key, displayName: site.displayName, origin: site.origin };
@@ -40,7 +41,8 @@ export async function loadWebsiteAnalytics(query: WebsiteAnalyticsQuery, depende
     const report = result.report;
     availableSites++;
     totals = addMetrics(totals, report.totals); unattributed = addMetrics(unattributed, report.unattributed);
-    websites.push({ ...identity, status: report.coverage.range_complete && report.coverage.rows_complete ? "complete" : "partial", totals: report.totals, coverage: report.coverage, daily: report.daily });
+    websites.push({ ...identity, status: report.coverage.range_complete && report.coverage.rows_complete ? "complete" : "partial", totals: report.totals, coverage: report.coverage, daily: report.daily, ...(report.hourly ? { hourly: report.hourly } : {}) });
+    for (const hour of report.hourly ?? []) hours.set(hour.start, { ...addMetrics(hours.get(hour.start) ?? emptyMetrics(), hour), start: hour.start, end: hour.end });
     for (const day of report.daily) days.set(day.date, { ...addMetrics(days.get(day.date) ?? emptyMetrics(), day), date: day.date });
     for (const villa of report.villas) villas.push({ ...villa, siteKey: site.key, siteName: site.displayName });
   }
@@ -86,7 +88,7 @@ export async function loadWebsiteAnalytics(query: WebsiteAnalyticsQuery, depende
     ...(monthly ? { monthly } : {}),
     period, status: availableSites === 0 ? "unavailable" : complete ? "complete" : "partial",
     selectedSites: sites.length, availableSites, totals: availableSites ? totals : null, unattributed: availableSites ? unattributed : null,
-    websites, daily: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    websites, daily: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), ...(period.contract_version === "1.1" ? { hourly: [...hours.values()].sort((a, b) => a.start.localeCompare(b.start)) } : {}),
     villas: { rows: matchedVillas.slice((page - 1) * 10, page * 10), total: matchedVillas.length, page, pageSize: 10 },
   };
 }

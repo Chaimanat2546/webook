@@ -31,7 +31,7 @@ export function WebsiteSiteSummaryGraph({ sites, month, range, asOf, compare = f
   return <div className="min-w-0">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div role="group" aria-label="มุมมองกราฟเว็บไซต์" className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1">
-        <Button type="button" variant={view === "daily" ? "default" : "ghost"} aria-pressed={view === "daily"} onClick={() => setView("daily")}>แนวโน้มรายวัน</Button>
+        <Button type="button" variant={view === "daily" ? "default" : "ghost"} aria-pressed={view === "daily"} onClick={() => setView("daily")}>{range?.timeFrom ? "แนวโน้มรายชั่วโมง" : "แนวโน้มรายวัน"}</Button>
         <Button type="button" variant={view === "total" ? "default" : "ghost"} aria-pressed={view === "total"} onClick={() => setView("total")}>ยอดรวมแต่ละเว็บ</Button>
       </div>
       {(view === "daily" || compare) && <div role="group" aria-label={compare ? "เลือกสถิติเปรียบเทียบ" : "เลือกสถิติรายวัน"} className="flex flex-wrap gap-1">
@@ -44,7 +44,7 @@ export function WebsiteSiteSummaryGraph({ sites, month, range, asOf, compare = f
     </div>
     {compare && range && asOf && previous ? <SitePeriodComparison sites={sites} range={range} asOf={asOf} previous={previous} view={view} metric={metric} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} /> : <>
       {compare && <p role="status" className="mb-3 text-sm text-amber-700">ช่วงก่อนหน้าอยู่นอกวันที่ที่ระบบรองรับ ยังแสดงกราฟช่วงที่เลือกได้ตามปกติ</p>}
-      {view === "total" ? <WebsiteSiteSummaryChart sites={sites.filter(site => !visibility.hidden.includes(site.key))} month={month} range={range} legend={<WebsiteChartLegend sites={sites} availableSites={sites.filter(site => site.totals !== null).map(site => site.key)} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} />} /> : <WebsiteSiteTrendChart sites={sites} month={month} range={range} metric={metric} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} />}
+      {view === "total" ? <WebsiteSiteSummaryChart sites={sites.filter(site => !visibility.hidden.includes(site.key))} month={month} range={range} legend={<WebsiteChartLegend sites={sites} availableSites={sites.filter(site => site.totals !== null).map(site => site.key)} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} />} /> : <WebsiteSiteTrendChart asOf={asOf} sites={sites} month={month} range={range} metric={metric} hiddenSites={visibility.hidden} onToggleSite={visibility.toggle} />}
     </>}
   </div>;
 }

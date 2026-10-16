@@ -3,7 +3,7 @@ import { ChartNoAxesColumnIncreasing, ChevronDown, ChevronRight } from "lucide-r
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/card";
 import { Badge } from "../../../ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../ui/table";
-import { columns, MetricCells } from "./table-metrics";
+import { columns, MetricCells, labels } from "./table-metrics";
 import { WebsiteSiteSummaryGraph } from "./site-summary-graph";
 import type { AnalyticsDateRange, WebsiteSummary } from "../../../../lib/website-analytics";
 
@@ -12,6 +12,7 @@ import type { WebsiteScopeSelection } from "../../../../lib/website-analytics-sc
 import type { WebsiteOption } from "./filters";
 import { SummaryRangeFilter } from "./summary-range-filter";
 import { WebsiteDatasetControls } from "./dataset-controls";
+import { isFutureAnalyticsRange } from "../../../../lib/website-analytics-time";
 
 function displayDomain(origin: string): string {
   return `www.${new URL(origin).hostname.replace(/^www\./, "")}`;
@@ -21,7 +22,7 @@ function SiteStatus({ site, showCoverage = false }: { site: WebsiteSummary; show
   const loaded = site.status === "complete" || site.status === "partial";
   const unconfigured = site.status === "not_configured";
   const partial = showCoverage && site.status === "partial";
-  return <Badge variant="outline" className={partial || unconfigured ? "border-amber-200 bg-amber-50 text-amber-700" : loaded ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}>{partial ? "ข้อมูลไม่ครบ" : loaded ? "โหลดสำเร็จ" : unconfigured ? "ยังไม่ได้ตั้งค่า" : "โหลดไม่ได้"}</Badge>;
+  return <Badge variant="outline" className={partial || unconfigured ? "border-amber-200 bg-amber-50 text-amber-700" : loaded ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}>{partial ? "ข้อมูลไม่ครบ" : loaded ? "โหลดสำเร็จ" : unconfigured ? "ยังไม่ได้ตั้งค่า" : site.status === "hourly_unavailable" ? labels.hourly_unavailable : "โหลดไม่ได้"}</Badge>;
 }
 
 function MobileSiteSummary({ sites, month, range, showCoverage = false, scope }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; showCoverage?: boolean; scope?: WebsiteScopeSelection }) {
@@ -58,6 +59,7 @@ export function WebsiteSiteSummary({ sites, month, range, today, asOf, compare =
       </div>}
     </CardHeader>
     <CardContent>
+      {isFutureAnalyticsRange(range, asOf) && <p role="status" className="mb-3 text-sm text-amber-700">ยังไม่ถึงช่วงเวลาที่เลือก · ยอดรวมยังไม่มีข้อมูลที่สังเกตแล้ว</p>}
       {range && (!compare || !previous) && sites.some(site => site.status === "partial") && <p role="status" className="mb-3 text-sm text-amber-700">{compare ? "ข้อมูลบางเว็บไซต์ไม่ครบ" : "บางเว็บไซต์มีข้อมูลไม่ครบช่วงวันที่ที่เลือก ยอดที่แสดงรวมเฉพาะข้อมูลที่มี"}</p>}
       {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryGraph sites={sites} month={month} range={range} today={today} asOf={asOf} compare={compare} previous={previous} scope={scope} /><MobileSiteSummary sites={sites} month={month} range={range} showCoverage={compare} scope={scope} /><div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
         <TableHeader><TableRow><TableHead className="min-w-48">เว็บไซต์ / โดเมน</TableHead><TableHead className="min-w-32">สถานะข้อมูล</TableHead>{columns.map(column => <TableHead key={column.key} className="text-right">{column.label}</TableHead>)}</TableRow></TableHeader>

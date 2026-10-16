@@ -1,4 +1,5 @@
 import { parseAnalyticsDateRange, WebsiteAnalyticsError, type AnalyticsDateRange } from "./website-analytics.ts";
+import { parseAnalyticsTimeRange } from "./website-analytics-time.ts";
 
 export interface WebsiteDatasetSelection extends AnalyticsDateRange { sites: string[] }
 export interface WebsiteScopeSelection { sites: string[]; comparison?: WebsiteDatasetSelection }
@@ -21,10 +22,10 @@ export function parseWebsiteScope(raw: unknown, allowed: readonly string[], now:
     const sites = siteKeys(value.sites, allowed);
     if (value.comparison === undefined) return { sites };
     const comparison = object(value.comparison);
-    if (Object.keys(comparison).some(key => !["sites", "from", "to"].includes(key))) throw new Error();
+    if (Object.keys(comparison).some(key => !["sites", "from", "to", "timeFrom", "timeTo"].includes(key))) throw new Error();
     const range = parseAnalyticsDateRange(comparison.from, comparison.to, now);
     if (!range) throw new Error();
-    return { sites, comparison: { ...range, sites: siteKeys(comparison.sites, allowed) } };
+    return { sites, comparison: { ...range, ...parseAnalyticsTimeRange(comparison.timeFrom, comparison.timeTo, range), sites: siteKeys(comparison.sites, allowed) } };
   } catch { throw new WebsiteAnalyticsError("invalid_query", 400); }
 }
 
