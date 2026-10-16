@@ -10,10 +10,14 @@ import { ReportDateRangePicker } from "../report-date-range-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select";
 import type { WebsiteScopeSelection } from "../../../../lib/website-analytics-scope";
 
+import { parseAnalyticsTimeRange } from "../../../../lib/website-analytics-time";
+import { WebsiteTimeRangeFilter } from "./website-time-range-filter";
+
 export interface WebsiteOption { key: string; displayName: string }
 export function WebsiteAnalyticsFilters({ query, sites, today, compare = false, scope }: { query: WebsiteAnalyticsQuery; sites: WebsiteOption[]; today: string; compare?: boolean; scope?: WebsiteScopeSelection }) {
   const router = useRouter();
   const href = (changes: Partial<WebsiteAnalyticsQuery>) => websitePeriodHref(query, changes, compare, scope);
+  const time = parseAnalyticsTimeRange(query.timeFrom, query.timeTo, query.from && query.to ? { from: query.from, to: query.to } : undefined);
   const full = query.view === "houses";
   const controls = <div className={full ? "flex flex-wrap items-center gap-2" : "flex flex-wrap items-end gap-2"}>
     <div className={full ? "min-w-0 max-w-full" : "grid min-w-0 max-w-full gap-1"}><span className={full ? "sr-only" : "sr-only sm:not-sr-only sm:text-sm sm:font-medium"}>ช่วงวันที่</span><ReportDateRangePicker className={full ? "h-8 w-auto max-w-full text-sm" : "w-auto min-w-0 max-w-full"} month={query.month} today={today} pastOnly range={query.from && query.to ? { from: query.from, to: query.to } : undefined} onChange={range => router.push(href({ ...range, granularity: "day" }))} /></div>
@@ -30,8 +34,9 @@ export function WebsiteAnalyticsFilters({ query, sites, today, compare = false, 
       </Select>
     </div>}
   </div>;
+  const timeControl = time ? <WebsiteTimeRangeFilter key={`${query.from}:${time.timeFrom}:${time.timeTo}`} idPrefix="website-primary" value={time} onApply={value => router.push(href(value), { scroll: false })} /> : null;
   const toolbar = full ? <DashboardListToolbar onSubmit={event => { event.preventDefault(); const search = new FormData(event.currentTarget).get("search"); router.push(href({ search: typeof search === "string" ? search.trim() : "" })); }}>
-    <div className="relative w-full"><SearchIcon aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="ค้นหาบ้าน" className="h-11 pl-9 pr-11" name="search" type="search" maxLength={100} placeholder="ค้นหาชื่อบ้านหรือรหัสบ้าน..." defaultValue={query.search ?? ""} /><button type="submit" aria-label="ค้นหา" className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"><SearchIcon aria-hidden className="size-4" /></button></div>
-    {controls}</DashboardListToolbar> : controls;
+    <div className="relative w-full"><SearchIcon aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="ค้นหาบ้าน" className="h-8 pl-9 pr-11" name="search" type="search" maxLength={100} placeholder="ค้นหาชื่อบ้านหรือรหัสบ้าน..." defaultValue={query.search ?? ""} /><button type="submit" aria-label="ค้นหา" className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"><SearchIcon aria-hidden className="size-4" /></button></div>
+    {controls}{timeControl}</DashboardListToolbar> : <div className="space-y-2">{controls}{timeControl}</div>;
   return <div className="space-y-2">{query.from && <p className="text-xs text-muted-foreground">ช่วงวันที่: {query.from} – {query.to} · เวลาไทย</p>}{toolbar}</div>;
 }

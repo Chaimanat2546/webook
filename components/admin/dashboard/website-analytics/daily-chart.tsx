@@ -36,6 +36,6 @@ export function WebsiteDailyChart({ points, monthly, query, available, hidden = 
         <Area hide={!views} type="monotone" dataKey="page_views" stroke="var(--color-page_views)" fill="var(--color-page_views)" fillOpacity={0.08} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} isAnimationActive={false} />
         <Area hide={!contacts} type="monotone" dataKey="contact_clicks" stroke="var(--color-contact_clicks)" fill="var(--color-contact_clicks)" fillOpacity={0.03} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} isAnimationActive={false} />
       </AreaChart></ChartContainer>
-    </figure> : <div className="space-y-2 py-12 text-center text-sm text-muted-foreground"><p>{hidden ? "เว็บไซต์นี้ถูกซ่อนในกราฟ" : isMonthly && monthly?.every(point => point.status === "no_data") ? "ไม่มีข้อมูลที่เก็บไว้ในช่วงนี้" : "ยังโหลดข้อมูลกราฟไม่ได้"}</p>{hidden && onShow && <Button type="button" variant="outline" className="min-h-11" onClick={onShow}>แสดงเว็บไซต์นี้</Button>}</div>}
+    </figure> : <div className="space-y-2 py-12 text-center text-sm text-muted-foreground"><p>{hidden ? "เว็บไซต์นี้ถูกซ่อนในกราฟ" : isMonthly && monthly?.every(point => point.status === "no_data") ? "ไม่มีข้อมูลที่เก็บไว้ในช่วงนี้" : "ยังโหลดข้อมูลกราฟไม่ได้"}</p>{hidden && onShow && <Button type="button" variant="outline" className="h-8" onClick={onShow}>แสดงเว็บไซต์นี้</Button>}</div>}
   </CardContent></Card>;
 }

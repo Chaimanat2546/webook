@@ -12,6 +12,7 @@ import { parseAnalyticsDateRange } from "../../../lib/website-analytics";
 import { parseAnalyticsComparison } from "../../../lib/website-analytics-comparison";
 import { parseWebsiteScope } from "../../../lib/website-analytics-scope";
 import { listAnalyticsSites } from "../../../server/site-analytics/registry";
+import { parseAnalyticsTimeRange } from "../../../lib/website-analytics-time";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { actorId, repository } = await dashboardSession();
@@ -22,9 +23,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let analyticsRange;
   let analyticsCompare;
   let analyticsScope;
-  try { query = parseDashboardQuery(raw); analyticsRange = parseAnalyticsDateRange(raw.analyticsFrom, raw.analyticsTo); analyticsCompare = parseAnalyticsComparison(raw.analyticsCompare); analyticsScope = parseWebsiteScope(raw.analyticsScope, listAnalyticsSites().map(site => site.key), new Date()); }
+  let analyticsTime;
+  try { query = parseDashboardQuery(raw); analyticsRange = parseAnalyticsDateRange(raw.analyticsFrom, raw.analyticsTo); analyticsCompare = parseAnalyticsComparison(raw.analyticsCompare); analyticsScope = parseWebsiteScope(raw.analyticsScope, listAnalyticsSites().map(site => site.key), new Date());
+    const today = new Date(new Date().getTime() + 7 * 3600000).toISOString().slice(0, 10);
+    const selected = analyticsRange ?? (query.dateFrom && query.dateTo && query.dateFrom <= today ? { from: query.dateFrom, to: query.dateTo > today ? today : query.dateTo } : undefined);
+    analyticsTime = parseAnalyticsTimeRange(raw.analyticsTimeFrom, raw.analyticsTimeTo, selected); }
   catch {
-    return <div className="space-y-4"><DashboardHeader month={parseDashboardQuery({}).month} /><p role="alert">ช่วงวันที่ไม่ถูกต้อง กรุณาตรวจสอบวันเริ่มต้นและวันสิ้นสุด (สถิติเข้าเว็บไซต์เลือกได้ถึงวันนี้)</p><Link href="/admin/dashboard">กลับ Dashboard</Link></div>;
+    return <div className="space-y-4"><DashboardHeader month={parseDashboardQuery({}).month} /><p role="alert">ช่วงวันที่หรือเวลาไม่ถูกต้อง กรุณาตรวจสอบวันและเวลาเริ่มต้น–สิ้นสุด (สถิติเข้าเว็บไซต์เลือกได้ถึงวันนี้)</p><Link href="/admin/dashboard">กลับ Dashboard</Link></div>;
   }
   if (raw.view !== undefined || raw.status !== undefined || raw.search !== undefined || raw.agency !== undefined || raw.agencySearch !== undefined || raw.houseSearch !== undefined || raw.page !== undefined || raw.agenciesPage !== undefined || raw.housesPage !== undefined || raw.bookingId !== undefined || raw.houseId !== undefined) redirect(legacyDashboardHref(query));
   let report;
@@ -36,5 +41,5 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
   const today = new Date(new Date().getTime() + 7 * 3600000).toISOString().slice(0, 10);
   const summaryRange = analyticsRange ?? (query.dateFrom && query.dateTo && query.dateFrom <= today ? { from: query.dateFrom, to: query.dateTo > today ? today : query.dateTo } : undefined);
-  return <DashboardView report={report} query={query} websiteSummary={report.scope.kind === "admin" ? <Suspense key={`${query.month}:${query.dateFrom}:${query.dateTo}`} fallback={<WebsiteSiteSummarySkeleton />}><WebsiteSiteSummaryLoader month={!analyticsRange && query.dateFrom && query.dateFrom > today ? query.dateFrom.slice(0, 7) : query.month} range={summaryRange} compare={analyticsCompare} scope={analyticsScope} /></Suspense> : undefined} />;
+  return <DashboardView report={report} query={query} websiteSummary={report.scope.kind === "admin" ? <Suspense key={`${query.month}:${query.dateFrom}:${query.dateTo}`} fallback={<WebsiteSiteSummarySkeleton />}><WebsiteSiteSummaryLoader month={!analyticsRange && query.dateFrom && query.dateFrom > today ? query.dateFrom.slice(0, 7) : query.month} range={summaryRange ? { ...summaryRange, ...analyticsTime } : undefined} compare={analyticsCompare} scope={analyticsScope} /></Suspense> : undefined} />;
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { addMetrics, emptyMetrics, METRIC_KEYS, type AnalyticsMetrics, type AnalyticsPeriod, type AnalyticsSite, type SourceReport } from "../../lib/website-analytics.ts";
 
+import { atOrAfterAnalyticsTimestamp, hourlyBounds } from "../../lib/website-analytics-time.ts";
 function invalid(): never { throw new Error("invalid_report"); }
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return invalid();
@@ -21,14 +22,17 @@ function equal(a: AnalyticsMetrics, b: AnalyticsMetrics) {
 }
 function timestamp(value: unknown): string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)$/.test(value) || !Number.isFinite(Date.parse(value))) return invalid();
+  if (new Date(value).toISOString().slice(0, 19) !== value.slice(0, 19)) return invalid();
   return value;
 }
 export function parseSourceReport(value: unknown, site: AnalyticsSite, period: AnalyticsPeriod): SourceReport {
   const row = object(value), query = object(row.query), coverage = object(row.coverage);
-  if (row.contract_version !== "1.0" || row.site_id !== site.siteId || query.contract_version !== period.contract_version || query.from_date !== period.from_date || query.to_date !== period.to_date || query.timezone !== period.timezone || query.villa_id !== null || query.as_of !== period.as_of) invalid();
+  if (row.contract_version !== period.contract_version || row.site_id !== site.siteId || query.contract_version !== period.contract_version || query.from_date !== period.from_date || query.to_date !== period.to_date || query.timezone !== period.timezone || query.villa_id !== null || query.as_of !== period.as_of) invalid();
+  const bounds = period.contract_version === "1.1" ? hourlyBounds(period.from_date, { timeFrom: period.from_time, timeTo: period.to_time }, period.as_of) : undefined;
+  if (period.contract_version === "1.1" && (query.granularity !== "hour" || query.from_time !== period.from_time || query.to_time !== period.to_time || period.from_date !== period.to_date)) invalid();
   timestamp(row.generated_at);
   const available = timestamp(coverage.data_available_from);
-  const rangeComplete = Date.parse(`${period.from_date}T00:00:00+07:00`) >= Date.parse(available);
+  const rangeComplete = atOrAfterAnalyticsTimestamp(bounds?.start ?? `${period.from_date}T00:00:00+07:00`, available);
   if (typeof coverage.range_complete !== "boolean" || typeof coverage.rows_complete !== "boolean" || coverage.range_complete !== rangeComplete) invalid();
   if (!Array.isArray(row.daily) || !Array.isArray(row.villas)) invalid();
   const totals = metrics(row.totals), unattributed = metrics(row.unattributed);
@@ -50,5 +54,17 @@ export function parseSourceReport(value: unknown, site: AnalyticsSite, period: A
   });
   equal(totals, daily.reduce(addMetrics, emptyMetrics()));
   equal(totals, villas.reduce(addMetrics, unattributed));
-  return { totals, unattributed, daily, villas, coverage: { data_available_from: available, range_complete: rangeComplete, rows_complete: coverage.rows_complete } };
+  let hourly;
+  if (bounds) {
+    if (!Array.isArray(row.hourly) || row.hourly.length !== bounds.buckets.length) invalid();
+    hourly = row.hourly.map((value, index) => {
+      const hour = object(value), expected = bounds.buckets[index];
+      for (const value of [hour.start, hour.end]) if (typeof value !== "string" || !/T\d{2}:00:00(?:\.0{1,6})?(?:Z|\+00:00)$/.test(value)) invalid();
+      const start = new Date(timestamp(hour.start)).toISOString(), end = new Date(timestamp(hour.end)).toISOString();
+      if (start !== expected.start || end !== expected.end) invalid();
+      return { ...metrics(hour), start, end };
+    });
+    equal(totals, hourly.reduce(addMetrics, emptyMetrics()));
+  } else if (row.hourly !== undefined) invalid();
+  return { totals, unattributed, daily, ...(hourly ? { hourly } : {}), villas, coverage: { data_available_from: available, range_complete: rangeComplete, rows_complete: coverage.rows_complete } };
 }

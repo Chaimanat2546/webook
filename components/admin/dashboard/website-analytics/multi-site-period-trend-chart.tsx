@@ -4,7 +4,7 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis, type TooltipContentProps,
 import { websiteMultiPeriodPoints, type WebsiteMultiPeriodPoint, type WebsitePeriodRow } from "../../../../lib/website-analytics-comparison";
 import { WebsiteChartLegend } from "./website-chart-legend";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "../../../ui/chart";
-import { periodDateLabel, periodValueLabel } from "./period-comparison-summary";
+import { periodPointLabel, periodValueLabel } from "./period-comparison-summary";
 
 interface MultiSitePeriodTrendChartProps {
   rows: WebsitePeriodRow[];
@@ -18,7 +18,7 @@ function MultiPeriodTooltip({ active, payload, rows, colors }: TooltipContentPro
   const point: WebsiteMultiPeriodPoint | undefined = payload?.[0]?.payload;
   if (!active || !point) return null;
   return <div className="w-full space-y-2 rounded-lg border bg-background px-3 py-2 text-xs shadow-xl">
-    <div className="text-muted-foreground"><p>ช่วงหลัก · {point.date ? periodDateLabel(point.date) : "นอกช่วงที่เลือก"}</p><p>ชุดเทียบ · {point.previousDate ? periodDateLabel(point.previousDate) : "นอกช่วงที่เลือก"}</p></div>
+    <div className="text-muted-foreground"><p>ช่วงหลัก · {point.date ? periodPointLabel(point.date, rows[0]?.current.asOf) : "นอกช่วงที่เลือก"}</p><p>ชุดเทียบ · {point.previousDate ? periodPointLabel(point.previousDate, rows[0]?.previous.asOf) : "นอกช่วงที่เลือก"}</p></div>
     <table aria-label="ค่ารายวันแต่ละเว็บไซต์" className="w-full table-fixed">
       <colgroup><col className="w-1/2" /><col className="w-1/4" /><col className="w-1/4" /></colgroup>
       <thead><tr className="text-muted-foreground"><th className="text-left font-normal">เว็บไซต์</th><th className="text-right font-normal">หลัก</th><th className="text-right font-normal">เทียบ</th></tr></thead>
@@ -38,10 +38,10 @@ export function MultiSitePeriodTrendChart({ rows, hiddenSites, onToggleSite, sho
   const visibleRows = rows.filter(row => !hiddenSites.includes(row.key));
   return <div className="min-w-0">
     {showLegend && <WebsiteChartLegend sites={rows} availableSites={available.map(row => row.key)} hiddenSites={hiddenSites} onToggleSite={onToggleSite} colorKeys={colorKeys} lineStyles={false} label="เว็บไซต์ในกราฟเปรียบเทียบ" />}
-    {!available.length ? <p role="status" className="flex min-h-60 items-center justify-center text-sm text-muted-foreground">ไม่มีข้อมูลรายวันทั้งสองช่วง</p> : <ChartContainer config={config} className="h-60 w-full aspect-auto sm:h-72">
+    {!available.length ? <p role="status" className="flex min-h-60 items-center justify-center text-sm text-muted-foreground">ไม่มีข้อมูลในทั้งสองช่วง</p> : <ChartContainer config={config} className="h-60 w-full aspect-auto sm:h-72">
       <LineChart accessibilityLayer data={data} margin={{ left: 0, right: 12, top: 12, bottom: 8 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis dataKey="ordinal" axisLine={false} tickLine={false} minTickGap={32} tickMargin={10} interval="preserveStartEnd" tickFormatter={(day: number) => `วัน ${day}`} />
+        <XAxis dataKey="ordinal" axisLine={false} tickLine={false} minTickGap={32} tickMargin={10} interval="preserveStartEnd" tickFormatter={(day: number) => `${rows[0]?.current.granularity === "hour" ? "ชั่วโมง" : "วัน"} ${day}`} />
         <YAxis width={42} allowDecimals={false} axisLine={false} tickLine={false} tickFormatter={(value: number) => new Intl.NumberFormat("th-TH", { notation: "compact" }).format(value)} />
         <ChartTooltip isAnimationActive={false} position={{ x: 0 }} wrapperStyle={{ width: "min(20rem, 100%)" }} content={props => <MultiPeriodTooltip {...props} rows={visibleRows} colors={config} />} />
         {rows.flatMap(row => [

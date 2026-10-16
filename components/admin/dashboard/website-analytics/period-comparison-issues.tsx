@@ -18,7 +18,7 @@ export function PeriodComparisonIssues({ rows }: { rows: WebsitePeriodRow[] }) {
     </PopoverTrigger>
     <PopoverContent className="max-h-[70dvh] w-80 max-w-[calc(100vw-1.5rem)] min-w-0 overflow-y-auto">
       <div className="divide-y">{issues.map(row => <section key={row.key} aria-label={row.displayName} className="space-y-2 py-3 first:pt-0 last:pb-0">
-        <h3 className="break-words text-sm font-medium">{row.displayName}</h3><PeriodComparisonDetails {...row} />
+        <h3 className="break-words text-sm font-medium">{row.displayName}</h3><PeriodComparisonDetails current={row.current} previous={row.previous} currentSelected={row.currentSelected} previousSelected={row.previousSelected} />
       </section>)}</div>
     </PopoverContent>
   </Popover>;
