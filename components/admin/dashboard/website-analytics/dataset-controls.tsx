@@ -32,9 +32,9 @@ export function WebsiteDatasetControls({ range, today, sites, comparison, query,
   return <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-1 sm:w-auto" aria-busy={pending}>
     {comparison ? <div className="flex w-full min-w-0 items-center gap-1 sm:w-80">
       <span className="shrink-0 text-xs text-muted-foreground">เทียบ</span>
-      <ReportDateRangePicker range={comparison} month={comparison.to.slice(0, 7)} today={today} pastOnly showShortcuts={false} loading={pending} className="min-h-11 min-w-0 flex-1 shrink text-xs" label="ช่วงวันที่ชุดเปรียบเทียบ" onChange={navigate} />
-      <Button type="button" variant="ghost" disabled={pending} size="icon" className="min-h-11 min-w-11 shrink-0" aria-label="เอาชุดเปรียบเทียบออก" onClick={() => navigate()}><X aria-hidden className="size-4" /></Button>
-    </div> : <Button type="button" variant="outline" disabled={pending || !previousAnalyticsRange(range)} className="min-h-11 max-w-full whitespace-normal text-xs" onClick={() => { const previous = previousAnalyticsRange(range); if (previous) navigate(previous); }}><Plus aria-hidden className="size-4" />เพิ่มชุดเปรียบเทียบ</Button>}
+      <ReportDateRangePicker range={comparison} month={comparison.to.slice(0, 7)} today={today} pastOnly showShortcuts={false} loading={pending} className="min-w-0 flex-1 shrink text-xs" label="ช่วงวันที่ชุดเปรียบเทียบ" onChange={navigate} />
+      <Button type="button" variant="ghost" disabled={pending} size="icon" aria-label="เอาชุดเปรียบเทียบออก" onClick={() => navigate()}><X aria-hidden className="size-4" /></Button>
+    </div> : <Button type="button" variant="outline" disabled={pending || !previousAnalyticsRange(range)} className="max-w-full text-xs" onClick={() => { const previous = previousAnalyticsRange(range); if (previous) navigate(previous); }}><Plus aria-hidden className="size-4" />เพิ่มชุดเปรียบเทียบ</Button>}
     {pending && <span role="status" className="text-xs text-muted-foreground">กำลังโหลดกราฟ…</span>}
   </div>;
 }

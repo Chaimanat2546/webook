@@ -9,7 +9,7 @@ export function SummaryRangeFilter({ month, range, today, availableFrom }: { mon
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return <div className="w-full min-w-0 max-w-full space-y-2 sm:w-auto" aria-busy={pending}>
-    <ReportDateRangePicker month={month} range={range} today={today} availableFrom={availableFrom} pastOnly loading={pending} label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={draft => {
+    <ReportDateRangePicker month={month} range={range} today={today} availableFrom={availableFrom} pastOnly compactShortcuts loading={pending} label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={draft => {
       if (draft.from === range.from && draft.to === range.to) return;
       const params = new URLSearchParams(window.location.search);
       params.set("month", month);
