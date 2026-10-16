@@ -181,3 +181,7 @@ Two hourly periods pair by ordinal hour with actual dates/times in the tooltip; 
 Controls reuse existing Select/Button/Input/Calendar: height 32 CSS px, icon/calendar arrows 32 × 32 CSS px, wrapping on narrow screens. No new runtime dependency or collector/storage field was added.
 
 Focused checks: node --import ./tests/register-server-only.mjs --test "tests/website-analytics-*.test.ts". Local real-SQL/HTTP integration: node --import ./tests/register-server-only.mjs scripts/test-hourly-analytics-integration.mjs <producer-checkout> <local-supabase_db_container>. It creates/drops its own disposable database, never loads .env, and tests the producer guard/validator/RPC through the Webook client/parser/service. Optional --serve exposes only local fixture UI assets; it is not a production route or API.
+
+## Pull request validation
+
+PRs targeting `staging` and `main` run the same security audit, type check, lint, tests, Next/OpenNext builds and Worker dry-run. The dry-run uses the target branch's Wrangler config with placeholder Supabase settings and no deployment credentials. PR validation does not apply migrations or publish a Worker.
