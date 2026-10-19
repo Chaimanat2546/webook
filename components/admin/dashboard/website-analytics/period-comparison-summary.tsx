@@ -1,6 +1,6 @@
 "use client";
 
-import { dailyWindowBounds, hourLabel, hourlyRangeLabel } from "../../../../lib/website-analytics-time";
+import { analyticsTimeRangeLabel, dailyWindowBounds, hourLabel, hourlyRangeLabel } from "../../../../lib/website-analytics-time";
 import { ChevronDown } from "lucide-react";
 import { websitePeriodChange, type WebsitePeriodSeries } from "../../../../lib/website-analytics-comparison";
 import { assessPeriodComparison, describeComparisonPeriod, type ComparisonReason } from "../../../../lib/website-analytics-comparison-policy";
@@ -38,10 +38,10 @@ export function PeriodChangeSummary({ current, previous, compact = false }: { cu
 export function periodPointLabel(date: string, asOf?: string, range?: AnalyticsDateRange): string {
   if (!date) return "นอกช่วงที่เลือก";
   if (date.length === 10) {
-    if (!range?.timeFrom || !range.timeTo) return periodDateLabel(date);
-    const bounds = dailyWindowBounds(date, { timeFrom: range.timeFrom, timeTo: range.timeTo });
+    const selected = range ?? { from: date, to: date };
+    const bounds = dailyWindowBounds(date, { timeFrom: selected.timeFrom ?? "00:00", timeTo: selected.timeTo ?? "24:00" });
     const clipped = asOf && Date.parse(bounds.start) < Date.parse(asOf) && Date.parse(asOf) < Date.parse(bounds.end);
-    return periodDateLabel(date) + " · ทุกวัน " + range.timeFrom + "–" + range.timeTo + (clipped ? " · ข้อมูลถึง " + hourLabel(asOf) : "");
+    return periodDateLabel(date) + " · " + analyticsTimeRangeLabel(selected) + (clipped ? " · ข้อมูลถึง " + hourLabel(asOf) : "");
   }
   const end = new Date(Date.parse(date) + 3600000).toISOString();
   const clipped = asOf && Date.parse(date) < Date.parse(asOf) && Date.parse(asOf) < Date.parse(end);
@@ -94,9 +94,9 @@ export function PeriodComparisonSummary({ current, previous, currentSelected = t
 export function shortRange(range: AnalyticsDateRange, showYear = false): string {
   const format = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", ...(showYear || range.from.slice(0, 4) !== range.to.slice(0, 4) ? { year: "numeric" as const } : {}), timeZone: "Asia/Bangkok" });
   const end = format.format(new Date(`${range.to}T00:00:00+07:00`));
-  if (range.from === range.to) return end + (range.timeFrom && range.timeTo ? ` · ${range.timeFrom}–${range.timeTo}` : "");
+  if (range.from === range.to) return `${end} · ${analyticsTimeRangeLabel(range)}`;
   const start = range.from.slice(0, 7) === range.to.slice(0, 7) ? String(Number(range.from.slice(8))) : format.format(new Date(`${range.from}T00:00:00+07:00`));
-  return `${start}–${end}${range.timeFrom && range.timeTo ? ` · ทุกวัน ${range.timeFrom}–${range.timeTo}` : ""}`;
+  return `${start}–${end} · ${analyticsTimeRangeLabel(range)}`;
 }
 
 export function PeriodLegend({ bars = false, neutral = false, distinctColors = false, currentRange, previousRange }: { bars?: boolean; neutral?: boolean; distinctColors?: boolean; currentRange: AnalyticsDateRange; previousRange: AnalyticsDateRange }) {

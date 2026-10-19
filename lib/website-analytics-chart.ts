@@ -32,7 +32,8 @@ export function websiteChartData(sites: WebsiteSummary[], month: string, metric:
     return requested.buckets.map(bucket => ({ date: bucket.start, values: Object.fromEntries(sites.map(site => {
       const row = site.totals ? site.hourly?.find(hour => hour.start === bucket.start) : undefined;
       const retained = !site.coverage || atOrAfterAnalyticsTimestamp(bucket.start, site.coverage.data_available_from);
-      return [site.key, row && retained ? row[metric] : null];
+      const observed = !asOf || Date.parse(bucket.start) < Date.parse(asOf);
+      return [site.key, row && retained && observed ? row[metric] : null];
     })) }));
   }
   if (period === "month") {
@@ -44,7 +45,7 @@ export function websiteChartData(sites: WebsiteSummary[], month: string, metric:
     const available = site.coverage ? new Date(new Date(site.coverage.data_available_from).getTime() + 7 * 3600000).toISOString().slice(0, 10) : "";
     return new Map((site.totals ? site.daily ?? [] : []).filter(day => {
       if (!(range ? day.date >= range.from && day.date <= range.to : day.date.startsWith(`${month}-`))) return false;
-      if (!dailyTime) return day.date >= available;
+      if (!dailyTime) return day.date >= available && (!asOf || Date.parse(`${day.date}T00:00:00+07:00`) < Date.parse(asOf));
       const window = dailyWindowBounds(day.date, dailyTime);
       return Boolean(asOf && Date.parse(window.start) < Date.parse(asOf) && (!site.coverage || atOrAfterAnalyticsTimestamp(window.start, site.coverage.data_available_from)));
     }).map(day => [day.date, day[metric]]));

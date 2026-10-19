@@ -8,7 +8,7 @@ import { WebsiteChartLegend } from "./website-chart-legend";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "../../../ui/chart";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../ui/empty";
 
-import { hourLabel, isFutureAnalyticsRange } from "../../../../lib/website-analytics-time";
+import { analyticsTimeRangeLabel, hourLabel, isFutureAnalyticsRange } from "../../../../lib/website-analytics-time";
 import { periodPointLabel } from "./period-comparison-summary";
 
 interface WebsiteSiteTrendChartProps {
@@ -37,7 +37,7 @@ export function WebsiteSiteTrendChart({ granularity, sites, month, range, metric
   const periodLabel = range ? `${range.from} ถึง ${range.to}` : new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "Asia/Bangkok" }).format(new Date(`${month}-01T00:00:00+07:00`));
 
   return <figure aria-label={hourly ? "กราฟแนวโน้มรายชั่วโมงแต่ละเว็บไซต์" : "กราฟแนวโน้มรายวันแต่ละเว็บไซต์"} className="mb-6 min-w-0 border-b pb-6">
-    <p className="mb-3 text-xs text-muted-foreground">{metricLabels[metric]} · {hourly ? "ครั้งต่อชั่วโมง" : "ครั้งต่อวัน"} · {periodLabel}{range?.timeFrom && range.timeTo && ` · ${hourly ? "" : "ทุกวัน "}${range.timeFrom}–${range.timeTo}`} · เวลาไทย</p>
+    <p className="mb-3 text-xs text-muted-foreground">{metricLabels[metric]} · {hourly ? "ครั้งต่อชั่วโมง" : "ครั้งต่อวัน"} · {periodLabel} · {analyticsTimeRangeLabel(range)} · เวลาไทย</p>
     {available.length ? <>
       {showLegend && <WebsiteChartLegend comparison={comparison} colorKeys={colorKeys} sites={sites} availableSites={available.map(site => site.key)} hiddenSites={hiddenSites} onToggleSite={onToggleSite} />}
       <ChartContainer config={config} className="h-60 w-full aspect-auto sm:h-72">

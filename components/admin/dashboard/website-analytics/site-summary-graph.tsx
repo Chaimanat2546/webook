@@ -39,7 +39,7 @@ export function WebsiteSiteSummaryGraph({ granularity, sites, month, range, asOf
         <Button type="button" disabled={pending} variant={view === "total" ? "default" : "ghost"} aria-pressed={view === "total"} onClick={() => setView("total")}>ยอดรวมแต่ละเว็บ</Button>
         <Button type="button" variant={view === "combined" ? "default" : "ghost"} aria-pressed={view === "combined"} disabled={pending || !range || !asOf} onClick={() => setView("combined")}>แนวโน้มรวมทุกเว็บ</Button>
       </div>
-      {(view !== "total" || compare) && <div role="group" aria-label={compare ? "เลือกสถิติเปรียบเทียบ" : "เลือกสถิติรายวัน"} className="flex flex-wrap gap-1">
+      {(view !== "total" || compare) && <div role="group" aria-label={compare ? "เลือกสถิติเปรียบเทียบ" : granularity === "hour" ? "เลือกสถิติรายชั่วโมง" : "เลือกสถิติรายวัน"} className="flex flex-wrap gap-1">
         {([
           ["contact_clicks", "กดติดต่อรวม"],
           ["page_views", "เข้าชม"],
