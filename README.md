@@ -88,6 +88,27 @@ application guards/report filters before adding sources.
 See [iCal configuration and behavior](docs/ical-booking-import.md) and
 [verification and release gaps](docs/superpowers/reports/2026-10-09-ical-booking-import-verification.md).
 
+## Website Analytics Detail Charts
+
+The per-website overview uses the same date/time picker, optional comparison
+controls and accessible chart-loading state as the dashboard website summary.
+Primary and comparison dates and hours are independent; changing either applies
+dates and hours together, preserves the other selection and resets pagination.
+The primary picker lives in the chart header and also updates the existing
+summary cards and house tables. The all-houses list retains its own date filter.
+
+All three metrics (page views, contact clicks and gallery opens) are available
+for hourly selections, recurring daily time windows and full days
+(`00:00–24:00`, Asia/Bangkok). Equal time units overlay the two series; hourly
+versus daily units render separate charts. Different durations or clock windows,
+incomplete coverage and failed sources continue to suppress misleading growth
+percentages. Missing buckets remain gaps, not fabricated zeroes. A single full
+day has 24 hourly buckets; multiple full days use daily buckets. The existing
+monthly-history option remains available for implicit monthly reports.
+
+Run the focused regression checks with
+`node --import ./tests/register-server-only.mjs --test "tests/website-analytics*.test.ts"`.
+
 ## Tech Stack
 
 - Next.js App Router

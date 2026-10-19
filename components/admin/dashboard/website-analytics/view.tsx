@@ -34,7 +34,7 @@ export function WebsiteAnalyticsView({ report, query, sites, compare = false, pr
   const count = (key: typeof headlines[number]["key"] | typeof channels[number]["key"]) => report.totals ? report.totals[key].toLocaleString("th-TH") : "—";
   return <WebsiteAnalyticsLoadingProvider><div className="website-analytics-theme mx-auto min-w-0 max-w-7xl space-y-3 md:space-y-6">
     <DashboardTaskHeader title="ภาพรวมผลเว็บไซต์และบ้าน" description="จำนวนครั้งที่เข้าชมและกดติดต่อ ไม่ใช่จำนวนคนไม่ซ้ำ" backHref={`/admin/dashboard?${(scope ? scopeSearchParams(backParams, scope) : backParams)}`} backLabel="กลับ Dashboard" />
-    <WebsiteAnalyticsFilters key={`${query.site}:${query.month}:${query.search ?? ""}:${query.sort ?? ""}`} query={query} sites={sites} compare={compare} scope={scope} today={new Date(Date.parse(report.period.as_of) + 7 * 3600000).toISOString().slice(0, 10)} />
+    <WebsiteAnalyticsFilters key={`${query.site}:${query.month}:${query.search ?? ""}:${query.sort ?? ""}`} query={query} sites={sites} compare={compare} scope={scope} showDateRange={false} today={new Date(Date.parse(report.period.as_of) + 7 * 3600000).toISOString().slice(0, 10)} />
     {future && <p role="status" className="text-sm text-amber-700">ยังไม่ถึงช่วงเวลาที่เลือก · ยอดรวมยังไม่มีข้อมูลที่สังเกตแล้ว</p>}
     <div className="hidden flex-wrap justify-between gap-2 text-xs text-muted-foreground md:flex"><span>{report.period.from_date} ถึง {report.period.to_date} · เวลาไทย</span><span>ข้อมูลถึง {new Date(report.period.as_of).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</span></div>
     {report.availableSites < report.selectedSites && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">

@@ -72,7 +72,7 @@ test("website details use the shared daily axis without bridging missing reports
       builder.onLoad({ filter: /.*/, namespace: "daily-probe" }, () => ({ loader: "js", resolveDir: process.cwd(), contents: `
         import React from 'react';
         export const ResponsiveContainer=({children})=>children;
-        export const AreaChart=({children,data})=>React.createElement('div',{'data-points':data.map(point=>point.date+':'+String(point.page_views)).join(',')},children);
+        export const AreaChart=({children,data})=>React.createElement('div',{'data-points':data.map(point=>point.date+':'+String(point.values?.a ?? point.page_views ?? null)).join(',')},children);
         export const LineChart=AreaChart, BarChart=AreaChart;
         export const Area=()=>null, Line=()=>null, Bar=()=>null, Cell=()=>null, CartesianGrid=()=>null, XAxis=()=>null, YAxis=()=>null, Tooltip=()=>null, Legend=()=>null;
       ` }));
