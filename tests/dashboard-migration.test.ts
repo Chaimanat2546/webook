@@ -4,12 +4,14 @@ import { readFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 import { createDashboardRepository } from "../server/repositories/dashboard.ts";
+import { parseDashboardReportingResult } from "../server/repositories/dashboard-reporting.ts";
 import { loadDashboardAgency } from "../server/services/dashboard.ts";
 import { parseDashboardAgencyDetailQuery } from "../lib/dashboard-routes.ts";
 
 const migration = new URL("../supabase/migrations/20261002110000_scalable_dashboard_reporting.sql", import.meta.url);
 const orderingMigration = new URL("../supabase/migrations/20261005120000_dashboard_json_ordering.sql", import.meta.url);
 const rangeMigration = new URL("../supabase/migrations/20261014100000_dashboard_date_ranges.sql", import.meta.url);
+const timeMigration = new URL("../supabase/migrations/20261019120000_dashboard_time_windows.sql", import.meta.url);
 const confirmedAgencyCountsMigration = new URL("../supabase/migrations/20261005130000_dashboard_confirmed_agency_counts.sql", import.meta.url);
 it("dashboard reporting migration is available for deployment", () => assert.ok(existsSync(migration)));
 it("dashboard confirmed agency counts migration is available for deployment", () => assert.ok(existsSync(confirmedAgencyCountsMigration)));
@@ -86,8 +88,60 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     sql(readFileSync(confirmedAgencyCountsMigration, "utf8"));
     sql("alter table bookings add column calendar_source_id uuid;");
     sql(readFileSync(rangeMigration, "utf8"));
+    sql(readFileSync(timeMigration, "utf8"));
   });
   after(() => { spawnSync("docker", ["rm", "-f", container]); });
+  it("filters recurring clock windows before every aggregate and keeps owner scope", () => {
+    sql(`insert into bookings(id,booking_code,listing_id,houseid,check_in,check_out,status,price_max,created_at,updated_at,calendar_source_id) values
+      (20,'CLK20','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',10,now(),'2026-09-10T01:59:59.999999Z',null),
+      (21,'CLK21','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',100,now(),'2026-09-10T02:00:00Z',null),
+      (22,'CLK22','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',200,now(),'2026-09-10T10:59:59.999999Z',null),
+      (23,'CLK23','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',20,now(),'2026-09-10T11:00:00Z',null),
+      (24,'CLK24','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','waiting',900,now(),'2026-09-11T02:00:00Z',null),
+      (25,'CLK25','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',null,now(),'2026-09-11T03:00:00Z',null),
+      (26,'CLK26','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',999,now(),'2026-09-11T04:00:00Z','00000000-0000-4000-8000-000000000099'),
+      (27,'CLK27','00000000-0000-4000-8000-000000000202',202,'2026-11-01','2026-11-03','confirmed',300,now(),'2026-09-11T05:00:00Z',null);`);
+    try {
+      const selected = { dateFrom: "2026-09-10", dateTo: "2026-09-11", timeFrom: "09:00", timeTo: "18:00" };
+      const adminReport = report(selected);
+      assert.equal(adminReport.bookingCount, 5);
+      assert.deepEqual(adminReport.sales, { count: 4, amountCents: 60000, missingPrices: 1 });
+      assert.deepEqual(adminReport.daily.map((point: { count: number }) => point.count), [2, 2]);
+      assert.equal(adminReport.topAgencies.reduce((sum: number, row: { amountCents: number }) => sum + row.amountCents, 0), 60000);
+      assert.equal(adminReport.bookings.total, 5);
+      const ownerReport = report(selected, owner);
+      assert.equal(ownerReport.bookingCount, 4);
+      assert.equal(ownerReport.sales.amountCents, 30000);
+      assert.deepEqual(ownerReport.topAgencies, []);
+      const hourly = report({ ...selected, dateTo: selected.dateFrom });
+      assert.equal(hourly.hourly.length, 9);
+      assert.equal(hourly.hourly[0].count, 1);
+      assert.equal(hourly.hourly.at(-1).count, 1);
+      assert.equal(hourly.hourly.reduce((sum: number, point: { count: number }) => sum + point.count, 0), hourly.sales.count);
+      assert.equal(hourly.sales.amountCents, 30000);
+      assert.deepEqual(parseDashboardReportingResult(hourly).hourly, hourly.hourly);
+      assert.equal(report({ ...selected, checkInFrom: "2026-11-01", checkInTo: "2026-11-03" }).bookingCount, 5);
+      assert.equal(report({ ...selected, checkInFrom: "2026-11-01", checkInTo: "2026-11-03" }).hourly, null);
+      const empty = report({ ...selected, dateFrom: "2026-09-12", dateTo: "2026-09-12" });
+      assert.equal(empty.bookingCount, 0);
+      assert.equal(empty.hourly.length, 9);
+      assert.ok(empty.hourly.every((point: { count: number }) => point.count === 0));
+      const full = report({ ...selected, dateTo: selected.dateFrom, timeFrom: "00:00", timeTo: "24:00" });
+      assert.equal(full.hourly.length, 24);
+      assert.equal(full.bookingCount, 9);
+      assert.equal(full.sales.amountCents, 43000);
+      assert.equal(full.hourly.reduce((sum: number, point: { count: number }) => sum + point.count, 0), full.sales.count);
+      const implicitFull = report({ dateFrom: selected.dateFrom, dateTo: selected.dateFrom });
+      assert.deepEqual(implicitFull, full);
+      assert.equal(report().hourly, null);
+    } finally { sql("delete from bookings where id between 20 and 27;"); }
+  });
+  it("rejects invalid clock inputs at the PostgreSQL boundary", () => {
+    for (const clocks of [{ timeFrom: "09:00" }, { timeFrom: "09:30", timeTo: "18:00" }, { timeFrom: "18:00", timeTo: "09:00" }, { timeFrom: "24:00", timeTo: "24:00" }, { timeFrom: null, timeTo: null }, { timeFrom: ["09:00"], timeTo: "18:00" }]) {
+      sql(`select dashboard_report('${admin}','${JSON.stringify({ month: "2026-09", dateFrom: "2026-09-10", dateTo: "2026-09-11", ...clocks })}');`, false);
+    }
+    sql(`select dashboard_report('${admin}','{"month":"2026-09","timeFrom":"09:00","timeTo":"18:00"}');`, false);
+  });
   it("supports inclusive cross-month reporting and rejects invalid ranges", () => {
     const r = report({ dateFrom: "2026-09-10", dateTo: "2026-10-01" });
     assert.equal(r.bookingCount, 6);

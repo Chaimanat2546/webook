@@ -8,7 +8,7 @@ import { DASHBOARD_AGENCY_LIST_SORTS, type DashboardAgenciesQuery } from "../../
 import { dashboardAgenciesHref } from "../../../lib/dashboard-routes";
 import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import { ReportDateRangePicker } from "./report-date-range-picker";
+import { WebsiteDateRangePicker } from "./website-analytics/website-date-range-picker";
 import { DashboardListToolbar } from "./dashboard-list-toolbar";
 
 export function DashboardAgencyFilters({ query }: { query: DashboardAgenciesQuery }) {
@@ -29,7 +29,7 @@ export function DashboardAgencyFilters({ query }: { query: DashboardAgenciesQuer
     </div>
     <div className="w-full min-w-0 pb-1">
       <div className="flex w-full min-w-0 flex-wrap gap-2">
-        <ReportDateRangePicker className="h-8 w-auto min-w-0 max-w-full flex-none text-sm" month={query.month} range={query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo } : undefined} onChange={range => navigate({ dateFrom: range.from, dateTo: range.to })} />
+        <WebsiteDateRangePicker className="h-8 w-auto min-w-0 max-w-full flex-none text-sm" month={query.month} range={query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo, timeFrom: query.timeFrom, timeTo: query.timeTo } : undefined} onChange={range => navigate({ dateFrom: range.from, dateTo: range.to, timeFrom: range.timeFrom, timeTo: range.timeTo })} />
         <Select items={DASHBOARD_AGENCY_LIST_SORTS} value={query.agencySort ?? "sales-desc"} onValueChange={agencySort => { if (agencySort) navigate({ agencySort }); }}>
           <SelectTrigger id="agency-sort" aria-label="เรียงลำดับเอเจนซี่" className="min-w-0 w-auto max-w-full pl-3">
             <ListFilterIcon aria-hidden className="size-4 text-muted-foreground" />

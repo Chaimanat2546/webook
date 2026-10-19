@@ -1,6 +1,6 @@
 import type { DashboardQuery, DashboardSourceView, DashboardViewName } from "./dashboard";
 
-type DashboardHrefChanges = Partial<Pick<DashboardQuery, "month" | "dateFrom" | "dateTo" | "view" | "from" | "page" | "housesPage" | "agenciesPage" | "status" | "search" | "agency" | "agencySearch" | "houseSearch" | "bookingId" | "houseId">>;
+type DashboardHrefChanges = Partial<Pick<DashboardQuery, "month" | "dateFrom" | "dateTo" | "timeFrom" | "timeTo" | "view" | "from" | "page" | "housesPage" | "agenciesPage" | "status" | "search" | "agency" | "agencySearch" | "houseSearch" | "bookingId" | "houseId">>;
 
 const detailViews = new Set<DashboardViewName>(["booking", "agency", "house"]);
 
@@ -32,6 +32,11 @@ export function dashboardHref(query: DashboardQuery, changes: DashboardHrefChang
     merged.agenciesPage = 1;
     merged.housesPage = 1;
   } else {
+    if ("dateFrom" in changes || "dateTo" in changes || "timeFrom" in changes || "timeTo" in changes) {
+      merged.page = 1;
+      merged.agenciesPage = 1;
+      merged.housesPage = 1;
+    }
     if (changesBookingFilter) merged.page = 1;
     if (changesAgencyFilter) merged.agenciesPage = 1;
     if (changesHouseFilter) merged.housesPage = 1;
@@ -42,6 +47,7 @@ export function dashboardHref(query: DashboardQuery, changes: DashboardHrefChang
   const params = new URLSearchParams();
   params.set("month", merged.month);
   if (merged.dateFrom && merged.dateTo) { params.set("dateFrom", merged.dateFrom); params.set("dateTo", merged.dateTo); }
+  if (merged.dateFrom && merged.dateTo && merged.timeFrom && merged.timeTo) { params.set("timeFrom", merged.timeFrom); params.set("timeTo", merged.timeTo); }
   addIfNonDefault(params, "view", merged.view, "overview");
   if (detailViews.has(merged.view)) addIfNonDefault(params, "from", merged.from, "overview");
   if (merged.view === "booking") addIfNonDefault(params, "bookingId", merged.bookingId, "");

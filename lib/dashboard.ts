@@ -1,12 +1,16 @@
+import { dailyWindowBounds, parseAnalyticsTimeRange } from "./website-analytics-time.ts";
+
 export type DashboardScope = { kind: "admin" } | { kind: "owner"; propertyId: string };
 
 export interface DashboardDateFilter {
   dateFrom?: string;
   dateTo?: string;
+  timeFrom?: string;
+  timeTo?: string;
 }
 
 export function dashboardDateFilter(query: DashboardDateFilter): DashboardDateFilter {
-  return query.dateFrom && query.dateTo ? { dateFrom: query.dateFrom, dateTo: query.dateTo } : {};
+  return query.dateFrom && query.dateTo ? { dateFrom: query.dateFrom, dateTo: query.dateTo, ...(query.timeFrom && query.timeTo ? { timeFrom: query.timeFrom, timeTo: query.timeTo } : {}) } : {};
 }
 
 export interface DashboardMonth extends DashboardDateFilter {
@@ -41,6 +45,7 @@ export interface DashboardReportingResult {
   sales: DashboardSales;
   totalSalesCents: number;
   daily: DashboardDailyBookingCount[];
+  hourly?: DashboardDailyBookingCount[];
   bookings: DashboardPage<DashboardBookingSource>;
   bookingDetail: DashboardBookingSource | null;
   agencies: DashboardPage<DashboardAgency>;
@@ -299,6 +304,7 @@ export interface DashboardDailyBookingCount {
 
 export interface DashboardOverview {
   confirmedBookingsByDay: DashboardDailyBookingCount[];
+  confirmedBookingsByHour?: DashboardDailyBookingCount[];
   topAgencies: DashboardAgency[];
   recentHouses: DashboardHouse[];
   agencyCount: number;
@@ -377,6 +383,8 @@ export function parseDashboardQuery(raw: Record<string, unknown>, now = new Date
   const [year, number] = month.split("-").map(Number);
   const dateFrom = reportDate(raw.dateFrom), dateTo = reportDate(raw.dateTo);
   if ((dateFrom === undefined) !== (dateTo === undefined) || (dateFrom && dateTo && dateFrom > dateTo)) throw new Error("ช่วงวันที่ไม่ถูกต้อง");
+  const time = parseAnalyticsTimeRange(raw.timeFrom, raw.timeTo, dateFrom && dateTo ? { from: dateFrom, to: dateTo } : undefined);
+  const explicitTime = raw.timeFrom !== undefined || raw.timeTo !== undefined ? time : undefined;
   const status = raw.status ?? "all";
   if (typeof status !== "string" || (status !== "all" && !DASHBOARD_STATUSES.some(item => item.value === status))) throw new Error("สถานะไม่ถูกต้อง");
   function text(value: unknown): string {
@@ -414,8 +422,9 @@ export function parseDashboardQuery(raw: Record<string, unknown>, now = new Date
   return {
     month,
     ...(dateFrom && dateTo ? { dateFrom, dateTo } : {}),
-    start: dateFrom ? new Date(`${dateFrom}T00:00:00+07:00`).toISOString() : new Date(Date.UTC(year, number - 1, 1) - 7 * 60 * 60 * 1000).toISOString(),
-    end: dateTo ? new Date(Date.parse(`${dateTo}T00:00:00+07:00`) + 86400000).toISOString() : new Date(Date.UTC(year, number, 1) - 7 * 60 * 60 * 1000).toISOString(),
+    ...explicitTime,
+    start: dateFrom ? dailyWindowBounds(dateFrom, time ?? { timeFrom: "00:00", timeTo: "24:00" }).start : new Date(Date.UTC(year, number - 1, 1) - 7 * 60 * 60 * 1000).toISOString(),
+    end: dateTo ? dailyWindowBounds(dateTo, time ?? { timeFrom: "00:00", timeTo: "24:00" }).end : new Date(Date.UTC(year, number, 1) - 7 * 60 * 60 * 1000).toISOString(),
     view: resolvedView,
     from: from(raw.from),
     page: page(raw.page),
@@ -425,6 +434,14 @@ export function parseDashboardQuery(raw: Record<string, unknown>, now = new Date
     agencySearch: text(raw.agencySearch), houseSearch: text(raw.houseSearch),
     bookingId, houseId,
   };
+}
+
+export function dashboardTimestampMatches(value: string, range: DashboardMonth): boolean {
+  const stamp = Date.parse(value);
+  if (!Number.isFinite(stamp) || stamp < Date.parse(range.start) || stamp >= Date.parse(range.end)) return false;
+  if (!range.timeFrom || !range.timeTo) return true;
+  const clock = new Date(stamp + 7 * 3600000).toISOString().slice(11, 16);
+  return clock >= range.timeFrom && clock < range.timeTo;
 }
 
 export function dashboardMoney(cents: number): string {

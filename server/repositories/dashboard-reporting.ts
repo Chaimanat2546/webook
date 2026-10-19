@@ -50,10 +50,17 @@ function booking(value: unknown): DashboardBookingSource {
 
 export function parseDashboardReportingResult(value: unknown): DashboardReportingResult {
   const r = object(value), counts = object(r.statusCounts);
+  const hourly = r.hourly == null ? undefined : rows(r.hourly, 24, value => {
+    const point = object(value), date = text(point.date);
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:00:00\.000Z$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString() !== date) throw new Error("dashboard_invalid_hour");
+    return { date, count: integer(point.count) };
+  });
+  if (hourly && (!hourly.length || hourly.some((point, index) => index > 0 && Date.parse(point.date) - Date.parse(hourly[index - 1].date) !== 3600000) || hourly.reduce((sum, point) => sum + point.count, 0) !== sales(r.sales).count)) throw new Error("dashboard_invalid_hour");
   return {
     bookingCount: integer(r.bookingCount), sales: sales(r.sales), totalSalesCents: integer(r.totalSalesCents),
     statusCounts: { confirmed: integer(counts.confirmed), waiting: integer(counts.waiting), cancelled: integer(counts.cancelled), repair: integer(counts.repair), unknown: integer(counts.unknown) },
     daily: rows(r.daily, 109574, value => { const day = object(value); return { date: text(day.date), count: integer(day.count) }; }),
+    ...(hourly ? { hourly } : {}),
     bookings: page(r.bookings, 100, booking), bookingDetail: r.bookingDetail === null ? null : booking(r.bookingDetail),
     agencies: page(r.agencies, 10, agency), selectedAgency: r.selectedAgency === null ? null : agency(r.selectedAgency),
     agencyCount: integer(r.agencyCount), topAgencies: rows(r.topAgencies, 5, agency),

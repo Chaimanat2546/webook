@@ -1,5 +1,5 @@
 import "server-only";
-import { dashboardDateFilter, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgencyListSort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDetail, type DashboardHouseListSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardMonth, type DashboardOverviewQuery, type DashboardPage, type DashboardReport } from "../../lib/dashboard.ts";
+import { dashboardDateFilter, dashboardTimestampMatches, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgencyListSort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDetail, type DashboardHouseListSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardMonth, type DashboardOverviewQuery, type DashboardPage, type DashboardReport } from "../../lib/dashboard.ts";
 import type { DashboardAgencyDetailQuery } from "../../lib/dashboard-routes.ts";
 import { dashboardShare } from "../../lib/dashboard-calculations.ts";
 import type { DashboardRepository } from "../repositories/dashboard.ts";
@@ -59,7 +59,7 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     }),
     scope.kind === "admin" ? repository.newHouses(query) : Promise.resolve([]),
   ]);
-  const houses = [...sourceHouses].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id, "en", { numeric: true }));
+  const houses = sourceHouses.filter(row => dashboardTimestampMatches(row.createdAt, query)).sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id, "en", { numeric: true }));
   const bookings = { ...result.bookings, rows: result.bookings.rows.map(row => publicBooking(row, scope.kind === "admin")) };
   const houseRows = houses.filter(row => !query.houseSearch || `${row.title} DV-${row.propertyId ?? ""}`.toLocaleLowerCase("th-TH").includes(query.houseSearch.toLocaleLowerCase("th-TH")));
   if (options.houseListSort === "created-asc") houseRows.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id, "en", { numeric: true }));
@@ -93,7 +93,7 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
   return {
     scope, month: query.month, ...dashboardDateFilter(query), bookingCount: result.bookingCount, waitingCount: result.statusCounts.waiting,
     statusCounts: result.statusCounts, sales: result.sales, bookings, detail,
-    overview: { confirmedBookingsByDay: result.daily, topAgencies: scope.kind === "admin" ? result.topAgencies : [], recentHouses: houses.slice(0, 6), agencyCount: scope.kind === "admin" ? result.agencyCount : 0, newHouseCount: houses.length },
+    overview: { confirmedBookingsByDay: result.daily, ...(result.hourly ? { confirmedBookingsByHour: result.hourly } : {}), topAgencies: scope.kind === "admin" ? result.topAgencies : [], recentHouses: houses.slice(0, 6), agencyCount: scope.kind === "admin" ? result.agencyCount : 0, newHouseCount: houses.length },
     admin: scope.kind === "admin" ? { agencies: result.agencies, houses: paginate(houseRows, query.housesPage), selectedAgency: null } : null,
   };
 }

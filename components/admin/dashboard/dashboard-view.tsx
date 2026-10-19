@@ -4,8 +4,8 @@ import { dashboardDateFilter, type DashboardDateFilter, type DashboardQuery, typ
 import { DashboardDateRangePicker } from "./dashboard-date-range-picker";
 import { DashboardOverviewView } from "./dashboard-overview";
 
-export function DashboardHeader({ month, dateFrom, dateTo, scope, action = "/admin/dashboard", title = "ภาพรวมธุรกิจ", description, showMonth = true }: DashboardDateFilter & { month: string; scope?: string; action?: string; title?: string; description?: string; showMonth?: boolean }) {
-  return <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="flex items-center gap-2 text-2xl font-semibold"><LayoutDashboard aria-hidden className="size-6" />{title}</h1>{description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}{scope && <p className="mt-1 text-sm text-muted-foreground">{scope}</p>}</div>{showMonth && <DashboardDateRangePicker action={action} month={month} dateFrom={dateFrom} dateTo={dateTo} />}</div>;
+export function DashboardHeader({ month, dateFrom, dateTo, timeFrom, timeTo, scope, action = "/admin/dashboard", title = "ภาพรวมธุรกิจ", description, showMonth = true }: DashboardDateFilter & { month: string; scope?: string; action?: string; title?: string; description?: string; showMonth?: boolean }) {
+  return <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="flex items-center gap-2 text-2xl font-semibold"><LayoutDashboard aria-hidden className="size-6" />{title}</h1>{description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}{scope && <p className="mt-1 text-sm text-muted-foreground">{scope}</p>}</div>{showMonth && <DashboardDateRangePicker action={action} month={month} dateFrom={dateFrom} dateTo={dateTo} timeFrom={timeFrom} timeTo={timeTo} />}</div>;
 }
 
 export function DashboardView({ report, query, websiteSummary }: { report: DashboardReport; query: DashboardQuery; websiteSummary?: ReactNode }) {
