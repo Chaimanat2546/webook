@@ -408,6 +408,19 @@ including long text, multiple reordered methods, missing images, uploaded QR,
 and automatic PromptPay QR. Confirm print output has no blank page, clipping,
 horizontal overflow, or avoidable split payment row.
 
+For a separately provisioned local test stack, both the quotation database
+suite and legacy-upgrade suite accept `SUPABASE_DB_CONTAINER` (default:
+`supabase_db_webook`). Set `LOCAL_SUPABASE_URL`, `LOCAL_SUPABASE_ANON_KEY` and
+`LOCAL_SUPABASE_SERVICE_ROLE_KEY` from that same **local** stack in memory;
+never load Staging/Production environment files for these mutation tests.
+The container override changes only the Docker target, not the schema or
+assertions. See [integration verification results](integration-test-results-2026-10-19.md)
+for the all-enabled run and the quotation fixture repair. Valid save fixtures
+load the owner's actual published template revision and layout; customer fixtures
+set explicit ownership and assert owner-only reads, per-owner uniqueness and
+server-only mutations. Negative cases retain forged/foreign snapshot rejection
+through both save RPCs and verify expired/revoked public links cannot be read.
+
 Before production use, scan an automatic PromptPay QR with a real Thai banking
 app and verify both the recipient and amount. Automated payload parsing and CRC
 checks do not replace this acceptance step.
