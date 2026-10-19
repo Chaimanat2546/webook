@@ -551,6 +551,31 @@ approval. The approved job links its fresh GitHub runner only to
 are forward-only: a failed migration prevents deployment, and a successful
 migration is corrected by a later migration rather than rewriting history.
 
+Staging validation runs typecheck and lint, then uses
+`scripts/run-ci-integration.mjs prepare|test|stop` to run the entire Node test
+suite with every opt-in integration flag enabled. This includes the six database
+integration suites and the four individual booking/iCal/Workers tests that the
+ordinary `npm test` command leaves optional. The TAP gate rejects any failing,
+cancelled, skipped or TODO test, skipped suite, incomplete summary or nonzero
+process exit. Missing Docker, local Supabase or Workers support fails validation
+instead of silently skipping coverage. Build and deployment cannot proceed on
+that failure.
+
+The fixture lives under `RUNNER_TEMP/webook-ci-integration`, uses a random
+`webook-ci-integration-<id>` project and loopback API port `57321`, and never links
+to a hosted database. It copies the 45 unmodified migrations through
+`20260806173000_save_quotation_layout_snapshot_before_insert.sql` and seeds only
+a synthetic default role needed by test accounts. This is the existing quotation
+integration baseline, not a clean-bootstrap test of the complete later migration
+chain; the booking, dashboard and iCal contract tests build their own disposable
+PostgreSQL fixtures. Local API credentials stay in process memory, not repository
+environment files or logs. An `always()` cleanup step removes only the generated
+local project and its data before any build or deploy; no deployment credentials
+are available to validation. No additional npm dependency or GitHub Action is
+required. For a local reproduction, assign an absolute fresh directory to
+`RUNNER_TEMP`, run `prepare`, then `test`, and always run `stop`, including after
+a failed preparation or test.
+
 ## References
 
 - Supabase CLI: https://supabase.com/docs/reference/cli

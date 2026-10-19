@@ -28,11 +28,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run audit:security
-      - run: npm run verify
-      - name: Test dashboard PostgreSQL contract
-        run: node --import ./tests/register-server-only.mjs --test tests/dashboard-migration.test.ts
-        env:
-          RUN_DASHBOARD_DB_TESTS: "1"
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Prepare isolated integration database
+        run: node scripts/run-ci-integration.mjs prepare
+      - name: Run every test with no skips
+        run: node scripts/run-ci-integration.mjs test
+      - name: Remove isolated integration database
+        if: always()
+        run: node scripts/run-ci-integration.mjs stop
       - run: npm run build
       - run: npx opennextjs-cloudflare build
       - run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run -c wrangler.staging.jsonc
