@@ -18,10 +18,12 @@ test('transactional iCal database contract on disposable PostgreSQL', { skip: pr
   const sql = (text: string) => run(['exec','-i',container,'psql','-U','postgres','-X','-A','-t','-v','ON_ERROR_STOP=1'],text);
   run(['run','--rm','-d','--network','none','--name',container,'-e','POSTGRES_HOST_AUTH_METHOD=trust','postgres:17-alpine']);
   try {
-    for (let attempt=0; attempt<50; attempt++) {
-      if (spawnSync('docker',['exec',container,'pg_isready','-U','postgres']).status === 0) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
+    let ready = false;
+    for (let attempt=0; attempt<60; attempt++) {
+      if (spawnSync('docker',['exec',container,'pg_isready','-h','127.0.0.1','-U','postgres','-t','1'], { timeout: 5000 }).status === 0) { ready = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
+    assert.ok(ready, 'Disposable PostgreSQL must accept TCP connections before fixtures run');
     sql(readFileSync(new URL('./fixtures/ical-db-baseline.sql',import.meta.url),'utf8'));
     sql(readFileSync(new URL('../supabase/migrations/20260930100000_booking_payment_expiry.sql',import.meta.url),'utf8'));
     sql(readFileSync(new URL('../supabase/migrations/20261005130000_dashboard_confirmed_agency_counts.sql',import.meta.url),'utf8'));

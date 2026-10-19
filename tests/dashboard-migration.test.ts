@@ -60,10 +60,12 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
   before(async () => {
     const run = spawnSync("docker", ["run", "--rm", "-d", "--name", container, "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "postgres:17-alpine"], { encoding: "utf8" });
     assert.equal(run.status, 0, run.stderr);
-    for (let i = 0; i < 60; i++) {
-      if (spawnSync("docker", ["exec", container, "pg_isready", "-U", "postgres"]).status === 0) break;
+    let ready = false;
+    for (let attempt = 0; attempt < 60; attempt++) {
+      if (spawnSync("docker", ["exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-t", "1"], { timeout: 5000 }).status === 0) { ready = true; break; }
       await new Promise(resolve => setTimeout(resolve, 500));
     }
+    assert.ok(ready, "Disposable PostgreSQL must accept TCP connections before fixtures run");
     sql(`create role anon; create role authenticated; create role service_role;
       create table public.users(uid uuid primary key, role_id smallint, dv_id bigint);
       insert into users values ('${admin}',1,null),('${owner}',3,101);

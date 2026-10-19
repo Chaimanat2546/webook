@@ -597,6 +597,13 @@ required. For a local reproduction, assign an absolute fresh directory to
 `RUNNER_TEMP`, run `prepare`, then `test`, and always run `stop`, including after
 a failed preparation or test.
 
+Dashboard, house-booking and iCal fixtures wait for PostgreSQL over the
+container's loopback TCP address before loading SQL. The image's temporary
+socket-only initialization server does not satisfy this readiness check. Each
+probe and the number of attempts are bounded; startup timeout explicitly fails
+the fixture before any SQL runs. Existing authorization, RLS,
+cross-house isolation, audit and transaction assertions remain unchanged.
+
 ## References
 
 - Supabase CLI: https://supabase.com/docs/reference/cli
