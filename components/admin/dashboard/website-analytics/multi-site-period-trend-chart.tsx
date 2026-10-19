@@ -19,7 +19,7 @@ function MultiPeriodTooltip({ active, payload, rows, colors }: TooltipContentPro
   if (!active || !point) return null;
   return <div className="w-full space-y-2 rounded-lg border bg-background px-3 py-2 text-xs shadow-xl">
     <div className="text-muted-foreground"><p>ช่วงหลัก · {point.date ? periodPointLabel(point.date, rows[0]?.current.asOf, rows[0]?.current.range) : "นอกช่วงที่เลือก"}</p><p>ชุดเทียบ · {point.previousDate ? periodPointLabel(point.previousDate, rows[0]?.previous.asOf, rows[0]?.previous.range) : "นอกช่วงที่เลือก"}</p></div>
-    <table aria-label="ค่ารายวันแต่ละเว็บไซต์" className="w-full table-fixed">
+    <table aria-label={rows[0]?.current.granularity === "hour" ? "ค่ารายชั่วโมงแต่ละเว็บไซต์" : "ค่ารายวันแต่ละเว็บไซต์"} className="w-full table-fixed">
       <colgroup><col className="w-1/2" /><col className="w-1/4" /><col className="w-1/4" /></colgroup>
       <thead><tr className="text-muted-foreground"><th className="text-left font-normal">เว็บไซต์</th><th className="text-right font-normal">หลัก</th><th className="text-right font-normal">เทียบ</th></tr></thead>
       <tbody>{rows.map(row => <tr key={row.key}>

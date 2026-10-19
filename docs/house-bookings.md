@@ -158,6 +158,12 @@ Production-schema summary and explicit confirmation.
   revisions, Production-named snapshot values, idempotent creation, preserved
   totals, actor attribution, single audit entry and overlap rollback. Its audit
   trigger is a focused fixture, not the deployed trigger.
+- With the same flag, `tests/legacy-booking-upgrade.test.ts` exercises the
+  current `20260929140000_booking_house_information_snapshot.sql` migration
+  against a populated, production-shaped bigint booking fixture. It verifies
+  preserved rows, RLS enablement, RPC grants, deposits, audit attribution and
+  repeat application. It no longer claims to convert the retired UUID legacy
+  schema or depend on the deleted September 18 migrations.
 - Browser verification used the actual calendar/editor components with local
   fixture actions: confirmed red, waiting green, 5 -> 6 nights with total 30000
   unchanged, successful fixture save, and a 320px mobile sheet with no field overflow.

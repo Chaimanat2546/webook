@@ -51,8 +51,7 @@ function OverviewAnalyticsSkeleton() {
       <Skeleton className={`h-9 w-36 ${pulse}`} />
       <div className="space-y-2"><Skeleton className={`h-7 w-64 ${pulse}`} /><Skeleton className={`h-4 w-80 max-w-full ${pulse}`} /></div>
     </header>
-    <div data-loading-section="analytics-loading-filters" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-      <Skeleton className={`h-11 w-full sm:w-40 ${pulse}`} />
+    <div data-loading-section="analytics-loading-filters" className="flex min-w-0">
       <Skeleton className={`h-11 w-full sm:w-72 ${pulse}`} />
     </div>
     <div data-loading-section="analytics-loading-summary" className="rounded-xl border bg-card p-4 md:p-6">
@@ -60,7 +59,8 @@ function OverviewAnalyticsSkeleton() {
       <div className="mt-4 grid grid-cols-3 gap-2 border-t pt-4 md:flex md:gap-3">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className={`h-8 w-full md:w-28 ${pulse}`} />)}</div>
     </div>
     <section data-loading-section="analytics-loading-chart" className="rounded-xl border bg-card p-4 md:p-6">
-      <div className="space-y-2"><Skeleton className={`h-6 w-40 ${pulse}`} /><Skeleton className={`h-4 w-64 max-w-full ${pulse}`} /></div>
+      <div className="flex flex-wrap items-start justify-between gap-3"><Skeleton className={`h-6 w-40 ${pulse}`} /><div className="flex max-w-full flex-wrap gap-2"><Skeleton className={`h-8 w-48 max-w-full ${pulse}`} /><Skeleton className={`h-8 w-36 ${pulse}`} /></div></div>
+      <div className="mt-3 flex gap-1">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className={`h-8 min-w-0 max-w-24 flex-1 ${pulse}`} />)}</div>
       <Skeleton className={`mt-5 h-56 w-full ${pulse}`} />
     </section>
     <RankingSkeleton />

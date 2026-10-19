@@ -11,7 +11,7 @@ import { Button } from "../../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "../../ui/sheet";
-import { ReportDateRangePicker } from "./report-date-range-picker";
+import { WebsiteDateRangePicker } from "./website-analytics/website-date-range-picker";
 import { DashboardListToolbar } from "./dashboard-list-toolbar";
 
 interface DashboardBookingFiltersProps {
@@ -117,7 +117,7 @@ export function DashboardBookingFilters({ query, href }: DashboardBookingFilters
     </div>
     <div className="w-full min-w-0 pb-1">
       <div className="flex w-full min-w-0 flex-wrap gap-2">
-        <ReportDateRangePicker className="h-8 w-auto min-w-0 max-w-full flex-none text-sm" month={query.month} label="ช่วงวันที่อัปเดตการจอง" range={query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo } : undefined} onChange={range => navigate({ dateFrom: range.from, dateTo: range.to, checkInFrom: undefined, checkInTo: undefined })} />
+        <WebsiteDateRangePicker className="h-8 w-auto min-w-0 max-w-full flex-none text-sm" month={query.month} label="ช่วงวันที่อัปเดตการจอง" range={query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo, timeFrom: query.timeFrom, timeTo: query.timeTo } : undefined} onChange={range => navigate({ dateFrom: range.from, dateTo: range.to, timeFrom: range.timeFrom, timeTo: range.timeTo, checkInFrom: undefined, checkInTo: undefined })} />
         <div className="hidden md:block"><Select items={bookingStatusOptions} value={query.status} onValueChange={status => { if (status) navigate({ status }); }}>
           <SelectTrigger id="booking-status" aria-label="สถานะการจอง" className="pl-3">
             <TagIcon aria-hidden className="size-4 text-muted-foreground" />

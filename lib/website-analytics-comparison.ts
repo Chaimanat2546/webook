@@ -78,7 +78,7 @@ export function websitePeriodSeries(site: WebsiteSummary | undefined, range: Ana
   if (granularity === "hour") {
     const bounds = hourlyBounds(range.from, { timeFrom: range.timeFrom ?? "00:00", timeTo: range.timeTo ?? "24:00" }, asOf);
     const total = site?.totals?.[metric] ?? null;
-    const points = websiteChartData(site ? [site] : [], range.from.slice(0, 7), metric, "hour", range).map(point => ({ date: point.date, value: site ? point.values[site.key] : null }));
+    const points = websiteChartData(site ? [site] : [], range.from.slice(0, 7), metric, "hour", range, asOf).map(point => ({ date: point.date, value: site ? point.values[site.key] : null }));
     const observed = points.filter(point => point.value !== null).length;
     const complete = Boolean(site?.status === "complete" && site.coverage?.range_complete && site.coverage.rows_complete && observed === points.length && points.reduce((sum, point) => sum + (point.value ?? 0), 0) === total);
     const status = total === null ? "unavailable" : Date.parse(asOf) < Date.parse(bounds.end) ? "ongoing" : complete ? "complete" : "partial";
@@ -95,8 +95,7 @@ export function websitePeriodSeries(site: WebsiteSummary | undefined, range: Ana
     return { range, total, daily: points, expectedDays, availableDays, coverageComplete, status, asOf, granularity: "day", requestedEnd: end };
   }
   const retentionTime = site?.coverage ? Date.parse(site.coverage.data_available_from) : NaN;
-  const availableFrom = Number.isFinite(retentionTime) ? new Date(retentionTime + 7 * 3600000).toISOString().slice(0, 10) : "";
-  const rows = new Map((total === null ? [] : site?.daily ?? []).filter(row => row.date >= availableFrom).map(row => [row.date, row[metric]]));
+  const rows = new Map(websiteChartData(site ? [site] : [], range.from.slice(0, 7), metric, "day", range, asOf).map(point => [point.date, site ? point.values[site.key] : null]));
   const daily: WebsitePeriodSeries["daily"] = [];
   for (let time = Date.parse(range.from); time <= Date.parse(range.to); time += dayMs) {
     const date = new Date(time).toISOString().slice(0, 10);

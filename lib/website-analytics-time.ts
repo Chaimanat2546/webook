@@ -37,6 +37,12 @@ export function hourLabel(instant: string): string {
 export function hourlyRangeLabel(start: string, end: string): string {
   return `${hourLabel(start)}–${hourLabel(end) === "00:00" ? "24:00" : hourLabel(end)}`;
 }
+export function analyticsTimeRangeLabel(range?: { from: string; to: string; timeFrom?: string; timeTo?: string }): string {
+  const timeFrom = range?.timeFrom ?? "00:00";
+  const timeTo = range?.timeTo ?? "24:00";
+  if (timeFrom === "00:00" && timeTo === "24:00") return "เต็มวัน 24 ชั่วโมง (00:00–24:00)";
+  return `${range?.from === range?.to ? "" : "ทุกวัน "}${timeFrom}–${timeTo}`;
+}
 export function isFutureAnalyticsRange(range: { from: string; to: string; timeFrom?: string; timeTo?: string } | undefined, asOf: string | undefined): boolean {
   return Boolean(range?.timeFrom && range.timeTo && asOf && Date.parse(asOf) <= Date.parse(`${range.from}T${range.timeFrom}:00+07:00`));
 }

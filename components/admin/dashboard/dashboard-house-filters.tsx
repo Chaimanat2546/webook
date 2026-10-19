@@ -8,7 +8,7 @@ import { DASHBOARD_HOUSE_LIST_SORTS, type DashboardHousesQuery } from "../../../
 import { dashboardHousesHref } from "../../../lib/dashboard-routes";
 import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import { ReportDateRangePicker } from "./report-date-range-picker";
+import { WebsiteDateRangePicker } from "./website-analytics/website-date-range-picker";
 import { DashboardListToolbar } from "./dashboard-list-toolbar";
 
 export function DashboardHouseFilters({ query }: { query: DashboardHousesQuery }) {
@@ -28,7 +28,7 @@ export function DashboardHouseFilters({ query }: { query: DashboardHousesQuery }
     </div>
     <div className="w-full min-w-0 pb-1">
       <div className="flex w-full min-w-0 flex-wrap gap-2">
-        <ReportDateRangePicker className="h-8 w-auto min-w-0 max-w-full flex-none text-sm" month={query.month} range={query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo } : undefined} onChange={range => router.push(dashboardHousesHref(query, { dateFrom: range.from, dateTo: range.to }))} />
+        <WebsiteDateRangePicker className="h-8 w-auto min-w-0 max-w-full flex-none text-sm" month={query.month} range={query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo, timeFrom: query.timeFrom, timeTo: query.timeTo } : undefined} onChange={range => router.push(dashboardHousesHref(query, { dateFrom: range.from, dateTo: range.to, timeFrom: range.timeFrom, timeTo: range.timeTo }))} />
         <Select items={DASHBOARD_HOUSE_LIST_SORTS} value={query.houseSort ?? "created-desc"} onValueChange={houseSort => { if (houseSort) router.push(dashboardHousesHref(query, { houseSort })); }}>
           <SelectTrigger id="house-sort" aria-label="เรียงลำดับบ้าน" className="min-w-0 w-auto max-w-full pl-3">
             <ListFilterIcon aria-hidden className="size-4 text-muted-foreground" />

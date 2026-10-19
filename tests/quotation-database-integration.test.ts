@@ -3,12 +3,15 @@ import { execFileSync } from "node:child_process";
 import { after, before, describe, it } from "node:test";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { QuotationDocumentTemplateSnapshot } from "../server/repositories/quotations.ts";
+import type { QuotationTemplate } from "../lib/quotation-template.ts";
 
 const enabled = process.env.RUN_LOCAL_SUPABASE_TESTS === "1"
   || process.env.RUN_QUOTATION_DB_TESTS === "1";
 const url = process.env.LOCAL_SUPABASE_URL ?? "";
 const anonKey = process.env.LOCAL_SUPABASE_ANON_KEY ?? "";
 const serviceRoleKey = process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY ?? "";
+const container = process.env.SUPABASE_DB_CONTAINER ?? "supabase_db_webook";
 const password = "Quotation-local-test-2026!";
 const issueDate = "2099-12-31";
 const otherDate = new Date(
@@ -21,12 +24,38 @@ const seller = {
   officeType: "head_office",
   taxId: "0100000000000",
 };
+let layouts: Record<QuotationTemplate, QuotationDocumentTemplateSnapshot>;
+let otherLayouts: Record<QuotationTemplate, QuotationDocumentTemplateSnapshot>;
+
+async function loadLayouts(client: SupabaseClient, ownerId: string) {
+  const snapshots = await Promise.all((["current", "hospitality", "corporate"] as const).map(async (template) => {
+    const source = await client.from("quotation_document_templates")
+      .select("id,current_revision_number").eq("user_id", ownerId).eq("template_key", template).single();
+    assert.equal(source.error, null, source.error?.message);
+    assert.ok(source.data);
+    const revision = await client.from("quotation_document_template_revisions")
+      .select("revision_number,layout_schema_version,layout_config")
+      .eq("template_id", source.data.id).eq("revision_number", source.data.current_revision_number).single();
+    assert.equal(revision.error, null, revision.error?.message);
+    assert.ok(revision.data);
+    const snapshot: QuotationDocumentTemplateSnapshot = {
+      config: revision.data.layout_config,
+      revisionNumber: Number(revision.data.revision_number),
+      schemaVersion: Number(revision.data.layout_schema_version),
+      sourceId: source.data.id,
+      template,
+    };
+    return [template, snapshot] as const;
+  }));
+  return Object.fromEntries(snapshots) as Record<QuotationTemplate, QuotationDocumentTemplateSnapshot>;
+}
 
 function payload(
   id: string | null,
   date = issueDate,
   sellerSnapshot = seller,
   unit: string | null = "งาน",
+  layout: QuotationDocumentTemplateSnapshot = layouts.current,
 ) {
   return {
     certification_snapshot: {
@@ -53,7 +82,11 @@ function payload(
       unit: true,
       withholdingTax: true,
     },
-    document_template_snapshot: "current",
+    document_template_snapshot: layout.template,
+    document_template_source_id: layout.sourceId,
+    document_template_revision_snapshot: layout.revisionNumber,
+    document_layout_schema_version_snapshot: layout.schemaVersion,
+    document_layout_snapshot: structuredClone(layout.config),
     company_profile_id: null as string | null,
     id,
     internal_notes: "",
@@ -108,7 +141,7 @@ async function saveWithPayments(client: SupabaseClient, value: ReturnType<typeof
 describe("quotation local database integration", { skip: !enabled }, () => {
   it("grants authenticated users SELECT-only snapshot table privileges", () => {
     const privileges = execFileSync("docker", [
-      "exec", "supabase_db_webook", "psql", "-U", "postgres", "-d", "postgres", "-Atqc",
+      "exec", container, "psql", "-U", "postgres", "-d", "postgres", "-Atqc",
       "select has_table_privilege('authenticated', 'public.quotation_payment_methods', 'SELECT'), has_table_privilege('authenticated', 'public.quotation_payment_methods', 'INSERT'), has_table_privilege('authenticated', 'public.quotation_payment_methods', 'UPDATE'), has_table_privilege('authenticated', 'public.quotation_payment_methods', 'DELETE'), has_table_privilege('authenticated', 'public.quotation_payment_methods', 'TRUNCATE');",
     ], { encoding: "utf8" }).trim();
     assert.equal(privileges, "t|f|f|f|f");
@@ -128,7 +161,7 @@ describe("quotation local database integration", { skip: !enabled }, () => {
   before(async () => {
     assert.ok(url && anonKey && serviceRoleKey, "local Supabase environment is required");
     originalAssetOrigin = execFileSync("docker", [
-      "exec", "supabase_db_webook", "psql", "-U", "postgres", "-d", "postgres", "-Atqc",
+      "exec", container, "psql", "-U", "postgres", "-d", "postgres", "-Atqc",
       "select coalesce((select origin from private.quotation_payment_asset_config where singleton), '');",
     ], { encoding: "utf8" }).trim() || null;
     const allowedEmail = `quotation-allowed-${crypto.randomUUID()}@example.test`;
@@ -152,6 +185,8 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal(otherAllowedProfile.error, null, otherAllowedProfile.error?.message);
     allowedProfileId = allowedProfile.data.id;
     otherAllowedProfileId = otherAllowedProfile.data.id;
+    layouts = await loadLayouts(allowed, allowedId);
+    otherLayouts = await loadLayouts(otherAllowed, otherAllowedId);
     const clearedAssetOrigin = await service.rpc("configure_quotation_payment_asset_origin", {
       p_origin: null,
     });
@@ -216,18 +251,21 @@ describe("quotation local database integration", { skip: !enabled }, () => {
   it("persists immutable template snapshots through both public save boundaries", async () => {
     const createdIds: string[] = [];
     for (const saveQuotation of [save, saveWithPayments]) {
-      const hospitality = payload(null);
-      hospitality.document_template_snapshot = "hospitality";
+      const hospitality = payload(null, issueDate, seller, "งาน", layouts.hospitality);
       const created = await saveQuotation(allowed, hospitality);
       createdIds.push(created.id);
 
       const stored = await allowed
         .from("quotations")
-        .select("document_template_snapshot,public_token")
+        .select("document_template_snapshot,document_template_source_id,document_template_revision_snapshot,document_layout_schema_version_snapshot,document_layout_snapshot,public_token")
         .eq("id", created.id)
         .single();
       assert.equal(stored.error, null, stored.error?.message);
       assert.equal(stored.data.document_template_snapshot, "hospitality");
+      assert.equal(stored.data.document_template_source_id, hospitality.document_template_source_id);
+      assert.equal(stored.data.document_template_revision_snapshot, hospitality.document_template_revision_snapshot);
+      assert.equal(stored.data.document_layout_schema_version_snapshot, hospitality.document_layout_schema_version_snapshot);
+      assert.deepEqual(stored.data.document_layout_snapshot, hospitality.document_layout_snapshot);
 
       const publicQuotation = await anonymous.rpc("get_public_quotation", {
         p_token: stored.data.public_token,
@@ -260,10 +298,60 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     );
 
     for (const rpc of ["save_quotation", "save_quotation_with_payments"] as const) {
-      const invalid = payload(null);
-      invalid.document_template_snapshot = "custom";
+      const invalid = { ...payload(null), document_template_snapshot: "custom" };
       const invalidSave = await allowed.rpc(rpc, { p_payload: invalid });
       assert.equal(invalidSave.error?.code, "22023");
+    }
+  });
+
+  it("rejects missing, forged and foreign layout snapshots through both save RPCs without writes", async () => {
+    const missing: Record<string, unknown> = payload(null);
+    for (const key of ["document_template_source_id", "document_template_revision_snapshot", "document_layout_schema_version_snapshot", "document_layout_snapshot"]) {
+      delete missing[key];
+    }
+    const tampered = payload(null);
+    tampered.document_layout_snapshot.themeColor = tampered.document_layout_snapshot.themeColor === "#112233" ? "#445566" : "#112233";
+    const cases = [
+      { name: "missing snapshot", value: missing, code: "22023" },
+      { name: "obsolete schema", value: { ...payload(null), document_layout_schema_version_snapshot: 1 }, code: "22023" },
+      { name: "invalid layout", value: { ...payload(null), document_layout_snapshot: { blocks: [], schemaVersion: 2, themeColor: "invalid" } }, code: "22023" },
+      { name: "unknown source", value: { ...payload(null), document_template_source_id: crypto.randomUUID() }, code: "42501" },
+      { name: "unpublished revision", value: { ...payload(null), document_template_revision_snapshot: layouts.current.revisionNumber + 1 }, code: "42501" },
+      { name: "modified layout", value: tampered, code: "42501" },
+      { name: "foreign source", value: payload(null, issueDate, seller, "งาน", otherLayouts.current), code: "42501" },
+    ];
+    const beforeCount = await allowed.from("quotations").select("id");
+    assert.equal(beforeCount.error, null, beforeCount.error?.message);
+    for (const rpc of ["save_quotation", "save_quotation_with_payments"] as const) {
+      for (const testCase of cases) {
+        const result = await allowed.rpc(rpc, { p_payload: testCase.value });
+        assert.equal(result.error?.code, testCase.code, `${rpc}: ${testCase.name}: ${result.error?.message}`);
+      }
+    }
+    const afterCount = await allowed.from("quotations").select("id");
+    assert.equal(afterCount.error, null, afterCount.error?.message);
+    assert.deepEqual(afterCount.data.map((row) => row.id).sort(), beforeCount.data.map((row) => row.id).sort());
+  });
+
+  it("denies public access after token expiry or revocation", async () => {
+    for (const state of ["expired", "revoked"] as const) {
+      const created = await save(allowed, payload(null));
+      const stored = await allowed.from("quotations").select("public_token").eq("id", created.id).single();
+      assert.equal(stored.error, null, stored.error?.message);
+      const readable = await anonymous.rpc("get_public_quotation", { p_token: stored.data.public_token });
+      assert.equal(readable.error, null, readable.error?.message);
+      assert.equal(readable.data.id, created.id);
+      assert.match(created.id, /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i);
+      const assignment = state === "expired"
+        ? "public_token_expires_at = '2000-01-01T00:00:00Z'"
+        : "public_token_revoked_at = now()";
+      execFileSync("docker", [
+        "exec", container, "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-Atqc",
+        `update public.quotations set ${assignment} where id = '${created.id}'::uuid;`,
+      ], { encoding: "utf8" });
+      const blocked = await anonymous.rpc("get_public_quotation", { p_token: stored.data.public_token });
+      assert.equal(blocked.error, null, blocked.error?.message);
+      assert.equal(blocked.data, null, state);
     }
   });
 
@@ -612,7 +700,7 @@ describe("quotation local database integration", { skip: !enabled }, () => {
     assert.equal((await allowed.from("quotation_payment_methods").delete().eq("id", snapshotId)).error?.code, "42501");
     assert.deepEqual((await otherAllowed.from("quotations").select("id")).data, []);
 
-    const crossAccountUpdate = payload(created.id);
+    const crossAccountUpdate = payload(created.id, issueDate, seller, "งาน", otherLayouts.current);
     crossAccountUpdate.company_profile_id = otherAllowedProfileId;
     assert.equal((await otherAllowed.rpc("save_quotation_with_payments", { p_payload: crossAccountUpdate })).error?.code, "P0002");
     assert.equal((await otherAllowed.rpc("soft_delete_quotation", { p_id: created.id })).error?.code, "P0002");

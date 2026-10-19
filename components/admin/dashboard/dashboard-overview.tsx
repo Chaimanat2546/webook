@@ -1,5 +1,6 @@
 import { dashboardDateFilter } from "../../../lib/dashboard";
 import { dashboardPeriodParams } from "../../../lib/dashboard-routes";
+import { analyticsTimeRangeLabel } from "../../../lib/website-analytics-time";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -43,6 +44,7 @@ function DashboardOverviewEmptyState({
 export function DashboardOverviewView({ report, query }: { report: DashboardReport; query: DashboardQuery }) {
   return (
     <div className="space-y-5">
+      <p className="text-xs text-muted-foreground">เวลาไทย · {analyticsTimeRangeLabel(query.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo, timeFrom: query.timeFrom, timeTo: query.timeTo } : undefined)} · การจองตามเวลาอัปเดตล่าสุด · บ้านใหม่ตามเวลาสร้าง</p>
       <DashboardSummary report={report} query={query} />
 
       <Card className="min-h-[21rem] gap-2">
@@ -59,12 +61,12 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
         </CardHeader>
         <CardContent className="flex flex-1">
           {report.sales.count > 0 ? (
-            <ConfirmedBookingsChart points={report.overview.confirmedBookingsByDay} />
+            <ConfirmedBookingsChart points={report.overview.confirmedBookingsByHour ?? report.overview.confirmedBookingsByDay} granularity={report.overview.confirmedBookingsByHour ? "hour" : "day"} />
           ) : (
             <DashboardOverviewEmptyState
               icon={CalendarDays}
               title="ยังไม่มีรายการติดจอง"
-              description="รายการติดจองรายวันจะแสดงที่นี่"
+              description={`รายการติดจอง${report.overview.confirmedBookingsByHour ? "รายชั่วโมง" : "รายวัน"}จะแสดงที่นี่`}
             />
           )}
         </CardContent>
