@@ -133,8 +133,11 @@ localhost). `npm run dev` does not register the worker. Test development on a
 different port/profile from a previously installed production build, or remove
 that localhost worker in browser DevTools before development.
 
-Run `npm run build:pwa` after changing worker source or precached files; do not edit
-the generated worker manually. Workbox 7.4.1 and esbuild 0.28.1 are approved build
+Run `npm run build:pwa` after changing application source, dependency manifests,
+worker source or precached files, before running the full test suite. Commit the
+regenerated `public/sw.js` with those changes; do not restore an older generated
+worker after a build. CI checks the committed artifact before building the app.
+Do not edit the generated worker manually. Workbox 7.4.1 and esbuild 0.28.1 are approved build
 dependencies, bundled locally without a CDN. An update
 waits until the previous worker no longer controls any open tabs/windows, including
 the installed app. It does not automatically call `skipWaiting` or force a page reload, so it
@@ -172,6 +175,7 @@ revision cleanup, offline assets, and conservative updates. A build test verifie
 the committed worker is reproducible and public-file edits change the artifact.
 
 ```sh
+npm run build:pwa
 node --test tests/pwa-worker.test.ts
 npm run typecheck
 npm run lint
