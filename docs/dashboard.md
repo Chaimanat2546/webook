@@ -4,6 +4,8 @@ Website statistics are a separate admin-only task at `/admin/dashboard/websites`
 
 `/admin/dashboard` is a read-only date-range overview. Desktop navigation exposes Dashboard; on mobile it is in the More sidebar. Existing booking-edit permissions are not expanded.
 
+The overview below 768px uses a compact WeBooks header, period bar, booking-sales card, booking area chart, operational links and website analytics with collapsible filters. Its bottom navigation jumps between the visible report sections; the header menu opens the existing main sidebar. Owners see only their business summary and booking trend. Website rows open the existing detail screen; “ดูตารางทั้งหมด” preserves the displayed analytics period, hours, comparison and website scope. Values and missing-data notices come from the same authorized reports as desktop. Tablet/desktop layout, branding and reporting rules remain unchanged.
+
 ## Access
 
 The server resolves the authenticated Supabase user and reads `users.role_id,dv_id` by `uid` using the server-only service client. Role 1 sees all houses, agency sales and new-house history. Other users need a positive `dv_id` and see bookings only where both `bookings.houseid` and the joined `listings.property_id` match it. The listing ID must also match. Missing identities or missing/invalid owner IDs are denied; email fallback and URL-supplied role/house IDs never grant access.

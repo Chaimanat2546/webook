@@ -4,6 +4,53 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Only the overview opts in; tablet/desktop and other analytics screens keep their layout. */
+@media (width < 48rem) {
+  .dashboard-overview {
+    --chart-1: #0d9494;
+    --chart-2: #2563eb;
+    --chart-3: #8b5cf6;
+    --chart-4: #f97316;
+    --chart-5: #ef4444;
+  }
+  .dashboard-overview [data-dashboard-website-card] {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    gap: 0;
+  }
+  .dashboard-overview [data-dashboard-website-card] > [data-slot="card-header"] {
+    display: none;
+  }
+  .dashboard-overview [data-dashboard-website-card] > [data-slot="card-content"] {
+    padding: 0;
+  }
+  .dashboard-overview [data-dashboard-website-card] p[role="status"] {
+    border: 1px solid #fcd34d;
+    border-radius: 1.5rem;
+    background: light-dark(#fffbeb, #422006);
+    padding: .875rem;
+  }
+  .dashboard-overview [data-dashboard-website-graph] figure {
+    display: flex;
+    flex-direction: column;
+  }
+  .dashboard-overview [data-dashboard-website-graph] figure > [role="group"] {
+    order: 1;
+    flex-direction: column;
+    margin-top: .75rem;
+    margin-bottom: 0;
+  }
+  .dashboard-overview [data-dashboard-website-graph] figure > [role="group"] > button {
+    width: 100%;
+    min-height: 2rem;
+    padding-inline: 0;
+    font-size: .75rem;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
