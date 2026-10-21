@@ -1,25 +1,67 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { ListFilterIcon, SearchIcon, SlidersHorizontalIcon, TagIcon, XIcon } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Filter, ListFilterIcon, SearchIcon, SlidersHorizontalIcon, TagIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { DASHBOARD_BOOKING_SORTS, DASHBOARD_STATUSES, type DashboardBookingsQuery } from "../../../lib/dashboard";
+import { DASHBOARD_BOOKING_SORTS, DASHBOARD_STATUSES, dashboardDate, type DashboardBookingsQuery } from "../../../lib/dashboard";
 import { dashboardBookingsHref } from "../../../lib/dashboard-routes";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import { Sheet, SheetContent, SheetTrigger } from "../../ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "../../ui/sheet";
 import { WebsiteDateRangePicker } from "./website-analytics/website-date-range-picker";
 import { DashboardListToolbar } from "./dashboard-list-toolbar";
 
 interface DashboardBookingFiltersProps {
   query: DashboardBookingsQuery;
+  mobileRedesign?: boolean;
   href?: (changes: Partial<DashboardBookingsQuery>) => string;
 }
 
 const bookingStatusOptions = [{ value: "all", label: "ทุกสถานะ" }, ...DASHBOARD_STATUSES];
+
+export function DashboardBookingFilters(props: DashboardBookingFiltersProps) {
+  if (!props.mobileRedesign) return <DashboardBookingStandardFilters {...props} />;
+  return <><div className="hidden md:block"><DashboardBookingStandardFilters {...props} /></div><DashboardBookingMobileFilters {...props} /></>;
+}
+
+function bookingPeriodLabel(query: DashboardBookingsQuery): string {
+  const [year, month] = query.month.split("-").map(Number);
+  const from = query.dateFrom ?? `${query.month}-01`;
+  const to = query.dateTo ?? new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  return `${dashboardDate(`${from}T00:00:00+07:00`)} – ${dashboardDate(`${to}T00:00:00+07:00`)}`;
+}
+
+function DashboardBookingMobileFilters({ query, href }: DashboardBookingFiltersProps) {
+  const router = useRouter();
+  const [search, setSearch] = useState(query.search);
+  const [open, setOpen] = useState(false);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const count = Number(query.status !== "all") + Number(Boolean(query.dateFrom)) + Number(query.amountFromCents !== undefined || query.amountToCents !== undefined) + Number(Boolean(query.checkInFrom)) + Number(Boolean(query.timeFrom && (query.timeFrom !== "00:00" || query.timeTo !== "24:00")));
+  const navigate = (changes: Partial<DashboardBookingsQuery>) => router.push(href ? href(changes) : dashboardBookingsHref(query, changes));
+  return <div className="mb-5 space-y-2.5 md:hidden">
+    <form className="relative" onSubmit={event => { event.preventDefault(); navigate({ search: search.trim() }); }}>
+      <Input aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่" name="search" type="search" placeholder="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่" value={search} onChange={event => setSearch(event.target.value)} className="h-11 rounded-full border-border bg-card pr-4 pl-11 text-xs shadow-none dark:border-border" />
+      <button type="submit" aria-label="ค้นหา" className="absolute inset-y-0 left-1 flex w-10 items-center justify-center rounded-full text-muted-foreground focus-visible:outline-2"><SearchIcon aria-hidden className="size-4" /></button>
+    </form>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild><Button type="button" variant="outline" className="h-12 w-full justify-start gap-3 rounded-full border-border bg-card px-4 text-xs shadow-none dark:border-border"><SlidersHorizontalIcon aria-hidden className="size-4" /><span className="font-semibold">ค้นหาและตัวกรอง</span>{count > 0 && <span aria-hidden className="size-1.5 rounded-full bg-primary" />}<span className="ml-auto font-normal text-muted-foreground" aria-label="ตัวกรองที่ใช้">{count} ตัวกรอง</span><ChevronDown aria-hidden className="size-4 text-muted-foreground" /></Button></SheetTrigger>
+      <SheetContent ref={setContainer} side="bottom" showCloseButton={false} className="max-h-[85dvh] overflow-y-auto rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <SheetTitle className="sr-only">ค้นหาและตัวกรองรายการจอง</SheetTitle><SheetDescription className="sr-only">เลือกช่วงวัน สถานะ การเรียงลำดับ และยอดจอง แล้วกดใช้ตัวกรอง</SheetDescription>
+        <DashboardBookingAdvancedFiltersPanel key={JSON.stringify(query)} datePickerPortalContainer={container} query={query} showBookingControls showPeriod onFiltersApply={navigate} onClose={() => setOpen(false)} />
+      </SheetContent>
+    </Sheet>
+    <p className="flex items-start gap-2 rounded-full border border-border/70 bg-muted/70 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground dark:border-border dark:bg-muted"><Filter aria-hidden className="mt-0.5 size-3 shrink-0" /><span>{bookingPeriodLabel(query)} · {bookingStatusOptions.find(item => item.value === query.status)?.label} · {DASHBOARD_BOOKING_SORTS.find(item => item.value === query.sort)?.label}{query.timeFrom && ` · ทุกวัน ${query.timeFrom}–${query.timeTo}`}{query.checkInFrom && ` · เข้าพัก ${query.checkInFrom}–${query.checkInTo}`}{(query.amountFromCents !== undefined || query.amountToCents !== undefined) && ` · ยอด ${amountValue(query.amountFromCents) || "0"}–${amountValue(query.amountToCents) || "ไม่จำกัด"} บาท`}</span></p>
+  </div>;
+}
+
+export function DashboardBookingMobileResults({ query, href, total, page }: DashboardBookingFiltersProps & { total: number; page: number }) {
+  const router = useRouter();
+  const from = total ? (page - 1) * 9 + 1 : 0;
+  return <div className="mb-2 flex min-h-10 flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs md:hidden"><p className="text-muted-foreground">ผลการค้นหา <span className="font-semibold text-foreground">({from}–{Math.min(page * 9, total)} จาก {total} รายการ)</span></p><Select items={DASHBOARD_BOOKING_SORTS} value={query.sort} onValueChange={sort => { if (sort) router.push(href ? href({ sort }) : dashboardBookingsHref(query, { sort })); }}><SelectTrigger aria-label="เรียงผลการค้นหา" className="h-8 w-auto gap-1 border-0 bg-transparent px-0 text-[11px] text-muted-foreground shadow-none [&>svg:last-child]:hidden"><SelectValue /><ArrowDownUp aria-hidden className="size-3" /></SelectTrigger><SelectContent align="end"><SelectGroup>{DASHBOARD_BOOKING_SORTS.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectGroup></SelectContent></Select></div>;
+}
 
 interface DashboardBookingAdvancedFiltersPanelProps {
   datePickerPortalContainer?: HTMLElement | null;
@@ -27,9 +69,11 @@ interface DashboardBookingAdvancedFiltersPanelProps {
   onFiltersApply?: (changes: Partial<DashboardBookingsQuery>) => void;
   onClose: () => void;
   showBookingControls?: boolean;
+  showPeriod?: boolean;
 }
 
-export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer, query, onFiltersApply, onClose, showBookingControls = false }: DashboardBookingAdvancedFiltersPanelProps) {
+export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer, query, onFiltersApply, onClose, showBookingControls = false, showPeriod = false }: DashboardBookingAdvancedFiltersPanelProps) {
+  const [period, setPeriod] = useState(() => query?.dateFrom && query.dateTo ? { from: query.dateFrom, to: query.dateTo, timeFrom: query.timeFrom, timeTo: query.timeTo } : undefined);
   const [amountFrom, setAmountFrom] = useState(() => amountValue(query?.amountFromCents));
   const [amountTo, setAmountTo] = useState(() => amountValue(query?.amountToCents));
   const [amountError, setAmountError] = useState(false);
@@ -37,6 +81,7 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
   const [sort, setSort] = useState<DashboardBookingsQuery["sort"]>(query?.sort ?? "updated-desc");
 
   function clear() {
+    setPeriod(undefined);
     setAmountFrom("");
     setAmountTo("");
     setAmountError(false);
@@ -57,6 +102,7 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
       amountFromCents: from,
       amountToCents: to,
       ...(showBookingControls ? { status, sort } : {}),
+      ...(showPeriod ? { dateFrom: period?.from, dateTo: period?.to, timeFrom: period?.timeFrom, timeTo: period?.timeTo } : {}),
     });
     onClose();
   }
@@ -69,6 +115,7 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
         <button aria-label="ปิดตัวกรองเพิ่มเติม" className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" onClick={onClose} type="button"><XIcon aria-hidden className="size-4" /></button>
       </div>
     </div>
+    {query && showPeriod && <div className="space-y-2"><p className="text-sm font-medium">ช่วงวันที่อัปเดตการจอง</p><WebsiteDateRangePicker month={query.month} range={period} label="ช่วงวันที่อัปเดตการจอง" portalContainer={datePickerPortalContainer} onChange={next => setPeriod({ ...next, timeFrom: next.timeFrom, timeTo: next.timeTo })} /></div>}
     {query && showBookingControls ? <div className="grid grid-cols-2 gap-3">
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="mobile-booking-status">สถานะการจอง</label>
@@ -96,7 +143,7 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
   </div>;
 }
 
-export function DashboardBookingFilters({ query, href }: DashboardBookingFiltersProps) {
+function DashboardBookingStandardFilters({ query, href }: DashboardBookingFiltersProps) {
   const router = useRouter();
   const [desktopAdvancedFiltersOpen, setDesktopAdvancedFiltersOpen] = useState(false);
   const [mobileAdvancedFiltersOpen, setMobileAdvancedFiltersOpen] = useState(false);

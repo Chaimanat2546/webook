@@ -30,5 +30,5 @@ export async function WebsiteSiteSummaryLoader({ month, range, compare = false, 
   const { sites, period, previous } = await loadWebsiteSummaryPeriods(query, compare, { now: () => now }, readScope);
   const selectedRange = analyticsDateRange(period);
   const today = new Date(now.getTime() + 7 * 3600000).toISOString().slice(0, 10);
-  return <WebsiteSiteSummary granularity={analyticsPeriodGranularity(period)} sites={sites} month={month} range={selectedRange} today={today} asOf={period.as_of} compare={scope ? Boolean(scope.comparison) : compare} previous={previous} scope={scope} options={options} />;
+  return <WebsiteSiteSummary mobileOverview granularity={analyticsPeriodGranularity(period)} sites={sites} month={month} range={selectedRange} today={today} asOf={period.as_of} compare={scope ? Boolean(scope.comparison) : compare} previous={previous} scope={scope} options={options} />;
 }

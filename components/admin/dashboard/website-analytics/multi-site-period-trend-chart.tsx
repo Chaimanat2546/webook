@@ -36,7 +36,7 @@ export function MultiSitePeriodTrendChart({ rows, hiddenSites, onToggleSite, sho
   const config: ChartConfig = Object.fromEntries(rows.map(row => [row.key, { label: row.displayName, color: `var(--chart-${Math.max(0, colorKeys.indexOf(row.key)) % 5 + 1})` }]));
   const available = rows.filter(row => data.some(point => point.values[row.key].current !== null || point.values[row.key].previous !== null));
   const visibleRows = rows.filter(row => !hiddenSites.includes(row.key));
-  return <div className="min-w-0">
+  return <div className="min-w-0" data-website-period-chart>
     {showLegend && <WebsiteChartLegend sites={rows} availableSites={available.map(row => row.key)} hiddenSites={hiddenSites} onToggleSite={onToggleSite} colorKeys={colorKeys} label="เว็บไซต์ในกราฟเปรียบเทียบ" />}
     {!available.length ? <p role="status" className="flex min-h-60 items-center justify-center text-sm text-muted-foreground">ไม่มีข้อมูลในทั้งสองช่วง</p> : <ChartContainer config={config} className="h-60 w-full aspect-auto sm:h-72">
       <LineChart accessibilityLayer data={data} margin={{ left: 0, right: 12, top: 12, bottom: 8 }}>

@@ -34,7 +34,7 @@ export function WebsiteDateRangePicker({ range, matchPrimary, onChange, ...props
     valueSuffix={range ? hasTimeFilter(range) ? `${range.from === range.to ? "" : "ทุกวัน "}${range.timeFrom}–${range.timeTo}` : "เต็มวัน 24 ชั่วโมง" : undefined}
     onOpenChange={open => { if (open) { setTime(currentTime()); setSpecifyTime(hasTimeFilter(range)); } }}
     canConfirm={() => !specifyTime || validTime()}
-    renderSelection={draft => {
+    renderSelection={(draft, _selectDraft, portalContainer) => {
       const matched = matchPrimary && draft?.from && draft.to ? matchComparisonTime(matchPrimary, { from: dateKey(draft.from), to: dateKey(draft.to) }) : undefined;
       const reason = !matched ? "เลือกช่วงวันที่ของชุดเทียบก่อน" : undefined;
       return <>
@@ -55,7 +55,7 @@ export function WebsiteDateRangePicker({ range, matchPrimary, onChange, ...props
           if (!checked) setTime(fullDay);
         }} />
       </div>
-      {specifyTime && <WebsiteTimeRangeFilter idPrefix={id} value={time} pending={props.loading} onChange={setTime} />}
+      {specifyTime && <WebsiteTimeRangeFilter portalContainer={portalContainer} idPrefix={id} value={time} pending={props.loading} onChange={setTime} />}
       <p className="text-xs text-muted-foreground">เวลาไทย · {specifyTime ? singleDay(draft) ? "กราฟรายชั่วโมง" : "ใช้ช่วงเวลานี้ทุกวัน" : "เต็มวัน 24 ชั่วโมง (00:00–24:00)"}</p>
     </div>}
       </>;

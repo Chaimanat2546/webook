@@ -28,6 +28,9 @@ test("mobile destinations follow permissions without duplicate quotation/custome
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: true, canUseQuotation: false }).map(x => x.id), ["houses"]);
   assert.deepEqual(mobileDestinations({ ...noTools, canUseBooking: true }).map(x => x.id), ["bookings"]);
   assert.equal(mobileSection("/admin/bookings"), "bookings");
+  assert.equal(mobileSection("/admin/dashboard/bookings"), "bookings");
+  assert.equal(mobileSection("/admin/dashboard/bookings/9"), "bookings");
+  assert.equal(mobileSection("/admin/dashboard/bookings-old"), "more");
   assert.equal(mobileSection("/admin/bookings-old"), "more");
   assert.equal(isMobileWorkspace("/admin/bookings"), false);
   assert.equal(mobileTitle("/admin/bookings"), "การจอง");

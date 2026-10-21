@@ -33,6 +33,7 @@ test("business pickers and chart expose hourly, recurring and full-day context",
         import React from 'react';
         export const ResponsiveContainer=({children})=>children;
         export const BarChart=({children})=>React.createElement('div',null,children);
+        export const AreaChart=BarChart, Area=()=>null;
         export const XAxis=({tickFormatter})=>React.createElement('span',null,tickFormatter?.('2026-10-14T02:00:00.000Z'));
         export const Bar=()=>null, CartesianGrid=()=>null, YAxis=()=>null, Tooltip=()=>null, Legend=()=>null, Cell=()=>null;
       ` }));
@@ -51,9 +52,11 @@ test("business pickers and chart expose hourly, recurring and full-day context",
       assert.ok(renderToStaticMarkup(createElement(component, props)).includes(label), label);
     }
   }
-  const chart = renderToStaticMarkup(createElement(modules[1].ConfirmedBookingsChart, { points: [{ date: "2026-10-14T02:00:00.000Z", count: 2 }], granularity: "hour" }));
-  assert.match(chart, /กราฟจำนวนการจองติดจองรายชั่วโมง/);
-  assert.match(chart, /09:00/);
+  for (const presentation of ["bar", "area"]) {
+    const chart = renderToStaticMarkup(createElement(modules[1].ConfirmedBookingsChart, { points: [{ date: "2026-10-14T02:00:00.000Z", count: 2 }], granularity: "hour", presentation }));
+    assert.match(chart, /กราฟจำนวนการจองติดจองรายชั่วโมง/);
+    assert.match(chart, /09:00/);
+  }
 });
 
 test("business time windows validate hours and use Bangkok outer bounds", () => {

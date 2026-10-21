@@ -4,9 +4,14 @@ import { DASHBOARD_STATUSES, dashboardDate, dashboardMoney, dashboardStatus, typ
 import { Badge } from "../../ui/badge";
 import { TableCell, TableRow } from "../../ui/table";
 
-export function DashboardBookingRow({ booking, href, showAgency, presentation = "row" }: { booking: DashboardBooking; href: string; showAgency: boolean; presentation?: "card" | "row" }) {
+export function DashboardBookingRow({ booking, href, showAgency, presentation = "row" }: { booking: DashboardBooking; href: string; showAgency: boolean; presentation?: "card" | "row" | "list-card" }) {
   const status = dashboardStatus(booking.status);
   const amount = status === "repair" ? "—" : booking.priceCents === null ? "ไม่ระบุยอด" : dashboardMoney(booking.priceCents);
+  if (presentation === "list-card") return <Link id={`dashboard-booking-${booking.id}`} data-dashboard-detail-link href={href} className="block min-w-0 bg-card px-4 py-4 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-ring">
+    <span className="flex items-start justify-between gap-2"><span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><span className="break-words text-base font-semibold [overflow-wrap:anywhere]">{booking.houseTitle}</span><Badge variant="outline" className="shrink-0 rounded-lg bg-muted px-2 text-xs">DV-{booking.propertyId}</Badge></span><DashboardBookingStatusBadge className="shrink-0 rounded-full text-[10px]" status={status} /></span>
+    <span className="mt-2 flex items-start gap-2 text-xs text-muted-foreground"><CalendarDays aria-hidden className="size-4 shrink-0" /><span>{dashboardDate(booking.checkIn)} – {dashboardDate(booking.checkOut)}</span></span>
+    <span className="mt-5 flex items-end justify-between gap-3">{showAgency && <span className="min-w-0 flex-1"><span className="block text-[10px] text-muted-foreground">เอเจนซี่</span><span className="mt-1 block break-words text-xs text-muted-foreground">{booking.agency?.name ?? "ไม่ระบุเอเจนซี่"}</span></span>}<span className="ml-auto flex min-w-0 items-end gap-3"><span className="min-w-0 text-right"><span className="block text-[10px] text-muted-foreground">ยอดรวม</span><span className={`mt-1 block break-words font-bold tabular-nums ${booking.priceCents === null ? "text-sm" : "text-xl"}`}>{amount}</span></span><ChevronRight aria-hidden className="mb-1 size-4 shrink-0 text-muted-foreground" /></span></span>
+  </Link>;
   if (presentation === "card") return <Link id={`dashboard-booking-${booking.id}`} data-dashboard-detail-link href={href} className="block rounded-xl border bg-card p-3 shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-2">
     <span className="block min-w-0"><span className="block break-words font-semibold">{booking.houseTitle}</span><span className="mt-0.5 block text-xs text-muted-foreground">DV-{booking.propertyId}</span></span>
     <DashboardBookingStatusBadge className="mt-2" status={status} />

@@ -43,7 +43,7 @@ export function SitePeriodComparison({ granularity, sites, range, asOf, previous
       {periodMetricLabels[metric]} · {view === "daily" ? hourly ? "ครั้งต่อชั่วโมง" : "ครั้งต่อวัน" : "ครั้งทั้งช่วง"} · เวลาไทย · ช่วงที่เลือก {periodDateLabel(range.from)} – {periodDateLabel(range.to)} เทียบกับ {periodDateLabel(previous.range.from)} – {periodDateLabel(previous.range.to)}
     </figcaption>
     <div className="flex flex-wrap items-center justify-between gap-2"><PeriodLegend bars={view === "total"} neutral={view === "daily"} currentRange={range} previousRange={previous.range} /><div className="flex flex-wrap items-center gap-2">{view === "daily" && <PeriodComparisonIssues rows={rows} />}<span className="text-xs text-muted-foreground">{view === "daily" ? mixed ? "ครั้ง/ชั่วโมง · ครั้ง/วัน" : hourly ? "ครั้ง/ชั่วโมง" : "ครั้ง/วัน" : "ครั้ง"}</span></div></div>
-    {conditions.reasons.length > 0 && <p role="status" className="text-xs text-amber-700">{conditions.reasons.map(comparisonReasonLabel).join(" · ")} · งด % ยอดรวม</p>}
+    {conditions.reasons.length > 0 && <p role="status" data-comparison-period-notice className="text-xs text-amber-700">{conditions.reasons.map(comparisonReasonLabel).join(" · ")} · งด % ยอดรวม</p>}
     <p className="text-xs text-muted-foreground">ระยะเวลาที่เลือก: ช่วงหลัก {currentPeriod.dayCount} วัน · {currentPeriod.requestedHours} ชั่วโมง / ชุดเทียบ {previousPeriod.dayCount} วัน · {previousPeriod.requestedHours} ชั่วโมง</p>
     {view === "daily" && conditions.layout === "separate" ? <>
       <p role="status" className="text-xs text-amber-700">ช่วงที่เลือกใช้หน่วยเวลาต่างกัน จึงแสดงกราฟแยกกัน</p>

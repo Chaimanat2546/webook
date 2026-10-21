@@ -15,7 +15,10 @@ const tabClass = "flex min-h-18 min-w-0 flex-1 flex-col items-center justify-cen
 
 export function AdminMobileHeader() {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
   if (isMobileWorkspace(pathname)) return null;
+  if (pathname === "/admin/dashboard/bookings") return <header className="flex min-h-16 items-center border-b bg-background px-5 pt-[env(safe-area-inset-top)] dark:bg-background md:hidden print:hidden"><p className="text-xl font-bold">WeBooks</p></header>;
+  if (pathname === "/admin/dashboard") return <header className="flex min-h-16 items-center gap-4 border-b bg-background px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden"><button type="button" aria-label="เปิดเมนูหลัก" onClick={() => setOpenMobile(true)} className="flex size-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-2"><Menu aria-hidden className="size-5" /></button><span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">WB</span><div className="min-w-0 flex-1"><p className="text-lg font-semibold leading-tight text-primary">WeBooks</p><p className="text-[11px] text-muted-foreground">ภาพรวมธุรกิจ</p></div><time className="shrink-0 rounded-full bg-muted px-3 py-1 text-[11px] font-medium" dateTime={new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })}>{new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" }).format(new Date())}</time></header>;
   return (
     <header className="flex min-h-14 items-center justify-between gap-3 border-b bg-background px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
       <p className="text-base font-semibold">{mobileTitle(pathname)}</p>
@@ -27,7 +30,7 @@ export function AdminMobileHeader() {
 export function AdminMobileContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return (
-    <div className={cn("min-w-0 flex-1 px-4 py-5 md:px-6", !isMobileWorkspace(pathname) && "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-5 print:pb-0")}>
+    <div className={cn("min-w-0 flex-1 px-4 py-5 md:px-6", (pathname === "/admin/dashboard" || pathname === "/admin/dashboard/bookings") && "max-md:bg-background dark:max-md:bg-background", !isMobileWorkspace(pathname) && "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-5 print:pb-0")}>
       <AdminPageContainer>{children}</AdminPageContainer>
     </div>
   );

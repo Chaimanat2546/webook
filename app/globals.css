@@ -4,6 +4,59 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Only the overview opts in; tablet/desktop and other analytics screens keep their layout. */
+@media (width < 48rem) {
+  [data-dashboard-bookings-mobile] > header {
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  [data-dashboard-bookings-mobile] > header > a {
+    padding-inline: 0;
+    font-size: .875rem;
+  }
+
+  .dashboard-overview [data-dashboard-website-card] {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    gap: 0;
+  }
+  .dashboard-overview [data-dashboard-website-card] > [data-slot="card-header"] {
+    display: none;
+  }
+  .dashboard-overview [data-dashboard-website-card] > [data-slot="card-content"] {
+    padding: 0;
+  }
+  .dashboard-overview [data-dashboard-website-card] p[role="status"] {
+    border: 1px solid #fcd34d;
+    border-radius: 1.5rem;
+    background: light-dark(#fffbeb, #422006);
+    padding: .875rem;
+  }
+  .dashboard-overview [data-dashboard-website-graph] :is(figure, [data-website-period-chart]) {
+    display: flex;
+    flex-direction: column;
+  }
+  .dashboard-overview [data-dashboard-website-graph] :is(figure, [data-website-period-chart]) > [role="group"] {
+    order: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: .75rem;
+    margin-bottom: 0;
+  }
+  .dashboard-overview [data-dashboard-website-graph] :is(figure, [data-website-period-chart]) > [role="group"] > button {
+    width: 100%;
+    min-height: 2rem;
+    padding-inline: 0;
+    font-size: .75rem;
+  }
+  .dashboard-overview [data-dashboard-website-graph] [data-comparison-period-notice] {
+    display: none;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
