@@ -5,7 +5,7 @@ import { ThaiDateRangePicker, type ThaiDateRangePickerProps } from "../../ui/tha
 import { RangeShortcuts } from "./range-shortcuts";
 
 interface ReportDateRange { from: string; to: string }
-export interface ReportDateRangePickerProps extends Pick<ThaiDateRangePickerProps, "renderSelection" | "canConfirm" | "onOpenChange" | "valueSuffix" | "triggerContent"> {
+export interface ReportDateRangePickerProps extends Pick<ThaiDateRangePickerProps, "renderSelection" | "canConfirm" | "onOpenChange" | "valueSuffix" | "triggerContent" | "mobileSheet"> {
   month: string;
   range?: ReportDateRange;
   today?: string;

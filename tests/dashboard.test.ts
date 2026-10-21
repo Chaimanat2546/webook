@@ -242,8 +242,9 @@ test("canonical bookings page renders the booking workflow", async () => {
   assert.doesNotMatch(html, /การจองติดจอง/);
   assert.match(html, /overflow-hidden rounded-xl border/);
   assert.match(html, /hidden overflow-hidden rounded-xl border[^"\n]* md:block/);
-  assert.match(html, /space-y-3 md:hidden/);
-  assert.match(html, /rounded-xl border bg-card p-3 shadow-sm/);
+  assert.match(html, /divide-y overflow-hidden rounded-3xl border[^"\n]* md:hidden/);
+  assert.match(html, /ค้นหาและตัวกรอง/);
+  assert.match(html, /aria-label="แบ่งหน้ารายการจอง"/);
   assert.doesNotMatch(html, /ยอดขายเอเจนซี่/);
   assert.match(html, /aria-label="ค้นหาชื่อบ้าน รหัส DV ชื่อลูกค้า หรือเอเจนซี่"/);
   assert.match(html, /data-thai-date-range-picker/);

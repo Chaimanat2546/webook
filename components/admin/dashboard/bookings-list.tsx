@@ -2,24 +2,27 @@ import { type DashboardBookingsQuery, type DashboardReport } from "../../../lib/
 import { dashboardBookingDetailHref, dashboardBookingsHref } from "../../../lib/dashboard-routes";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "../../ui/table";
 import { DashboardBookingRow, DashboardBookingTableRow } from "./dashboard-rows";
-import { DashboardPager } from "./dashboard-list-primitives";
-import { DashboardBookingFilters } from "./dashboard-booking-filters";
+import { DashboardBookingMobilePager, DashboardPager } from "./dashboard-list-primitives";
+import { DashboardBookingFilters, DashboardBookingMobileResults } from "./dashboard-booking-filters";
 
 interface BookingsListProps {
   report: DashboardReport;
   query: DashboardBookingsQuery;
   href?: (changes: Partial<DashboardBookingsQuery>) => string;
   bookingHref?: (bookingId: string) => string;
+  mobileRedesign?: boolean;
 }
 
-export function BookingsList({ report, query, href, bookingHref }: BookingsListProps) {
+export function BookingsList({ report, query, href, bookingHref, mobileRedesign = false }: BookingsListProps) {
   const showAgency = report.scope.kind === "admin";
   return <section>
-      <DashboardBookingFilters href={href} query={query} />
+      <DashboardBookingFilters href={href} query={query} mobileRedesign={mobileRedesign} />
+      {mobileRedesign && <DashboardBookingMobileResults query={query} href={href} page={report.bookings.page} total={report.bookings.total} />}
       {report.bookings.total === 0 ? <div className="overflow-hidden rounded-xl border border-border/70 bg-card"><p role="status" className="py-12 text-center text-sm text-muted-foreground">{report.bookingCount === 0 ? "ไม่มีการจองในช่วงที่เลือก" : "ไม่พบการจองที่ตรงกับตัวกรอง"}</p></div> : <>
         <div className="hidden overflow-hidden rounded-xl border border-border/70 bg-card md:block"><Table className="table-fixed bg-card [&_tr]:border-border/70"><TableHeader className="bg-secondary"><TableRow><TableHead className={showAgency ? "w-[26%]" : "w-[34%]"}>บ้าน / DV</TableHead><TableHead className={showAgency ? "w-[21%]" : "w-[27%]"}>วันเข้าพัก</TableHead><TableHead className="w-[17%]">สถานะการจอง</TableHead>{showAgency && <TableHead className="w-[20%]">เอเจนซี่</TableHead>}<TableHead className="w-[16%] text-right">ยอดจอง</TableHead></TableRow></TableHeader><TableBody>{report.bookings.rows.map(row => <DashboardBookingTableRow key={row.id} booking={row} showAgency={showAgency} href={bookingHref ? bookingHref(row.id) : dashboardBookingDetailHref(query, row.id)} />)}</TableBody></Table></div>
-        <div className="space-y-3 md:hidden">{report.bookings.rows.map(row => <DashboardBookingRow key={row.id} booking={row} presentation="card" showAgency={showAgency} href={bookingHref ? bookingHref(row.id) : dashboardBookingDetailHref(query, row.id)} />)}</div>
+        <div className={mobileRedesign ? "divide-y overflow-hidden rounded-3xl border border-border bg-card dark:border-border md:hidden" : "space-y-3 md:hidden"}>{report.bookings.rows.map(row => <DashboardBookingRow key={row.id} booking={row} presentation={mobileRedesign ? "list-card" : "card"} showAgency={showAgency} href={bookingHref ? bookingHref(row.id) : dashboardBookingDetailHref(query, row.id)} />)}</div>
       </>}
-      <div className="mt-4"><DashboardPager {...report.bookings} pageSize={9} href={page => href ? href({ page }) : dashboardBookingsHref(query, { page })} /></div>
+      <div className={mobileRedesign ? "mt-4 hidden md:block" : "mt-4"}><DashboardPager {...report.bookings} pageSize={9} href={page => href ? href({ page }) : dashboardBookingsHref(query, { page })} /></div>
+      {mobileRedesign && <div className="mt-4 md:hidden"><DashboardBookingMobilePager {...report.bookings} href={page => href ? href({ page }) : dashboardBookingsHref(query, { page })} /><p className="mt-5 text-center text-[11px] text-muted-foreground">แตะที่รายการเพื่อดูรายละเอียดลูกค้าและวันเข้าพัก</p></div>}
   </section>;
 }

@@ -13,6 +13,7 @@ import type { WebsiteOption } from "./filters";
 
 interface WebsiteDatasetControlsProps {
   granularity: "hour" | "day";
+  mobileSheet?: boolean;
   range: AnalyticsDateRange;
   today: string;
   sites: WebsiteOption[];
@@ -22,7 +23,7 @@ interface WebsiteDatasetControlsProps {
 }
 
 /** Only adds/edits the optional comparison. Primary dates and the chart legend stay in their original positions. */
-export function WebsiteDatasetControls({ range, today, sites, comparison, query, scope }: WebsiteDatasetControlsProps) {
+export function WebsiteDatasetControls({ range, today, sites, comparison, query, scope, mobileSheet = false }: WebsiteDatasetControlsProps) {
   const router = useRouter();
   const [pending, startTransition] = useWebsiteAnalyticsTransition();
   const selectedSites = scope?.sites ?? (query && query.site !== "all" ? [query.site] : sites.map(site => site.key));
@@ -35,8 +36,8 @@ export function WebsiteDatasetControls({ range, today, sites, comparison, query,
   return <div className="flex w-fit min-w-0 max-w-full flex-wrap items-center gap-1" aria-busy={pending}>
     {comparison ? <div className="flex w-fit min-w-0 max-w-full items-center gap-1">
       <span className="shrink-0 text-xs text-muted-foreground">ชุดเทียบ</span>
-      <WebsiteDateRangePicker range={comparison} matchPrimary={range} month={comparison.to.slice(0, 7)} today={today} pastOnly showShortcuts={false} loading={pending} className="w-fit min-w-0 max-w-full shrink text-xs" label="ช่วงวันที่ชุดเปรียบเทียบ" onChange={navigate} />
+      <WebsiteDateRangePicker mobileSheet={mobileSheet} range={comparison} matchPrimary={range} month={comparison.to.slice(0, 7)} today={today} pastOnly showShortcuts={false} loading={pending} className="w-fit min-w-0 max-w-full shrink text-xs" label="ช่วงวันที่ชุดเปรียบเทียบ" onChange={navigate} />
       <Button type="button" variant="ghost" disabled={pending} size="icon" aria-label="เอาชุดเปรียบเทียบออก" onClick={() => navigate()}><X aria-hidden className="size-4" /></Button>
-    </div> : <WebsiteDateRangePicker range={initialComparison} matchPrimary={range} month={initialComparison.to.slice(0, 7)} today={today} pastOnly showShortcuts={false} loading={pending} className="w-fit max-w-full text-xs" label="เพิ่มชุดเปรียบเทียบ" triggerContent={<><Plus aria-hidden className="size-4" />เพิ่มชุดเปรียบเทียบ</>} onChange={navigate} />}
+    </div> : <WebsiteDateRangePicker mobileSheet={mobileSheet} range={initialComparison} matchPrimary={range} month={initialComparison.to.slice(0, 7)} today={today} pastOnly showShortcuts={false} loading={pending} className="w-fit max-w-full text-xs" label="เพิ่มชุดเปรียบเทียบ" triggerContent={<><Plus aria-hidden className="size-4" />เพิ่มชุดเปรียบเทียบ</>} onChange={navigate} />}
   </div>;
 }

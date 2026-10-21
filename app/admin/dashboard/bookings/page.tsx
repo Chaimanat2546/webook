@@ -20,9 +20,9 @@ export default async function DashboardBookingsPage({ searchParams }: { searchPa
     notFound();
   }
   return (
-    <div className="mx-auto w-full max-w-7xl">
+    <div data-dashboard-bookings-mobile className="mx-auto w-full max-w-7xl">
       <DashboardTaskHeader backHref={dashboardOverviewHref(routeQuery)} backLabel="กลับไปภาพรวม" description="ตรวจสอบและจัดการรายการจอง" title="รายการจอง" />
-      <BookingsList report={report} query={routeQuery} />
+      <BookingsList mobileRedesign report={report} query={routeQuery} />
     </div>
   );
 }

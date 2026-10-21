@@ -6,13 +6,15 @@
 
 /* Only the overview opts in; tablet/desktop and other analytics screens keep their layout. */
 @media (width < 48rem) {
-  .dashboard-overview {
-    --chart-1: #0d9494;
-    --chart-2: #2563eb;
-    --chart-3: #8b5cf6;
-    --chart-4: #f97316;
-    --chart-5: #ef4444;
+  [data-dashboard-bookings-mobile] > header {
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
   }
+  [data-dashboard-bookings-mobile] > header > a {
+    padding-inline: 0;
+    font-size: .875rem;
+  }
+
   .dashboard-overview [data-dashboard-website-card] {
     border: 0;
     border-radius: 0;

@@ -57,8 +57,8 @@ export function WebsiteSiteSummary({ granularity, sites, month, range, today, as
     return Number.isFinite(time) ? [new Date(time + 7 * 3600000).toISOString().slice(0, 10)] : [];
   }).sort()[0];
   const periodControls = range && today ? <>
-    <div className="flex min-w-0 max-w-full items-center gap-1"><span className="shrink-0 text-xs text-muted-foreground">ช่วงหลัก</span><SummaryRangeFilter key={`${range.from}:${range.to}`} month={month} range={range} today={today} availableFrom={availableFrom} /></div>
-    <WebsiteDatasetControls granularity={granularity} range={range} today={today} sites={sites} scope={scope} comparison={compare && previous ? { ...previous.range, sites: previous.sites.map(site => site.key) } : undefined} />
+    <div className="flex min-w-0 max-w-full items-center gap-1"><span className="shrink-0 text-xs text-muted-foreground">ช่วงหลัก</span><SummaryRangeFilter mobileSheet={mobileOverview} key={`${range.from}:${range.to}`} month={month} range={range} today={today} availableFrom={availableFrom} /></div>
+    <WebsiteDatasetControls mobileSheet={mobileOverview} granularity={granularity} range={range} today={today} sites={sites} scope={scope} comparison={compare && previous ? { ...previous.range, sites: previous.sites.map(site => site.key) } : undefined} />
   </> : undefined;
   return <WebsiteAnalyticsLoadingProvider><Card data-dashboard-website-card={mobileOverview || undefined}>
     <CardHeader className="flex flex-col items-start gap-3 lg:flex-row">

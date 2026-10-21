@@ -2,8 +2,8 @@
 import { parseAnalyticsTimeRange, type AnalyticsTimeRange } from "../../../../lib/website-analytics-time";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select";
 
-interface WebsiteTimeRangeFilterProps { idPrefix: string; value: AnalyticsTimeRange; pending?: boolean; onChange: (value: AnalyticsTimeRange) => void }
-export function WebsiteTimeRangeFilter({ idPrefix, value, pending, onChange }: WebsiteTimeRangeFilterProps) {
+interface WebsiteTimeRangeFilterProps { portalContainer?: HTMLElement | null; idPrefix: string; value: AnalyticsTimeRange; pending?: boolean; onChange: (value: AnalyticsTimeRange) => void }
+export function WebsiteTimeRangeFilter({ idPrefix, value, pending, onChange, portalContainer }: WebsiteTimeRangeFilterProps) {
   const draft = value;
   let valid = true;
   try { parseAnalyticsTimeRange(draft.timeFrom, draft.timeTo, { from: "2000-01-01", to: "2000-01-01" }); } catch { valid = false; }
@@ -13,7 +13,7 @@ export function WebsiteTimeRangeFilter({ idPrefix, value, pending, onChange }: W
         <label htmlFor={`${idPrefix}-${field}`} className="text-xs text-muted-foreground">{index === 0 ? "เวลาเริ่ม" : "เวลาสิ้นสุด"}</label>
         <Select value={draft[field]} disabled={pending} onValueChange={next => { if (next) onChange({ ...value, [field]: next }); }}>
           <SelectTrigger id={`${idPrefix}-${field}`} aria-invalid={!valid} aria-describedby={!valid ? `${idPrefix}-error` : undefined} className="h-8 min-w-24"><SelectValue>{draft[field]}</SelectValue></SelectTrigger>
-          <SelectContent>{Array.from({ length: 24 }, (_, hour) => `${String(hour + index).padStart(2, "0")}:00`).map(hour => <SelectItem value={hour} key={hour}>{hour}</SelectItem>)}</SelectContent>
+          <SelectContent container={portalContainer}>{Array.from({ length: 24 }, (_, hour) => `${String(hour + index).padStart(2, "0")}:00`).map(hour => <SelectItem value={hour} key={hour}>{hour}</SelectItem>)}</SelectContent>
         </Select>
       </div>)}
     </div>
