@@ -33,9 +33,7 @@ test("mobile overview links retain period and all-status access while owner navi
   assert.match(allBookings, /timeFrom=09%3A00/);
   assert.match(allBookings, /timeTo=17%3A00/);
   assert.match(allBookings, /status=all/);
-  assert.match(html, /href="#dashboard-business"/);
-  assert.match(html, /href="#dashboard-trend"/);
-  assert.doesNotMatch(html, /href="#dashboard-operations"|href="#dashboard-websites"/);
+  assert.doesNotMatch(html, /<nav|href="#dashboard-/);
   assert.doesNotMatch(html, /WeBooks Pulse/);
 });
 

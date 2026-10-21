@@ -4,7 +4,6 @@ import { dashboardDateFilter, type DashboardDateFilter, type DashboardQuery, typ
 import { DashboardDateRangePicker } from "./dashboard-date-range-picker";
 import { DashboardOverviewView } from "./dashboard-overview";
 import { DashboardMobileOverview, DashboardMobileSectionTitle } from "./dashboard-mobile-overview";
-import { DashboardMobileNavigation } from "./dashboard-mobile-navigation";
 
 export function DashboardHeader({ month, dateFrom, dateTo, timeFrom, timeTo, scope, action = "/admin/dashboard", title = "ภาพรวมธุรกิจ", description, showMonth = true }: DashboardDateFilter & { month: string; scope?: string; action?: string; title?: string; description?: string; showMonth?: boolean }) {
   return <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="flex items-center gap-2 text-2xl font-semibold"><LayoutDashboard aria-hidden className="size-6" />{title}</h1>{description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}{scope && <p className="mt-1 text-sm text-muted-foreground">{scope}</p>}</div>{showMonth && <DashboardDateRangePicker action={action} month={month} dateFrom={dateFrom} dateTo={dateTo} timeFrom={timeFrom} timeTo={timeTo} />}</div>;
@@ -22,6 +21,5 @@ export function DashboardView({ report, query, websiteSummary }: { report: Dashb
     <DashboardMobileOverview report={report} query={query} websites={websites} />
     {websites && <section id="dashboard-websites" data-dashboard-section className="scroll-mt-4"><div className="md:hidden"><DashboardMobileSectionTitle title="แนวโน้มประสิทธิภาพเว็บไซต์" step="4/4" /></div>{websiteSummary}</section>}
     <p className="px-3 pt-4 pb-8 text-center text-[11px] leading-relaxed text-muted-foreground md:hidden">ระบบ WeBooks · ข้อมูลตามช่วงเวลาที่เลือก<br />แสดงเฉพาะข้อมูลที่มีในระบบ</p>
-    <DashboardMobileNavigation admin={Boolean(report.admin)} websites={websites} />
   </div>;
 }

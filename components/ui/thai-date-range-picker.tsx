@@ -14,7 +14,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 
 export interface ThaiDateRangePickerProps {
   className?: string;
-  mobileSheet?: boolean;
   portalContainer?: HTMLElement | null;
   onChange: (range: DateRange | undefined) => void;
   value: DateRange | undefined;
@@ -39,7 +38,7 @@ function formatRange(value: DateRange | undefined): string {
   return `${thaiDate.format(value.from)} – ${thaiDate.format(value.to)}`;
 }
 
-export function ThaiDateRangePicker({ onChange, className = "", portalContainer, value, label = "ช่วงวันที่เข้าพัก", disabled, autoApply = false, confirmSelection = false, loading = false, renderShortcuts, renderSelection, canConfirm, onOpenChange, valueSuffix, triggerContent, mobileSheet = false }: ThaiDateRangePickerProps) {
+export function ThaiDateRangePicker({ onChange, className = "", portalContainer, value, label = "ช่วงวันที่เข้าพัก", disabled, autoApply = false, confirmSelection = false, loading = false, renderShortcuts, renderSelection, canConfirm, onOpenChange, valueSuffix, triggerContent }: ThaiDateRangePickerProps) {
   const isMobile = useIsMobile();
   const [sheetContainer, setSheetContainer] = useState<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -69,7 +68,7 @@ export function ThaiDateRangePicker({ onChange, className = "", portalContainer,
   const pickerContent = <>
       <div className="flex flex-col sm:flex-row">
         {renderShortcuts && <div className="border-b sm:border-r sm:border-b-0">{renderShortcuts(range => { setMonth(range.from); choose(range); }, () => { setDraft(undefined); setChoosingEnd(false); }, draft)}</div>}
-        <div className="min-w-0"><Calendar className="relative mx-auto rounded-[calc(var(--radius-xl)-1px)]" locale={th} mode="range" disabled={disabled} month={month} onMonthChange={setMonth} onSelect={selectRange} selected={buffered ? draft : value} formatters={{ formatCaption: date => thaiDate.format(date) }} />{buffered && <p role="status" className="px-3 pb-3 text-xs text-muted-foreground">{choosingEnd ? "เลือกวันสิ้นสุด" : confirmSelection && draft?.from && draft.to ? formatRange(draft) : "เลือกวันเริ่มต้น"}</p>}{renderSelection?.(draft, next => { setMonth(next.from); choose(next); }, mobileSheet && isMobile ? sheetContainer : portalContainer)}</div>
+        <div className="min-w-0"><Calendar className="relative mx-auto rounded-[calc(var(--radius-xl)-1px)]" locale={th} mode="range" disabled={disabled} month={month} onMonthChange={setMonth} onSelect={selectRange} selected={buffered ? draft : value} formatters={{ formatCaption: date => thaiDate.format(date) }} />{buffered && <p role="status" className="px-3 pb-3 text-xs text-muted-foreground">{choosingEnd ? "เลือกวันสิ้นสุด" : confirmSelection && draft?.from && draft.to ? formatRange(draft) : "เลือกวันเริ่มต้น"}</p>}{renderSelection?.(draft, next => { setMonth(next.from); choose(next); }, isMobile ? sheetContainer : portalContainer)}</div>
       </div>
       {confirmSelection && <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-background p-3">
         <Button type="button" variant="ghost" onClick={() => { setDraft(value); setChoosingEnd(false); setOpen(false); }}>ยกเลิก</Button>
@@ -77,10 +76,10 @@ export function ThaiDateRangePicker({ onChange, className = "", portalContainer,
       </div>}
   </>;
   const changeOpen = (next: boolean) => { setOpen(next); onOpenChange?.(next); setDraft(value); setMonth(value?.from); setChoosingEnd(false); };
-  if (mobileSheet && isMobile) return <Sheet open={open} onOpenChange={changeOpen}>
+  if (isMobile) return <Sheet open={open} onOpenChange={changeOpen}>
     <SheetTrigger asChild><Button aria-label={label} disabled={loading} className={`h-8 w-full min-w-0 justify-start border-field-border bg-field-background text-left font-normal disabled:bg-muted data-[empty=true]:text-muted-foreground dark:border-field-border dark:bg-field-background dark:disabled:bg-muted ${className}`} data-thai-date-range-picker="" data-empty={!value?.from} type="button" variant="outline">{triggerContent ?? <><CalendarDaysIcon aria-hidden /><span className="truncate" title={`${formatRange(value)}${valueSuffix ? ` · ${valueSuffix}` : ""}`}>{formatRange(value)}{valueSuffix && ` · ${valueSuffix}`}</span></>}</Button></SheetTrigger>
     <SheetContent ref={setSheetContainer} side="bottom" showCloseButton={false} className="max-h-[90dvh] gap-0 overflow-hidden rounded-t-3xl bg-background p-0 pb-[env(safe-area-inset-bottom)]">
-      <div className="shrink-0 border-b px-4 pt-2 pb-3"><div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-muted-foreground/25" /><div className="flex items-start justify-between gap-3"><div><SheetTitle>{label}</SheetTitle><SheetDescription className="mt-1 text-xs">เลือกช่วงวันที่ แล้วกดใช้เพื่อยืนยัน</SheetDescription></div><SheetClose asChild><Button type="button" variant="ghost" size="icon" aria-label="ปิดตัวเลือกวันที่"><XIcon aria-hidden className="size-4" /></Button></SheetClose></div></div>
+      <div className="shrink-0 border-b px-4 pt-2 pb-3"><div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-muted-foreground/25" /><div className="flex items-start justify-between gap-3"><div><SheetTitle>{label}</SheetTitle><SheetDescription className="mt-1 text-xs">{confirmSelection ? "เลือกช่วงวันที่ แล้วกดใช้เพื่อยืนยัน" : "เลือกวันเริ่มต้นและวันสิ้นสุด"}</SheetDescription></div><SheetClose asChild><Button type="button" variant="ghost" size="icon" aria-label="ปิดตัวเลือกวันที่"><XIcon aria-hidden className="size-4" /></Button></SheetClose></div></div>
       <div className="min-h-0 overflow-y-auto overscroll-contain">{pickerContent}</div>
     </SheetContent>
   </Sheet>;

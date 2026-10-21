@@ -6,7 +6,7 @@ import type { AnalyticsDateRange } from "../../../../lib/website-analytics";
 import { WebsiteDateRangePicker } from "./website-date-range-picker";
 import { parseAnalyticsTimeRange } from "../../../../lib/website-analytics-time";
 
-export function SummaryRangeFilter({ month, range, today, availableFrom, mobileSheet = false }: { month: string; range: AnalyticsDateRange; today: string; availableFrom?: string; mobileSheet?: boolean }) {
+export function SummaryRangeFilter({ month, range, today, availableFrom }: { month: string; range: AnalyticsDateRange; today: string; availableFrom?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useWebsiteAnalyticsTransition();
   function navigate(draft: AnalyticsDateRange) {
@@ -20,6 +20,6 @@ export function SummaryRangeFilter({ month, range, today, availableFrom, mobileS
     startTransition(() => router.push(`/admin/dashboard?${params}`, { scroll: false }));
   }
   return <div className="w-fit min-w-0 max-w-full space-y-2" aria-busy={pending}>
-    <WebsiteDateRangePicker mobileSheet={mobileSheet} month={month} range={range} today={today} availableFrom={availableFrom} pastOnly compactShortcuts loading={pending} className="w-fit max-w-full text-xs" label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={navigate} />
+    <WebsiteDateRangePicker month={month} range={range} today={today} availableFrom={availableFrom} pastOnly compactShortcuts loading={pending} className="w-fit max-w-full text-xs" label="ช่วงวันที่สถิติเข้าเว็บไซต์" onChange={navigate} />
   </div>;
 }

@@ -47,7 +47,7 @@ export function mobileDestinations(permissions: MobileNavigationPermissions): Mo
 }
 
 export function mobileSection(pathname: string): MobileDestination["id"] | "more" {
-  if (pathname === "/admin/bookings" || pathname.startsWith("/admin/bookings/")) return "bookings";
+  if (["/admin/bookings", "/admin/dashboard/bookings"].some(path => pathname === path || pathname.startsWith(`${path}/`))) return "bookings";
   if (pathname === "/admin/advertisements" || pathname.startsWith("/admin/advertisements/")) return "advertisements";
   if (["/admin/users", "/admin/user-manager"].some(path => pathname === path || pathname.startsWith(`${path}/`))) return "users";
   if (pathname === "/admin/houses" || pathname.startsWith("/admin/houses/")) return "houses";

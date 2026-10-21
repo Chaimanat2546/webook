@@ -41,7 +41,8 @@
   }
   .dashboard-overview [data-dashboard-website-graph] figure > [role="group"] {
     order: 1;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: .75rem;
     margin-bottom: 0;
   }

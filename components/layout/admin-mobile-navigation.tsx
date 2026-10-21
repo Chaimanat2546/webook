@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, FileText, House, Megaphone, LayoutDashboard, Menu, MoreHorizontal, ShieldUser, Users } from "lucide-react";
+import { CalendarDays, FileText, House, Megaphone, Menu, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -36,7 +36,7 @@ export function AdminMobileContent({ children }: { children: ReactNode }) {
   );
 }
 
-export function AdminMobileNavigation(permissions: MobileNavigationPermissions & { canUseDashboard?: boolean }) {
+export function AdminMobileNavigation(permissions: MobileNavigationPermissions) {
   const pathname = usePathname();
   const { openMobile, setOpenMobile } = useSidebar();
   // In-memory only: never persist search terms/customer information to storage.
@@ -46,19 +46,7 @@ export function AdminMobileNavigation(permissions: MobileNavigationPermissions &
   useEffect(() => { memory.remember(pathname, search); }, [memory, pathname, search]);
   const items = mobileDestinations(permissions);
   const active = mobileSection(pathname);
-  if (isMobileWorkspace(pathname) || pathname === "/admin/dashboard") return null;
-  if (pathname === "/admin/dashboard/bookings") {
-    const dashboardItems = [
-      ...(permissions.canUseDashboard ? [{ label: "แดชบอร์ด", href: "/admin/dashboard", icon: LayoutDashboard }] : []),
-      { label: "การจอง", href: `${pathname}${search ? `?${search}` : ""}`, icon: CalendarDays },
-      ...(permissions.canAccessHouses ? [{ label: "บ้านพัก", href: visitedLists["/admin/houses"] ?? "/admin/houses", icon: House }] : []),
-      ...(permissions.canUseAccommodation ? [{ label: "โฆษณา", href: visitedLists["/admin/advertisements"] ?? "/admin/advertisements", icon: Megaphone }] : []),
-    ];
-    return <nav aria-label="เมนูหลักบนมือถือ" className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-1 border-t bg-background px-2 pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
-      {dashboardItems.map(({ label, href, icon: Icon }) => <Link key={label} href={href} aria-current={label === "การจอง" ? "page" : undefined} className="flex min-h-18 min-w-0 flex-1 items-center justify-center focus-visible:outline-2"><span className={cn("flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-full px-1.5 py-2 text-[10px] whitespace-nowrap", label === "การจอง" ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground")}><Icon aria-hidden className="size-5" />{label}</span></Link>)}
-      <button type="button" aria-haspopup="dialog" aria-expanded={openMobile} onClick={() => setOpenMobile(true)} className="flex min-h-18 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[10px] text-muted-foreground focus-visible:outline-2"><MoreHorizontal aria-hidden className="size-5" />เพิ่มเติม</button>
-    </nav>;
-  }
+  if (isMobileWorkspace(pathname)) return null;
   return (
     <nav aria-label="เมนูหลักบนมือถือ" className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_#00000008] md:hidden print:hidden">
       {items.map(item => {
