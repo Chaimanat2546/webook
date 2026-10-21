@@ -35,22 +35,25 @@
     background: light-dark(#fffbeb, #422006);
     padding: .875rem;
   }
-  .dashboard-overview [data-dashboard-website-graph] figure {
+  .dashboard-overview [data-dashboard-website-graph] :is(figure, [data-website-period-chart]) {
     display: flex;
     flex-direction: column;
   }
-  .dashboard-overview [data-dashboard-website-graph] figure > [role="group"] {
+  .dashboard-overview [data-dashboard-website-graph] :is(figure, [data-website-period-chart]) > [role="group"] {
     order: 1;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: .75rem;
     margin-bottom: 0;
   }
-  .dashboard-overview [data-dashboard-website-graph] figure > [role="group"] > button {
+  .dashboard-overview [data-dashboard-website-graph] :is(figure, [data-website-period-chart]) > [role="group"] > button {
     width: 100%;
     min-height: 2rem;
     padding-inline: 0;
     font-size: .75rem;
+  }
+  .dashboard-overview [data-dashboard-website-graph] [data-comparison-period-notice] {
+    display: none;
   }
 }
 
