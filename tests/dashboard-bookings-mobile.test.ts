@@ -19,9 +19,10 @@ const query: DashboardBookingsQuery = { month: "2026-10", dateFrom: "2026-10-01"
 test("mobile booking filters summarize the applied query without exposing agency choices", async () => {
   const Filters = await component("components/admin/dashboard/dashboard-booking-filters.tsx", "DashboardBookingFilters");
   const html = renderToStaticMarkup(createElement(Filters, { query, mobileRedesign: true }));
-  assert.match(html, /ค้นหาและตัวกรอง/);
+  assert.match(html, /ตัวกรองรายการจอง/);
   assert.match(html, /ตัวกรองที่ใช้/);
   assert.match(html, /09:00–18:00/);
+  assert.match(html, /1–21 ต.ค. 2569/);
   assert.match(html, /จองล่าสุด/);
   assert.doesNotMatch(html, /เลือกเอเจนซี่/);
 });

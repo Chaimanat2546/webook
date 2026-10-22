@@ -13,6 +13,7 @@ async function render(report: WebsiteAnalyticsReport, mobile = true, changes: Pa
   } }] });
   const loaded = { exports: {} as Record<string, unknown> }, require = createRequire(import.meta.url);
   new Function("require", "module", "exports", bundle.outputFiles[0].text)((id: string) => {
+    if (id === "next/image") return require(id).default;
     if (id === "viewport-fixture") return { useIsMobile: () => mobile };
     if (id === "sidebar-fixture") return { useSidebar: () => ({ setOpenMobile() {} }) };
     if (id === "next/navigation") return { useRouter: () => ({ push() {}, replace() {} }) };

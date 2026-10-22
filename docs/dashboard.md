@@ -227,3 +227,5 @@ Date-range database support is in `20261014100000_dashboard_date_ranges.sql`. Ap
 Reporting filter rows use content-sized date triggers (`w-auto`, `max-w-full`) and wrap adjacent controls when space runs out, including on mobile. This keeps both date endpoints visible instead of squeezing a range into the old half-width month field. Header/card filters remain bounded by their container. Avoid inheriting an unconstrained `w-full` date trigger into a row with `flex-none`.
 
 The booking advanced-filter panel no longer includes a separate check-in date picker on desktop or mobile (including agency booking lists). Use the primary report-period picker. Legacy check-in URL parameters remain readable for existing links, but applying the primary period or advanced filters clears that legacy override. The primary period continues to use booking `updated_at`.
+
+หน้า `/admin/dashboard/bookings` บนมือถือใช้หัวเว็บร่วมกับเมนูหลัก แถบช่วงวันที่และปุ่มตัวกรองแบบ bottom sheet ที่กดใช้หรือยกเลิกได้ ช่องค้นหา และการ์ดแยกแต่ละการจอง โดยคงสถานะและยอดจากข้อมูลจริงและซ่อนข้อมูลเอเจนซี่สำหรับเจ้าของบ้าน Pagination ใช้แถบก่อนหน้า–เลขหน้า–ถัดไป และคงตารางกับตัวกรอง desktop เดิม
