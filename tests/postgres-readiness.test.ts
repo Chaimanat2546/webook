@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-for (const file of ["dashboard-migration.test.ts", "house-booking-database.test.ts", "ical-database.test.ts"]) {
+for (const file of ["dashboard-migration.test.ts", "house-booking-database.test.ts", "ical-database.test.ts", "booking-agent-migration.test.ts", "legacy-booking-upgrade.test.ts"]) {
   test(`${file} waits for final TCP PostgreSQL and fails closed on startup timeout`, () => {
     const source = readFileSync(new URL(file, import.meta.url), "utf8");
     const readiness = source.slice(source.indexOf("let ready = false"), source.indexOf("let ready = false") + 650);
