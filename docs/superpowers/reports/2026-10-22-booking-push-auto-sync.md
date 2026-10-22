@@ -93,10 +93,28 @@ A new confirmed QA booking **684**, inactive house **DV 99882204**, created one
 admin inbox notification and two device delivery jobs. The scheduled Staging
 dispatcher marked both sent on attempt one, including the new PWA binding at
 **20:08:36 ICT**. No provider error was recorded. Physical display and standalone
-launch confirmation have been requested; successful submission alone does not
-prove these. The marked QA booking/house/customer are retained temporarily so
-the notification detail remains testable and must be removed after confirmation.
+launch confirmation were requested separately from successful provider submission.
+The marked QA booking/house/customer were retained until that confirmation.
 
 The deployed commit and CI success were rechecked. Main remains at the SHA above.
 This follow-up changes only verification documentation; no application behavior
 changed, so another build/test run or deployment is unnecessary.
+
+## Physical acceptance and cleanup completed
+
+The user then confirmed **received Push and opened the PWA without a Safari URL
+bar**, following the earlier explicit confirmation that Push was not toggled.
+This completes the observed update → automatic registration → new booking →
+mobile display → standalone detail launch scenario on Staging.
+
+After the notification click, the same new PWA binding was still present and had
+synchronized again at **20:19:11 ICT**. It was not replaced for this return to the
+app. This confirms the exercised foreground sync retained the working device.
+It does not imply that arbitrary future browser/OS revocations can be ignored.
+
+Booking 684, its one notification and two delivery rows, the marked inactive
+house and synthetic customer were removed. A fresh SQL check confirmed **zero**
+remaining QA bookings, houses, customers, notifications or deliveries. The current
+PWA binding and the one other device binding were preserved. No Production
+deployment or mutation was performed. Documentation-only finalization requires
+no new application build, test run or deployment.
