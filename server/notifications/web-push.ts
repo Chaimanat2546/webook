@@ -1,9 +1,9 @@
 import { buildPushPayload } from "@block65/webcrypto-web-push";
-import { notificationId, parsePushSubscription, pushKey, type BrowserPushSubscription } from "../../lib/booking-notifications.ts";
+import { notificationEvent, notificationId, parsePushSubscription, pushKey, type BookingNotificationEvent, type BrowserPushSubscription } from "../../lib/booking-notifications.ts";
 
 export interface PushConfig { publicKey: string; privateKey: string; subject: string }
 export interface PushBindings { VAPID_PUBLIC_KEY?: string; VAPID_PRIVATE_KEY?: string; VAPID_SUBJECT?: string }
-export interface PushJob extends BrowserPushSubscription { notificationId: string; attempt: number }
+export interface PushJob extends BrowserPushSubscription { notificationId: string; attempt: number; eventType?: BookingNotificationEvent }
 export interface PushOutcome { status: "sent" | "retry" | "failed" | "expired"; error: string | null; retryAt: string | null }
 
 /** No Node-only crypto/server-only marker: this adapter also runs in the scheduled Worker. */
@@ -36,11 +36,12 @@ export function pushResult(status: number, retryAfter: string | null, attempt: n
 export async function sendBookingPush(job: PushJob, config: PushConfig, transport: typeof fetch = fetch): Promise<PushOutcome> {
   let subscription: BrowserPushSubscription;
   let id: string;
-  try { subscription = parsePushSubscription(job); id = notificationId(job.notificationId); }
+  let eventType: BookingNotificationEvent;
+  try { subscription = parsePushSubscription(job); id = notificationId(job.notificationId); eventType = notificationEvent(job.eventType); }
   catch { return { status: "failed", error: "push_invalid_subscription", retryAt: null }; }
   let payload: Awaited<ReturnType<typeof buildPushPayload>>;
   try {
-    payload = await buildPushPayload({ data: JSON.stringify({ notificationId: id }), options: { ttl: 3600 } }, { ...subscription, expirationTime: null }, config);
+    payload = await buildPushPayload({ data: JSON.stringify({ notificationId: id, ...(job.eventType ? { eventType } : {}) }), options: { ttl: 3600 } }, { ...subscription, expirationTime: null }, config);
   } catch { return { status: "failed", error: "push_encryption_failed", retryAt: null }; }
   try {
     // Workers supports manual/follow only; classify every 3xx as a failed send.

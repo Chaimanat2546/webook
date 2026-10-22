@@ -4,8 +4,34 @@ New `waiting` and `confirmed` booking inserts create a durable inbox item for
 every linked Auth user with role 1 and each non-admin whose positive DV matches
 both the booking house and its listing. The database captures recipients and
 delivery jobs in the booking transaction. The creator receives a notification
-when eligible. Existing bookings are not backfilled; edits, cancellation,
-payment expiry and repair inserts do not notify.
+when eligible. Existing bookings are not backfilled; ordinary edits and repair
+inserts do not notify.
+
+Lifecycle status changes also create a separate inbox item and Push job per
+eligible current recipient:
+
+- `waiting` → `confirmed` for an internal booking: **ชำระเงิน booking สำเร็จ**.
+  The user explicitly defines this operator status change as payment confirmation;
+  no payment gateway or bank reconciliation is implied. A new confirmed INSERT
+  sends only the new-booking event, not an additional payment event.
+- `waiting`/`confirmed` → `cancelled`: **ยกเลิก booking** for manual cancellation.
+- The payment-expiry sweep cancelling a due waiting booking:
+  **booking หมดเวลาชำระเงิน**, without a second generic cancellation event.
+
+`bookings.cancellation_reason` records sweep provenance, distinguishing a manual
+cancellation even after its deadline. Leaving cancelled clears that provenance.
+The existing client mutation allowlist does not accept this field.
+`booking_notifications.event_type` preserves the event's meaning independently
+of later booking changes; the displayed badge explicitly shows the current status.
+The new migration is `20261022150000_booking_lifecycle_notifications.sql`.
+
+Same-status saves and repeated sweeps do not create duplicate events. A later real
+status transition is a new event. Event creation, recipients and device jobs commit
+or roll back together. Devices enabled after an earlier event receive only future
+event Push jobs; existing inbox history remains accessible. Repair cancellation
+does not notify, and iCal status changes never imply payment confirmation. An iCal
+row changing from confirmed to cancelled does notify; deleting a row is not a
+cancellation event and retains the existing cascading-history deletion behavior.
 
 iCal INSERTs also notify, including an initial import of several events.
 Subsequent UID updates do not notify again. Imported items say they were imported;
@@ -70,10 +96,14 @@ Run `npm run build:pwa` after source changes rather than editing `public/sw.js`.
 Service-worker registration runs in production builds; use `npm run build` and
 `npm start` for local worker checks. Normal development mode still supports the
 inbox. Mobile acceptance needs an HTTPS origin.
-Payloads contain only a notification UUID. The lock screen displays a generic
-WeBooks message without house, customer, phone or price details. A click can
+Payloads contain only a notification UUID and an allowlisted event type. Older
+UUID-only payloads still display the new-booking message. The lock screen displays
+a generic event-specific WeBooks message without house, customer, phone or price details. A click can
 only focus/open a same-origin notification route; normal authentication follows.
 No private notification or booking responses are added to service-worker caches.
+Already installed devices need to accept the PWA update before event-specific
+lock-screen titles are available; an older worker retains its generic new-booking
+title. Updating does not require disabling/re-enabling Push.
 Notification clicks call `clients.openWindow` directly for the fixed same-origin
 detail route, allowing the platform to launch the installed web app. They do not
 reuse an arbitrary same-origin browser tab, which could bring Safari forward on
