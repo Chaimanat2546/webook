@@ -173,3 +173,23 @@ synthetic customer were removed. The existing admin account and both device
 bindings were retained, including the newly verified PWA subscription. No
 Production workflow was invoked; main remained at the SHA recorded above.
 Force-quitting the app was not a separate physical-device acceptance scenario.
+
+## Automatic device synchronization follow-up
+
+The follow-up deployed commit `28e5eb9c1e56906624e67d6dfb27684d6ff567eb`
+adds automatic registration/recovery with existing consent, server-confirmed
+settings state, and safe opt-out ordering. CI run 39780031426 passed 1,325 tests
+without failures or skips and deployed only Staging.
+
+The user updated the installed PWA without toggling Push. A fresh binding appeared
+at 20:06:27 ICT. New QA booking 684 (DV 99882204) produced the expected admin inbox
+item and sent both device jobs on attempt one at 20:08:36 ICT. The user confirmed
+receiving the notification and opening the standalone PWA without Safari chrome.
+The same PWA binding remained present after a further foreground sync at
+20:19:11 ICT. All QA rows from this follow-up were removed and their absence
+verified; both existing device bindings were retained.
+
+See `2026-10-22-booking-push-auto-sync.md` for the evidence and the distinction
+between actual endpoint renewal and the uncompleted same-endpoint missing-row
+physical scenario. This follow-up does not change the previously verified
+all-admin/matching-owner recipient matrix or claim additional OS lifecycle tests.
