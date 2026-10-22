@@ -49,3 +49,30 @@ toggling Push. Confirm the same browser endpoint and keys re-register automatica
 then create a marked QA booking, inspect scheduled delivery and confirm actual
 iPhone display/standalone launch. Remove only QA booking fixtures afterward.
 Provider acceptance alone is not physical display evidence.
+
+## Deployment evidence
+
+- Commit: `28e5eb9c1e56906624e67d6dfb27684d6ff567eb`.
+- Staging CI/CD: https://github.com/Chaimanat2546/webook/actions/runs/39780031426
+- CI completed successfully: **1,325 tests passed; zero failed or skipped**.
+- Worker version: `819023ed-f114-4b1d-abfa-ba6b6d62ee08`.
+- Both compiled-bundle guards passed: Staging project present, Production absent.
+  Temporary runtime secret-file cleanup passed.
+- Live health: login 200, protected dashboard 307 to login, unauthenticated inbox
+  401 with private/no-store JSON, service worker 200 matching the committed bytes.
+- Live service-worker SHA-256:
+  `eb9ef826b3a086dd550ec25f0c7410b036506da5b075fb5fbaa98d04a877225a`.
+- Only staging was pushed. Main remained
+  `d6aa72f57b9e8accf91fc4d74ac6af3539fd58f1`.
+
+The verified PWA binding was backed up privately and only that server row was
+removed for the recovery test. Browser consent and the other device were retained.
+Physical-device recovery and display confirmation are pending the installed-PWA
+update; no off/on cycle is requested.
+
+The phone update was not yet confirmed during the active turn. To avoid leaving
+the test device without its server binding while waiting, its backed-up endpoint
+and keys were restored through the Staging subscription RPC. This restoration is
+test-fixture recovery, **not evidence of automatic repair**. No booking/house or
+customer fixture was created in this attempt. Both device bindings are retained.
+Physical acceptance must still confirm synchronization without toggling Push.
