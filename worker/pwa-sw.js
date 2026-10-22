@@ -4,7 +4,7 @@ import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheFirst, NetworkOnly } from "workbox-strategies";
 import { HOUSE_IMAGE_CACHE_MAX_AGE_SECONDS, shouldCacheHouseImageRequest } from "../lib/house-image-cache.ts";
-import { notificationEvent, notificationEventLabel } from "../lib/booking-notifications.ts";
+import { notificationEvent, notificationEventLabel, notificationPropertyId } from "../lib/booking-notifications.ts";
 
 const offlineUrl = "/pwa/offline.html";
 const precache = new PrecacheController({ cacheName: "webook-pwa-precache-v1" });
@@ -73,15 +73,16 @@ function notificationId(value) {
 }
 
 self.addEventListener("push", (event) => {
-  let id, eventType;
+  let id, eventType, propertyId;
   try {
     const payload = event.data?.json();
     id = notificationId(payload);
     eventType = notificationEvent(payload?.eventType);
+    propertyId = notificationPropertyId(payload?.propertyId);
   } catch { return; }
   if (!id) return;
-  event.waitUntil(self.registration.showNotification(`WeBooks: ${notificationEventLabel(eventType)}`, {
-    body: "เปิด WeBooks เพื่อดูรายละเอียด",
+  event.waitUntil(self.registration.showNotification("WeBooks", {
+    body: `${notificationEventLabel(eventType)}${propertyId ? ` • DV ${propertyId}` : ""}`,
     icon: "/pwa/icon-192.png",
     badge: "/pwa/icon-192.png",
     tag: id,
