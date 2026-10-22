@@ -54,9 +54,11 @@ was not observed before implementation because Docker startup was delayed.
 
 ## Limits and rollout
 
-No deployment, remote schema change or environment secret creation was performed.
-Apply the new migration and configure per-environment VAPID values before enabling
-Push. See `docs/booking-notifications.md` for setup and device acceptance steps.
+At the implementation-verification stage, no deployment, remote schema change or
+environment secret creation had been performed. The subsequent authorized
+Staging rollout is recorded in
+[the Staging deployment report](2026-10-22-booking-notifications-staging-deploy.md).
+See `docs/booking-notifications.md` for setup and device acceptance steps.
 
 Actual Android/iPhone delivery and browser viewport inspection remain unverified.
 The available CUA browser inventory was empty; no browser surface could open for
