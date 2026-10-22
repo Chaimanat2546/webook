@@ -5,6 +5,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { useSidebar } from "../ui/sidebar";
 import { cn } from "../../lib/utils";
+import { NotificationBell } from "../admin/notifications/notification-bell";
 
 export function AdminMobileBrandHeader({ subtitle, asOf, className }: { subtitle: ReactNode; asOf?: string; className?: string }) {
   const { setOpenMobile } = useSidebar();
@@ -14,5 +15,6 @@ export function AdminMobileBrandHeader({ subtitle, asOf, className }: { subtitle
     <Image src="/brand/webooks-logo-transparent.png" alt="โลโก้ WeBooks" width={500} height={500} className="size-12 shrink-0 object-contain" />
     <div className="min-w-0 flex-1"><p className="text-lg font-semibold leading-tight text-primary">WeBooks</p><div className="min-w-0 text-[11px] text-muted-foreground">{subtitle}</div></div>
     <time className="shrink-0 rounded-full border bg-background px-3 py-1 text-[11px] font-medium text-primary" dateTime={now.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })}>{new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" }).format(now)}</time>
+    <NotificationBell />
   </header>;
 }

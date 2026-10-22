@@ -44,6 +44,8 @@ function run(executable, args, env) {
 }
 
 export function stagingSecretArguments(directory = process.cwd()) {
+  const runtimeSecrets = join(directory, '.env.staging-worker-secrets.json');
+  if (existsSync(runtimeSecrets)) return ['--secrets-file', runtimeSecrets];
   const path = join(directory, '.env.ical-staging');
   return existsSync(path) ? ['--secrets-file', path] : [];
 }

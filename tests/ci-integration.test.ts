@@ -24,7 +24,7 @@ test("CI integration enables every opt-in against only its isolated local target
   assert.equal(environment.LOCAL_SUPABASE_ANON_KEY, localStatus.ANON_KEY);
   assert.equal(environment.LOCAL_SUPABASE_SERVICE_ROLE_KEY, localStatus.SERVICE_ROLE_KEY);
   assert.equal(environment.SUPABASE_DB_CONTAINER, `supabase_db_${projectId}`);
-  for (const flag of ["RUN_BOOKING_DB_TESTS", "RUN_DASHBOARD_DB_TESTS", "RUN_LOCAL_SUPABASE_TESTS", "RUN_QUOTATION_MIGRATION_UPGRADE_TESTS", "ICAL_DB_INTEGRATION", "ICAL_WORKER_INTEGRATION"] as const) {
+  for (const flag of ["RUN_BOOKING_DB_TESTS", "RUN_NOTIFICATION_DB_TESTS", "RUN_DASHBOARD_DB_TESTS", "RUN_LOCAL_SUPABASE_TESTS", "RUN_QUOTATION_MIGRATION_UPGRADE_TESTS", "ICAL_DB_INTEGRATION", "ICAL_WORKER_INTEGRATION"] as const) {
     assert.equal(environment[flag], "1");
   }
 });
