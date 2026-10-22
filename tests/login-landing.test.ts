@@ -5,16 +5,18 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation.js";
-import { canUseBooking } from "../server/auth/admin.ts";
+import * as adminAuth from "../server/auth/admin.ts";
+import { isValidElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 async function loadEntry(file: string, fixtures: Record<string, unknown>) {
   const bundle = await build({ entryPoints: [fileURLToPath(new URL(file, import.meta.url))], bundle: true, write: false, platform: "node", format: "cjs", packages: "external", plugins: [{ name: "auth-io", setup(builder) {
-    builder.onResolve({ filter: /^\.\/admin$/ }, args => args.importer.replaceAll("\\", "/").endsWith("/server/auth/bookings.ts") ? { path: "fixture-session", external: true } : undefined);
+    builder.onResolve({ filter: /^\.\/admin$/ }, args => ["/server/auth/bookings.ts", "/server/auth/dashboard.ts", "/server/auth/admin-navigation.ts"].some(path => args.importer.replaceAll("\\", "/").endsWith(path)) ? { path: "fixture-session", external: true } : undefined);
     builder.onResolve({ filter: /(?:server\/auth\/admin|lib\/supabase\/(?:admin|server))$/ }, args => ({ path: args.path.endsWith("auth/admin") ? "fixture-session" : args.path.endsWith("supabase/admin") ? "fixture-admin-client" : "fixture-server-client", external: true }));
   } }] });
   const loaded = { exports: {} as Record<string, unknown> };
   const require = createRequire(import.meta.url);
-  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name in fixtures ? fixtures[name] : name === "server-only" ? {} : require(name), loaded, loaded.exports);
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => name in fixtures ? fixtures[name] : name === "fixture-server-client" ? { createSupabaseServerClient: () => assert.fail("unexpected auth client call") } : name === "server-only" ? {} : require(name), loaded, loaded.exports);
   return loaded.exports;
 }
 
@@ -22,11 +24,15 @@ async function expectRedirect(work: () => Promise<unknown>, destination: string)
   await assert.rejects(async () => await work(), error => error instanceof Error && "digest" in error && String(error.digest).split(";")[2] === destination);
 }
 
-test("home uses verified UID booking access rather than email-only permissions", async () => {
+test("home selects the first authorized module and never assumes house access", async () => {
   for (const [row, destination] of [
-    [{ allow_tools: { allow_booking: true }, role_id: 1 }, "/admin/bookings"],
-    [{ allow_tools: { allow_booking: false }, role_id: 1 }, "/admin/houses"],
-    [null, "/admin/houses"],
+    [{ allow_tools: { allow_booking: true }, role_id: 1 }, "/admin/dashboard"],
+    [{ allow_tools: { allow_booking: true }, role_id: 2, dv_id: null }, "/admin/bookings"],
+    [{ allow_tools: { allow_price: true }, role_id: 2, dv_id: null }, "/admin/houses"],
+    [{ allow_tools: { allow_accommodation: true }, role_id: 2, dv_id: null }, "/admin/houses"],
+    [{ allow_tools: { allow_quotation: true }, role_id: 2, dv_id: null }, "/admin/quotations"],
+    [{ allow_tools: { allow_members: true }, role_id: 2, dv_id: null }, "/admin/user-manager"],
+    [{ allow_tools: {}, role_id: 2, dv_id: 101 }, "/admin/dashboard"],
   ] as const) {
     let reads = 0;
     const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async input => {
@@ -35,20 +41,57 @@ test("home uses verified UID booking access rather than email-only permissions",
       assert.equal(url.searchParams.get("uid"), "eq.verified-user");
       assert.equal(url.searchParams.has("email"), false);
       reads++;
-      return new Response(JSON.stringify(row ? [row] : []), { headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify([row]), { headers: { "Content-Type": "application/json" } });
     } } });
     const entry = await loadEntry("../app/page.tsx", {
-      "fixture-session": { canUseBooking, requireAdmin: async () => ({ user: { id: "verified-user" }, adminUser: { allow_tools: { allow_booking: true } } }) },
+      "fixture-session": { ...adminAuth, requireAdmin: async () => ({ user: { id: "verified-user" }, adminUser: row }) },
       "fixture-admin-client": { createSupabaseAdminClient: () => client },
     });
     await expectRedirect(entry.default as () => Promise<unknown>, destination);
-    assert.equal(reads, 1);
+    assert.equal(reads, 2);
   }
+});
+
+test("home shows an authenticated no-access state instead of redirecting into a forbidden module", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => new Response("[]", { headers: { "Content-Type": "application/json" } }) } });
+  const entry = await loadEntry("../app/page.tsx", {
+    "fixture-session": { ...adminAuth, requireAdmin: async () => ({ user: { id: "verified-user" }, adminUser: null }) },
+    "fixture-admin-client": { createSupabaseAdminClient: () => client },
+  });
+  const result = await (entry.default as () => Promise<unknown>)();
+  assert.ok(isValidElement(result));
+  const html = renderToStaticMarkup(result);
+  assert.match(html, /บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งาน/);
+  assert.match(html, /ออกจากระบบ/);
+  assert.doesNotMatch(html, /href="\/admin/);
+});
+
+test("module entry redirects forbidden links to the permission-aware home", async () => {
+  const row = { role_id: 2, dv_id: null, allow_tools: { allow_quotation: true } };
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => new Response(JSON.stringify([row]), { headers: { "Content-Type": "application/json" } }) } });
+  const entry = await loadEntry("../server/auth/admin-navigation.ts", {
+    "fixture-session": { ...adminAuth, requireAdmin: async () => ({ user: { id: "verified-user" }, adminUser: row }) },
+    "fixture-admin-client": { createSupabaseAdminClient: () => client },
+  });
+  const guard = entry.requireAdminModule as (module: string) => Promise<void>;
+  await guard("quotations");
+  for (const moduleId of ["overview", "bookings", "houses", "advertisements", "centralUsers", "webookUsers"]) await expectRedirect(() => guard(moduleId), "/");
+});
+
+test("an email-only booking flag cannot grant verified booking-module access", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => new Response("[]", { headers: { "Content-Type": "application/json" } }) } });
+  const entry = await loadEntry("../server/auth/admin-navigation.ts", {
+    "fixture-session": { ...adminAuth, requireAdmin: async () => ({ user: { id: "verified-user" }, adminUser: { role_id: 2, allow_tools: { allow_booking: true } } }) },
+    "fixture-admin-client": { createSupabaseAdminClient: () => client },
+  });
+  const permissions = await (entry.getAdminNavigationPermissions as () => Promise<{ canUseBooking: boolean }>)();
+  assert.equal(permissions.canUseBooking, false);
+  await expectRedirect(() => (entry.requireAdminModule as (module: string) => Promise<void>)("bookings"), "/");
 });
 
 test("home keeps unauthenticated users at login", async () => {
   const entry = await loadEntry("../app/page.tsx", {
-    "fixture-session": { canUseBooking, requireAdmin: async () => redirect("/login") },
+    "fixture-session": { ...adminAuth, requireAdmin: async () => redirect("/login") },
     "fixture-admin-client": { createSupabaseAdminClient: () => { assert.fail("must authenticate first"); } },
   });
   await expectRedirect(entry.default as () => Promise<unknown>, "/login");

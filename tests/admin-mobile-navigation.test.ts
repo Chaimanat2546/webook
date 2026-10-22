@@ -5,7 +5,7 @@ import { build } from "esbuild";
 import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-const permissions = { canAccessHouses: true, canUseBooking: true, canUseQuotation: true, canUseAccommodation: true, canManageCentralUsers: false, canManageWebookUsers: false };
+const permissions = { canUseDashboard: true, canAccessHouses: true, canUseBooking: true, canUseQuotation: true, canUseAccommodation: true, canManageCentralUsers: false, canManageWebookUsers: false };
 
 async function navigation(pathname: string, allowed = permissions) {
   const bundle = await build({ entryPoints: ["components/layout/admin-mobile-navigation.tsx"], bundle: true, write: false, format: "cjs", platform: "node", packages: "external", plugins: [{
@@ -31,8 +31,8 @@ test("overview and booking reports use the same shared mobile menu as other admi
     assert.equal((html.match(/<nav /g) ?? []).length, 1);
     assert.match(html, /aria-label="เมนูหลักบนมือถือ"/);
     assert.match(html, /md:hidden print:hidden/);
-    assert.match(html, /เพิ่มเติม/);
-    if (route.includes("/bookings")) assert.match(html, /<a[^>]*aria-current="page"[^>]*href="\/admin\/bookings"/);
+    assert.doesNotMatch(html, /เพิ่มเติม/);
+    assert.match(html, /<a[^>]*href="\/admin\/dashboard"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/admin\/dashboard"/);
   }
 });
 
@@ -41,4 +41,14 @@ test("shared dashboard menu preserves permissions and workspace exclusions", asy
   assert.match(html, /href="\/admin\/bookings"/);
   assert.doesNotMatch(html, /href="\/admin\/(?:houses|quotations|advertisements)"/);
   assert.equal(await navigation("/admin/houses/9"), "");
+});
+
+test("zero or one module has no dock and two modules have exactly two links", async () => {
+  const empty = { canUseDashboard: false, canAccessHouses: false, canUseBooking: false, canUseQuotation: false, canUseAccommodation: false, canManageCentralUsers: false, canManageWebookUsers: false };
+  assert.equal(await navigation("/admin/dashboard", empty), "");
+  assert.equal(await navigation("/admin/dashboard", { ...empty, canUseDashboard: true }), "");
+  const html = await navigation("/admin/quotations", { ...empty, canUseBooking: true, canUseQuotation: true });
+  assert.equal((html.match(/<a /g) ?? []).length, 2);
+  assert.match(html, /href="\/admin\/quotations"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/admin\/quotations"/);
+  assert.doesNotMatch(html, /เพิ่มเติม|ผู้ใช้|บ้านพัก/);
 });

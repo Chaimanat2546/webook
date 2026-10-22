@@ -27,7 +27,9 @@ describe("WeBooks user management authorization", () => {
     const shell = readFileSync(new URL("../components/layout/admin-shell.tsx", import.meta.url), "utf8");
     const sidebar = readFileSync(new URL("../components/layout/admin-desktop-sidebar.tsx", import.meta.url), "utf8");
 
-    assert.match(layout, /canManageWebookUsers=\{canManageWebookUsers\(adminUser\)\}/);
+    assert.match(layout, /getAdminNavigationPermissions/);
+    const permissions = readFileSync(new URL("../server/auth/admin-navigation.ts", import.meta.url), "utf8");
+    assert.match(permissions, /canManageWebookUsers: canManageWebookUsers\(adminUser\)/);
     assert.match(shell, /canManageWebookUsers: boolean/);
     assert.match(sidebar, /\{canManageWebookUsers && !isMobile \? \(/);
     assert.match(sidebar, /href="\/admin\/users"/);

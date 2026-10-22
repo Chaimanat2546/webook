@@ -50,7 +50,7 @@ describe("admin layout sidebar UI", () => {
     );
     assert.match(
       layoutSource,
-      /<AdminShell[\s\S]*canUseQuotation=\{canUseQuotation\(adminUser\)\}[\s\S]*defaultSidebarOpen=\{defaultSidebarOpen\}/,
+      /<AdminShell[\s\S]*\{\.\.\.permissions\}[\s\S]*defaultSidebarOpen=\{defaultSidebarOpen\}/,
     );
     assert.match(shellSource, /defaultSidebarOpen = true/);
     assert.match(shellSource, /<SidebarProvider defaultOpen=\{defaultSidebarOpen\}>/);

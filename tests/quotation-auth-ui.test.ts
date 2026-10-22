@@ -23,7 +23,9 @@ describe("quotation authorization and navigation", () => {
       "utf8",
     );
 
-    assert.match(layout, /canUseQuotation\(adminUser\)/);
+    assert.match(layout, /getAdminNavigationPermissions/);
+    const permissions = readFileSync(new URL("../server/auth/admin-navigation.ts", import.meta.url), "utf8");
+    assert.match(permissions, /canUseQuotation\(adminUser\)/);
     assert.match(shell, /canUseQuotation: boolean/);
     assert.match(sidebar, /canUseQuotation: boolean/);
     assert.match(sidebar, /canUseQuotation && !isMobile \? \(/);
