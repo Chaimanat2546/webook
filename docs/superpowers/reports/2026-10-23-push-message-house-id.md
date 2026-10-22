@@ -46,3 +46,27 @@ regenerating `public/sw.js` after the final source edit.
 
 Staging deployment and final live verification evidence is recorded below when
 the CI/CD rollout completes. Production is excluded throughout this change.
+
+## Deployment security gate
+
+The first CI run, [39826327182](https://github.com/Chaimanat2546/webook/actions/runs/39826327182),
+stopped at `npm run audit:security` before migration/deployment. Local audit
+reproduced the failure against existing Next.js 16.3.8. The dependency database
+now flags [image optimization](https://github.com/advisories/GHSA-2464-fhr4-w9xw)
+and [App Router Server Actions](https://github.com/advisories/GHSA-p3m5-59mp-jv5r)
+advisories affecting that version, fixed in Next.js 16.4.1 and later. The existing
+sharp override already addresses the documented image-library workaround, but
+the Server Actions advisory requires a Next.js upgrade.
+
+Update existing `next` and `eslint-config-next` together to pinned 16.4.2; no new
+direct dependency or security-gate bypass is introduced. The installed OpenNext
+1.20.2 peer range accepts this version. Re-run audit, build, typecheck, ESLint,
+the full test suite and CI's native OpenNext/Workers build before deployment.
+
+After the upgrade, `npm run audit:security` reports zero vulnerabilities in its
+production-dependency scope and `npm run build` passes on Next.js 16.4.2.
+Independent dependency review found no unexpected package/workflow changes or
+compatibility blocker; changes are limited to Next.js and its matching ESLint,
+environment and platform compiler packages. Post-upgrade `npm run verify` passed
+typecheck, ESLint and 1,257 tests (zero failed, four optional integration skips).
+The replacement CI run is tracked with final rollout evidence below.
