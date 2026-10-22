@@ -70,3 +70,44 @@ compatibility blocker; changes are limited to Next.js and its matching ESLint,
 environment and platform compiler packages. Post-upgrade `npm run verify` passed
 typecheck, ESLint and 1,257 tests (zero failed, four optional integration skips).
 The replacement CI run is tracked with final rollout evidence below.
+
+## Worker runtime compatibility correction
+
+CI [39827469678](https://github.com/Chaimanat2546/webook/actions/runs/39827469678)
+passed all 1,338 tests and deployed commit `61bbac9b199565379b91d82036e7f3a937c27aae`.
+The post-deploy probe caught a dynamic-route initialization failure despite the
+successful build/dry run: `Unexpected loadManifest(/.next/server/preview-props.json) call!`.
+The Push asset, migration, RPC permission checks and four real encrypted protocol
+deliveries passed, but this revision was not accepted as ready because login and
+other dynamic routes returned 500.
+
+Runtime tail isolated the old OpenNext 1.20.2 adapter's missing Next.js 16.4
+preview manifest. The official [1.20.12 release](https://github.com/opennextjs/opennextjs-cloudflare/releases/tag/%40opennextjs%2Fcloudflare%401.20.12)
+adds Next.js 16.4 support and [PR 1356](https://github.com/opennextjs/opennextjs-cloudflare/pull/1356)
+fixes that exact manifest omission. Update the existing adapter to pinned 1.20.13
+(also containing webpack named-chunk fixes) and its required Wrangler to 4.148.0.
+Their added minifier transitively selected vulnerable glob 10.3.3; a narrowly
+scoped `@node-minify/core` override selects glob 10.5.0, retaining its compatible
+major version and passing the unchanged production audit gate.
+
+The regression test executes the real adapter transformation against Next.js's
+actual `load-manifest.external.js` and isolated fixture preview props. Removing
+only the upstream preview-props entry reproduced `Unexpected loadManifest`;
+restoring the released adapter passed and unknown manifest paths still fail.
+Dynamic HTTP health is a required final acceptance check below.
+
+The updated Miniflare schema rejects the old iCal test fixture's `config.type`;
+remove that obsolete fixture field. Both enabled iCal runtime cases and the new
+manifest regression pass (three tests, zero skips). Independent review found no
+adapter, override or regression-test blocker.
+
+CI validation now starts the compiled Worker locally with the Staging config and
+requires login 200, dashboard 307 and notification API 401 before the deployment
+job can begin. It uses the validation job's placeholder public environment and
+local bindings, with no deployed database or remote Worker mutation. This checks
+server initialization rather than relying on build/dry-run success alone.
+
+Final local checks with the corrected adapter: production audit zero
+vulnerabilities; build, typecheck and ESLint passed; 1,258 default tests passed
+with four optional integration skips. Separate enabled runtime tests passed as
+above. Independent review also approved the CI smoke gate and fixture update.
