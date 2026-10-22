@@ -9,26 +9,28 @@ interface EventValue {
   waitUntil: (work: Promise<unknown>) => void;
 }
 
-async function runtime(clientUrl = "https://webook.test/admin") {
+async function runtime(clientUrl = "https://webook.test/admin", openedClientAvailable = true) {
   const bundle = await build({ entryPoints: ["worker/pwa-sw.js"], bundle: true, write: false, format: "iife", define: { "process.env.NODE_ENV": '"production"', "self.__WB_MANIFEST": "[]" } });
   const listeners = new Map<string, (event: EventValue) => void>();
   const shown: Array<{ title: string; options: NotificationOptions }> = [];
   const navigated: string[] = [];
   const opened: string[] = [];
   let focused = 0;
+  let openedFocused = 0;
+  let matched = 0;
   const location = new URL("https://webook.test/sw.js");
   runInNewContext(bundle.outputFiles[0].text, {
     URL, Request, Response, Headers, setTimeout, clearTimeout, location,
     self: { location, registration: { scope: "https://webook.test/", showNotification: async (title: string, options: NotificationOptions) => { shown.push({ title, options }); } },
       addEventListener: (type: string, listener: (event: EventValue) => void) => { listeners.set(type, listener); },
-      clients: { matchAll: async () => [{ url: clientUrl, navigate: async (url: string) => { navigated.push(url); }, focus: async () => { focused++; } }], openWindow: async (url: string) => { opened.push(url); } } },
+      clients: { matchAll: async () => { matched++; return [{ url: clientUrl, navigate: async (url: string) => { navigated.push(url); }, focus: async () => { focused++; } }]; }, openWindow: async (url: string) => { opened.push(url); return openedClientAvailable ? { focus: async () => { openedFocused++; } } : null; } } },
   });
   async function dispatch(type: string, fields: Partial<EventValue>) {
     const pending: Promise<unknown>[] = [];
     listeners.get(type)?.({ ...fields, waitUntil: (work) => { pending.push(work); } });
     await Promise.all(pending);
   }
-  return { shown, navigated, opened, focused: () => focused, dispatch };
+  return { shown, navigated, opened, focused: () => focused, openedFocused: () => openedFocused, matched: () => matched, dispatch };
 }
 
 const id = "ce540198-3482-4d2c-a5e0-9af9bf87cd86";
@@ -53,14 +55,26 @@ test("malformed push payloads never show a notification", async () => {
   assert.equal(worker.shown.length, 0);
 });
 
-test("notification clicks route to same-origin detail and focus an existing app", async () => {
+test("notification clicks use the app launch API instead of navigating a same-origin Safari tab", async () => {
   const worker = await runtime();
   let closed = false;
   await worker.dispatch("notificationclick", { notification: { data: { notificationId: id, url: "https://evil.test" }, close: () => { closed = true; } } });
   assert.equal(closed, true);
-  assert.deepEqual(worker.navigated, [`https://webook.test/admin/notifications/${id}`]);
-  assert.equal(worker.focused(), 1);
-  assert.deepEqual(worker.opened, []);
+  assert.deepEqual(worker.navigated, []);
+  assert.equal(worker.focused(), 0);
+  assert.equal(worker.matched(), 0);
+  assert.deepEqual(worker.opened, [`https://webook.test/admin/notifications/${id}`]);
+  assert.equal(worker.openedFocused(), 1);
+});
+
+test("a platform app launch without a returned WindowClient never falls back to Safari", async () => {
+  const worker = await runtime("https://webook.test/admin", false);
+  await worker.dispatch("notificationclick", { notification: { data: { notificationId: id }, close: () => {} } });
+  assert.deepEqual(worker.opened, [`https://webook.test/admin/notifications/${id}`]);
+  assert.deepEqual(worker.navigated, []);
+  assert.equal(worker.focused(), 0);
+  assert.equal(worker.matched(), 0);
+  assert.equal(worker.openedFocused(), 0);
 });
 
 test("external clients are ignored and invalid click IDs cannot open windows", async () => {

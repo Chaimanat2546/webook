@@ -90,15 +90,9 @@ self.addEventListener("notificationclick", (event) => {
   if (!id) return;
   const target = new URL(`/admin/notifications/${id}`, self.location.origin);
   event.waitUntil((async () => {
-    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const client of windows) {
-      if (new URL(client.url).origin !== target.origin) continue;
-      try {
-        await client.navigate(target.href);
-        await client.focus();
-        return;
-      } catch { /* A tab may close while the click is being handled. */ }
-    }
-    await self.clients.openWindow(target.href);
+    // Same-origin clients can be ordinary Safari tabs. Let the platform launch
+    // the installed app associated with this registration instead of choosing a tab.
+    const opened = await self.clients.openWindow(target.href);
+    if (opened) await opened.focus();
   })());
 });

@@ -49,6 +49,12 @@ Payloads contain only a notification UUID. The lock screen displays a generic
 WeBooks message without house, customer, phone or price details. A click can
 only focus/open a same-origin notification route; normal authentication follows.
 No private notification or booking responses are added to service-worker caches.
+Notification clicks call `clients.openWindow` directly for the fixed same-origin
+detail route, allowing the platform to launch the installed web app. They do not
+reuse an arbitrary same-origin browser tab, which could bring Safari forward on
+iPhone. After a click-handler update, open the installed app and accept its update
+prompt before testing a newly sent notification. Physical-device standalone
+launch is checked separately from successful Push delivery and detail access.
 
 The admin sign-out flow removes the server binding and unsubscribes the browser,
 with a per-device HttpOnly cookie as server-side fallback. Successful account
