@@ -15,8 +15,10 @@ const tabClass = "flex min-h-18 min-w-0 flex-1 flex-col items-center justify-cen
 
 export function AdminMobileHeader() {
   const pathname = usePathname();
+  const search = useSearchParams();
   const { setOpenMobile } = useSidebar();
   if (isMobileWorkspace(pathname)) return null;
+  if (pathname === "/admin/dashboard/websites" && search.get("view") !== "houses") return null;
   if (pathname === "/admin/dashboard/bookings") return <header className="flex min-h-16 items-center border-b bg-background px-5 pt-[env(safe-area-inset-top)] dark:bg-background md:hidden print:hidden"><p className="text-xl font-bold">WeBooks</p></header>;
   if (pathname === "/admin/dashboard") return <header className="flex min-h-16 items-center gap-4 border-b bg-background px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden"><button type="button" aria-label="เปิดเมนูหลัก" onClick={() => setOpenMobile(true)} className="flex size-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-2"><Menu aria-hidden className="size-5" /></button><span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">WB</span><div className="min-w-0 flex-1"><p className="text-lg font-semibold leading-tight text-primary">WeBooks</p><p className="text-[11px] text-muted-foreground">ภาพรวมธุรกิจ</p></div><time className="shrink-0 rounded-full bg-muted px-3 py-1 text-[11px] font-medium" dateTime={new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })}>{new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" }).format(new Date())}</time></header>;
   return (

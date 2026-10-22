@@ -27,8 +27,8 @@ export function DashboardView({ report, query, websiteSummary }: { report: Dashb
       </p>
     </div>
     <div className="hidden md:block"><DashboardOverviewView report={report} query={query} /></div>
-    <DashboardMobileOverview report={report} query={query} websites={websites} />
-    {websites && <section id="dashboard-websites" data-dashboard-section className="scroll-mt-4"><div className="md:hidden"><DashboardMobileSectionTitle title="แนวโน้มประสิทธิภาพเว็บไซต์" step="4/4" /></div>{websiteSummary}</section>}
+    <DashboardMobileOverview report={report} query={query} />
+    {websites && <section id="dashboard-websites" data-dashboard-section className="scroll-mt-4"><div className="md:hidden"><DashboardMobileSectionTitle title="แนวโน้มประสิทธิภาพเว็บไซต์" /></div>{websiteSummary}</section>}
     <p className="px-3 pt-4 pb-8 text-center text-[11px] leading-relaxed text-muted-foreground md:hidden">ระบบ WeBooks · ข้อมูลตามช่วงเวลาที่เลือก<br />แสดงเฉพาะข้อมูลที่มีในระบบ</p>
   </div>;
 }
