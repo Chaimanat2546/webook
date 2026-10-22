@@ -76,3 +76,27 @@ and keys were restored through the Staging subscription RPC. This restoration is
 test-fixture recovery, **not evidence of automatic repair**. No booking/house or
 customer fixture was created in this attempt. Both device bindings are retained.
 Physical acceptance must still confirm synchronization without toggling Push.
+
+## Installed-PWA update follow-up
+
+The user confirmed updating from the installed Staging PWA and seeing enabled
+**without disabling or enabling Push**. A fresh Staging inventory found one new
+binding for the same account at **20:06:27 ICT**, with a different endpoint from
+the previously backed-up PWA. The other known device was unchanged. The previous
+PWA endpoint was absent; its cause of retirement is not established by this check.
+The new endpoint registration, together with the user's no-toggle confirmation,
+verifies automatic registration after this update. This is not claimed as the
+planned same-endpoint missing-row recovery test because the backup had already
+been restored while waiting for the user.
+
+A new confirmed QA booking **684**, inactive house **DV 99882204**, created one
+admin inbox notification and two device delivery jobs. The scheduled Staging
+dispatcher marked both sent on attempt one, including the new PWA binding at
+**20:08:36 ICT**. No provider error was recorded. Physical display and standalone
+launch confirmation have been requested; successful submission alone does not
+prove these. The marked QA booking/house/customer are retained temporarily so
+the notification detail remains testable and must be removed after confirmation.
+
+The deployed commit and CI success were rechecked. Main remains at the SHA above.
+This follow-up changes only verification documentation; no application behavior
+changed, so another build/test run or deployment is unnecessary.
