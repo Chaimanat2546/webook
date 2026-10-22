@@ -100,15 +100,42 @@ test("home keeps unauthenticated users at login", async () => {
 test("successful login enters the permission-aware home and invalid login does not", async () => {
   for (const invalid of [false, true]) {
     const entry = await loadEntry("../app/login/actions.ts", {
+      "next/headers": { cookies: async () => ({ get: () => undefined }) },
       "fixture-admin-client": { createSupabaseAdminClient: () => null },
       "fixture-server-client": { createSupabaseServerClient: async () => ({ auth: { signInWithPassword: async (credentials: unknown) => {
         assert.deepEqual(credentials, { email: "test@example.com", password: "test-password" });
-        return { error: invalid ? { message: "invalid" } : null };
+        return { data: { user: invalid ? null : { id: "signed-in-user" } }, error: invalid ? { message: "invalid" } : null };
       } } }) },
     });
     const form = new FormData();
     form.set("identifier", "TEST@example.com");
     form.set("adminCredential", "test-password");
     await expectRedirect(() => (entry.signIn as (form: FormData) => Promise<unknown>)(form), invalid ? "/login?error=invalid" : "/");
+  }
+});
+
+test("login retires only the previous browser binding on a successful account switch", async () => {
+  for (const invalid of [false, true]) {
+    let retired = 0, cleared = 0;
+    const subscriptionId = "00000000-0000-4000-8000-000000000001";
+    const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+      assert.equal(new URL(String(input)).pathname, "/rest/v1/rpc/booking_push_unsubscribe");
+      assert.deepEqual(JSON.parse(String(init?.body)), { p_actor: "previous-auth-user", p_endpoint: null, p_subscription: subscriptionId });
+      retired++;
+      return new Response("true", { headers: { "Content-Type": "application/json" } });
+    } } });
+    const entry = await loadEntry("../app/login/actions.ts", {
+      "next/headers": { cookies: async () => ({ get: () => ({ value: subscriptionId }), delete: (name: string) => { assert.equal(name, "webook_push_subscription"); cleared++; } }) },
+      "fixture-admin-client": { createSupabaseAdminClient: () => client },
+      "fixture-server-client": { createSupabaseServerClient: async () => ({ auth: {
+        getUser: async () => ({ data: { user: { id: "previous-auth-user" } } }),
+        signInWithPassword: async () => ({ data: { user: invalid ? null : { id: "new-user-without-module-access" } }, error: invalid ? { message: "invalid" } : null }),
+      } }) },
+    });
+    const form = new FormData();
+    form.set("identifier", "test@example.com"); form.set("adminCredential", "password");
+    await expectRedirect(() => (entry.signIn as (input: FormData) => Promise<unknown>)(form), invalid ? "/login?error=invalid" : "/");
+    assert.equal(retired, invalid ? 0 : 1);
+    assert.equal(cleared, invalid ? 0 : 1);
   }
 });

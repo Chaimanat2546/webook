@@ -28,6 +28,15 @@ test("staging CI public values take precedence over the local environment file",
   });
 });
 
+test("staging deployment uses the CI runtime secret file without discarding the legacy fallback", () => {
+  const directory = mkdtempSync(join(tmpdir(), "webook-staging-push-arguments-"));
+  try {
+    writeFileSync(join(directory, ".env.ical-staging"), "ICAL_SOURCE_ENCRYPTION_KEY=synthetic");
+    writeFileSync(join(directory, ".env.staging-worker-secrets.json"), JSON.stringify({ VAPID_PRIVATE_KEY: "synthetic" }));
+    assert.deepEqual(deployment.stagingSecretArguments(directory), ["--secrets-file", join(directory, ".env.staging-worker-secrets.json")]);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
 test("staging CI rejects a non-Staging Supabase URL", () => {
   assert.throws(() => stagingPublicEnvironment({ NEXT_PUBLIC_SUPABASE_URL: "https://rqizfiayvcbozlzuvbok.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "ci-anon-key" }), /Invalid Staging Supabase public URL/);
 });

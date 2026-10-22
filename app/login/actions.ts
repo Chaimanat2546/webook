@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
@@ -28,10 +28,27 @@ export async function signIn(formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const cookieStore = await cookies();
+  const previousBinding = cookieStore.get("webook_push_subscription")?.value;
+  const previousActor = previousBinding ? (await supabase.auth.getUser()).data.user?.id ?? null : null;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     redirect("/login?error=invalid");
+  }
+
+  if (previousBinding && previousActor && data.user && previousActor !== data.user.id) {
+    try {
+      const client = createSupabaseAdminClient();
+      if (client) {
+        const { createNotificationRepository } = await import("../../server/repositories/booking-notifications");
+        const { retirePushBindingOnAccountChange } = await import("../../server/services/booking-notifications");
+        await retirePushBindingOnAccountChange(createNotificationRepository(client), previousActor, data.user.id, previousBinding);
+      }
+    } catch {
+      // The root Push session guard also retires the browser subscription.
+    }
+    cookieStore.delete("webook_push_subscription");
   }
 
   redirect("/");
@@ -53,6 +70,20 @@ async function resolveSignInEmail(identifier: string) {
 
 export async function signOut() {
   const supabase = await createSupabaseServerClient();
+  const cookieStore = await cookies();
+  const subscriptionId = cookieStore.get("webook_push_subscription")?.value;
+  if (subscriptionId) {
+    try {
+      const { notificationSession } = await import("../../server/auth/notifications");
+      const { notificationId } = await import("../../lib/booking-notifications");
+      const { actorId, repository } = await notificationSession(false);
+      await repository.unsubscribe(actorId, { subscriptionId: notificationId(subscriptionId) });
+    } catch {
+      // Browser sign-out also unsubscribes the local Push subscription. Signing
+      // out must remain available when the database or migration is unavailable.
+    }
+    cookieStore.delete("webook_push_subscription");
+  }
   await supabase.auth.signOut();
   redirect("/login");
 }

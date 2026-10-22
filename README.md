@@ -563,6 +563,7 @@ secrets:
 - `CLOUDFLARE_API_TOKEN` — token scoped only to the Staging Cloudflare account and Worker deployment.
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — Staging-only Web Push keys/contact, separate from other environments.
 
 A push to `staging` validates without secrets, then waits for Environment
 approval. The approved job links its fresh GitHub runner only to
@@ -571,6 +572,12 @@ approval. The approved job links its fresh GitHub runner only to
 `--linked`, because this checkout can link to Production. Database migrations
 are forward-only: a failed migration prevents deployment, and a successful
 migration is corrected by a later migration rather than rewriting history.
+
+The job prepares VAPID in an ignored temporary runtime secrets file and passes it
+to the existing Staging deploy command after the build. Keys are not build inputs
+or artifacts; the temporary file is removed even on failure. See
+[Booking notifications](docs/booking-notifications.md) for device setup and delivery
+behavior. The notification PostgreSQL suite is included in CI's zero-skip gate.
 
 Staging validation runs typecheck and lint, then uses
 `scripts/run-ci-integration.mjs prepare|test|stop` to run the entire Node test

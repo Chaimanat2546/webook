@@ -10,6 +10,7 @@ import { useSidebar } from "../ui/sidebar";
 import { AdminPageContainer } from "./admin-page-container";
 import { useMobileNavigationLists } from "./admin-mobile-navigation-memory";
 import { AdminMobileBrandHeader } from "./admin-mobile-brand-header";
+import { NotificationBell } from "../admin/notifications/notification-bell";
 
 const icons = { overview: LayoutDashboard, houses: House, bookings: CalendarDays, advertisements: Megaphone, quotations: FileText, centralUsers: Users, webookUsers: ShieldUser };
 
@@ -28,7 +29,7 @@ export function AdminMobileHeader() {
     <header className="flex min-h-14 items-center justify-between gap-3 border-b bg-background px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
       <button type="button" aria-label="เปิดเมนูหลัก" onClick={() => setOpenMobile(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full focus-visible:outline-2"><Menu aria-hidden className="size-5" /></button>
       <p className="min-w-0 flex-1 text-base font-semibold">{mobileTitle(pathname)}</p>
-      <span className="text-xs text-muted-foreground">WeBooks</span>
+      <NotificationBell />
     </header>
   );
 }
