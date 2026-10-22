@@ -63,4 +63,42 @@ self.addEventListener("message", (event) => {
     event.waitUntil(self.skipWaiting());
   }
 });
-// Activation only on explicit confirmation. No automatic reload, push or replay.
+// Activation only on explicit confirmation. No automatic reload or replay.
+
+function notificationId(value) {
+  return typeof value?.notificationId === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.notificationId)
+    ? value.notificationId : null;
+}
+
+self.addEventListener("push", (event) => {
+  let id;
+  try { id = notificationId(event.data?.json()); } catch { return; }
+  if (!id) return;
+  event.waitUntil(self.registration.showNotification("WeBooks: มี booking ใหม่", {
+    body: "เปิด WeBooks เพื่อดูรายละเอียด",
+    icon: "/pwa/icon-192.png",
+    badge: "/pwa/icon-192.png",
+    tag: id,
+    data: { notificationId: id },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const id = notificationId(event.notification.data);
+  if (!id) return;
+  const target = new URL(`/admin/notifications/${id}`, self.location.origin);
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if (new URL(client.url).origin !== target.origin) continue;
+      try {
+        await client.navigate(target.href);
+        await client.focus();
+        return;
+      } catch { /* A tab may close while the click is being handled. */ }
+    }
+    await self.clients.openWindow(target.href);
+  })());
+});
