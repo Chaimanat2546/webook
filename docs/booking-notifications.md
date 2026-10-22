@@ -41,6 +41,31 @@ the inbox. On iPhone/iPad, use iOS/iPadOS 16.4+ and add WeBooks to the Home Scre
 then open that installed web app before enabling Push.
 
 The existing `/sw.js` registration handles Push; `worker/pwa-sw.js` is its source.
+After opting in once, the root device guard synchronizes the browser's current
+subscription with the authenticated server on app load, focus, foreground resume, reconnect and
+Service Worker activation. This repairs missing server rows and renewed endpoints
+without a Push off/on cycle. With prior account-bound consent and permission still
+granted, it also attempts to restore a missing browser subscription; this automatic
+path never requests notification permission. Failed synchronization can also be
+retried through the existing settings button without disabling Push.
+
+The device settings report enabled only after server acknowledgment. Transient
+failures keep prior consent and retry on focus/online. Explicit disable/logout
+clear consent before browser cleanup; device operations use a shared Web Lock
+(or an in-context queue where unavailable) so a queued repair cannot re-enable an
+opted-out device. Mutation locks remain held until the actual operation settles,
+even if the UI stops waiting. A failed browser retirement remains visibly
+unconfirmed, and opt-out stays available during synchronization failures.
+Configuration retry reloads the inbox configuration too. Every automatic registration
+includes its expected actor, which the server checks against its current verified
+session before writing. Other devices are not removed during repair, and an
+unchanged binding cookie is not rewritten on every sync.
+
+If a network mutation stalls, opt-out starts local browser retirement immediately
+and queues server cleanup behind the existing mutation. A late subscription is
+retired when consent has been revoked. The UI and logout stop waiting after a
+bounded deadline, while queued cleanup continues; incomplete cleanup is reported.
+
 Run `npm run build:pwa` after source changes rather than editing `public/sw.js`.
 Service-worker registration runs in production builds; use `npm run build` and
 `npm start` for local worker checks. Normal development mode still supports the

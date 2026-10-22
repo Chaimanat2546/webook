@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cleanupPushDevice, disablePushDevice, reconcilePushDevice, runNotificationSignOut, withTimeout } from "../components/admin/notifications/push-device.ts";
+import { cleanupPushDevice, disablePushDevice, optOutPushDevice, reconcilePushDevice, runNotificationSignOut, withPushDeviceLock, withTimeout } from "../components/admin/notifications/push-device.ts";
 
 function device(serverFails = false) {
   const calls: string[] = [];
@@ -56,4 +56,38 @@ test("device disable reports off after browser retirement even if server cleanup
   let exists = true;
   state.subscription.unsubscribe = async () => { exists = false; return true; };
   assert.deepEqual(await disablePushDevice(async () => exists ? state.subscription : null, state.remove), { complete: false, state: "off" });
+});
+
+test("stalled registration cannot block immediate local opt-out", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const state = device();
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => { finish = resolve; });
+  const mutation = withPushDeviceLock(() => pending);
+  let exists = true;
+  state.subscription.unsubscribe = async () => { state.calls.push("browser"); exists = false; return true; };
+  const optOut = optOutPushDevice(async () => exists ? state.subscription : null, state.remove);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(exists, false);
+  context.mock.timers.tick(8_001);
+  assert.deepEqual(await optOut, { complete: false, state: "off" });
+  assert.deepEqual(state.calls, ["browser"]);
+  finish(); await mutation;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual(state.calls, ["browser", "server"]);
+});
+
+test("stalled server cleanup cannot indefinitely block logout after local retirement", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const state = device();
+  let finish!: (result: { ok: boolean }) => void;
+  const pending = new Promise<{ ok: boolean }>((resolve) => { finish = resolve; });
+  let signedOut = false;
+  const work = runNotificationSignOut(() => cleanupPushDevice(state.subscription, () => pending), async () => { signedOut = true; }, () => { state.calls.push("notice"); });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual(state.calls, ["browser"]);
+  context.mock.timers.tick(8_001); await work;
+  assert.equal(signedOut, true);
+  assert.deepEqual(state.calls, ["browser", "notice"]);
+  finish({ ok: true });
 });

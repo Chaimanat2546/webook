@@ -7,7 +7,7 @@ import type { NotificationPage } from "../../../lib/booking-notifications";
 import { shouldRefreshNotifications, visibleNotificationPage } from "./inbox-state";
 import { NotificationsContext } from "./notifications-context";
 import { NotificationsSheet } from "./notifications-sheet";
-import { cleanupPushDevice, currentPushSubscription, PUSH_ACTOR_STORAGE_KEY, storePushActor, withTimeout } from "./push-device";
+import { currentPushSubscription, optOutPushDevice, PUSH_ACTOR_STORAGE_KEY, storePushActor, withTimeout } from "./push-device";
 
 export function NotificationsProvider({ children, actorId }: { children: ReactNode; actorId?: string }) {
   const [data, setData] = useState<NotificationPage | null>(null);
@@ -83,8 +83,9 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
     request.current?.abort();
     setData(null);
     setOpen(false);
+    storePushActor(null);
     try {
-      return await cleanupPushDevice(await currentPushSubscription(), unsubscribePush);
+      return (await optOutPushDevice(currentPushSubscription, unsubscribePush)).complete;
     } catch { return false; }
     finally { storePushActor(null); }
   }

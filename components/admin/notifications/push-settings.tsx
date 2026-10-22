@@ -6,7 +6,8 @@ import { subscribePush, unsubscribePush } from "../../../app/admin/notifications
 import { usePwa } from "../../pwa/pwa-provider";
 import { Button } from "../../ui/button";
 import { useNotifications } from "./notifications-context";
-import { currentPushSubscription, disablePushDevice, pushApplicationKey, reconcilePushDevice, storedPushActor, storePushActor, withTimeout } from "./push-device";
+import { cleanupPushDevice, currentPushSubscription, optOutPushDevice, pushApplicationKey, pushConsentRevision, reconcilePushDevice, storedPushActor, storePushActor, withPushDeviceLock, withTimeout } from "./push-device";
+import { synchronizeCurrentPushDevice } from "./push-sync";
 
 type PushState = "checking" | "unsupported" | "denied" | "not-configured" | "enabled" | "off" | "ios-install" | "cleanup-failed" | "unavailable";
 
@@ -15,6 +16,8 @@ export function PushSettings() {
   const { installed } = usePwa();
   const [state, setState] = useState<PushState>("checking");
   const [busy, setBusy] = useState(false);
+  const [inspection, setInspection] = useState(0);
+  const [canDisable, setCanDisable] = useState(false);
   const actorId = notifications?.actorId;
   const publicKey = notifications?.data?.pushPublicKey;
   const configLoaded = !!notifications?.data;
@@ -23,45 +26,73 @@ export function PushSettings() {
   useEffect(() => {
     let disposed = false;
     async function inspect() {
+      if (busy) return;
+      setState("checking");
       const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       let next: PushState;
       if (ios && !installed) next = "ios-install";
       else if (!window.isSecureContext || !("Notification" in window) || !("PushManager" in window) || !("serviceWorker" in navigator)) next = "unsupported";
       else if (Notification.permission === "denied") next = "denied";
-      else if (!configLoaded) next = inboxError ? "unavailable" : "checking";
       else {
         try {
           const subscription = await currentPushSubscription();
-          next = subscription && storedPushActor() === actorId ? "enabled" : publicKey ? "off" : "not-configured";
-        } catch { next = publicKey ? "off" : "not-configured"; }
+          const consent = !!actorId && storedPushActor() === actorId;
+          if (!disposed) setCanDisable(consent || !!subscription);
+          if (!consent && subscription) next = "cleanup-failed";
+          else if (!configLoaded) next = inboxError ? "unavailable" : "checking";
+          else next = !publicKey ? "not-configured" : consent && actorId
+            ? await withTimeout(synchronizeCurrentPushDevice(actorId, subscribePush, unsubscribePush, () => !disposed, publicKey)) : "off";
+        } catch { next = "unavailable"; }
       }
       if (!disposed) setState(next);
     }
     void inspect();
-    return () => { disposed = true; };
-  }, [installed, publicKey, actorId, configLoaded, inboxError]);
+    window.addEventListener("focus", inspect);
+    window.addEventListener("online", inspect);
+    navigator.serviceWorker?.addEventListener("controllerchange", inspect);
+    return () => {
+      disposed = true;
+      window.removeEventListener("focus", inspect);
+      window.removeEventListener("online", inspect);
+      navigator.serviceWorker?.removeEventListener("controllerchange", inspect);
+    };
+  }, [installed, publicKey, actorId, configLoaded, inboxError, inspection, busy]);
 
   async function enable() {
     if (!actorId || !publicKey) return;
     setBusy(true);
+    const previousActor = storedPushActor();
+    const revision = pushConsentRevision();
+    const stillConsenting = () => pushConsentRevision() === revision;
     let subscription: PushSubscription | null = null;
     try {
       // This is the only permission request; it runs directly from the opt-in click.
       const permission = await Notification.requestPermission();
-      if (permission !== "granted") { setState(permission === "denied" ? "denied" : "off"); return; }
-      const registration = await withTimeout(navigator.serviceWorker.ready);
-      subscription = await withTimeout(registration.pushManager.getSubscription());
-      subscription = await reconcilePushDevice(actorId, storedPushActor(), subscription, unsubscribePush);
-      if (!subscription) subscription = await withTimeout(registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushApplicationKey(publicKey) }));
-      const value = subscription.toJSON();
-      const result = await withTimeout(subscribePush({ endpoint: value.endpoint, keys: value.keys }));
-      if (!result.ok) throw new Error("subscription failed");
-      storePushActor(actorId);
+      if (permission !== "granted") {
+        if (stillConsenting()) storePushActor(null);
+        setState(permission === "denied" ? "denied" : "off"); return;
+      }
+      const enabled = await withTimeout(withPushDeviceLock(async () => {
+        if (!stillConsenting()) return false;
+        const registration = await withTimeout(navigator.serviceWorker.ready);
+        subscription = await withTimeout(registration.pushManager.getSubscription());
+        subscription = await reconcilePushDevice(actorId, previousActor, subscription, unsubscribePush);
+        if (!stillConsenting()) return false;
+        if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushApplicationKey(publicKey) });
+        if (!stillConsenting()) { await cleanupPushDevice(subscription, unsubscribePush); return false; }
+        const value = subscription.toJSON();
+        const result = await subscribePush({ endpoint: value.endpoint, keys: value.keys }, actorId);
+        if (!stillConsenting()) { await cleanupPushDevice(subscription, unsubscribePush); return false; }
+        if (!result.ok) throw new Error("subscription failed");
+        storePushActor(actorId);
+        return true;
+      }));
+      if (!enabled) { setState("off"); return; }
       setState("enabled");
       toast.success("เปิดแจ้งเตือนบนอุปกรณ์นี้แล้ว");
     } catch {
-      const cleanup = await disablePushDevice(currentPushSubscription, unsubscribePush);
-      if (cleanup.state === "off") storePushActor(null);
+      if (stillConsenting()) storePushActor(null);
+      const cleanup = await optOutPushDevice(currentPushSubscription, unsubscribePush);
       setState(cleanup.state);
       toast.error("เปิดแจ้งเตือนไม่สำเร็จ อุปกรณ์อาจยังไม่พร้อม กรุณาลองอีกครั้ง");
     } finally { setBusy(false); }
@@ -69,8 +100,10 @@ export function PushSettings() {
 
   async function disable() {
     setBusy(true);
+    // Cancel consent before queued synchronization can revive an opted-out device.
+    storePushActor(null);
     try {
-      const result = await disablePushDevice(currentPushSubscription, unsubscribePush);
+      const result = await optOutPushDevice(currentPushSubscription, unsubscribePush);
       if (result.state === "off") storePushActor(null);
       setState(result.state);
       if (result.complete) toast.success("ปิดแจ้งเตือนบนอุปกรณ์นี้แล้ว");
@@ -79,8 +112,13 @@ export function PushSettings() {
     finally { setBusy(false); }
   }
 
+  async function retry() {
+    if (!configLoaded) await notifications?.refresh();
+    setInspection((value) => value + 1);
+  }
+
   const message: Record<PushState, string> = {
-    checking: "กำลังตรวจสอบการแจ้งเตือนบนอุปกรณ์นี้",
+    checking: "กำลังตรวจสอบและเชื่อมต่อการแจ้งเตือนบนอุปกรณ์นี้",
     unsupported: "อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับ Push ยังดูการแจ้งเตือนในเว็บได้",
     denied: "เบราว์เซอร์บล็อกการแจ้งเตือน เปิดสิทธิ์ในการตั้งค่าเว็บไซต์ก่อนลองอีกครั้ง",
     "not-configured": "ระบบยังไม่ได้ตั้งค่า Push ยังดูการแจ้งเตือนในเว็บได้",
@@ -88,7 +126,7 @@ export function PushSettings() {
     off: "ยังไม่ได้เปิดแจ้งเตือนบนอุปกรณ์นี้",
     "ios-install": "บน iPhone/iPad (iOS 16.4 ขึ้นไป) เปิดเมนูแชร์ เลือกเพิ่มไปยังหน้าจอโฮม แล้วเปิด WeBooks จากไอคอนเพื่อเปิด Push",
     "cleanup-failed": "ยังยืนยันไม่ได้ว่าปิด Push แล้ว กรุณาลองปิดอีกครั้ง",
-    unavailable: "ยังตรวจสอบการตั้งค่า Push ไม่ได้ กรุณาลองโหลดการแจ้งเตือนอีกครั้ง",
+    unavailable: "ยังเชื่อมต่อการแจ้งเตือนไม่สำเร็จ ระบบจะลองใหม่เมื่อกลับมาออนไลน์",
   };
-  return <div className="space-y-2"><p className="text-sm font-medium">แจ้งเตือนบนอุปกรณ์นี้</p><p className="text-xs text-muted-foreground" role="status">{message[state]}</p>{(state === "off" || state === "enabled" || state === "cleanup-failed") && <Button type="button" size="sm" variant="outline" disabled={busy || !actorId || (state === "off" && !publicKey)} onClick={() => { void (state === "off" ? enable() : disable()); }}>{busy ? "กำลังดำเนินการ…" : state === "off" ? "เปิดแจ้งเตือนบนอุปกรณ์นี้" : "ปิดแจ้งเตือนบนอุปกรณ์นี้"}</Button>}</div>;
+  return <div className="space-y-2"><p className="text-sm font-medium">แจ้งเตือนบนอุปกรณ์นี้</p><p className="text-xs text-muted-foreground" role="status">{message[state]}</p><div className="flex flex-wrap gap-2">{state === "off" && <Button type="button" size="sm" variant="outline" disabled={busy || !actorId || !publicKey} onClick={() => { void enable(); }}>{busy ? "กำลังดำเนินการ…" : "เปิดแจ้งเตือนบนอุปกรณ์นี้"}</Button>}{state === "unavailable" && <Button type="button" size="sm" variant="outline" disabled={busy || !actorId} onClick={() => { void retry(); }}>ลองเชื่อมต่ออีกครั้ง</Button>}{(canDisable || state === "enabled" || state === "cleanup-failed") && <Button type="button" size="sm" variant="outline" disabled={busy || !actorId} onClick={() => { void disable(); }}>{busy ? "กำลังดำเนินการ…" : "ปิดแจ้งเตือนบนอุปกรณ์นี้"}</Button>}</div></div>;
 }
