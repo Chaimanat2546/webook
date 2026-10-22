@@ -31,7 +31,7 @@ test("adapter sends encrypted generic payload with no redirects and no recipient
   const result = await sendBookingPush({ notificationId: "00000000-0000-4000-8000-000000000001", endpoint, keys: { p256dh: Buffer.from(devicePublic).toString("base64url"), auth: Buffer.alloc(16, 7).toString("base64url") }, attempt: 1 }, config, async (input, init) => {
     sent = true;
     assert.equal(input, endpoint);
-    assert.equal(init?.redirect, "error");
+    assert.equal(init?.redirect, "manual");
     assert.ok(init?.signal);
     const headers = new Headers(init?.headers);
     assert.equal(headers.get("Content-Encoding"), "aes128gcm");
