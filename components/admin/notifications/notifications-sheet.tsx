@@ -52,7 +52,7 @@ export function NotificationsSheet() {
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   return <Sheet open={notifications.open} onOpenChange={notifications.setOpen}>
     <SheetContent className="w-full! max-w-md! gap-0 pb-[env(safe-area-inset-bottom)] print:hidden">
-      <SheetHeader className="border-b pr-14"><SheetTitle className="flex items-center gap-2"><Bell aria-hidden className="size-5" />การแจ้งเตือน</SheetTitle><SheetDescription>รายการ booking ใหม่ที่คุณมีสิทธิ์ดู</SheetDescription></SheetHeader>
+      <SheetHeader className="border-b pr-14"><SheetTitle className="flex items-center gap-2"><Bell aria-hidden className="size-5" />การแจ้งเตือน</SheetTitle><SheetDescription>รายการ booking และการเปลี่ยนสถานะที่คุณมีสิทธิ์ดู</SheetDescription></SheetHeader>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="border-b p-4"><PushSettings /></div>
         <div className="flex items-center justify-between gap-2 px-4 py-3"><p className="text-sm text-muted-foreground" aria-live="polite">{data ? `ยังไม่อ่าน ${data.unreadCount} รายการ` : "ยังไม่ทราบจำนวนที่ยังไม่อ่าน"}</p><Button type="button" variant="ghost" size="sm" disabled={!data || data.unreadCount === 0 || reading || !!error} onClick={async () => {

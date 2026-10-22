@@ -120,7 +120,9 @@ cleanup too. Partial cleanup is not reported as successful disablement.
 
 ## Setup and rollout
 
-1. Apply `supabase/migrations/20261022100000_booking_notifications.sql` to the
+1. Apply migrations in order through
+   `supabase/migrations/20261022150000_booking_lifecycle_notifications.sql`,
+   including the original `20261022100000_booking_notifications.sql`, to the
    intended database before running this application revision.
 2. Generate a separate VAPID pair per environment. For example:
 

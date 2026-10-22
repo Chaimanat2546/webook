@@ -67,3 +67,44 @@ marked inactive QA houses. Exercise payment + manual cancellation on one booking
 and actual scheduled expiry on another. Check every recipient's authenticated
 inbox, denied cross-DV details, encrypted delivery through real Push providers,
 and cleanup scoped only to the QA fixtures. Record actual results below.
+
+## Initial deployment and live results
+
+- Feature commit: `fe4b272a5c744da191ba34b78375a93c2dbcce6e`.
+- CI/CD: https://github.com/Chaimanat2546/webook/actions/runs/39791645259
+- Validation: **1,335 tests passed, zero failures/skips**. Both compiled-bundle
+  environment guards and temporary runtime-secret cleanup passed.
+- Initial Worker version: `90587583-138b-4264-a119-d065f18d0dca`.
+- Live worker matched the committed source, SHA-256
+  `ce30168be5eefd6d62e0988b3eaf20e4c5846ed17c1bdf97b2b6f478c9d600e7`.
+- Live unauthenticated health checks passed: login 200, dashboard 307 to login,
+  inbox 401 private/no-store, worker 200.
+
+Two inactive QA houses, DV 99882211/99882212, and bookings 685/686 exercised:
+waiting → confirmed → same-status save → manual cancellation on the first;
+new waiting booking with a future one-minute deadline on the second. The actual
+deployed scheduled sweep expired the latter without a direct expiry RPC call
+from the test. Same-status save added no event.
+
+Exact recipient sets matched for every event: all three admins (one existing,
+two synthetic), plus only the matching owner. **20 inbox items** were captured.
+Authenticated HTTP checks passed for all four synthetic accounts: five events
+per admin, three for owner A, two for owner B; owner cross-DV details were denied
+without exposing the other house title. Detail pages showed the event type.
+
+Four real Mozilla Push protocol channels received and independently decrypted
+**15 messages**, with exact per-account UUID and event-type matches. The deployed
+dispatcher completed **25 delivery jobs**, including five events to the existing
+PWA device and five to its other device. The five cancellation jobs needed a
+lease-recovery attempt and were successfully sent on attempt two at 21:19:37 ICT;
+the cause of the interrupted first attempt is not established. Other jobs sent
+on attempt one. No final job remained pending, sending or failed.
+
+Browser testing with owner A confirmed the scoped inbox, payment-event detail,
+current cancelled status and explicit read state at mobile-width layout. A local
+screenshot is retained in the ignored acceptance directory. Physical iPhone
+display of the new event-specific titles is not asserted from provider receipt.
+
+UI inspection found the Sheet description still referred only to new bookings.
+A copy-only follow-up expands it to include status changes; build and full local
+verification passed again. Final deployment/cleanup evidence follows below.
