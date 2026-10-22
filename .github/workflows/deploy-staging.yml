@@ -40,6 +40,21 @@ jobs:
       - run: npm run build
       - run: npx opennextjs-cloudflare build
       - run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run -c wrangler.staging.jsonc
+      - name: Smoke test compiled Staging Worker locally
+        shell: bash
+        run: |
+          node node_modules/wrangler/bin/wrangler.js dev --local -c wrangler.staging.jsonc --ip 127.0.0.1 --port 8793 > "$RUNNER_TEMP/webook-staging-smoke.log" 2>&1 &
+          smoke_pid=$!
+          trap 'kill "$smoke_pid" 2>/dev/null || true' EXIT
+          curl --silent --show-error --fail --retry 30 --retry-connrefused --retry-all-errors --retry-delay 1 --max-time 2 http://127.0.0.1:8793/login > /dev/null
+          node --input-type=module <<'NODE'
+          for (const [path, expected] of [["/login", 200], ["/admin/dashboard", 307], ["/api/notifications", 401]]) {
+            const response = await fetch(`http://127.0.0.1:8793${path}`, { redirect: "manual", signal: AbortSignal.timeout(10000) });
+            if (response.status !== expected) throw new Error(`Compiled Staging Worker ${path}: ${response.status}, expected ${expected}`);
+            await response.body?.cancel();
+            console.log(`${path}: ${response.status}`);
+          }
+          NODE
 
   deploy:
     name: Apply migration and deploy Staging Worker
