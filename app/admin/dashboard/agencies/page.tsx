@@ -20,5 +20,5 @@ export default async function DashboardAgenciesPage({ searchParams }: { searchPa
     if (error instanceof DashboardForbidden) notFound();
     notFound();
   }
-  return <DashboardDetailLayout><DashboardTaskHeader backHref={dashboardOverviewHref(routeQuery)} backLabel="กลับไปภาพรวม" description="ตรวจสอบยอดขายตามเอเจนซี่" title="ยอดขายเอเจนซี่" /><AgenciesList report={report} query={routeQuery} /></DashboardDetailLayout>;
+  return <DashboardDetailLayout><div className="hidden md:block"><DashboardTaskHeader backHref={dashboardOverviewHref(routeQuery)} backLabel="กลับไปภาพรวม" description="ตรวจสอบยอดขายตามเอเจนซี่" title="ยอดขายเอเจนซี่" /></div><AgenciesList mobileRedesign report={report} query={routeQuery} /></DashboardDetailLayout>;
 }

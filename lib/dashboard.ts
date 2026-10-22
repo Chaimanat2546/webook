@@ -221,11 +221,14 @@ export interface DashboardCustomer {
   notes: string | null;
 }
 
+export const DASHBOARD_HOUSES_PAGE_SIZE = 8;
+
 export interface DashboardHouse {
   id: string;
   propertyId: string | null;
   title: string;
   createdAt: string;
+  coverImageUrl?: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
   maxGuests: number | null;

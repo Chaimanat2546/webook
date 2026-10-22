@@ -21,7 +21,7 @@ export default async function DashboardHousesPage({ searchParams }: { searchPara
     notFound();
   }
   return <DashboardDetailLayout>
-    <DashboardTaskHeader backHref={dashboardOverviewHref(routeQuery)} backLabel="กลับไปภาพรวม" description="ตรวจสอบบ้านที่เพิ่มเข้าระบบ" title="บ้านใหม่" />
-    <NewHousesList report={report} query={routeQuery} />
+    <div className="hidden md:block"><DashboardTaskHeader backHref={dashboardOverviewHref(routeQuery)} backLabel="กลับไปภาพรวม" description="ตรวจสอบบ้านที่เพิ่มเข้าระบบ" title="บ้านใหม่" /></div>
+    <NewHousesList mobileRedesign report={report} query={routeQuery} />
   </DashboardDetailLayout>;
 }

@@ -275,7 +275,8 @@ test("canonical agency and house pages render their own workflows", async () => 
   assert.match(agenciesHtml, /class="relative w-full"[\s\S]*lucide-search[\s\S]*aria-label="ค้นหาเอเจนซี่"/);
   assert.doesNotMatch(agenciesHtml, /type="month"[^>]*id="agency-month"/);
   assert.match(agenciesHtml, /class="hidden overflow-hidden rounded-xl border[^"\n]* md:block"/);
-  assert.match(agenciesHtml, /class="space-y-3 md:hidden"[\s\S]*rounded-xl border bg-card p-3 shadow-sm/);
+  assert.match(agenciesHtml, /class="space-y-3 md:hidden"[\s\S]*rounded-2xl border bg-card p-4 shadow-sm/);
+  assert.match(agenciesHtml, /aria-label="แบ่งหน้ารายการเอเจนซี่"/);
   assert.match(agenciesHtml, /<table[^>]*>[\s\S]*<th[^>]*>ชื่อเอเจนซี่<\/th>[\s\S]*<th[^>]*>จำนวนการจองติดจอง<\/th>[\s\S]*<th[^>]*>ยอดขาย<\/th>/);
   assert.equal((agenciesHtml.match(/<th /g) ?? []).length, 3);
   assert.match(agenciesHtml, /Agency A[\s\S]*<td[^>]*>1<\/td>[\s\S]*<td[^>]*>฿1,234\.50<\/td>/);
@@ -619,10 +620,46 @@ test("new house history sorts before pagination", async () => {
   const byName = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", houseSort: "name-asc" }));
   const byNamePageTwo = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", houseSort: "name-asc", page: "2" }));
 
-  assert.deepEqual(newest.admin?.houses.rows.map(house => house.id), ["house-11", "house-10", "house-9", "house-8", "house-7", "house-6", "house-5", "house-4", "house-3", "house-2"]);
-  assert.deepEqual(oldestPageTwo.admin?.houses.rows.map(house => house.id), ["house-11"]);
+  assert.deepEqual(newest.admin?.houses.rows.map(house => house.id), ["house-11", "house-10", "house-9", "house-8", "house-7", "house-6", "house-5", "house-4"]);
+  assert.deepEqual(oldestPageTwo.admin?.houses.rows.map(house => house.id), ["house-9", "house-10", "house-11"]);
   assert.equal(byName.admin?.houses.rows[0]?.id, "house-11");
-  assert.deepEqual(byNamePageTwo.admin?.houses.rows.map(house => house.id), ["house-1"]);
+  assert.equal(byNamePageTwo.admin?.houses.rows.length, 3);
+  assert.equal(byNamePageTwo.admin?.houses.rows.at(-1)?.id, "house-1");
+});
+
+test("new house pages contain eight items and only load those houses' cover zones", async () => {
+  const example = (await repository({ kind: "admin" }).newHouses(parseDashboardQuery({ month: "2026-09" })))[0];
+  const houses = Array.from({ length: 17 }, (_, index) => ({ ...example, id: `house-${index + 1}`, propertyId: String(index + 1), createdAt: `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00Z` }));
+  const repo = repository({ kind: "admin" }, [], houses);
+  const calls: string[] = [];
+  repo.coverImageUrl = async (scope, propertyId, options) => {
+    assert.deepEqual(scope, { kind: "admin" });
+    assert.equal(options?.zoneOnly, true);
+    calls.push(propertyId);
+    if (propertyId === "8") throw new Error("image unavailable");
+    return `https://media.example/${propertyId}.jpg`;
+  };
+  const report = await loadDashboardHouses(repo, "signed-in-user", parseDashboardHousesQuery({ month: "2026-09", page: "2" }));
+  assert.equal(report.admin?.houses.pages, 3);
+  assert.equal(report.admin?.houses.total, 17);
+  assert.equal(report.admin?.houses.rows.length, 8);
+  assert.deepEqual(calls, ["9", "8", "7", "6", "5", "4", "3", "2"]);
+  assert.equal(report.admin?.houses.rows[0].coverImageUrl, "https://media.example/9.jpg");
+  assert.equal(report.admin?.houses.rows[1].coverImageUrl, null);
+  await assert.rejects(loadDashboardHouses(repository({ kind: "owner", propertyId: "101" }), "signed-in-user", parseDashboardHousesQuery({ month: "2026-09" })), DashboardForbidden);
+});
+
+test("cover-zone-only requests never substitute gallery or card-cover images", async () => {
+  let calls = 0;
+  const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async (input, init) => {
+    calls++;
+    const url = new URL(new Request(input, init).url);
+    assert.equal(url.searchParams.get("property_id"), "eq.9");
+    assert.equal(url.searchParams.get("image_zone"), "eq.cover");
+    return new Response("null", { headers: { "Content-Type": "application/json" } });
+  } } });
+  assert.equal(await createDashboardRepository(client).coverImageUrl({ kind: "admin" }, "9", { zoneOnly: true }), null);
+  assert.equal(calls, 1);
 });
 
 test("dashboard detail primitives preserve responsive slots and summary framing", async () => {

@@ -1,5 +1,5 @@
 import "server-only";
-import { dashboardDateFilter, dashboardTimestampMatches, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgencyListSort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDetail, type DashboardHouseListSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardMonth, type DashboardOverviewQuery, type DashboardPage, type DashboardReport } from "../../lib/dashboard.ts";
+import { DASHBOARD_HOUSES_PAGE_SIZE, dashboardDateFilter, dashboardTimestampMatches, parseDashboardQuery, type DashboardAgenciesQuery, type DashboardAgencyListSort, type DashboardBooking, type DashboardBookingSort, type DashboardBookingSource, type DashboardBookingsQuery, type DashboardCustomer, type DashboardDetail, type DashboardHouseListSort, type DashboardHousesQuery, type DashboardListQuery, type DashboardMonth, type DashboardOverviewQuery, type DashboardPage, type DashboardReport } from "../../lib/dashboard.ts";
 import type { DashboardAgencyDetailQuery } from "../../lib/dashboard-routes.ts";
 import { dashboardShare } from "../../lib/dashboard-calculations.ts";
 import type { DashboardRepository } from "../repositories/dashboard.ts";
@@ -23,10 +23,11 @@ interface DashboardLoadOptions {
   bookingAmountToCents?: number;
   agencyListSort?: DashboardAgencyListSort;
   houseListSort?: DashboardHouseListSort;
+  housePageSize?: number;
 }
-function paginate<T>(rows: T[], requestedPage: number): DashboardPage<T> {
-  const pages = Math.max(1, Math.ceil(rows.length / 10)), page = Math.min(requestedPage, pages);
-  return { rows: rows.slice((page - 1) * 10, page * 10), total: rows.length, page, pages };
+function paginate<T>(rows: T[], requestedPage: number, pageSize = 10): DashboardPage<T> {
+  const pages = Math.max(1, Math.ceil(rows.length / pageSize)), page = Math.min(requestedPage, pages);
+  return { rows: rows.slice((page - 1) * pageSize, page * pageSize), total: rows.length, page, pages };
 }
 function agencyLabel(row: DashboardBookingSource): string {
   return row.agentName ?? (row.agentId ? "เอเจนซี่ที่ไม่มีชื่อในระบบ" : "ไม่ระบุเอเจนซี่");
@@ -94,7 +95,7 @@ export async function loadDashboard(repository: DashboardRepository, actorId: st
     scope, month: query.month, ...dashboardDateFilter(query), bookingCount: result.bookingCount, waitingCount: result.statusCounts.waiting,
     statusCounts: result.statusCounts, sales: result.sales, bookings, detail,
     overview: { confirmedBookingsByDay: result.daily, ...(result.hourly ? { confirmedBookingsByHour: result.hourly } : {}), topAgencies: scope.kind === "admin" ? result.topAgencies : [], recentHouses: houses.slice(0, 6), agencyCount: scope.kind === "admin" ? result.agencyCount : 0, newHouseCount: houses.length },
-    admin: scope.kind === "admin" ? { agencies: result.agencies, houses: paginate(houseRows, query.housesPage), selectedAgency: null } : null,
+    admin: scope.kind === "admin" ? { agencies: result.agencies, houses: paginate(houseRows, query.housesPage, options.housePageSize), selectedAgency: null } : null,
   };
 }
 function previousDay(date: string): string {
@@ -128,7 +129,14 @@ export async function loadDashboardAgencies(repository: DashboardRepository, act
 }
 
 export async function loadDashboardHouses(repository: DashboardRepository, actorId: string, query: DashboardHousesQuery): Promise<DashboardReport> {
-  return loadDashboard(repository, actorId, { month: query.month, ...dashboardDateFilter(query), view: "houses", houseSearch: query.search, housesPage: String(query.page) }, { houseListSort: query.houseSort });
+  const report = await loadDashboard(repository, actorId, { month: query.month, ...dashboardDateFilter(query), view: "houses", houseSearch: query.search, housesPage: String(query.page) }, { houseListSort: query.houseSort, housePageSize: DASHBOARD_HOUSES_PAGE_SIZE });
+  if (!report.admin) return report;
+  const rows = await Promise.all(report.admin.houses.rows.map(async house => {
+    if (!house.propertyId) return { ...house, coverImageUrl: null };
+    try { return { ...house, coverImageUrl: await repository.coverImageUrl(report.scope, house.propertyId, { zoneOnly: true }) }; }
+    catch { return { ...house, coverImageUrl: null }; }
+  }));
+  return { ...report, admin: { ...report.admin, houses: { ...report.admin.houses, rows } } };
 }
 
 export async function loadDashboardBooking(repository: DashboardRepository, actorId: string, query: DashboardBookingsQuery, bookingId: string): Promise<DashboardReport> {
