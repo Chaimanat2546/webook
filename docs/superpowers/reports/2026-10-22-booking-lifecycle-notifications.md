@@ -108,3 +108,28 @@ display of the new event-specific titles is not asserted from provider receipt.
 UI inspection found the Sheet description still referred only to new bookings.
 A copy-only follow-up expands it to include status changes; build and full local
 verification passed again. Final deployment/cleanup evidence follows below.
+
+## Final deployment and cleanup
+
+- Deployed application commit: `9283672997941fba4e4fda5fb0ed3b4d8dadc3ca`.
+- Final CI/CD: https://github.com/Chaimanat2546/webook/actions/runs/39795494042
+- Both validation and Staging deployment succeeded: **1,335 tests passed, zero
+  failures, cancellations or skips**. The compiled bundle contained the Staging
+  Supabase reference and no Production reference; temporary-secret cleanup passed.
+- Final Worker version: `866555b8-9859-4522-b7ea-cdfd93f85985`.
+- Live `/sw.js` matched the committed artifact, SHA-256
+  `357bc639b2921fd67b60991d3d76d2122f5ddd366a39c622973280efefd4252c`.
+  Login 200, dashboard 307, private/no-store inbox 401 and worker 200 were
+  rechecked after deployment.
+- Owner B browser acceptance also passed: only its two events appeared; the
+  expiry detail retained the expiry heading, current cancelled status and read
+  state. Both owner screenshots are retained locally in the ignored QA directory.
+- Cleanup was verified again after final deployment: zero QA bookings, houses,
+  customers, application users, Auth users, notifications or delivery jobs.
+  Both original device subscriptions remain, including the current PWA device.
+- Remote `main` remains `d6aa72f57b9e8accf91fc4d74ac6af3539fd58f1`; remote
+  `staging` is the deployed application commit above. No Production deployment or
+  mutation was performed.
+
+This final evidence-only documentation update is retained locally. It changes no
+application behavior, so another build, test run or deployment is unnecessary.
