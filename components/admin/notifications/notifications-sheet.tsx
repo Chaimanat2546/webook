@@ -4,7 +4,7 @@ import { Bell, CheckCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { BookingNotification } from "../../../lib/booking-notifications";
+import { notificationEventLabel, type BookingNotification } from "../../../lib/booking-notifications";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../ui/sheet";
@@ -37,9 +37,9 @@ function NotificationItem({ item }: { item: BookingNotification }) {
       } else notifications?.setOpen(false);
     }} aria-busy={pending}>
       <div className="flex items-start gap-2"><p className="min-w-0 flex-1 font-medium break-words">{item.title} <span className="whitespace-nowrap text-xs text-muted-foreground">DV {item.propertyId}</span></p>{!item.readAt && <Badge variant="secondary" className="shrink-0">ยังไม่อ่าน</Badge>}</div>
-      <p className="mt-1 text-sm">{item.source === "ical" ? "นำเข้า booking จาก iCal" : "มี booking ใหม่"}</p>
+      <p className="mt-1 text-sm">{notificationEventLabel(item.eventType, item.source)}</p>
       <p className="mt-1 text-xs text-muted-foreground">{date(item.checkIn)} – {date(item.checkOut)}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline">{item.status === "waiting" ? "รอโอน" : item.status === "confirmed" ? "ติดจอง" : item.status}</Badge><span>{item.source === "ical" ? "iCal" : "ในระบบ"}</span><time dateTime={item.createdAt}>{date(item.createdAt, true)}</time></div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline">สถานะปัจจุบัน: {item.status === "waiting" ? "รอโอน" : item.status === "confirmed" ? "ติดจอง" : item.status === "cancelled" ? "ยกเลิก" : item.status}</Badge><span>{item.source === "ical" ? "iCal" : "ในระบบ"}</span><time dateTime={item.createdAt}>{date(item.createdAt, true)}</time></div>
     </Link>
   </li>;
 }

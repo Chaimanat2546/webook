@@ -13,12 +13,14 @@ async function render(entry: string, exported: string, overrides: Partial<Notifi
     builder.onResolve({ filter: /ui\/sidebar$/ }, () => ({ path: "sidebar-fixture", external: true }));
     builder.onResolve({ filter: /ui\/sheet$/ }, () => ({ path: "sheet-fixture", external: true }));
     builder.onResolve({ filter: /push-settings$/ }, () => ({ path: "push-fixture", external: true }));
+    builder.onResolve({ filter: /^next\/navigation$/ }, () => ({ path: "navigation-fixture", external: true }));
   } }] });
   const loaded = { exports: {} as Record<string, unknown> };
   const require = createRequire(import.meta.url);
   const wrapper = ({ children, ...props }: { children: ReactNode }) => createElement("div", props, children);
   new Function("require", "module", "exports", bundle.outputFiles[0].text)((id: string) => {
     if (id === "context-fixture") return { useNotifications: () => state };
+    if (id === "navigation-fixture") return { useRouter: () => ({ push() {} }) };
     if (id === "sidebar-fixture") return { SidebarMenuItem: wrapper, SidebarMenuButton: wrapper };
     if (id === "push-fixture") return { PushSettings: () => null };
     if (id === "sheet-fixture") return { Sheet: ({ children }: { children: ReactNode }) => createElement("div", null, children), SheetContent: wrapper, SheetHeader: wrapper, SheetTitle: wrapper, SheetDescription: wrapper };
@@ -52,4 +54,14 @@ test("inbox supports loading, empty and paginated states", async () => {
   const paginated = await render("components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet", { data: inbox });
   assert.match(paginated, /หน้า 1 \/ 3/);
   assert.match(paginated, /aria-label="หน้าถัดไป"/);
+});
+
+test("inbox identifies each lifecycle event rather than labeling all items as new bookings", async () => {
+  for (const [eventType, label] of [["payment_succeeded", "ชำระเงิน booking สำเร็จ"], ["booking_cancelled", "ยกเลิก booking"], ["payment_expired", "booking หมดเวลาชำระเงิน"]] as const) {
+    const item = { id: "00000000-0000-4000-8000-000000000001", bookingId: "1", propertyId: "100", title: "Test house", checkIn: "2026-10-23", checkOut: "2026-10-24", status: "cancelled", source: "internal" as const, eventType, createdAt: "2026-10-22T12:00:00Z", bookingUpdatedAt: "2026-10-22T12:00:00Z", readAt: null };
+    const html = await render("components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet", { data: { ...inbox, items: [item], total: 1 } });
+    assert.ok(html.includes(label));
+    assert.doesNotMatch(html, /มี booking ใหม่/);
+    assert.match(html, /สถานะปัจจุบัน/);
+  }
 });

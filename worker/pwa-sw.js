@@ -4,6 +4,7 @@ import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheFirst, NetworkOnly } from "workbox-strategies";
 import { HOUSE_IMAGE_CACHE_MAX_AGE_SECONDS, shouldCacheHouseImageRequest } from "../lib/house-image-cache.ts";
+import { notificationEvent, notificationEventLabel } from "../lib/booking-notifications.ts";
 
 const offlineUrl = "/pwa/offline.html";
 const precache = new PrecacheController({ cacheName: "webook-pwa-precache-v1" });
@@ -72,10 +73,14 @@ function notificationId(value) {
 }
 
 self.addEventListener("push", (event) => {
-  let id;
-  try { id = notificationId(event.data?.json()); } catch { return; }
+  let id, eventType;
+  try {
+    const payload = event.data?.json();
+    id = notificationId(payload);
+    eventType = notificationEvent(payload?.eventType);
+  } catch { return; }
   if (!id) return;
-  event.waitUntil(self.registration.showNotification("WeBooks: มี booking ใหม่", {
+  event.waitUntil(self.registration.showNotification(`WeBooks: ${notificationEventLabel(eventType)}`, {
     body: "เปิด WeBooks เพื่อดูรายละเอียด",
     icon: "/pwa/icon-192.png",
     badge: "/pwa/icon-192.png",

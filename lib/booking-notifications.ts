@@ -1,3 +1,18 @@
+export type BookingNotificationEvent = "booking_created" | "payment_succeeded" | "booking_cancelled" | "payment_expired";
+
+export function notificationEvent(value: unknown): BookingNotificationEvent {
+  if (value === undefined) return "booking_created"; // Older queued payloads remain readable during rollout.
+  if (value === "booking_created" || value === "payment_succeeded" || value === "booking_cancelled" || value === "payment_expired") return value;
+  throw new Error("notification_invalid_event");
+}
+
+export function notificationEventLabel(event: BookingNotificationEvent, source?: "internal" | "ical"): string {
+  if (event === "payment_succeeded") return "ชำระเงิน booking สำเร็จ";
+  if (event === "booking_cancelled") return "ยกเลิก booking";
+  if (event === "payment_expired") return "booking หมดเวลาชำระเงิน";
+  return source === "ical" ? "นำเข้า booking จาก iCal" : "มี booking ใหม่";
+}
+
 export interface BookingNotification {
   id: string;
   bookingId: string;
@@ -6,6 +21,7 @@ export interface BookingNotification {
   checkIn: string;
   checkOut: string;
   status: string;
+  eventType: BookingNotificationEvent;
   source: "internal" | "ical";
   createdAt: string;
   bookingUpdatedAt: string;

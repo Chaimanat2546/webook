@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { notificationId, notificationRecord, parsePushSubscription, type BookingNotification, type BrowserPushSubscription, type NotificationInbox, type NotificationRead } from "../../lib/booking-notifications.ts";
+import { notificationEvent, notificationId, notificationRecord, parsePushSubscription, type BookingNotification, type BrowserPushSubscription, type NotificationInbox, type NotificationRead } from "../../lib/booking-notifications.ts";
 import type { PushJob, PushOutcome } from "../notifications/web-push.ts";
 
 export interface PushDelivery extends PushJob { id: string; leaseToken: string; subscriptionId: string }
@@ -26,7 +26,7 @@ function parseItem(value: unknown): BookingNotification {
   if (row.source !== "internal" && row.source !== "ical") throw new Error("notification_invalid_data");
   return {
     id: notificationId(row.id), bookingId: text(row.bookingId), propertyId: text(row.propertyId), title: text(row.title),
-    checkIn: text(row.checkIn), checkOut: text(row.checkOut), status: text(row.status), source: row.source,
+    checkIn: text(row.checkIn), checkOut: text(row.checkOut), status: text(row.status), source: row.source, eventType: notificationEvent(row.eventType),
     createdAt: text(row.createdAt), bookingUpdatedAt: text(row.bookingUpdatedAt), readAt: row.readAt === null ? null : text(row.readAt),
   };
 }
@@ -63,7 +63,7 @@ export function createNotificationRepository(client: SupabaseClient): Notificati
         const subscription = parsePushSubscription(row);
         const attempt = count(row.attempt);
         if (attempt < 1 || attempt > 5) throw new Error("notification_invalid_data");
-        return { ...subscription, attempt, id: notificationId(row.id), leaseToken: notificationId(row.leaseToken), notificationId: notificationId(row.notificationId), subscriptionId: notificationId(row.subscriptionId) };
+        return { ...subscription, attempt, eventType: notificationEvent(row.eventType), id: notificationId(row.id), leaseToken: notificationId(row.leaseToken), notificationId: notificationId(row.notificationId), subscriptionId: notificationId(row.subscriptionId) };
       });
     },
     async canSend(delivery) {

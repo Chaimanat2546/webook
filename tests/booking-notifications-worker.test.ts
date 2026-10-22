@@ -48,11 +48,22 @@ test("push displays only generic text and a validated notification identifier", 
 
 test("malformed push payloads never show a notification", async () => {
   const worker = await runtime();
-  for (const value of [null, {}, { notificationId: "../../login" }, { notificationId: "https://evil.test" }]) {
+  for (const value of [null, {}, { notificationId: "../../login" }, { notificationId: "https://evil.test" }, { notificationId: id, eventType: "private text" }]) {
     await worker.dispatch("push", { data: { json: () => value } });
   }
   await worker.dispatch("push", { data: { json: () => { throw new Error("invalid JSON"); } } });
   assert.equal(worker.shown.length, 0);
+});
+
+test("lifecycle pushes show event-specific generic titles and never trust supplied text", async () => {
+  const worker = await runtime();
+  for (const [eventType, expected] of [["payment_succeeded", "WeBooks: ชำระเงิน booking สำเร็จ"], ["booking_cancelled", "WeBooks: ยกเลิก booking"], ["payment_expired", "WeBooks: booking หมดเวลาชำระเงิน"]]) {
+    await worker.dispatch("push", { data: { json: () => ({ notificationId: id, eventType, title: "private customer", body: "private amount" }) } });
+    const shown = worker.shown.at(-1)!;
+    assert.equal(shown.title, expected);
+    assert.equal(shown.options.body, "เปิด WeBooks เพื่อดูรายละเอียด");
+    assert.deepEqual(JSON.parse(JSON.stringify(shown.options.data)), { notificationId: id });
+  }
 });
 
 test("notification clicks use the app launch API instead of navigating a same-origin Safari tab", async () => {
