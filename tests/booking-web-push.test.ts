@@ -19,7 +19,7 @@ test("missing or malformed VAPID disables Push without throwing or exposing conf
   assert.equal(pushConfig({ VAPID_PUBLIC_KEY: "x", VAPID_PRIVATE_KEY: "secret", VAPID_SUBJECT: "mailto:test@example.test" }), null);
 });
 
-for (const eventType of [undefined, "payment_succeeded", "booking_cancelled", "payment_expired"] as const) test(`adapter encrypts ${eventType ?? "legacy"} payload without recipient details or redirects`, async () => {
+for (const eventType of [undefined, "booking_created", "payment_succeeded", "booking_cancelled", "payment_expired"] as const) test(`adapter encrypts ${eventType ?? "legacy"} payload with exact house DV and no recipient details or redirects`, async () => {
   const vapidPair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
   const vapidPrivate = await crypto.subtle.exportKey("jwk", vapidPair.privateKey);
   const vapidPublic = await crypto.subtle.exportKey("raw", vapidPair.publicKey);
@@ -28,7 +28,8 @@ for (const eventType of [undefined, "payment_succeeded", "booking_cancelled", "p
   const config = { publicKey: Buffer.from(vapidPublic).toString("base64url"), privateKey: vapidPrivate.d!, subject: "mailto:notifications@example.test" };
   const endpoint = "https://fcm.googleapis.com/fcm/send/device";
   let sent = false;
-  const result = await sendBookingPush({ notificationId: "00000000-0000-4000-8000-000000000001", eventType, endpoint, keys: { p256dh: Buffer.from(devicePublic).toString("base64url"), auth: Buffer.alloc(16, 7).toString("base64url") }, attempt: 1 }, config, async (input, init) => {
+  const propertyId = eventType ? "9007199254740993" : undefined;
+  const result = await sendBookingPush({ notificationId: "00000000-0000-4000-8000-000000000001", eventType, propertyId, endpoint, keys: { p256dh: Buffer.from(devicePublic).toString("base64url"), auth: Buffer.alloc(16, 7).toString("base64url") }, attempt: 1 }, config, async (input, init) => {
     sent = true;
     assert.equal(input, endpoint);
     assert.equal(init?.redirect, "manual");
@@ -55,9 +56,16 @@ for (const eventType of [undefined, "payment_succeeded", "booking_cancelled", "p
     let end = plain.length - 1;
     while (plain[end] === 0) end--;
     assert.equal(plain[end], 2);
-    assert.deepEqual(JSON.parse(new TextDecoder().decode(plain.slice(0, end))), { notificationId: "00000000-0000-4000-8000-000000000001", ...(eventType ? { eventType } : {}) });
+    assert.deepEqual(JSON.parse(new TextDecoder().decode(plain.slice(0, end))), { notificationId: "00000000-0000-4000-8000-000000000001", ...(eventType ? { eventType, propertyId } : {}) });
     return new Response(null, { status: 201 });
   });
   assert.ok(sent);
   assert.equal(result.status, "sent");
+});
+
+test("invalid house identifiers never reach encryption or the Push provider", async () => {
+  for (const propertyId of [null, 100, "0", "-1", "001", "house name", "100\n", "9223372036854775808"]) {
+    const result = await sendBookingPush({ notificationId: "00000000-0000-4000-8000-000000000001", propertyId: propertyId as string, attempt: 1, endpoint: "https://fcm.googleapis.com/device", keys: { p256dh: Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 1)]).toString("base64url"), auth: Buffer.alloc(16, 7).toString("base64url") } }, { publicKey: "unused", privateKey: "unused", subject: "mailto:test@example.test" }, async () => { assert.fail("invalid DV must not be sent"); });
+    assert.deepEqual(result, { status: "failed", error: "push_invalid_subscription", retryAt: null });
+  }
 });

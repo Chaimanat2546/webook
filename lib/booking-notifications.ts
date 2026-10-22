@@ -13,6 +13,16 @@ export function notificationEventLabel(event: BookingNotificationEvent, source?:
   return source === "ical" ? "นำเข้า booking จาก iCal" : "มี booking ใหม่";
 }
 
+/** Keep bigint DVs as canonical decimal text, including IDs beyond JS safe integers. */
+export function notificationPropertyId(value: unknown): string | undefined {
+  if (value === undefined) return undefined; // Older queued jobs have no house ID.
+  if (typeof value !== "string" || !/^[1-9][0-9]{0,18}$/.test(value)
+    || value.trim() !== value || BigInt(value) > BigInt("9223372036854775807")) {
+    throw new Error("notification_invalid_property");
+  }
+  return value;
+}
+
 export interface BookingNotification {
   id: string;
   bookingId: string;

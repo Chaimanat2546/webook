@@ -23,6 +23,7 @@ interface Delivery {
   keys: { p256dh: string; auth: string };
   attempt: number;
   eventType: string;
+  propertyId: string;
 }
 
 // Explicit opt-in; this fixture never reads project credentials or touches a remote database.
@@ -105,6 +106,8 @@ describe("booking notification PostgreSQL contract", { skip: process.env.RUN_NOT
     sql(expiry.match(/create or replace function public\.admin_expire_waiting_bookings[\s\S]*?\$\$;/i)![0]);
     const lifecycle = new URL("../supabase/migrations/20261022150000_booking_lifecycle_notifications.sql", import.meta.url);
     if (existsSync(lifecycle)) sql(readFileSync(lifecycle, "utf8"));
+    const pushHouse = new URL("../supabase/migrations/20261023090000_booking_push_house_id.sql", import.meta.url);
+    if (existsSync(pushHouse)) sql(readFileSync(pushHouse, "utf8"));
     assert.equal(sql("select count(*) from booking_notifications;"), "0", "migration must not backfill existing bookings");
   });
   after(() => {
@@ -156,6 +159,7 @@ describe("booking notification PostgreSQL contract", { skip: process.env.RUN_NOT
     for (const actor of [admin, admin2, owner]) assert.deepEqual(inbox(actor).items.map(item => item.eventType), ["payment_succeeded", "booking_created"]);
     assert.equal(inbox(other).total, 0);
     const jobs = claim(); assert.equal(jobs.length, 6);
+    assert.ok(jobs.every(job => job.propertyId === "100"), "claimed Push jobs must carry the captured house DV as text");
     assert.equal(jobs.filter(job => job.eventType === "payment_succeeded").length, 3);
     sql("update bookings set status='waiting' where id=1; update bookings set status='confirmed' where id=1;");
     assert.equal(inbox().items.filter(item => item.eventType === "payment_succeeded").length, 2, "a later real transition is a new event");

@@ -35,12 +35,12 @@ async function runtime(clientUrl = "https://webook.test/admin", openedClientAvai
 
 const id = "ce540198-3482-4d2c-a5e0-9af9bf87cd86";
 
-test("push displays only generic text and a validated notification identifier", async () => {
+test("legacy push keeps the WeBooks title and displays its event without a missing DV", async () => {
   const worker = await runtime();
   await worker.dispatch("push", { data: { json: () => ({ notificationId: id, title: "private guest", url: "https://evil.test" }) } });
   assert.equal(worker.shown.length, 1);
-  assert.equal(worker.shown[0].title, "WeBooks: มี booking ใหม่");
-  assert.equal(worker.shown[0].options.body, "เปิด WeBooks เพื่อดูรายละเอียด");
+  assert.equal(worker.shown[0].title, "WeBooks");
+  assert.equal(worker.shown[0].options.body, "มี booking ใหม่");
   assert.equal(worker.shown[0].options.tag, id);
   assert.equal(worker.shown[0].options.icon, "/pwa/icon-192.png");
   assert.deepEqual(JSON.parse(JSON.stringify(worker.shown[0].options.data)), { notificationId: id });
@@ -51,19 +51,26 @@ test("malformed push payloads never show a notification", async () => {
   for (const value of [null, {}, { notificationId: "../../login" }, { notificationId: "https://evil.test" }, { notificationId: id, eventType: "private text" }]) {
     await worker.dispatch("push", { data: { json: () => value } });
   }
+  for (const propertyId of [null, 100, "0", "-1", "001", "house name", "../100", "100\n", "9223372036854775808"]) {
+    await worker.dispatch("push", { data: { json: () => ({ notificationId: id, propertyId }) } });
+  }
   await worker.dispatch("push", { data: { json: () => { throw new Error("invalid JSON"); } } });
   assert.equal(worker.shown.length, 0);
 });
 
-test("lifecycle pushes show event-specific generic titles and never trust supplied text", async () => {
+test("pushes use one app title and show only the event and validated house DV in the body", async () => {
   const worker = await runtime();
-  for (const [eventType, expected] of [["payment_succeeded", "WeBooks: ชำระเงิน booking สำเร็จ"], ["booking_cancelled", "WeBooks: ยกเลิก booking"], ["payment_expired", "WeBooks: booking หมดเวลาชำระเงิน"]]) {
-    await worker.dispatch("push", { data: { json: () => ({ notificationId: id, eventType, title: "private customer", body: "private amount" }) } });
+  for (const [eventType, expected] of [["booking_created", "มี booking ใหม่ • DV 99882204"], ["payment_succeeded", "ชำระเงิน booking สำเร็จ • DV 99882204"], ["booking_cancelled", "ยกเลิก booking • DV 99882204"], ["payment_expired", "booking หมดเวลาชำระเงิน • DV 99882204"]]) {
+    await worker.dispatch("push", { data: { json: () => ({ notificationId: id, eventType, propertyId: "99882204", title: "private customer", body: "private amount" }) } });
     const shown = worker.shown.at(-1)!;
-    assert.equal(shown.title, expected);
-    assert.equal(shown.options.body, "เปิด WeBooks เพื่อดูรายละเอียด");
+    assert.equal(shown.title, "WeBooks");
+    assert.equal(shown.options.body, expected);
     assert.deepEqual(JSON.parse(JSON.stringify(shown.options.data)), { notificationId: id });
   }
+  await worker.dispatch("push", { data: { json: () => ({ notificationId: id, eventType: "payment_succeeded", propertyId: "9007199254740993" }) } });
+  assert.equal(worker.shown.at(-1)!.options.body, "ชำระเงิน booking สำเร็จ • DV 9007199254740993");
+  await worker.dispatch("push", { data: { json: () => ({ notificationId: id, eventType: "payment_expired" }) } });
+  assert.equal(worker.shown.at(-1)!.options.body, "booking หมดเวลาชำระเงิน");
 });
 
 test("notification clicks use the app launch API instead of navigating a same-origin Safari tab", async () => {

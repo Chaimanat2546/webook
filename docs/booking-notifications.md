@@ -96,14 +96,22 @@ Run `npm run build:pwa` after source changes rather than editing `public/sw.js`.
 Service-worker registration runs in production builds; use `npm run build` and
 `npm start` for local worker checks. Normal development mode still supports the
 inbox. Mobile acceptance needs an HTTPS origin.
-Payloads contain only a notification UUID and an allowlisted event type. Older
-UUID-only payloads still display the new-booking message. The lock screen displays
-a generic event-specific WeBooks message without house, customer, phone or price details. A click can
+Payloads contain a notification UUID, an allowlisted event type and the captured
+house DV (`propertyId`) as validated positive bigint decimal text. They contain no
+house name, customer, phone or price details. The lock-screen title is **WeBooks**;
+the body is the event label followed by ` • DV <propertyId>`, for example
+**ชำระเงิน booking สำเร็จ • DV 12345**. This applies to all four event types,
+including iCal creation, which uses **มี booking ใหม่** on the lock screen.
+The `20261023090000_booking_push_house_id.sql` migration exposes the stored DV in
+the service-role-only claim RPC; existing recipient and send-time scope checks
+remain in force. No historical notifications or delivery jobs are created.
+Older payloads without a DV still show their event label without a DV suffix;
+UUID-only payloads show **มี booking ใหม่**. A click can
 only focus/open a same-origin notification route; normal authentication follows.
 No private notification or booking responses are added to service-worker caches.
-Already installed devices need to accept the PWA update before event-specific
-lock-screen titles are available; an older worker retains its generic new-booking
-title. Updating does not require disabling/re-enabling Push.
+Already installed devices need to accept the PWA update before the new title and
+event/DV body are available; an older worker retains its previous display format.
+Updating does not require disabling/re-enabling Push.
 Notification clicks call `clients.openWindow` directly for the fixed same-origin
 detail route, allowing the platform to launch the installed web app. They do not
 reuse an arbitrary same-origin browser tab, which could bring Safari forward on
@@ -121,7 +129,7 @@ cleanup too. Partial cleanup is not reported as successful disablement.
 ## Setup and rollout
 
 1. Apply migrations in order through
-   `supabase/migrations/20261022150000_booking_lifecycle_notifications.sql`,
+   `supabase/migrations/20261023090000_booking_push_house_id.sql`,
    including the original `20261022100000_booking_notifications.sql`, to the
    intended database before running this application revision.
 2. Generate a separate VAPID pair per environment. For example:
