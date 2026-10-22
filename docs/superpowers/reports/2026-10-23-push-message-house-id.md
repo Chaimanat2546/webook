@@ -111,3 +111,33 @@ Final local checks with the corrected adapter: production audit zero
 vulnerabilities; build, typecheck and ESLint passed; 1,258 default tests passed
 with four optional integration skips. Separate enabled runtime tests passed as
 above. Independent review also approved the CI smoke gate and fixture update.
+
+## Accepted Staging rollout
+
+- Application commit: `62b6559e9a3cb9e6bb60a916512f3572b65d1292`.
+- CI/CD: [39829961652](https://github.com/Chaimanat2546/webook/actions/runs/39829961652)
+  succeeded with **1,339 tests passed**, zero failures, cancellations or skips.
+  Compiled-Worker local HTTP smoke, Staging-present/Production-absent bundle
+  guards and temporary runtime-secret cleanup all passed.
+- Worker version: `322a70c0-2bf6-4ffe-a828-2737faf228b4`.
+- Post-deploy HTTP probes passed: login 200, dashboard 307 to login,
+  private/no-store notification API 401 and `/sw.js` 200.
+- Deployed PWA artifact matched committed source, SHA-256
+  `107bafb815a56ef6706d9716d3ae3168dd428795a376c67416a670ed64ec43db`.
+- Read-only Staging SQL confirmed migration applied, captured DV in claim JSON,
+  service-role claim access and browser-role denial. Both original subscriptions
+  remain; earlier QA fixture cleanup was reverified with all fixture counts zero.
+- An ephemeral real Mozilla Push channel received and independently decrypted
+  four messages. Each contained exactly UUID, event type and `propertyId`.
+  Running those received payloads through the deployed service-worker artifact
+  produced **WeBooks** plus the exact four requested event/DV bodies, using
+  synthetic DV 99882215. The provider channel was unregistered afterward.
+- This final protocol smoke created no database fixture and sent nothing to
+  existing phone subscriptions. It proves provider delivery and deployed handler
+  formatting; physical iPhone display of this new format is not claimed.
+- Remote `main` remains `d6aa72f57b9e8accf91fc4d74ac6af3539fd58f1`; only
+  `staging` was advanced. No Production deployment or database operation occurred.
+
+Existing installed PWAs need their normal one-time update to show this format;
+Push does not need an off/on cycle. This evidence-only final report update stays
+local and changes no behavior, so another build/test/deployment is unnecessary.
