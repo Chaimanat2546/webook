@@ -1,11 +1,31 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseWebsiteScope, scopeSearchParams } from "../lib/website-analytics-scope.ts";
+import { dashboardAnalyticsFilterParams, parseWebsiteScope, scopeSearchParams } from "../lib/website-analytics-scope.ts";
 import { parseWebsiteComparisonQuery, websitePeriodHref, websitePeriodRows, websiteMultiPeriodPoints } from "../lib/website-analytics-comparison.ts";
 import { emptyMetrics, parseWebsiteAnalyticsQuery, type WebsiteSummary } from "../lib/website-analytics.ts";
 
 const now = new Date("2026-10-15T03:00:00Z"), keys = ["a", "b", "c"];
 const selection = { sites: ["a"], comparison: { from: "2026-09-01", to: "2026-09-03", sites: ["b", "c"] } };
+
+test("applying analytics drafts commits primary dates, hours and comparison together without changing business filters", () => {
+  const existing = new URLSearchParams("month=2026-10&dateFrom=2026-10-01&dateTo=2026-10-31&timeFrom=08%3A00&timeTo=17%3A00&analyticsCompare=previous&analyticsTimeFrom=00%3A00&analyticsTimeTo=24%3A00");
+  const next = dashboardAnalyticsFilterParams(existing, "2026-10", { from: "2026-09-25", to: "2026-10-05", timeFrom: "09:00", timeTo: "18:00" }, selection);
+  assert.equal(next.get("analyticsFrom"), "2026-09-25");
+  assert.equal(next.get("analyticsTo"), "2026-10-05");
+  assert.equal(next.get("analyticsTimeFrom"), "09:00");
+  assert.equal(next.get("analyticsTimeTo"), "18:00");
+  assert.equal(next.get("dateFrom"), "2026-10-01");
+  assert.equal(next.get("dateTo"), "2026-10-31");
+  assert.equal(next.get("timeFrom"), "08:00");
+  assert.equal(next.get("analyticsCompare"), null);
+  assert.deepEqual(JSON.parse(next.get("analyticsScope")!), selection);
+  assert.equal(existing.get("analyticsFrom"), null);
+  assert.equal(existing.get("analyticsCompare"), "previous");
+  const cleared = dashboardAnalyticsFilterParams(next, "2026-10", { from: "2026-10-01", to: "2026-10-02" }, { sites: ["a"] });
+  assert.equal(cleared.get("analyticsTimeFrom"), null);
+  assert.equal(cleared.get("analyticsTimeTo"), null);
+  assert.deepEqual(JSON.parse(cleared.get("analyticsScope")!), { sites: ["a"] });
+});
 test("normal website selection never creates a comparison dataset", () => {
   assert.equal(parseWebsiteScope(undefined, keys, now), undefined);
   assert.deepEqual(parseWebsiteScope(JSON.stringify({ sites: ["b"] }), keys, now), { sites: ["b"] });

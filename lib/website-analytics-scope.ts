@@ -35,3 +35,20 @@ export function scopeSearchParams(existing: URLSearchParams, scope: WebsiteScope
   params.set("analyticsScope", JSON.stringify(scope));
   return params;
 }
+
+/** Apply one analytics selection while preserving the independent business period. */
+export function dashboardAnalyticsFilterParams(existing: URLSearchParams, month: string, range: AnalyticsDateRange, scope?: WebsiteScopeSelection): URLSearchParams {
+  const params = new URLSearchParams(existing);
+  params.set("month", month);
+  params.set("analyticsFrom", range.from);
+  params.set("analyticsTo", range.to);
+  const time = parseAnalyticsTimeRange(range.timeFrom, range.timeTo, range);
+  if (time) {
+    params.set("analyticsTimeFrom", time.timeFrom);
+    params.set("analyticsTimeTo", time.timeTo);
+  } else {
+    params.delete("analyticsTimeFrom");
+    params.delete("analyticsTimeTo");
+  }
+  return scope ? scopeSearchParams(params, scope) : params;
+}

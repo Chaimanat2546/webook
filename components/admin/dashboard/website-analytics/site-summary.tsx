@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChartNoAxesColumnIncreasing, ChevronDown, ChevronRight, Table2 } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/card";
 import { Badge } from "../../../ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../ui/table";
@@ -31,7 +31,7 @@ function CompactMobileSiteSummary({ sites, month, range, compare, scope }: { sit
     <Link href={websitePeriodHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {}, compare, scope)} className="flex min-h-16 items-center gap-3 py-3 focus-visible:outline-2 focus-visible:outline-primary">
       <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: `var(--chart-${index % 5 + 1})` }} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{site.displayName}</span><span className="block truncate font-mono text-[10px] text-muted-foreground">{displayDomain(site.origin)}</span></span><span className="shrink-0 font-mono text-sm font-semibold tabular-nums" aria-label="จำนวนเข้าชม">{site.totals?.page_views.toLocaleString("th-TH") ?? "—"}</span><ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
     </Link>
-    {site.status !== "complete" && <div className="pb-2 pl-5"><SiteStatus site={site} showCoverage /></div>}
+    {site.status !== "complete" && site.status !== "partial" && <div className="pb-2 pl-5"><SiteStatus site={site} showCoverage /></div>}
   </li>)}</ul></div>;
 }
 
@@ -70,7 +70,7 @@ export function WebsiteSiteSummary({ granularity, sites, month, range, today, as
     </CardHeader>
     <CardContent>
       {isFutureAnalyticsRange(range, asOf) && <p role="status" className="mb-3 text-sm text-amber-700">ยังไม่ถึงช่วงเวลาที่เลือก · ยอดรวมยังไม่มีข้อมูลที่สังเกตแล้ว</p>}
-      {range && (!compare || !previous) && sites.some(site => site.status === "partial") && <p role="status" className="mb-3 text-sm text-amber-700">{compare ? "ข้อมูลบางเว็บไซต์ไม่ครบ" : "บางเว็บไซต์มีข้อมูลไม่ครบช่วงวันที่ที่เลือก ยอดที่แสดงรวมเฉพาะข้อมูลที่มี"}</p>}
+      {range && compare && !previous && sites.some(site => site.status === "partial") && <p role="status" className="mb-3 text-sm text-amber-700">ข้อมูลบางเว็บไซต์ไม่ครบ</p>}
       {!sites.length ? <p className="text-sm text-muted-foreground">ยังไม่มีเว็บไซต์ในระบบ</p> : <><WebsiteSiteSummaryGraph mobileOverview={mobileOverview} mobileControls={periodControls} granularity={granularity} sites={sites} month={month} range={range} today={today} asOf={asOf} compare={compare} previous={previous} scope={scope} />{mobileOverview ? <CompactMobileSiteSummary sites={sites} month={month} range={range} compare={compare} scope={scope} /> : <MobileSiteSummary sites={sites} month={month} range={range} showCoverage={compare} scope={scope} />}<div className="hidden md:block"><Table aria-label="สถิติแยกเว็บไซต์">
         <TableHeader><TableRow><TableHead className="min-w-48">เว็บไซต์ / โดเมน</TableHead><TableHead className="min-w-32">สถานะข้อมูล</TableHead>{columns.map(column => <TableHead key={column.key} className="text-right">{column.label}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{sites.map(site => {
@@ -82,5 +82,5 @@ export function WebsiteSiteSummary({ granularity, sites, month, range, today, as
         })}</TableBody>
       </Table></div></>}
     </CardContent>
-  </Card>{mobileOverview && <Link href={websitePeriodHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: "all", page: 1 }, {}, compare, scope)} className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-full border bg-card text-sm font-medium md:hidden"><Table2 aria-hidden className="size-4" />ดูตารางทั้งหมด</Link>}</WebsiteAnalyticsLoadingProvider>;
+  </Card></WebsiteAnalyticsLoadingProvider>;
 }

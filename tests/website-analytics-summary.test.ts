@@ -144,7 +144,7 @@ test("range summary displays its dates and keeps cross-month detail links valid 
   assert.match(html, /2026-09-25 ถึง 2026-10-05/);
   assert.match(html, /aria-label="ช่วงวันที่สถิติเข้าเว็บไซต์"/);
   assert.doesNotMatch(html, />ใช้<|>ยกเลิก</);
-  assert.match(html, /ข้อมูลไม่ครบช่วงวันที่/);
+  assert.doesNotMatch(html, /บางเว็บไซต์มีข้อมูลไม่ครบช่วงวันที่ที่เลือก|ยอดที่แสดงรวมเฉพาะข้อมูลที่มี/);
   assert.match(html, /month=2026-10&amp;site=a&amp;from=2026-09-25&amp;to=2026-10-05/);
 });
 
