@@ -43,7 +43,8 @@ export async function sendBookingPush(job: PushJob, config: PushConfig, transpor
     payload = await buildPushPayload({ data: JSON.stringify({ notificationId: id }), options: { ttl: 3600 } }, { ...subscription, expirationTime: null }, config);
   } catch { return { status: "failed", error: "push_encryption_failed", retryAt: null }; }
   try {
-    const response = await transport(subscription.endpoint, { ...payload, redirect: "error", signal: AbortSignal.timeout(10_000) });
+    // Workers supports manual/follow only; classify every 3xx as a failed send.
+    const response = await transport(subscription.endpoint, { ...payload, redirect: "manual", signal: AbortSignal.timeout(10_000) });
     const outcome = pushResult(response.status, response.headers.get("Retry-After"), job.attempt);
     // Provider response bodies can contain endpoint credentials; never consume or log.
     if (response.body) await response.body.cancel();

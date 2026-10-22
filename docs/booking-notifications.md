@@ -100,6 +100,9 @@ The cron does not claim jobs or consume attempts without valid configuration.
 The package is `@block65/webcrypto-web-push` 2.x, which uses RFC8291 aes128gcm and
 VAPID and is compatible with Cloudflare Workers. The application validates known
 Chrome, Firefox, Apple and Windows Push provider endpoints and disallows redirects.
+The transport uses Workers-compatible `redirect: "manual"` and treats every 3xx
+as a permanent rejection, without sending the encrypted body or VAPID headers to
+the redirect destination. A native Workers runtime regression test covers this.
 
 ## Delivery behavior and operations
 
