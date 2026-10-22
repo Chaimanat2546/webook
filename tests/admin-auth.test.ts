@@ -105,8 +105,10 @@ describe("admin authorization", () => {
     assert.equal(canUseBooking(emailOnlyUser), true);
 
     const layoutSource = readFileSync(new URL("../app/admin/layout.tsx", import.meta.url), "utf8");
-    assert.match(layoutSource, /await requireBookingAdmin\(\)/);
-    assert.match(layoutSource, /canUseBooking=\{bookingAccess\.ok\}/);
+    const permissionsSource = readFileSync(new URL("../server/auth/admin-navigation.ts", import.meta.url), "utf8");
+    assert.match(layoutSource, /getAdminNavigationPermissions/);
+    assert.match(permissionsSource, /await requireBookingAdmin\(\)/);
+    assert.match(permissionsSource, /canUseBooking: bookingAccess\.ok/);
     assert.doesNotMatch(layoutSource, /canUseBooking\(adminUser\)/);
   });
 
@@ -153,12 +155,14 @@ describe("admin authorization", () => {
   it("keeps admin layout as authentication only", () => {
     const layoutSource = readFileSync(new URL("../app/admin/layout.tsx", import.meta.url), "utf8");
 
-    assert.match(layoutSource, /await requireAdmin\(\)/);
+    const permissionsSource = readFileSync(new URL("../server/auth/admin-navigation.ts", import.meta.url), "utf8");
+    assert.match(layoutSource, /getAdminNavigationPermissions/);
+    assert.match(permissionsSource, /await requireAdmin\(\)/);
     assert.match(layoutSource, /export const dynamic = "force-dynamic"/);
     assert.doesNotMatch(layoutSource, /isAuthorized/);
-    assert.match(layoutSource, /canUseAccommodation/);
-    assert.match(layoutSource, /canUseAccommodation=\{canUseAccommodation\(adminUser\)\}/);
-    assert.match(layoutSource, /canAccessHouses=\{canAccessHouses\(adminUser\)\}/);
+    assert.match(permissionsSource, /canUseAccommodation/);
+    assert.match(permissionsSource, /canUseAccommodation: canUseAccommodation\(adminUser\)/);
+    assert.match(permissionsSource, /canAccessHouses: canAccessHouses\(adminUser\)/);
   });
 
   it("requires allow_price to manage house base prices", () => {

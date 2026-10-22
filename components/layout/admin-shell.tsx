@@ -10,6 +10,8 @@ import {
 import { Separator } from "../ui/separator";
 import { Toaster } from "../ui/sonner";
 import { ConnectionStatus } from "../pwa/connection-status";
+import { AdminMobileNavigationMemory } from "./admin-mobile-navigation-memory";
+import { mobileNavigationLayout } from "../../lib/mobile-navigation";
 import { AdminMobileContent, AdminMobileHeader, AdminMobileNavigation } from "./admin-mobile-navigation";
 
 export function AdminShell({
@@ -33,8 +35,11 @@ export function AdminShell({
   children: ReactNode;
   defaultSidebarOpen?: boolean;
 }) {
+  const permissions = { canUseDashboard, canAccessHouses, canManageCentralUsers, canManageWebookUsers, canUseAccommodation, canUseBooking, canUseQuotation };
+  const hasDock = mobileNavigationLayout(permissions).dock.length > 1;
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
+      <AdminMobileNavigationMemory>
       <AdminDesktopSidebar
         canUseDashboard={canUseDashboard}
         canAccessHouses={canAccessHouses}
@@ -56,13 +61,14 @@ export function AdminShell({
         </header>
         <AdminMobileHeader />
 
-        <AdminMobileContent>
+        <AdminMobileContent hasDock={hasDock}>
           <ConnectionStatus />
           {children}
         </AdminMobileContent>
       </SidebarInset>
-      <AdminMobileNavigation canAccessHouses={canAccessHouses} canUseBooking={canUseBooking} canUseQuotation={canUseQuotation} canUseAccommodation={canUseAccommodation} canManageCentralUsers={canManageCentralUsers} canManageWebookUsers={canManageWebookUsers} />
+      <AdminMobileNavigation {...permissions} />
       <Toaster />
+      </AdminMobileNavigationMemory>
     </SidebarProvider>
   );
 }

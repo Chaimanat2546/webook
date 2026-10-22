@@ -21,6 +21,7 @@ import {
   useSidebar,
 } from "../ui/sidebar";
 import { TooltipProvider } from "../ui/tooltip";
+import { AdminMobileSidebarLinks } from "./admin-mobile-sidebar-links";
 import { InstallAppMenuItem } from "../pwa/install-app-menu-item";
 
 export function AdminDesktopSidebar({
@@ -81,6 +82,8 @@ export function AdminDesktopSidebar({
             {!isMobile && <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
+                {isMobile && <AdminMobileSidebarLinks permissions={{ canUseDashboard, canAccessHouses, canManageCentralUsers, canManageWebookUsers, canUseAccommodation, canUseBooking, canUseQuotation }} pathname={pathname} onNavigate={closeMobileSidebar} />}
+                {!isMobile && <>
                 {canUseDashboard && <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/dashboard")} tooltip="แดชบอร์ด">
                     <Link href="/admin/dashboard" onClick={closeMobileSidebar}><LayoutDashboard data-icon="inline-start" /><span>แดชบอร์ด</span></Link>
@@ -188,6 +191,7 @@ export function AdminDesktopSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) : null}
+                </>}
             <InstallAppMenuItem />
             <SidebarMenuItem>
               <form action={signOutAction}>
