@@ -15,10 +15,12 @@ test("current booking snapshot migration preserves populated rows, RLS and audit
   const migration = readFileSync(new URL("../supabase/migrations/20260929140000_booking_house_information_snapshot.sql", import.meta.url), "utf8");
   assert.equal(run(["run", "--rm", "-d", "--name", container, "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "postgres:17-alpine"]).status, 0);
   try {
-    for (let i = 0; i < 40; i++) {
-      if (run(["exec", container, "pg_isready", "-U", "postgres"]).status === 0) break;
+    let ready = false;
+    for (let i = 0; i < 60; i++) {
+      if (spawnSync("docker", ["exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-t", "1"], { timeout: 5000 }).status === 0) { ready = true; break; }
       await new Promise(resolve => setTimeout(resolve, 500));
     }
+    assert.ok(ready, "Disposable PostgreSQL must accept TCP connections before fixtures run");
     sql(`create extension btree_gist;create role anon;create role authenticated;create role service_role bypassrls;
       create schema auth;create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql as 'select nullif(current_setting(''request.jwt.claim.sub'',true),'''')::uuid';

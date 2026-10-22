@@ -10,7 +10,11 @@ import {
 import { Separator } from "../ui/separator";
 import { Toaster } from "../ui/sonner";
 import { ConnectionStatus } from "../pwa/connection-status";
+import { AdminMobileNavigationMemory } from "./admin-mobile-navigation-memory";
+import { mobileNavigationLayout } from "../../lib/mobile-navigation";
 import { AdminMobileContent, AdminMobileHeader, AdminMobileNavigation } from "./admin-mobile-navigation";
+import { NotificationsProvider } from "../admin/notifications/notifications-provider";
+import { NotificationBell } from "../admin/notifications/notification-bell";
 
 export function AdminShell({
   canUseDashboard = false,
@@ -22,6 +26,7 @@ export function AdminShell({
   canUseQuotation,
   children,
   defaultSidebarOpen = true,
+  notificationActorId,
 }: {
   canUseDashboard?: boolean;
   canAccessHouses: boolean;
@@ -32,9 +37,14 @@ export function AdminShell({
   canUseQuotation: boolean;
   children: ReactNode;
   defaultSidebarOpen?: boolean;
+  notificationActorId?: string;
 }) {
+  const permissions = { canUseDashboard, canAccessHouses, canManageCentralUsers, canManageWebookUsers, canUseAccommodation, canUseBooking, canUseQuotation };
+  const hasDock = mobileNavigationLayout(permissions).dock.length > 1;
   return (
+    <NotificationsProvider key={notificationActorId ?? "notifications"} actorId={notificationActorId}>
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
+      <AdminMobileNavigationMemory>
       <AdminDesktopSidebar
         canUseDashboard={canUseDashboard}
         canAccessHouses={canAccessHouses}
@@ -53,16 +63,19 @@ export function AdminShell({
             <p className="text-sm font-medium">WeBooks</p>
             <p className="text-xs text-muted-foreground">ระบบจัดการบ้านพัก</p>
           </div>
+          <div className="ml-auto"><NotificationBell /></div>
         </header>
         <AdminMobileHeader />
 
-        <AdminMobileContent>
+        <AdminMobileContent hasDock={hasDock}>
           <ConnectionStatus />
           {children}
         </AdminMobileContent>
       </SidebarInset>
-      <AdminMobileNavigation canAccessHouses={canAccessHouses} canUseBooking={canUseBooking} canUseQuotation={canUseQuotation} canUseAccommodation={canUseAccommodation} canManageCentralUsers={canManageCentralUsers} canManageWebookUsers={canManageWebookUsers} />
+      <AdminMobileNavigation {...permissions} />
       <Toaster />
+      </AdminMobileNavigationMemory>
     </SidebarProvider>
+    </NotificationsProvider>
   );
 }

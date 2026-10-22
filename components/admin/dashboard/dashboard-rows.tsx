@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CalendarDays, ChevronRight } from "lucide-react";
+import { Building2, CalendarDays, ChevronRight, Store } from "lucide-react";
 import { DASHBOARD_STATUSES, dashboardDate, dashboardMoney, dashboardStatus, type DashboardAgency, type DashboardBooking, type DashboardHouse } from "../../../lib/dashboard";
 import { Badge } from "../../ui/badge";
 import { TableCell, TableRow } from "../../ui/table";
@@ -54,7 +54,14 @@ export function DashboardAgencyTableRow({ agency, href }: { agency: DashboardAge
   </TableRow>;
 }
 
-export function DashboardAgencyRow({ agency, href }: { agency: DashboardAgency; href: string }) {
+export function DashboardAgencyRow({ agency, href, presentation = "default" }: { agency: DashboardAgency; href: string; presentation?: "default" | "summary" }) {
+  if (presentation === "summary") {
+    const Icon = agency.id === null ? Building2 : Store;
+    return <Link id={`dashboard-agency-${agency.id ?? "unassigned"}`} data-dashboard-detail-link href={href} className="block min-w-0 rounded-2xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+      <span className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon aria-hidden className="size-5" /></span><span className="flex min-w-0 flex-1 flex-wrap items-center gap-2"><span className="break-words text-sm font-semibold text-primary [overflow-wrap:anywhere]">{agency.name}</span>{agency.missingPrices > 0 && <Badge variant="outline" className="rounded-full border-amber-500/35 bg-amber-500/5 text-[10px] text-amber-700 dark:text-amber-300" title={`ติดจอง ${agency.missingPrices} รายการยังไม่ระบุยอด`}>ข้อมูลไม่ครบ</Badge>}</span><ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" /></span>
+      <span className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 border-t pt-3"><span className="text-xs text-muted-foreground">ติดจอง {agency.count.toLocaleString("th-TH")} รายการ</span><span className="ml-auto flex min-w-0 flex-wrap items-baseline justify-end gap-2"><span className="text-xs text-muted-foreground">ยอดรวม</span><span className="break-words text-base font-bold tabular-nums text-primary">{dashboardMoney(agency.amountCents)}</span></span></span>
+    </Link>;
+  }
   return <Link id={`dashboard-agency-${agency.id ?? "unassigned"}`} data-dashboard-detail-link href={href} className="block rounded-xl border bg-card p-3 shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-2">
     <span className="flex min-w-0 items-start justify-between gap-3"><span className="break-words font-semibold [overflow-wrap:anywhere]">{agency.name}</span><ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" /></span>
     <span className="mt-3 grid grid-cols-2 gap-3 text-sm"><span><span className="block text-xs text-muted-foreground">จำนวนการจองติดจอง</span><span className="mt-1 block font-medium tabular-nums">{agency.count.toLocaleString("th-TH")} รายการ</span></span><span className="text-right"><span className="block text-xs text-muted-foreground">ยอดขาย</span><span className="mt-1 block font-semibold tabular-nums text-primary">{dashboardMoney(agency.amountCents)}</span></span></span>
@@ -77,7 +84,14 @@ export function DashboardHouseTableRow({ house, href }: { house: DashboardHouse;
   </TableRow>;
 }
 
-export function DashboardHouseCard({ house, href }: { house: DashboardHouse; href: string }) {
+export function DashboardHouseCard({ house, href, presentation = "default" }: { house: DashboardHouse; href: string; presentation?: "default" | "cover" }) {
+  if (presentation === "cover") return <Link id={`dashboard-house-${house.id}`} data-dashboard-detail-link href={href} className="flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+    {house.coverImageUrl ?
+      // eslint-disable-next-line @next/next/no-img-element -- URL comes from the existing server-side house image adapter.
+      <img src={house.coverImageUrl} alt={`รูปปก ${house.title}`} loading="lazy" className="size-16 shrink-0 rounded-xl object-cover" /> : <span aria-label="ยังไม่มีรูปปก" className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><Building2 aria-hidden className="size-6" /></span>}
+    <span className="min-w-0 flex-1"><span title={house.title} className="block truncate text-sm font-semibold text-primary">{house.title}</span><span className="mt-1 block text-[11px] text-muted-foreground">{house.propertyId ? `DV-${house.propertyId}` : "ยังไม่ระบุ DV"}</span><span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays aria-hidden className="size-3.5 shrink-0" />{dashboardDate(house.createdAt)}</span></span>
+    <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+  </Link>;
   return <Link id={`dashboard-house-${house.id}`} data-dashboard-detail-link href={href} className="block rounded-xl border bg-card p-3 shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-2">
     <span className="flex min-w-0 items-start justify-between gap-3">
       <span className="min-w-0 break-words font-semibold [overflow-wrap:anywhere]">{house.title}</span>

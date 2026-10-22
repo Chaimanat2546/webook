@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createMobileNavigationMemory, mobileDestinations, mobileSection, isMobileWorkspace, mobileTitle } from "../lib/mobile-navigation.ts";
+import { createMobileNavigationMemory, mobileDestinations, mobileNavigationLayout, mobileSection, isMobileWorkspace, mobileTitle } from "../lib/mobile-navigation.ts";
 
 test("list memory preserves queries across external navigation and ignores detail routes", () => {
   const memory = createMobileNavigationMemory();
@@ -21,16 +21,16 @@ test("list memory preserves queries across external navigation and ignores detai
   assert.equal(notifications, 2);
 });
 
-const noTools = { canAccessHouses: false, canUseBooking: false, canUseQuotation: false, canUseAccommodation: false, canManageCentralUsers: false, canManageWebookUsers: false };
+const noTools = { canUseDashboard: false, canAccessHouses: false, canUseBooking: false, canUseQuotation: false, canUseAccommodation: false, canManageCentralUsers: false, canManageWebookUsers: false };
 test("mobile destinations follow permissions without duplicate quotation/customer active states", () => {
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: true, canUseBooking: true, canUseAccommodation: true, canUseQuotation: true }).map(x => x.id), ["bookings", "houses", "advertisements", "quotations"]);
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: false, canUseQuotation: false }), []);
   assert.deepEqual(mobileDestinations({ ...noTools, canAccessHouses: true, canUseQuotation: false }).map(x => x.id), ["houses"]);
   assert.deepEqual(mobileDestinations({ ...noTools, canUseBooking: true }).map(x => x.id), ["bookings"]);
   assert.equal(mobileSection("/admin/bookings"), "bookings");
-  assert.equal(mobileSection("/admin/dashboard/bookings"), "bookings");
-  assert.equal(mobileSection("/admin/dashboard/bookings/9"), "bookings");
-  assert.equal(mobileSection("/admin/dashboard/bookings-old"), "more");
+  assert.equal(mobileSection("/admin/dashboard/bookings"), "overview");
+  assert.equal(mobileSection("/admin/dashboard/bookings/9"), "overview");
+  assert.equal(mobileSection("/admin/dashboard/bookings-old"), "overview");
   assert.equal(mobileSection("/admin/bookings-old"), "more");
   assert.equal(isMobileWorkspace("/admin/bookings"), false);
   assert.equal(mobileTitle("/admin/bookings"), "การจอง");
@@ -40,10 +40,10 @@ test("mobile destinations follow permissions without duplicate quotation/custome
   assert.equal(mobileSection("/admin/quotations/customers"), "quotations");
   assert.equal(mobileSection("/admin/quotations/abc"), "quotations");
   assert.equal(mobileSection("/admin/quotations-old"), "more");
-  assert.equal(mobileSection("/admin/users"), "users");
-  assert.deepEqual(mobileDestinations({ ...noTools, canUseAccommodation: true, canManageCentralUsers: true }).map(x => x.id), ["advertisements", "users"]);
-  assert.deepEqual(mobileDestinations({ ...noTools, canManageWebookUsers: true }).map(x => x.id), ["users"]);
-  assert.equal(mobileSection("/admin/user-manager"), "users");
+  assert.equal(mobileSection("/admin/users"), "webookUsers");
+  assert.deepEqual(mobileDestinations({ ...noTools, canUseAccommodation: true, canManageCentralUsers: true }).map(x => x.id), ["advertisements", "centralUsers"]);
+  assert.deepEqual(mobileDestinations({ ...noTools, canManageWebookUsers: true }).map(x => x.id), ["webookUsers"]);
+  assert.equal(mobileSection("/admin/user-manager"), "centralUsers");
   assert.equal(mobileSection("/admin/advertisements"), "advertisements");
 });
 
@@ -56,4 +56,18 @@ test("editing workspaces keep their own back/save controls without a competing b
   }
   assert.equal(mobileTitle("/admin/quotations/customers"), "ลูกค้า");
   assert.equal(mobileTitle("/admin/advertisements"), "โฆษณา");
+});
+
+test("all permission combinations keep the fixed module order and put only the first three in the dock", () => {
+  const flags = ["canUseDashboard", "canUseBooking", "canAccessHouses", "canUseAccommodation", "canUseQuotation", "canManageCentralUsers", "canManageWebookUsers"] as const;
+  const ids = ["overview", "bookings", "houses", "advertisements", "quotations", "centralUsers", "webookUsers"];
+  for (let mask = 0; mask < 128; mask++) {
+    const permissions = { ...noTools };
+    flags.forEach((flag, index) => { permissions[flag] = Boolean(mask & (1 << index)); });
+    const expected = ids.filter((_, index) => Boolean(mask & (1 << index)));
+    const layout = mobileNavigationLayout(permissions);
+    assert.deepEqual(layout.modules.map(item => item.id), expected);
+    assert.deepEqual(layout.dock.map(item => item.id), expected.length > 1 ? expected.slice(0, 3) : []);
+    assert.deepEqual(layout.overflow.map(item => item.id), expected.slice(3));
+  }
 });

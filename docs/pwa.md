@@ -17,6 +17,10 @@ user-supplied transparent website logo.
 
 ## Installation
 
+For the booking inbox, opt-in device Push, VAPID setup and delivery limitations,
+see [Booking notifications](booking-notifications.md). Push extends the existing
+service worker; its messages contain no customer or booking details.
+
 - Android Chrome / desktop Chrome or Edge: open WeBooks over HTTPS, sign in,
   choose **ติดตั้งแอป** at the bottom of the sidebar, then **ติดตั้งแอป WeBooks**.
   The install button appears when the browser provides an installation prompt.

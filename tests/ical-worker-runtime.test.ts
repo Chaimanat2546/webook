@@ -57,7 +57,7 @@ test('iCal integration modules execute in local Workers runtime', {skip:process.
       b.onLoad({filter:/.*/,namespace:'test-only'},()=>({contents:'export {};'}));
     }}]});
   const key=Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');
-  const runtime=new Miniflare({telemetry:{enabled:false},workers:[{config:{name:'ical-runtime-test',type:'worker',
+  const runtime=new Miniflare({telemetry:{enabled:false},workers:[{config:{name:'ical-runtime-test',
     compatibilityDate:'2026-06-30',compatibilityFlags:['nodejs_compat','global_fetch_strictly_public'],
     manifest:{mainModule:'worker.js',modules:{'worker.js':{type:'esm',contents:bundled.outputFiles[0].text}}},
     env:{ICAL_SOURCE_ENCRYPTION_KEY:{type:'text',value:key}}}}]});

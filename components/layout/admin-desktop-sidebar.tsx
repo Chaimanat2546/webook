@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Contact, Files, FileText, House, LayoutDashboard, LogOutIcon, Megaphone, ShieldUser, Users } from "lucide-react";
+import { CalendarDays, Contact, Files, FileText, House, LayoutDashboard, Megaphone, ShieldUser, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -21,7 +21,10 @@ import {
   useSidebar,
 } from "../ui/sidebar";
 import { TooltipProvider } from "../ui/tooltip";
+import { AdminMobileSidebarLinks } from "./admin-mobile-sidebar-links";
 import { InstallAppMenuItem } from "../pwa/install-app-menu-item";
+import { NotificationBell } from "../admin/notifications/notification-bell";
+import { NotificationSignOut } from "../admin/notifications/notification-sign-out";
 
 export function AdminDesktopSidebar({
   canUseDashboard = false,
@@ -81,6 +84,8 @@ export function AdminDesktopSidebar({
             {!isMobile && <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
+                {isMobile && <AdminMobileSidebarLinks permissions={{ canUseDashboard, canAccessHouses, canManageCentralUsers, canManageWebookUsers, canUseAccommodation, canUseBooking, canUseQuotation }} pathname={pathname} onNavigate={closeMobileSidebar} />}
+                {!isMobile && <>
                 {canUseDashboard && <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/dashboard")} tooltip="แดชบอร์ด">
                     <Link href="/admin/dashboard" onClick={closeMobileSidebar}><LayoutDashboard data-icon="inline-start" /><span>แดชบอร์ด</span></Link>
@@ -188,16 +193,11 @@ export function AdminDesktopSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) : null}
+                </>}
             <InstallAppMenuItem />
+            <NotificationBell sidebar onOpen={closeMobileSidebar} />
             <SidebarMenuItem>
-              <form action={signOutAction}>
-                <SidebarMenuButton asChild tooltip="ออกจากระบบ">
-                  <button type="submit">
-                    <LogOutIcon data-icon="inline-start" />
-                    <span>ออกจากระบบ</span>
-                  </button>
-                </SidebarMenuButton>
-              </form>
+              <NotificationSignOut signOutAction={signOutAction} />
             </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
