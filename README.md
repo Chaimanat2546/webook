@@ -85,8 +85,7 @@ Source management is at `/admin/houses/[propertyId]/calendar-sources` and requir
 imported dates in `/admin/bookings`. Configure the server-only
 `ICAL_SOURCE_ENCRYPTION_KEY` and release the new migration together with the
 application guards/report filters before adding sources.
-See [iCal configuration and behavior](docs/ical-booking-import.md) and
-[verification and release gaps](docs/superpowers/reports/2026-10-09-ical-booking-import-verification.md).
+See [iCal configuration and behavior](docs/ical-booking-import.md).
 
 ## Website Analytics Detail Charts
 

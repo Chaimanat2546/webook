@@ -226,7 +226,7 @@ Android อาจใช้ TWA/Bubblewrap ส่วน Store อื่นมี�
 - ตรวจ source ของ manifest, provider, install dialog, worker, offline assets, root/admin layout, sidebar, security headers และตัวอย่าง capability ที่เกี่ยวข้อง
 - `node --test tests/pwa-worker.test.ts`: **ผ่าน 5/5**, fail 0
 - Tests เป็น VM จำลอง browser APIs: ยืนยัน fallback/privacy boundary, bypass requests, HTTP errors, offline assets และ update cleanup ตามที่ทดสอบ ไม่ทดแทน E2E/browser/physical-device tests
-- แผนเดิม `docs/superpowers/plans/2026-09-10-pwa.md` รายงานผล build/typecheck/browser จากรอบก่อน รายงานนี้ไม่ถือว่าเป็นผลรันใหม่ และจำนวน cache entries ในแผนเก่าไม่ตรงกับ allowlist ปัจจุบันซึ่งมี 5 URL
+- แผนเดิมที่นำออกจากคลังโค้ดแล้วเคยรายงานผล build/typecheck/browser จากรอบก่อน รายงานนี้ไม่ถือว่าเป็นผลรันใหม่ และจำนวน cache entries ในแผนเก่าไม่ตรงกับ allowlist ปัจจุบันซึ่งมี 5 URL
 - ไม่รัน build/typecheck/full suite ใหม่ เนื่องจากรอบนี้เพิ่มเอกสารวิเคราะห์เท่านั้น ไม่มีการแก้โค้ดหรือพฤติกรรมระบบ
 - ยังไม่ได้วัด performance, ตรวจ HTTPS deployment หรือทดสอบเครื่อง Android/iOS จริงในรอบนี้
 
