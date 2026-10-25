@@ -132,12 +132,31 @@ above. Independent review also approved the CI smoke gate and fixture update.
   Running those received payloads through the deployed service-worker artifact
   produced **WeBooks** plus the exact four requested event/DV bodies, using
   synthetic DV 99882215. The provider channel was unregistered afterward.
-- This final protocol smoke created no database fixture and sent nothing to
+- This protocol smoke created no database fixture and sent nothing to
   existing phone subscriptions. It proves provider delivery and deployed handler
-  formatting; physical iPhone display of this new format is not claimed.
+  formatting; physical iPhone acceptance was performed separately below.
 - Remote `main` remains `d6aa72f57b9e8accf91fc4d74ac6af3539fd58f1`; only
   `staging` was advanced. No Production deployment or database operation occurred.
 
 Existing installed PWAs need their normal one-time update to show this format;
-Push does not need an off/on cycle. This evidence-only final report update stays
-local and changes no behavior, so another build/test/deployment is unnecessary.
+Push does not need an off/on cycle.
+
+## Physical iPhone acceptance and scope closure
+
+On 23 October 2026, after updating the installed Staging PWA, the user requested
+all four Push formats on their phone. Four format-only messages were sent solely
+to the previously verified Apple PWA registration, with distinct notification
+UUIDs and synthetic DV 99882215. Apple accepted every send with HTTP 201 between
+01:30:58 and 01:31:02 Asia/Bangkok. No database fixture or real booking was
+created, and the other device was not sent these test messages.
+
+The user explicitly confirmed: **ได้รับครบ 4 และข้อความกับ DV ถูกต้อง**.
+This confirms physical receipt and the requested WeBooks title/event/DV display
+for all four formats. The format-only messages do not exercise booking-detail
+navigation; prior real-booking PWA click acceptance remains separate evidence.
+
+The requested Staging work is complete. Merging into main or deploying to
+Production is outside this request and is not an outstanding Staging task.
+This documentation-only closure changes no runtime behavior; build/test reruns
+and another deployment are unnecessary. The report is retained in the feature
+branch repository without advancing main or redeploying Staging.
