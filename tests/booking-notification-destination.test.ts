@@ -6,6 +6,23 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { BookingNotification } from "../lib/booking-notifications.ts";
 
+test("previous house-calendar links forward to the existing gallery and reject invalid IDs", async () => {
+  const bundle = await build({ entryPoints: ["app/admin/houses/[propertyId]/bookings/page.tsx"], bundle: true, write: false, platform: "node", format: "cjs", packages: "external" });
+  const require = createRequire(import.meta.url);
+  const loaded = { exports: {} as { default: (props: { params: Promise<{ propertyId: string }> }) => Promise<never> } };
+  new Function("require", "module", "exports", bundle.outputFiles[0].text)((name: string) => {
+    if (name === "next/navigation") return {
+      redirect: (href: string) => { throw new Error("redirect:" + href); },
+      notFound: () => { throw new Error("notFound"); },
+    };
+    return require(name);
+  }, loaded, loaded.exports);
+  await assert.rejects(loaded.exports.default({ params: Promise.resolve({ propertyId: "990001" }) }), { message: "redirect:/admin/bookings?search=990001&searchMode=dv" });
+  for (const propertyId of ["bad", "0", "9223372036854775808", "https://example.com"]) {
+    await assert.rejects(loaded.exports.default({ params: Promise.resolve({ propertyId }) }), { message: "notFound" });
+  }
+});
+
 test("existing Push URLs authorize before forwarding and GET never marks read", async () => {
   const bundle = await build({ entryPoints: ["app/admin/notifications/[notificationId]/page.tsx"], bundle: true, write: false, platform: "node", format: "cjs", packages: "external", plugins: [{ name: "destination-boundaries", setup(b) {
     for (const filter of [/server\/auth\/notifications$/, /server\/services\/booking-notifications$/, /notification-read-marker$/, /ui\/button$/]) b.onResolve({ filter }, args => ({ path: args.path, external: true }));
@@ -38,7 +55,7 @@ test("existing Push URLs authorize before forwarding and GET never marks read", 
   item = { ...item, source: "ical" };
   assert.doesNotMatch(await page(), /data-destination=/);
   calendarPermission = true;
-  assert.match(await page(), /data-destination="\/admin\/houses\/99202627\/bookings"/);
+  assert.match(await page(), /data-destination="\/admin\/bookings\?search=99202627&amp;searchMode=dv"/);
   item = null;
   assert.match(await page(), /ไม่พบรายการแจ้งเตือนนี้/);
   const before = lookups;
