@@ -103,13 +103,22 @@ booking status (available in details). The whole card links to details, with no
 extra footer action, duplicate status text or unread dot. Amounts,
 slip verification, pre-expiry reminders and SMS/LINE delivery are not inferred.
 Device Push settings open from the labelled settings icon at the top right of
-both inbox headers. The existing bottom Sheet contains the original Push controls,
-supports close/Escape/focus return, and leaves the inbox open underneath on Desktop.
+both inbox headers. Settings use the existing bottom Sheet below 768px and a centered
+Dialog on Desktop. Both support close/Escape/focus return, leaving the inbox open
+underneath on Desktop. A status card explains the current device state, with
+full-width actions at least 44px high and a note that preferences apply to this
+account and device.
 The former settings section below the list is removed. Header height, read state,
 filters, list scroll position and subscription/consent behavior remain unchanged.
 
 Empty, filtered-empty, initial loading and retry states are distinct. Device Push
-settings retain the original opt-in flow inside the bottom sheet.
+settings retain the original opt-in flow inside the responsive settings surface.
+
+All shared `SheetContent` instances with `side="bottom"` reserve 24px plus
+`env(safe-area-inset-bottom)` at the bottom. This policy lives in `components/ui/sheet.tsx`
+and also applies to consumers using plain `p-0` or `pb-*` classes. Left/right/top
+panels retain their existing spacing. Avoid adding a competing bottom-side variant
+unless deliberately overriding this shared policy.
 
 Inbox reads use an authenticated, private/no-store endpoint. Visible online tabs
 refresh every 30 seconds and on focus/online; hidden and offline tabs do not poll.

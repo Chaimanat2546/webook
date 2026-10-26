@@ -128,5 +128,22 @@ export function PushSettings() {
     "cleanup-failed": "ยังยืนยันไม่ได้ว่าปิด Push แล้ว กรุณาลองปิดอีกครั้ง",
     unavailable: "ยังเชื่อมต่อการแจ้งเตือนไม่สำเร็จ ระบบจะลองใหม่เมื่อกลับมาออนไลน์",
   };
-  return <div className="space-y-2"><p className="text-sm font-medium">แจ้งเตือนบนอุปกรณ์นี้</p><p className="text-xs text-muted-foreground" role="status">{message[state]}</p><div className="flex flex-wrap gap-2">{state === "off" && <Button type="button" size="sm" variant="outline" disabled={busy || !actorId || !publicKey} onClick={() => { void enable(); }}>{busy ? "กำลังดำเนินการ…" : "เปิดแจ้งเตือนบนอุปกรณ์นี้"}</Button>}{state === "unavailable" && <Button type="button" size="sm" variant="outline" disabled={busy || !actorId} onClick={() => { void retry(); }}>ลองเชื่อมต่ออีกครั้ง</Button>}{(canDisable || state === "enabled" || state === "cleanup-failed") && <Button type="button" size="sm" variant="outline" disabled={busy || !actorId} onClick={() => { void disable(); }}>{busy ? "กำลังดำเนินการ…" : "ปิดแจ้งเตือนบนอุปกรณ์นี้"}</Button>}</div></div>;
+  const status = state === "enabled" ? "เปิดอยู่" : state === "off" ? "ปิดอยู่" : state === "checking" ? "กำลังตรวจสอบ" : "ยังไม่พร้อม";
+  return <div className="space-y-4">
+    <div className="space-y-3 rounded-2xl border bg-muted/30 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold">แจ้งเตือนบนอุปกรณ์นี้</p>
+        <span className={state === "enabled"
+          ? "rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+          : "rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"}>{status}</span>
+      </div>
+      <p className="text-sm leading-relaxed text-muted-foreground" role="status">{message[state]}</p>
+    </div>
+    <div className="flex flex-col gap-2">
+      {state === "off" && <Button type="button" className="min-h-11 w-full" disabled={busy || !actorId || !publicKey} onClick={() => { void enable(); }}>{busy ? "กำลังดำเนินการ…" : "เปิดแจ้งเตือนบนอุปกรณ์นี้"}</Button>}
+      {state === "unavailable" && <Button type="button" className="min-h-11 w-full" variant="outline" disabled={busy || !actorId} onClick={() => { void retry(); }}>ลองเชื่อมต่ออีกครั้ง</Button>}
+      {(canDisable || state === "enabled" || state === "cleanup-failed") && <Button type="button" className="min-h-11 w-full" variant="outline" disabled={busy || !actorId} onClick={() => { void disable(); }}>{busy ? "กำลังดำเนินการ…" : "ปิดแจ้งเตือนบนอุปกรณ์นี้"}</Button>}
+    </div>
+    <p className="text-xs leading-relaxed text-muted-foreground">การตั้งค่านี้ใช้เฉพาะบัญชีและอุปกรณ์นี้</p>
+  </div>;
 }
