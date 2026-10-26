@@ -102,8 +102,14 @@ were imported. Event labels describe the event, independently of the current
 booking status (available in details). The whole card links to details, with no
 extra footer action, duplicate status text or unread dot. Amounts,
 slip verification, pre-expiry reminders and SMS/LINE delivery are not inferred.
+Device Push settings open from the labelled settings icon at the top right of
+both inbox headers. The existing bottom Sheet contains the original Push controls,
+supports close/Escape/focus return, and leaves the inbox open underneath on Desktop.
+The former settings section below the list is removed. Header height, read state,
+filters, list scroll position and subscription/consent behavior remain unchanged.
+
 Empty, filtered-empty, initial loading and retry states are distinct. Device Push
-settings remain available under an expandable section with the original opt-in flow.
+settings retain the original opt-in flow inside the bottom sheet.
 
 Inbox reads use an authenticated, private/no-store endpoint. Visible online tabs
 refresh every 30 seconds and on focus/online; hidden and offline tabs do not poll.

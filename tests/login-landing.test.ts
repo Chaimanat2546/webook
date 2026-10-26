@@ -32,7 +32,7 @@ test("home selects the first authorized module and never assumes house access", 
     [{ allow_tools: { allow_accommodation: true }, role_id: 2, dv_id: null }, "/admin/houses"],
     [{ allow_tools: { allow_quotation: true }, role_id: 2, dv_id: null }, "/admin/quotations"],
     [{ allow_tools: { allow_members: true }, role_id: 2, dv_id: null }, "/admin/user-manager"],
-    [{ allow_tools: {}, role_id: 2, dv_id: 101 }, "/admin/dashboard"],
+    [{ allow_tools: { allow_report: true }, role_id: 2, dv_id: 101 }, "/admin/dashboard"],
   ] as const) {
     let reads = 0;
     const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async input => {
@@ -49,6 +49,25 @@ test("home selects the first authorized module and never assumes house access", 
     });
     await expectRedirect(entry.default as () => Promise<unknown>, destination);
     assert.equal(reads, 2);
+  }
+});
+
+test("disabled owner report permission removes the overview and blocks direct module entry", async () => {
+  for (const allow_tools of [{}, { allow_report: false }, { allow_report: "true" }]) {
+    const row = { role_id: 3, dv_id: 2237, allow_tools };
+    const client = createClient("https://example.supabase.co", "test-key", { global: { fetch: async () => Response.json([row]) } });
+    const fixtures = {
+      "fixture-session": { ...adminAuth, requireAdmin: async () => ({ user: { id: "verified-user" }, adminUser: row }) },
+      "fixture-admin-client": { createSupabaseAdminClient: () => client },
+    };
+    const navigation = await loadEntry("../server/auth/admin-navigation.ts", fixtures);
+    const permissions = await (navigation.getAdminNavigationPermissions as () => Promise<{ canUseDashboard: boolean }>)();
+    assert.equal(permissions.canUseDashboard, false);
+    await expectRedirect(() => (navigation.requireAdminModule as (module: string) => Promise<void>)("overview"), "/");
+    const home = await loadEntry("../app/page.tsx", fixtures);
+    const result = await (home.default as () => Promise<unknown>)();
+    assert.ok(isValidElement(result));
+    assert.match(renderToStaticMarkup(result), /สิทธิ์/);
   }
 });
 

@@ -6,6 +6,18 @@ Below 768px, the normal website overview uses a WeBooks header with the selected
 
 `/admin/dashboard` is a read-only date-range overview. Desktop navigation exposes Dashboard; on mobile it is in the More sidebar. Existing booking-edit permissions are not expanded.
 
+Report access requires role 1, or a valid owner DV with the literal boolean
+`allow_tools.allow_report = true`. Disabled, missing and malformed flags deny
+owner access. The shared repository check governs navigation, direct Dashboard
+routes, report/detail loaders and booking-customer actions. The report RPC checks
+the same permission independently, including after revocation. Owner reports stay
+restricted to their assigned DV; request parameters cannot grant access.
+Notification ownership/receipt remains independent of the report permission.
+Migration `20261026150000_dashboard_report_permission.sql` adds this guard to the
+currently installed report function, preserving date-range/time-window behavior
+and grants. A future release of the deferred time-window migration must retain or
+reapply the guard; that older migration is outside this permission fix.
+
 The overview below 768px uses a compact WeBooks header, period bar, booking-sales card, booking area chart, operational links and website analytics with a bottom filter sheet. Its bottom navigation uses the shared admin menu, with the same styling, permission-based destinations, remembered list filters and hamburger overflow as other admin pages; the header menu also opens the existing main sidebar. Owners see only their business summary and booking trend. Website rows open the existing detail screen and preserve the displayed analytics period, hours, comparison and website scope. The mobile overview has no separate full-table action. Values and missing-data notices come from the same authorized reports as desktop. Mobile uses the same primary, background, border and chart theme tokens as desktop, including dark mode; booking status colors follow the existing desktop badges. On mobile, website legends stay below the chart in two columns when comparison is added or removed. The overview hides the standalone period-mismatch notice; comparison eligibility and detailed reasons remain unchanged. Tablet/desktop layout, branding and reporting rules remain unchanged.
 
 On the mobile overview, “ตัวกรองและเปรียบเทียบ” opens the shared Sheet with segmented graph-view and metric controls, primary dates and comparison controls. The business period picker and both analytics period pickers also use bottom sheets on mobile. View, metric, primary dates/hours and comparison edits in this mobile sheet remain drafts until its bottom “ใช้” action applies them together and closes the sheet. “ยกเลิก”, X, Escape and outside dismissal discard drafts; reopening starts from the applied graph settings. Nested date-sheet confirmation updates only the parent draft, keeps the parent sheet open, and mounts hour-selection menus inside the active sheet for keyboard/focus handling. The summary below the filter button names the applied view and metric. Desktop controls still apply immediately. The shared `ThaiDateRangePicker` now chooses a bottom sheet automatically below 768px for every consumer, including booking, agency, house and website-report filters. Callers do not opt in or select an overlay type. Desktop retains the existing popover. Inline availability calendars and browser-native date/time form fields are separate controls.

@@ -23,13 +23,23 @@ async function render(entry: string, exported: string, overrides: Partial<Notifi
     if (id === "navigation-fixture") return { useRouter: () => ({ push() {}, back() {} }), usePathname: () => "/admin/bookings" };
     if (id === "sidebar-fixture") return { SidebarMenuItem: wrapper, SidebarMenuButton: wrapper };
     if (id === "push-fixture") return { PushSettings: () => null };
-    if (id === "sheet-fixture") return { Sheet: ({ children }: { children: ReactNode }) => createElement("div", null, children), SheetContent: ({ children, className }: { children: ReactNode; className?: string }) => createElement("div", { className }, children), SheetHeader: wrapper, SheetTitle: wrapper, SheetDescription: wrapper, SheetClose: ({ children }: { children: ReactNode }) => children };
+    if (id === "sheet-fixture") return { Sheet: ({ children }: { children: ReactNode }) => createElement("div", null, children), SheetContent: ({ children, className, side }: { children: ReactNode; className?: string; side?: string }) => createElement("div", { className, "data-side": side }, children), SheetTrigger: ({ children }: { children: ReactNode }) => children, SheetHeader: wrapper, SheetTitle: wrapper, SheetDescription: wrapper, SheetClose: ({ children }: { children: ReactNode }) => children };
     return require(id);
   }, loaded, loaded.exports);
   return renderToStaticMarkup(createElement(loaded.exports[exported] as ComponentType));
 }
 
 const inbox = { actorId: "actor", items: [], unreadCount: 123, total: 41, page: 1, pageSize: 20, asOf: "2026-10-22T12:00:00Z", pushPublicKey: null, nextCursor: { createdAt: "2026-10-22T12:00:00Z", id: "00000000-0000-4000-8000-000000000001" }, hasNew: false, retained: null, retainedCursor: null };
+
+test("both inbox headers expose settings in a bottom sheet without the former footer", async () => {
+  for (const [entry, exported] of [["components/admin/notifications/notifications-page.tsx", "NotificationsPage"], ["components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet"]]) {
+    const html = await render(entry, exported, { data: inbox });
+    assert.match(html, /aria-label="ตั้งค่าการแจ้งเตือน"/);
+    assert.match(html, /data-side="bottom"/);
+    assert.match(html, /aria-label="ปิดการตั้งค่าการแจ้งเตือน"/);
+    assert.doesNotMatch(html, /<details|<summary/);
+  }
+});
 
 test("bell announces the unread count, expansion state and caps only the visible badge", async () => {
   const html = await render("components/admin/notifications/notification-bell.tsx", "NotificationBell", { data: inbox });

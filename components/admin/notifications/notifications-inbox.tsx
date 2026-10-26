@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarPlus, Check, CircleX, LoaderCircle, RefreshCw, Settings2, Wallet } from "lucide-react";
+import { Bell, CalendarPlus, Check, CircleX, LoaderCircle, RefreshCw, Wallet } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { notificationDay, type BookingNotification, type NotificationFilter } from "../../../lib/booking-notifications";
 import { Button } from "../../ui/button";
@@ -8,7 +8,6 @@ import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyCont
 import { Skeleton } from "../../ui/skeleton";
 import { NotificationItem } from "./notification-item";
 import { useNotifications } from "./notifications-context";
-import { PushSettings } from "./push-settings";
 
 const filters = [
   { value: "all", label: "ทั้งหมด", Icon: Bell },
@@ -100,7 +99,6 @@ export function NotificationsInbox({ active = true, surface = "page" }: { active
         </Button>
       </div>}
       {data && data.items.length > 0 && !hasMore && <p className="py-3 text-center text-xs text-muted-foreground">โหลดรายการเก่าครบแล้ว</p>}
-      <details className="mt-4 rounded-xl border bg-card p-3 text-sm"><summary className="min-h-11 cursor-pointer content-center font-medium"><Settings2 aria-hidden className="mr-2 inline size-4" />ตั้งค่าการแจ้งเตือนบนอุปกรณ์นี้</summary><div className="pt-3"><PushSettings /></div></details>
     </div>
   </div>;
 }
