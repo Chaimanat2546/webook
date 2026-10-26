@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginInstallPrompt } from "../../components/pwa/login-install-prompt";
+import { LoginSubmitButton } from "../../components/auth/login-submit-button";
 import Image from "next/image";
 
 import { Button } from "../../components/ui/button";
@@ -97,7 +98,7 @@ export default async function LoginPage({
                 </Field>
               </FieldGroup>
 
-              <Button type="submit">เข้าสู่ระบบ</Button>
+              <LoginSubmitButton />
               <Button asChild variant="ghost">
                 <Link href="/login?forgot=1">ลืมรหัสผ่าน</Link>
               </Button>

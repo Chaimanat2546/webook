@@ -1,6 +1,6 @@
 import type { LocationReport } from "../../lib/login-history.ts";
 
-export type LocationRequestState="idle" | "reading" | "saving" | "saved" | "failed";
+export type LocationRequestState="idle" | "reading" | "saving" | "saved" | "failed" | "denied" | "unavailable" | "timeout" | "unsupported";
 interface LocationRequestOptions {
   historyId:string;
   geolocation:Pick<Geolocation,"getCurrentPosition"> | null;
@@ -22,8 +22,12 @@ export function createLoginLocationRequest(options:LocationRequestOptions) {
     const timeout=setTimeout(()=>requestController.abort(),10000);
     options.onState("saving");
     try {
+      const locationStatus=report.status;
       const saved=await options.save(report,requestController.signal);
-      if(!disposed){if(saved)report=null;options.onState(saved?"saved":"failed");}
+      if(!disposed){
+        if(saved)report=null;
+        options.onState(saved?(locationStatus==="success" || locationStatus==="skipped"?"saved":locationStatus):"failed");
+      }
     } catch { if(!disposed)options.onState("failed"); }
     finally {clearTimeout(timeout);saving=false;}
   }

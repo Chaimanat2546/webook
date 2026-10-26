@@ -20,14 +20,16 @@ test("location reads only after explicit share and only once despite repeated ca
 });
 test("denial, unavailable and timeout become distinct statuses",async()=>{
   for(const [code,status] of [[1,"denied"],[2,"unavailable"],[3,"timeout"]] as const){
-    const f=fixture();const flow=createLoginLocationRequest({historyId,geolocation:f.geo,onState:()=>{},save:async report=>{f.reports.push(report);return true;},deadline:f.deadline});
+    const f=fixture();const flow=createLoginLocationRequest({historyId,geolocation:f.geo,onState:state=>f.states.push(state),save:async report=>{f.reports.push(report);return true;},deadline:f.deadline});
     flow.share();f.fail(code);await tick();assert.equal(f.reports[0].status,status);
+    assert.equal(f.states.at(-1),status,"persisting a location failure must not announce coordinate success or auto-continue");
   }
 });
 test("skip and unsupported never read location",async()=>{
   for(const skip of [true,false]){
-    const f=fixture();const flow=createLoginLocationRequest({historyId,geolocation:skip?f.geo:null,onState:()=>{},save:async report=>{f.reports.push(report);return true;},deadline:f.deadline});
+    const f=fixture();const flow=createLoginLocationRequest({historyId,geolocation:skip?f.geo:null,onState:state=>f.states.push(state),save:async report=>{f.reports.push(report);return true;},deadline:f.deadline});
     if(skip)flow.skip();else flow.share();await tick();assert.equal(f.reads(),0);assert.equal(f.reports[0].status,skip?"skipped":"unsupported");
+    assert.equal(f.states.at(-1),skip?"saved":"unsupported");
   }
 });
 test("watchdog finishes waiting and discards a late browser callback",async()=>{
