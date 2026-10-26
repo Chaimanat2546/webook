@@ -1264,8 +1264,8 @@ test("repository resolves access by authenticated UID and never by email or requ
     const url = new URL(new Request(input, init).url);
     assert.equal(url.pathname, "/rest/v1/users");
     assert.equal(url.searchParams.get("uid"), "eq.signed-in-user");
-    assert.equal(url.searchParams.get("select"), "role_id,dv_id");
-    return new Response(JSON.stringify({ role_id: 3, dv_id: "101" }), { headers: { "Content-Type": "application/json" } });
+    assert.equal(url.searchParams.get("select"), "role_id,dv_id,allow_tools");
+    return new Response(JSON.stringify({ role_id: 3, dv_id: "101", allow_tools: { allow_report: true } }), { headers: { "Content-Type": "application/json" } });
   } } });
   assert.deepEqual(await createDashboardRepository(client).access("signed-in-user"), { kind: "owner", propertyId: "101" });
 });
