@@ -171,11 +171,19 @@ Do not drop the history table or restore broad client-write grants as an automat
 ### Staging acceptance — 2026-10-26
 
 The sign-in redirect includes the current history UUID in `/login/location?history=…`.
+The login submit button disables while its Server Action is pending and displays
+progress, preventing repeated button/implicit Enter submission from starting competing
+Auth sessions in the same form. Separate deliberate sign-ins still have separate records.
 The page resolves the verified session's pending record and redirects old/missing
 history query values to its canonical URL. Prompt state resets for each record.
 If a restored PWA page submits an old history UUID and receives 404, the error UI
 offers a full page navigation to resolve the current session instead of replaying
 the stale report. User/session authorization and one terminal result per record remain enforced.
+Saving a denied, unavailable, timeout or unsupported result keeps the explanation
+on screen and explicitly states that no coordinates were obtained. Only coordinate
+success or explicit skip automatically continues into the application. An expired
+or revoked session offers sign-in again instead of repeatedly retrying an invalid
+session; other failed saves include their public HTTP status without database details.
 
 After the local verification above, the implementation was combined with the requested
 current-branch commit `6e68aab` at `552ba05`, then integrated with existing Staging work

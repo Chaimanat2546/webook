@@ -10,6 +10,13 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { createLoginLocationRequest, type LocationRequestState } from "./login-location-request";
 
+const savedWithoutCoordinates:Partial<Record<LocationRequestState,string>>={
+  denied:"บันทึกประวัติแล้ว แต่ยังไม่ได้พิกัด: อุปกรณ์หรือเบราว์เซอร์ไม่อนุญาตให้อ่านตำแหน่ง กรุณาตรวจสิทธิ์ตำแหน่ง แล้วเข้าสู่ระบบใหม่หากต้องการลองอีกครั้ง",
+  unavailable:"บันทึกประวัติแล้ว แต่เครื่องยังอ่านพิกัดไม่ได้ คุณเข้าสู่ระบบต่อได้",
+  timeout:"บันทึกประวัติแล้ว แต่หมดเวลารอพิกัด คุณเข้าสู่ระบบต่อได้",
+  unsupported:"บันทึกประวัติแล้ว แต่เบราว์เซอร์นี้ไม่รองรับการอ่านพิกัด คุณเข้าสู่ระบบต่อได้",
+};
+
 function subscribeAttemptMarker(changed:()=>void) {
   window.addEventListener("storage",changed);
   return()=>window.removeEventListener("storage",changed);
@@ -59,7 +66,8 @@ export function LoginLocationPrompt({historyId,userId,expiresAt}:{historyId:stri
         {busy?<p className="flex items-center gap-2"><LoaderCircle aria-hidden className="size-4 animate-spin" />{state==="reading"?"กำลังรอผลพิกัด…":"กำลังบันทึกผล…"}</p>:null}
         {state==="saved"?<p>บันทึกผลแล้ว กำลังเข้าสู่ระบบ…</p>:null}
       </div>
-      {state==="failed"?<Alert variant="destructive"><AlertDescription>{failureStatus===404?"ประวัติบนหน้านี้ไม่ตรงกับการเข้าสู่ระบบปัจจุบัน กรุณาเปิดหน้าขอพิกัดใหม่":"ยังบันทึกผลไม่ได้ คุณเข้าสู่ระบบต่อได้ หรือลองส่งผลเดิมอีกครั้ง"}</AlertDescription></Alert>:null}
+      {savedWithoutCoordinates[state]?<Alert><AlertDescription>{savedWithoutCoordinates[state]}</AlertDescription></Alert>:null}
+      {state==="failed"?<Alert variant="destructive"><AlertDescription>{failureStatus===401?"การเข้าสู่ระบบนี้หมดอายุหรือถูกออกจากระบบแล้ว กรุณาเข้าสู่ระบบใหม่":failureStatus===404?"ประวัติบนหน้านี้ไม่ตรงกับการเข้าสู่ระบบปัจจุบัน กรุณาเปิดหน้าขอพิกัดใหม่":`ยังบันทึกผลไม่ได้${failureStatus?` (HTTP ${failureStatus})`:""} คุณเข้าสู่ระบบต่อได้ หรือลองส่งผลเดิมอีกครั้ง`}</AlertDescription></Alert>:null}
       {expired?<Alert><AlertDescription>หมดเวลารับพิกัดสำหรับรายการนี้แล้ว คุณเข้าสู่ระบบต่อได้</AlertDescription></Alert>:null}
       {blocked && state==="idle"?<p className="text-sm text-muted-foreground">เคยขอพิกัดสำหรับรายการนี้แล้ว ระบบจะไม่อ่านซ้ำหลังโหลดหน้าใหม่</p>:null}
       <div className="flex flex-col gap-2">
@@ -67,7 +75,9 @@ export function LoginLocationPrompt({historyId,userId,expiresAt}:{historyId:stri
           <Button type="button" className="min-h-11" disabled={blocked} onClick={share}>แชร์ตำแหน่งครั้งนี้</Button>
           <Button type="button" variant="outline" className="min-h-11" onClick={()=>flow.current?.skip()}>ข้าม</Button>
         </>:null}
-        {state==="failed" && !expired?(failureStatus===404
+        {state==="failed" && !expired?(failureStatus===401
+          ? <Button asChild><a href="/login">เข้าสู่ระบบใหม่</a></Button>
+          : failureStatus===404
           ? <Button asChild><a href="/login/location">เปิดหน้าขอพิกัดใหม่</a></Button>
           : <Button type="button" onClick={()=>flow.current?.retry()}>ลองส่งผลอีกครั้ง</Button>):null}
         <Button asChild variant="ghost" className="min-h-11"><Link href="/">เข้าสู่ระบบต่อ</Link></Button>
