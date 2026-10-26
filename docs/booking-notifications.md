@@ -247,6 +247,14 @@ Provider acceptance is not a read receipt or proof that the phone displayed it.
 
 ## Verification
 
+Staging deployment dependency maintenance (2026-10-26): the CI audit gate caught
+new advisories in the existing transitive HTTP dependencies before migration or
+deployment. The Undici override is updated to 7.30.1 and the lockfile resolves
+body-parser 2.4.0 (with its required subdependencies), retaining the existing
+Wrangler/OpenNext versions and security gate. See the upstream advisories for
+[Undici](https://github.com/advisories/GHSA-4qv8-2p9j-2685) and
+[body-parser](https://github.com/advisories/GHSA-27r3-jxmh-p828).
+
 UI/cursor feed verification (2026-10-26): build and typecheck pass; lint has zero
 errors and 11 pre-existing warnings outside this change. The default suite has
 1,273 passing tests and four opt-in skips. The disposable PostgreSQL notification
