@@ -374,6 +374,15 @@ export function dashboardScope(identity: { role_id: unknown; dv_id: unknown } | 
   return propertyId ? { kind: "owner", propertyId } : null;
 }
 
+/** Report access is separate from house ownership used by notifications. */
+export function dashboardReportScope(identity: { role_id: unknown; dv_id: unknown; allow_tools: unknown } | null): DashboardScope | null {
+  const scope = dashboardScope(identity);
+  if (!scope || scope.kind === "admin") return scope;
+  const tools = identity?.allow_tools;
+  return tools && typeof tools === "object" && !Array.isArray(tools)
+    && "allow_report" in tools && tools.allow_report === true ? scope : null;
+}
+
 export function parseDashboardQuery(raw: Record<string, unknown>, now = new Date()): DashboardQuery {
   const bangkok = new Date(now.getTime() + 7 * 60 * 60 * 1000);
   const month = raw.month === undefined ? bangkok.toISOString().slice(0, 7) : raw.month;

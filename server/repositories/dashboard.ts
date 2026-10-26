@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildHouseImageDisplayUrl } from "../../lib/house-image-display-url.ts";
-import { dashboardPropertyId, dashboardScope, type DashboardScope, type DashboardMonth, type DashboardCustomer, type DashboardHouse, type DashboardHouseDetailData } from "../../lib/dashboard.ts";
+import { dashboardPropertyId, dashboardReportScope, type DashboardScope, type DashboardMonth, type DashboardCustomer, type DashboardHouse, type DashboardHouseDetailData } from "../../lib/dashboard.ts";
 import { record } from "../../lib/house-bookings.ts";
 import type { DashboardReportingQuery, DashboardReportingResult } from "../../lib/dashboard.ts";
 import { parseDashboardReportingResult } from "./dashboard-reporting.ts";
@@ -54,9 +54,9 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
       return parseDashboardReportingResult(data);
     },
     async access(actorId) {
-      const { data, error } = await client.from("users").select("role_id,dv_id").eq("uid", actorId).maybeSingle();
+      const { data, error } = await client.from("users").select("role_id,dv_id,allow_tools").eq("uid", actorId).maybeSingle();
       if (error) throw new Error("dashboard_unavailable");
-      return dashboardScope(data);
+      return dashboardReportScope(data);
     },
     async bookingCustomer(scope, bookingId) {
       let query = client.from("bookings").select("houseid,customer_id,listing_id,listing:listings!inner(id,property_id)").eq("id", bookingId).is('calendar_source_id', null);

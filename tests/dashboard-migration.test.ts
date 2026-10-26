@@ -12,6 +12,7 @@ const migration = new URL("../supabase/migrations/20261002110000_scalable_dashbo
 const orderingMigration = new URL("../supabase/migrations/20261005120000_dashboard_json_ordering.sql", import.meta.url);
 const rangeMigration = new URL("../supabase/migrations/20261014100000_dashboard_date_ranges.sql", import.meta.url);
 const timeMigration = new URL("../supabase/migrations/20261019120000_dashboard_time_windows.sql", import.meta.url);
+const permissionMigration = new URL("../supabase/migrations/20261026150000_dashboard_report_permission.sql", import.meta.url);
 const confirmedAgencyCountsMigration = new URL("../supabase/migrations/20261005130000_dashboard_confirmed_agency_counts.sql", import.meta.url);
 it("dashboard reporting migration is available for deployment", () => assert.ok(existsSync(migration)));
 it("dashboard confirmed agency counts migration is available for deployment", () => assert.ok(existsSync(confirmedAgencyCountsMigration)));
@@ -67,8 +68,8 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     }
     assert.ok(ready, "Disposable PostgreSQL must accept TCP connections before fixtures run");
     sql(`create role anon; create role authenticated; create role service_role;
-      create table public.users(uid uuid primary key, role_id smallint, dv_id bigint);
-      insert into users values ('${admin}',1,null),('${owner}',3,101);
+      create table public.users(uid uuid primary key, role_id smallint, dv_id bigint,allow_tools jsonb default '{"allow_report":true}');
+      insert into users(uid,role_id,dv_id) values ('${admin}',1,null),('${owner}',3,101);
       create table public.listings(id uuid primary key,property_id bigint,title text);
       insert into listings values ('00000000-0000-4000-8000-000000000101',101,'House A'),('00000000-0000-4000-8000-000000000202',202,'House B');
       create table public.agents(id uuid primary key,name text);
@@ -91,8 +92,31 @@ describe("dashboard reporting PostgreSQL contract", { skip: process.env.RUN_DASH
     sql("alter table bookings add column calendar_source_id uuid;");
     sql(readFileSync(rangeMigration, "utf8"));
     sql(readFileSync(timeMigration, "utf8"));
+    sql(readFileSync(permissionMigration, "utf8"));
   });
   after(() => { spawnSync("docker", ["rm", "-f", container]); });
+  it("report permission guards both deployed RPC variants and rejects revoked or forged flags", () => {
+    try {
+      for (const version of [rangeMigration, timeMigration]) {
+        sql(readFileSync(version, "utf8"));
+        sql(readFileSync(permissionMigration, "utf8"));
+        sql(readFileSync(permissionMigration, "utf8")); // Reapplying the guard must not duplicate it.
+        for (const flag of ["null", "'{}'::jsonb", "'{\"allow_report\":false}'::jsonb", "'{\"allow_report\":\"true\"}'::jsonb", "'{\"allow_report\":1}'::jsonb"]) {
+          sql(`update users set allow_tools=${flag} where uid='${owner}';`);
+          assert.match(sql(`select dashboard_report('${owner}','{"month":"2026-09","allow_report":true,"role_id":1}');`, false), /dashboard_forbidden/);
+        }
+        sql(`update users set allow_tools='{"allow_report":true}' where uid='${owner}'; update users set allow_tools=null where uid='${admin}';`);
+        assert.equal(report({}, owner).bookings.rows.every((row: { propertyId: string }) => row.propertyId === "101"), true);
+        assert.equal(report({ bookingId: "6" }, owner).bookingDetail, null);
+        assert.ok(report().bookingCount > 0, "admin retains access without a tool flag");
+        sql(`update users set allow_tools='{"allow_report":false}' where uid='${owner}';`);
+        assert.match(sql(`select dashboard_report('${owner}','{"month":"2026-09"}');`, false), /dashboard_forbidden/);
+      }
+    } finally {
+      sql(`update users set allow_tools='{"allow_report":true}' where uid='${owner}';`);
+      sql(readFileSync(timeMigration, "utf8")); sql(readFileSync(permissionMigration, "utf8"));
+    }
+  });
   it("filters recurring clock windows before every aggregate and keeps owner scope", () => {
     sql(`insert into bookings(id,booking_code,listing_id,houseid,check_in,check_out,status,price_max,created_at,updated_at,calendar_source_id) values
       (20,'CLK20','00000000-0000-4000-8000-000000000101',101,'2026-11-01','2026-11-03','confirmed',10,now(),'2026-09-10T01:59:59.999999Z',null),
