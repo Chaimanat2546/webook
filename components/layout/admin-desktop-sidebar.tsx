@@ -195,6 +195,14 @@ export function AdminDesktopSidebar({
                 ) : null}
                 </>}
             <InstallAppMenuItem />
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/admin/login-history"} tooltip="ประวัติการเข้าสู่ระบบ">
+                <Link href="/admin/login-history" onClick={closeMobileSidebar}>
+                  <ShieldUser data-icon="inline-start" />
+                  <span>ประวัติการเข้าสู่ระบบ</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <NotificationBell sidebar onOpen={closeMobileSidebar} />
             <SidebarMenuItem>
               <NotificationSignOut signOutAction={signOutAction} />

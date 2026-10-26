@@ -42,7 +42,7 @@ export interface WebookUsersRepository {
   getUser(id: string): Promise<WebookManagedUser | null>;
   dvIdExists(dvId: string, excludedUserId: string): Promise<boolean>;
   roleExists(roleId: number): Promise<boolean>;
-  updateUser(id: string, fields: WebookUserUpdateFields): Promise<WebookManagedUser | null>;
+  updateUser(id: string, fields: WebookUserUpdateFields, actorId: string): Promise<WebookManagedUser | null>;
 }
 
 interface UnknownRecord {
@@ -205,19 +205,17 @@ export function createWebookUsersRepository(supabase: SupabaseClient): WebookUse
       return data !== null;
     },
 
-    async updateUser(id, fields) {
+    async updateUser(id, fields, actorId) {
+      if (!actorId) throw new Error("Missing verified actor");
       const updateFields: { allow_tools?: WebookAllowTools; dv_id?: string | null; name: string; role_id: number } = {
         name: fields.name,
         role_id: fields.roleId,
       };
       if (fields.dvId !== undefined) updateFields.dv_id = fields.dvId;
       if (fields.allowTools !== undefined) updateFields.allow_tools = fields.allowTools;
-      const { data, error } = await supabase
-        .from("users")
-        .update(updateFields)
-        .eq("id", id)
-        .select("id")
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("webook_update_user_guarded", {
+        p_actor: actorId, p_target: id, p_fields: updateFields,
+      });
 
       if (error) {
         if (error.code === "23505") throw new DuplicateWebookUserDvIdError();

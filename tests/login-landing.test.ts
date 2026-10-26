@@ -63,7 +63,7 @@ test("home shows an authenticated no-access state instead of redirecting into a 
   const html = renderToStaticMarkup(result);
   assert.match(html, /บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งาน/);
   assert.match(html, /ออกจากระบบ/);
-  assert.doesNotMatch(html, /href="\/admin/);
+  assert.deepEqual([...html.matchAll(/href="(\/admin[^"]*)"/g)].map(match=>match[1]), ["/admin/login-history"]);
 });
 
 test("module entry redirects forbidden links to the permission-aware home", async () => {

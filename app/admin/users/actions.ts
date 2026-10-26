@@ -39,10 +39,11 @@ export async function updateWebookUserAction(
 ): Promise<UpdateWebookUserResult> {
   try {
     assertFormSize(formData);
-    await requireWebookUserManagerAdmin();
+    const { user } = await requireWebookUserManagerAdmin();
 
     const section = readString(formData, "section");
     const result = await updateWebookUser({
+      actorId: user.id,
       allowTools: section === "permissions" ? readAllowTools(formData) : undefined,
       dvId: readString(formData, "dvId"),
       id: readString(formData, "id"),
