@@ -11,8 +11,8 @@ Unrelated Staging Dashboard report changes are excluded.
 - Cloudflare account: `7c1d945e149fc6fad2124176124d8f33`
 - Worker: `webook-admin`, using `wrangler.jsonc`
 - Merge/push to `main` triggers `.github/workflows/deploy-production.yml`.
-- Do not merge or deploy until the user confirms these exact targets, as AGENTS.md
-  requires. Preparing the release branch/PR does not deploy Production.
+- The user explicitly confirmed these exact targets and authorized configuration
+  and CI/CD deployment in the current chat. Preparing the branch/PR did not deploy.
 
 ## Pipeline
 
@@ -35,11 +35,17 @@ tables, lifecycle events, house ID in Push, inbox filters, and cursor feed.
 They install event triggers for new changes; no historical notification backfill.
 Application rollback does not automatically reverse these additive migrations.
 
-## Missing CI configuration
+## CI configuration
 
 Metadata-only preflight on 2026-10-26 found only Cloudflare token and public
 Supabase URL/anon key configured in the GitHub `production` environment.
-Before merge, configure `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`,
-`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in that environment.
+The approved release configured `SUPABASE_ACCESS_TOKEN`, `VAPID_PUBLIC_KEY`,
+`VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in that environment, using encrypted GitHub
+secret uploads. The token was verified against the exact Production project, and
+the VAPID pair was generated separately for Production.
 Keep keys and passwords out of chat, commits, logs and documentation. Preserve
 any existing Production VAPID pair; do not replace it or copy Staging keys blindly.
+
+Production CLI link and migration dry run succeeded with the authenticated account
+and no supplied database password. CI uses the same token-based temporary database
+access, so a long-lived `SUPABASE_DB_PASSWORD` secret is not required.

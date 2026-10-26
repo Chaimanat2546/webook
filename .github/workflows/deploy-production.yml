@@ -82,7 +82,6 @@ jobs:
         run: node scripts/prepare-production-notifications.mjs migrate
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       - run: npx opennextjs-cloudflare populateCache remote --config wrangler.jsonc
       - run: npx wrangler deploy -c wrangler.jsonc --keep-vars --secrets-file .env.production-worker-secrets.json
       - name: Remove temporary Production runtime secret file

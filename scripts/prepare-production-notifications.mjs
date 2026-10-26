@@ -34,7 +34,7 @@ export function cleanupProductionPushSecrets(directory = process.cwd()) {
 
 function migrate() {
   assertProductionTarget();
-  if (!process.env.SUPABASE_ACCESS_TOKEN || !process.env.SUPABASE_DB_PASSWORD) throw new Error("Missing Production migration credentials.");
+  if (!process.env.SUPABASE_ACCESS_TOKEN) throw new Error("Missing Production migration credentials.");
   const run = args => {
     const result = spawnSync(process.execPath, [join(process.cwd(), "node_modules/supabase/dist/supabase.js"), ...args], { stdio: "inherit", env: process.env });
     if (result.error || result.status !== 0) throw new Error("Production migration command failed.");
