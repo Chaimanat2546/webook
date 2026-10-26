@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { notificationCursor, type NotificationCursor, type NotificationFeed, type NotificationFilter } from "../../lib/booking-notifications.ts";
 import { notificationEvent, notificationId, notificationPropertyId, notificationRecord, parsePushSubscription, type BookingNotification, type BrowserPushSubscription, type NotificationInbox, type NotificationRead } from "../../lib/booking-notifications.ts";
 import type { PushJob, PushOutcome } from "../notifications/web-push.ts";
 
 export interface PushDelivery extends PushJob { id: string; leaseToken: string; subscriptionId: string }
 export interface NotificationRepository {
-  inbox(actorId: string, page: number, id?: string): Promise<NotificationInbox>;
+  inbox(actorId: string, page: number, id?: string, filter?: NotificationFilter): Promise<NotificationInbox>;
+  feed(actorId: string, filter: NotificationFilter, cursor?: NotificationCursor | null, head?: NotificationCursor | null, tail?: NotificationCursor | null, windowCursor?: NotificationCursor | null): Promise<NotificationFeed>;
   read(actorId: string, input: NotificationRead): Promise<void>;
   subscribe(actorId: string, subscription: BrowserPushSubscription): Promise<string>;
   unsubscribe(actorId: string, selector: { endpoint?: string; subscriptionId?: string }): Promise<void>;
@@ -43,7 +45,15 @@ export function createNotificationRepository(client: SupabaseClient): Notificati
     return data;
   }
   return {
-    async inbox(actorId, page, id) {
+    async feed(actorId, filter, cursor = null, head = null, tail = null, windowCursor = null) {
+      const row = notificationRecord(await rpc("booking_notification_feed", { p_actor: actorId, p_filter: filter, p_cursor: cursor, p_head: head, p_tail: tail, p_window_cursor: windowCursor }));
+      if (typeof row.hasNew !== "boolean" || (row.retained !== null && !Array.isArray(row.retained))) throw new Error("notification_invalid_data");
+      return { ...parseInbox(row), nextCursor: notificationCursor(row.nextCursor), retainedCursor: notificationCursor(row.retainedCursor), hasNew: row.hasNew, retained: row.retained === null ? null : row.retained.map(parseItem) };
+    },
+    async inbox(actorId, page, id, filter = "all") {
+      if (filter !== "all" && !id) {
+        return parseInbox(await rpc("booking_notification_list_filtered", { p_actor: actorId, p_page: page, p_filter: filter }));
+      }
       return parseInbox(await rpc("booking_notification_list", { p_actor: actorId, p_page: page, p_id: id ?? null }));
     },
     async read(actorId, input) {

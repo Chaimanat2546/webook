@@ -7,7 +7,7 @@ import type { NotificationRepository, PushDelivery } from "../server/repositorie
 const config = { publicKey: "unused", privateKey: "unused", subject: "mailto:test@example.test" };
 function repository(jobs: PushDelivery[], completed: string[]): NotificationRepository {
   return {
-    async inbox() { throw new Error("not used"); }, async read() {}, async subscribe() { return ""; }, async unsubscribe() {},
+    async inbox() { throw new Error("not used"); }, async feed() { throw new Error("not used"); }, async read() {}, async subscribe() { return ""; }, async unsubscribe() {},
     async claim() { return jobs; }, async canSend() { return true; }, async complete(job, outcome) { completed.push(`${job.id}:${outcome.status}`); },
   };
 }

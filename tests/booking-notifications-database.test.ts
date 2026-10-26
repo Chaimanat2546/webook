@@ -7,7 +7,7 @@ import { createServer } from "node:net";
 import { after, before, beforeEach, describe, it } from "node:test";
 
 interface Inbox {
-  items: { id: string; bookingId: string; propertyId: string; title: string; source: string; eventType: string; bookingUpdatedAt: string; readAt: string | null }[];
+  items: { id: string; bookingId: string; propertyId: string; title: string; source: string; eventType: string; createdAt: string; bookingUpdatedAt: string; readAt: string | null }[];
   unreadCount: number;
   total: number;
   page: number;
@@ -108,6 +108,11 @@ describe("booking notification PostgreSQL contract", { skip: process.env.RUN_NOT
     if (existsSync(lifecycle)) sql(readFileSync(lifecycle, "utf8"));
     const pushHouse = new URL("../supabase/migrations/20261023090000_booking_push_house_id.sql", import.meta.url);
     if (existsSync(pushHouse)) sql(readFileSync(pushHouse, "utf8"));
+    const filters = readFileSync(new URL("../supabase/migrations/20261026090000_notification_inbox_filters.sql", import.meta.url), "utf8");
+    sql(filters);
+    sql(filters); // Reapplying the function definition is safe.
+    const cursorMigration = new URL("../supabase/migrations/20261026100000_notification_cursor_feed.sql", import.meta.url);
+    if (existsSync(cursorMigration)) sql(readFileSync(cursorMigration, "utf8"));
     assert.equal(sql("select count(*) from booking_notifications;"), "0", "migration must not backfill existing bookings");
   });
   after(() => {
@@ -150,6 +155,85 @@ describe("booking notification PostgreSQL contract", { skip: process.env.RUN_NOT
     assert.equal(sql("select count(*) from bookings;"), "0");
     assert.equal(sql("select count(*) from booking_notifications;"), "0");
     assert.equal(sql("select count(*) from booking_push_deliveries;"), "0");
+  });
+
+  it("filters before pagination while preserving global unread counts and current scope", () => {
+    sql(`insert into bookings(id,listing_id,houseid,status,check_in,check_out)
+      select n,'${house}',100,'waiting','2026-10-23','2026-10-24' from generate_series(1,25) n;
+      update bookings set status='confirmed';`);
+    const filtered = (filter: string, page = 1): Inbox => JSON.parse(sql(`set role service_role; select booking_notification_list_filtered('${owner}',${page},'${filter}');`)) as Inbox;
+    const first = filtered("booking");
+    const second = filtered("booking", 2);
+    assert.equal(first.total, 25);
+    assert.equal(first.unreadCount, 50);
+    assert.equal(first.items.length, 20);
+    assert.equal(second.items.length, 5);
+    assert.equal(new Set([...first.items, ...second.items].map(item => item.id)).size, 25);
+    assert.ok([...first.items, ...second.items].every(item => item.eventType === "booking_created"));
+    assert.equal(filtered("payment").total, 25);
+    assert.ok(filtered("payment").items.every(item => item.eventType === "payment_succeeded"));
+    assert.equal(filtered("cancelled").total, 0);
+    assert.equal(filtered("cancelled").unreadCount, 50);
+    assert.match(sql(`set role service_role; select booking_notification_list_filtered('${owner}',1,'unknown');`, false), /notification_invalid_input/);
+    for (const role of ["anon", "authenticated"]) assert.match(sql(`set role ${role}; select booking_notification_list_filtered('${owner}',1,'all');`, false), /permission denied/);
+    sql(`update users set dv_id=101 where uid='${owner}';`);
+    assert.equal(filtered("payment").total, 0);
+    assert.equal(filtered("payment").unreadCount, 0);
+  });
+
+  it("cursor feeds preserve timestamp ties, detect new rows and revalidate loaded access", () => {
+    interface Cursor { createdAt: string; id: string }
+    interface Feed extends Inbox { nextCursor: Cursor | null; hasNew: boolean; retained: { id: string; readAt: string | null }[] | null }
+    const feed = (filter = "booking", cursor: Cursor | null = null, head: Cursor | null = null, tail: Cursor | null = null): Feed => {
+      const arg = (value: Cursor | null) => value ? `'${JSON.stringify(value)}'::jsonb` : "null";
+      return JSON.parse(sql(`set role service_role; select booking_notification_feed('${owner}','${filter}',${arg(cursor)},${arg(head)},${arg(tail)});`)) as Feed;
+    };
+    sql(`insert into bookings(id,listing_id,houseid,status,check_in,check_out)
+      select n,'${house}',100,'waiting','2026-10-23','2026-10-24' from generate_series(1,25) n;
+      update booking_notifications set created_at='2026-10-25T01:00:00.123456Z';`);
+    const first = feed();
+    assert.equal(first.items.length, 20);
+    assert.match(first.nextCursor!.createdAt, /123456/);
+    insert(26, "waiting");
+    const second = feed("booking", first.nextCursor);
+    assert.equal(second.items.length, 5);
+    assert.equal(second.nextCursor, null);
+    assert.equal(new Set([...first.items, ...second.items].map(item => item.id)).size, 25);
+    assert.ok(second.items.every(item => item.bookingId !== "26"));
+    const head = { createdAt: first.items[0].createdAt, id: first.items[0].id };
+    const last = second.items.at(-1)!;
+    const tail = { createdAt: last.createdAt, id: last.id };
+    assert.equal(feed("booking", null, head, tail).hasNew, true);
+    sql(`update booking_notifications set read_at=clock_timestamp() where id='${head.id}';`);
+    assert.ok(feed("booking", null, head, tail).retained!.find(item => item.id === head.id)!.readAt);
+    sql(`delete from bookings where id=${first.items[0].bookingId};`);
+    assert.ok(!feed("booking", null, head, tail).retained!.some(item => item.id === head.id));
+    sql("update bookings set status='confirmed';");
+    assert.equal(feed("payment").total, 25);
+    assert.ok(feed("payment").items.every(item => item.eventType === "payment_succeeded"));
+    for (const role of ["anon", "authenticated"]) assert.match(sql(`set role ${role}; select booking_notification_feed('${owner}');`, false), /permission denied/);
+    assert.match(sql(`set role service_role; select booking_notification_feed('${owner}','bad');`, false), /notification_invalid_input/);
+    sql(`update users set dv_id=101 where uid='${owner}';`);
+    assert.equal(feed("booking", null, head, tail).retained!.length, 0);
+    assert.equal(feed().unreadCount, 0);
+  });
+
+  it("bounds retained-history responses to 100 rows with a continuation cursor", () => {
+    sql(`insert into bookings(id,listing_id,houseid,status,check_in,check_out)
+      select n,'${house}',100,'waiting','2026-10-23','2026-10-24' from generate_series(1,125) n;
+      update booking_notifications set created_at='2026-10-25T01:00:00.123456Z';`);
+    const head = JSON.stringify({ createdAt: "9999-01-01T00:00:00Z", id: "ffffffff-ffff-ffff-ffff-ffffffffffff" });
+    const tail = JSON.stringify({ createdAt: "0001-01-01T00:00:00Z", id: "00000000-0000-0000-0000-000000000000" });
+    interface Window { items: { id: string }[]; retained: { id: string }[]; retainedCursor: { createdAt: string; id: string } | null }
+    const get = (cursor = "null"): Window => JSON.parse(sql(`set role service_role; select booking_notification_feed('${owner}','all',null,'${head}','${tail}',${cursor});`)) as Window;
+    const first = get();
+    assert.equal(first.items.length, 20);
+    assert.equal(first.retained.length, 100);
+    assert.ok(first.retainedCursor);
+    const second = get(`'${JSON.stringify(first.retainedCursor)}'::jsonb`);
+    assert.equal(second.retained.length, 25);
+    assert.equal(second.retainedCursor, null);
+    assert.equal(new Set([...first.retained, ...second.retained].map(item => item.id)).size, 125);
   });
 
   it("notifies all admins and only matching owners when waiting becomes confirmed, without duplicate saves", () => {

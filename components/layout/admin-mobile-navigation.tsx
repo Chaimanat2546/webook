@@ -19,6 +19,7 @@ export function AdminMobileHeader() {
   const pathname = usePathname();
   const search = useSearchParams();
   const { setOpenMobile } = useSidebar();
+  if (pathname === "/admin/notifications") return null;
   if (isMobileWorkspace(pathname)) return null;
   if (pathname === "/admin/dashboard/websites" && search.get("view") !== "houses") return null;
   if (pathname === "/admin/dashboard/bookings") return <AdminMobileBrandHeader subtitle="รายการจอง" />;
