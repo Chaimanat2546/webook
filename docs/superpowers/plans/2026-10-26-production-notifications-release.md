@@ -34,6 +34,9 @@ Five additive notification migrations from Staging: inbox/recipient and Push
 tables, lifecycle events, house ID in Push, inbox filters, and cursor feed.
 They install event triggers for new changes; no historical notification backfill.
 Application rollback does not automatically reverse these additive migrations.
+Production preflight also found `20261019120000_dashboard_time_windows.sql` pending.
+It is outside this release: CI copies migrations into a temporary workspace and
+excludes that file, preserving its original source and unapplied history entry.
 
 ## CI configuration
 

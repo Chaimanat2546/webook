@@ -1,10 +1,26 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createECDH } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assertProductionTarget, cleanupProductionPushSecrets, prepareProductionPushSecrets } from "../scripts/prepare-production-notifications.mjs";
+import { assertProductionTarget, cleanupProductionPushSecrets, prepareProductionMigrationWorkspace, prepareProductionPushSecrets } from "../scripts/prepare-production-notifications.mjs";
+
+test("Production notification migration workspace leaves unrelated pending Dashboard source and history untouched", () => {
+  const directory = mkdtempSync(join(tmpdir(), "webook-production-migration-"));
+  try {
+    const source = join(directory, "source"); const destination = join(directory, "release");
+    mkdirSync(join(source, "supabase/migrations"), { recursive: true });
+    const unrelated = "20261019120000_dashboard_time_windows.sql";
+    const notification = "20261022100000_booking_notifications.sql";
+    writeFileSync(join(source, "supabase/migrations", unrelated), "unchanged dashboard");
+    writeFileSync(join(source, "supabase/migrations", notification), "notification schema");
+    prepareProductionMigrationWorkspace(source, destination);
+    assert.equal(existsSync(join(destination, "supabase/migrations", unrelated)), false);
+    assert.equal(readFileSync(join(source, "supabase/migrations", unrelated), "utf8"), "unchanged dashboard");
+    assert.equal(readFileSync(join(destination, "supabase/migrations", notification), "utf8"), "notification schema");
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
 
 test("Production release rejects local runs and mismatched database, account or Worker", () => {
   const directory = mkdtempSync(join(tmpdir(), "webook-production-guard-"));
