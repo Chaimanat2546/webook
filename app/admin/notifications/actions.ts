@@ -30,9 +30,10 @@ export async function unsubscribePush(endpoint: unknown): Promise<NotificationAc
   } catch { return { ok: false, message: "ไม่สามารถปิดแจ้งเตือนได้ กรุณาลองใหม่" }; }
 }
 
-export async function readNotifications(raw: unknown): Promise<NotificationActionResult> {
+export async function readNotifications(raw: unknown, expectedActor?: unknown): Promise<NotificationActionResult> {
   try {
     const { actorId, repository } = await notificationSession();
+    if (expectedActor !== undefined && notificationId(expectedActor) !== actorId) return { ok: false, message: "บัญชีมีการเปลี่ยนแปลง กรุณาโหลดหน้าอีกครั้ง" };
     await readBookingNotifications(repository, actorId, raw);
     return { ok: true };
   } catch { return { ok: false, message: "ไม่สามารถบันทึกสถานะอ่านได้ กรุณาลองใหม่" }; }

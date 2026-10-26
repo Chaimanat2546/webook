@@ -42,7 +42,10 @@ their notification timestamp is not represented as the time of booking.
 Mobile bells and the sidebar entry navigate to `/admin/notifications`; desktop
 bells open the existing shadcn Sheet. Both surfaces reuse the same inbox/cards.
 The mobile inbox keeps the existing permission-aware bottom navigation and owns
-its back/title header. Direct desktop navigation to the inbox URL is also supported.
+its 56px back/title header (plus safe-area inset). The desktop Sheet header is
+also 56px with a 44px close target. Direct desktop navigation to the inbox URL is
+supported. Filters consist only of category chips; no decorative status dot,
+filter heading, unread-count chip or read-all button is shown.
 
 Categories are All, New booking, Payment (succeeded/expired), and Cancelled.
 `GET /api/notifications` validates `filter=all|booking|payment|cancelled` and JSON
@@ -69,13 +72,31 @@ The number of validation requests and browser memory still grow with loaded hist
 
 Polling updates global unread counts and `observedAt` for relative times/Bangkok day
 groups without replacing loaded rows. New rows above the head, or newly visible
-inside the loaded range, show **มีแจ้งเตือนใหม่**. Pressing it fetches the newest
-batch and scrolls to the top only after success. `unreadCount` and read-all remain
-global even in a category; read-all uses the last accepted `asOf`, not the newer
-polling clock, so unnoticed newer events are not automatically marked read.
+inside the loaded range, show **มีแจ้งเตือนใหม่**. In an already-open reading session,
+global unread items also retain that acceptance prompt across category changes.
+Pressing it fetches the newest batch and scrolls to the top only after successful
+loading. The accepted cutoff is then read as described below; background polls and
+filter changes after the initial opening do not automatically read new arrivals.
 
-Items group by Bangkok calendar day and show event badges independently of the
-current booking status. The only card action is the existing detail link; amounts,
+Opening the inbox registers a cancellable viewing session and requests a fresh
+latest snapshot. Once it successfully loads while visible, the client invokes the
+existing authenticated read action with that server `asOf` cutoff. This marks all
+currently authorized notifications through the cutoff, including unloaded history
+and other categories. The unread badge changes only after acknowledgement and
+refresh. Failed loads, hidden views, closed panels and background-only fetching do
+not mark read. Failed read actions retain unread state and report an error; reopening
+or explicitly accepting again retries. There is no schema/RPC migration for this change.
+
+Sheet/page sessions are distinguished so the Sheet's closing animation or a resize
+cannot cancel a newly opened full-page session. Repeated mounting/closing cancels
+stale fetches before they can read a later viewing session. Read actions validate an
+optional expected actor, matching the account whose snapshot/view initiated them.
+
+Items group by Bangkok calendar day. Compact cards contain an event label, relative
+time, house title, DV and a localized stay range; iCal inserts explicitly say they
+were imported. Event labels describe the event, independently of the current
+booking status (available in details). The whole card links to details, with no
+extra footer action, duplicate status text or unread dot. Amounts,
 slip verification, pre-expiry reminders and SMS/LINE delivery are not inferred.
 Empty, filtered-empty, initial loading and retry states are distinct. Device Push
 settings remain available under an expandable section with the original opt-in flow.
@@ -92,8 +113,11 @@ actor/role/DV values grant no access. Browser roles have no direct table or RPC
 permissions. Only server-authenticated, service-role RPCs reach these tables.
 
 `/admin/notifications/[notificationId]` checks access again and shows a safe
-summary. GET/prefetch does not mark an item read. Users can explicitly mark it
-read; inbox clicks perform a read action before navigation. Internal bookings
+summary. GET/prefetch does not mark an item read. A visible client-side detail view
+automatically reads only its own authorized notification, including direct Push
+entry, without a read button. Hidden/abandoned views and Strict Mode cleanup do
+not trigger duplicate actions. Inbox clicks retain their individual-read fallback
+if the inbox-wide read has not completed. Internal bookings
 link to Dashboard details using the current booking update month and all statuses.
 iCal items stay outside Dashboard reports and expose a calendar link only to
 booking operators; an owner can still read the authorized notification summary.
@@ -257,7 +281,7 @@ Wrangler/OpenNext versions and security gate. See the upstream advisories for
 
 UI/cursor feed verification (2026-10-26): build and typecheck pass; lint has zero
 errors and 11 pre-existing warnings outside this change. The default suite has
-1,273 passing tests and four opt-in skips. The disposable PostgreSQL notification
+1,285 passing tests and four opt-in skips. The disposable PostgreSQL notification
 suite separately passes all 21 tests, including timestamp ties, cursor continuation
 under new inserts, bounded retained-history payloads, global counts, RPC grants and
 DV revocation. Provider tests cover deduplication, append failures, filter/read
@@ -278,6 +302,18 @@ Accepting the new-item button reset to 20 newest rows and scrollY=0. A failed ap
 and retry produced 40 unique rows. Desktop inner scrolling appended 40 to 60 rows;
 switching category reset to 20 matching rows and inner scrollTop=0. This HTTP fixture
 does not replace the disposable PostgreSQL tests or live authenticated-device checks.
+
+The compact/read-on-open revision was verified locally at 360, 390 and 1280px
+using the actual provider with the synthetic HTTP fixture. Both header heights
+measured 56px; an ordinary desktop card measured approximately 88px. Opening a
+20-row view changed the fixture's global unread count from 65 to zero, including
+unloaded history. A new arrival stayed unread across category changes until
+explicit acceptance; the prompt then disappeared after acknowledgement. Desktop
+to mobile resizing retained the page session, and infinite scrolling still
+appended 20 to 40 rows with no document horizontal overflow observed. Focused
+PostgreSQL cutoff/idempotency and permission-revocation tests also passed (2/2).
+This revision has not been deployed; physical-device and live authenticated
+acceptance remain separate from these local checks.
 
 Run the normal `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 The default suite includes adapter encryption/decryption, retry classifications,

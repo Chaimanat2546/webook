@@ -19,12 +19,13 @@ async function mount() {
   const hooks: unknown[] = []; let cursor = 0;
   const replies: (NotificationFeedPage | Error | Promise<NotificationFeedPage>)[] = [];
   const requests: {url: string; signal: AbortSignal}[] = [];
-  let read: Promise<{ok:true}> = Promise.resolve({ok:true});
+  let read: Promise<{ok:true}|{ok:false;message:string}> = Promise.resolve({ok:true});
+  const readCalls: {input:unknown;actor:unknown}[] = []; const errors: string[] = []; const document = {visibilityState:"visible"};
   const loaded = { exports: {} as { NotificationsProvider: (props: {actorId:string;children:null}) => {props:{value:NotificationsContextValue}} } };
   const require = createRequire(import.meta.url);
   runInNewContext(bundle.outputFiles[0].text, {
     module:loaded,exports:loaded.exports,AbortController,URLSearchParams,
-    document:{visibilityState:"visible"},navigator:{onLine:true},
+    document,navigator:{onLine:true},
     fetch:async (url:string,options:{signal:AbortSignal})=>{
       requests.push({url,signal:options.signal});
       assert.ok(replies.length,"unexpected request: "+url);
@@ -37,16 +38,16 @@ async function mount() {
         useRef(initial:unknown){const index=cursor++;if(!(index in hooks))hooks[index]={current:initial};return hooks[index];},
         useCallback(callback:unknown){return callback;},useEffect(){},
       };
-      if(id.endsWith("notifications/actions"))return {readNotifications:()=>read};
+      if(id.endsWith("notifications/actions"))return {readNotifications:(input:unknown,actor:unknown)=>{readCalls.push({input:structuredClone(input),actor});return read}};
       if(id.endsWith("notifications-context"))return {NotificationsContext:{Provider:"provider"}};
       if(id.endsWith("notifications-sheet"))return {NotificationsSheet:()=>null};
       if(id.endsWith("push-device"))return {withTimeout:(promise:Promise<unknown>)=>promise};
-      if(id==="sonner")return {toast:{error:(message:string)=>assert.fail(message)}};
+      if(id==="sonner")return {toast:{error:(message:string)=>errors.push(message)}};
       return require(id);
     },
   });
   function state(){cursor=0;return loaded.exports.NotificationsProvider({actorId:"actor",children:null}).props.value;}
-  return {state,replies,requests,setRead(value:Promise<{ok:true}>){read=value;}};
+  return {state,replies,requests,readCalls,errors,document,setRead(value:Promise<{ok:true}|{ok:false;message:string}>){read=value;}};
 }
 
 test("load more appends unique rows, forwards the exact cursor and stops at the end",async()=>{
@@ -107,4 +108,50 @@ test("an exhausted empty feed announces an older transaction that commits after 
  h.replies.push({...page([c],false),total:1,hasNew:false,retained:[]});await h.state().refresh();
  assert.equal(h.state().data!.hasNew,true);
  assert.equal(h.state().data!.items.length,0);
+});
+
+const flush = () => new Promise<void>(resolve => setImmediate(resolve));
+const readPage = () => ({...page(),unreadCount:0,retained:[{...a,readAt:stamp},{...b,readAt:stamp}]});
+test("opening reads every notification through the fresh server cutoff after acknowledgement",async()=>{
+ const h=await mount();const read=deferred<{ok:true}>();h.setRead(read.promise);h.replies.push(page());
+ const close=h.state().beginInboxSession();await flush();
+ assert.equal(h.readCalls.length,1);assert.deepEqual(h.readCalls[0].input,{before:stamp});
+ assert.equal(h.readCalls[0].actor,"actor");assert.equal(h.state().data!.unreadCount,3);
+ h.replies.push(readPage());read.resolve({ok:true});await flush();
+ assert.equal(h.state().data!.unreadCount,0);close();
+});
+test("closing before the latest snapshot finishes does not mark anything read",async()=>{
+ const h=await mount();const response=deferred<NotificationFeedPage>();h.replies.push(response.promise);
+ const close=h.state().beginInboxSession();close();response.resolve(page());await flush();assert.equal(h.readCalls.length,0);
+});
+test("background loading and polling never mark read without an inbox session",async()=>{
+ const h=await mount();h.replies.push(page());await h.state().refresh();
+ h.replies.push({...page([fresh]),hasNew:true,retained:[a,b]});await h.state().refresh();assert.equal(h.readCalls.length,0);
+});
+test("new arrivals wait for explicit acceptance; changing filter does not read them",async()=>{
+ const h=await mount();h.replies.push(page(),readPage());const close=h.state().beginInboxSession();await flush();
+ h.replies.push({...page([fresh]),hasNew:true,retained:[a,b]});await h.state().refresh();assert.equal(h.readCalls.length,1);
+ const newer={...page([fresh],false),total:1,asOf:"2026-10-26T09:00:00.654321Z",unreadCount:1};
+ h.replies.push(newer);h.state().setFilter("payment");await flush();assert.equal(h.readCalls.length,1);assert.equal(h.state().data!.hasNew,true);
+ h.replies.push(newer,{...newer,unreadCount:0,retained:[{...fresh,readAt:newer.asOf}]});await h.state().acceptNew();
+ assert.equal(h.readCalls.length,2);assert.deepEqual(h.readCalls[1].input,{before:newer.asOf});assert.equal(h.state().data!.hasNew,false);close();
+});
+test("failed loading can retry, while failed reading leaves the unread count intact",async()=>{
+ const h=await mount();h.replies.push(new Error("offline"));const close=h.state().beginInboxSession();await flush();assert.equal(h.readCalls.length,0);
+ h.setRead(Promise.resolve({ok:false,message:"failed"}));h.replies.push(page());await h.state().refresh();
+ assert.equal(h.readCalls.length,1);assert.equal(h.state().data!.unreadCount,3);assert.equal(h.errors.length,1);close();
+});
+
+test("closing animation and immediate reopening read only the new viewing session",async()=>{
+ const h=await mount();const old=deferred<NotificationFeedPage>();h.replies.push(old.promise);const close=h.state().beginInboxSession();
+ h.state().setOpen(false);close();h.replies.push(page(),readPage());const closeNew=h.state().beginInboxSession();await flush();
+ old.resolve(page());await flush();assert.equal(h.readCalls.length,1);closeNew();
+});
+
+test("closing a resized Sheet cannot cancel the new full-page viewing session",async()=>{
+ const h=await mount();const old=deferred<NotificationFeedPage>();h.replies.push(old.promise);
+ const closeSheet=h.state().beginInboxSession("sheet");
+ h.replies.push(page(),readPage());const closePage=h.state().beginInboxSession("page");
+ h.state().setOpen(false);closeSheet();await flush();old.resolve(page());await flush();
+ assert.equal(h.readCalls.length,1);assert.equal(h.state().data!.unreadCount,0);closePage();
 });

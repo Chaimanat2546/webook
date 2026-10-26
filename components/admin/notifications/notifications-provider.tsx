@@ -9,12 +9,18 @@ import { NotificationsContext } from "./notifications-context";
 import { NotificationsSheet } from "./notifications-sheet";
 import { currentPushSubscription, optOutPushDevice, PUSH_ACTOR_STORAGE_KEY, storePushActor, withTimeout } from "./push-device";
 
+interface InboxSession {
+  surface: "sheet" | "page";
+  hasRead: boolean;
+  onLoaded: (snapshot: NotificationFeedPage, explicitlyAccepted: boolean) => Promise<void>;
+}
+
 export function NotificationsProvider({ children, actorId }: { children: ReactNode; actorId?: string }) {
   const [data, setData] = useState<NotificationFeedPage | null>(null);
   const [observedAt, setObservedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const [filter, setFilterState] = useState<NotificationFilter>("all");
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
@@ -25,6 +31,12 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
   const moreRequest = useRef<AbortController | null>(null);
   const pollRequest = useRef<AbortController | null>(null);
   const signedOut = useRef(false);
+  const inboxSession = useRef<InboxSession | null>(null);
+  const setOpen = useCallback((value: boolean) => {
+    // Radix keeps closing content mounted for its animation; cancel reading immediately.
+    if (!value && inboxSession.current?.surface === "sheet") inboxSession.current = null;
+    setOpenState(value);
+  }, []);
   const currentData = visibleNotificationPage(data, actorId);
   const currentActor = actorId ?? currentData?.actorId ?? null;
 
@@ -53,8 +65,10 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
     return next;
   }, [actorId]);
 
-  const acceptNew = useCallback(async () => {
+  const acceptNew = useCallback(async (explicitlyAccepted = true) => {
     if (signedOut.current || !shouldRefreshNotifications(document.visibilityState, navigator.onLine)) return false;
+    const session = inboxSession.current;
+    let accepted: NotificationFeedPage | null = null;
     // Explicit refresh and category switches invalidate every older query.
     generation.current++;
     request.current?.abort(); moreRequest.current?.abort(); pollRequest.current?.abort();
@@ -63,18 +77,24 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
     const controller = new AbortController(); request.current = controller;
     try {
       const next = await fetchFeed(controller);
-      if (!controller.signal.aborted && !signedOut.current) { publish(next); setObservedAt(next.asOf); setError(null); return true; }
-      return false;
-    } catch (caught) { if (!controller.signal.aborted && !signedOut.current) reportFailure(caught); return false; }
+      if (!controller.signal.aborted && !signedOut.current) {
+        // Category changes keep an explicit acceptance path for new global unread items.
+        publish({ ...next, hasNew: next.hasNew || Boolean(session?.hasRead && next.unreadCount > 0) });
+        setObservedAt(next.asOf); setError(null); accepted = next;
+      }
+    } catch (caught) { if (!controller.signal.aborted && !signedOut.current) reportFailure(caught); }
     finally {
       if (request.current === controller) { request.current = null; setLoading(false); }
       controller.abort();
     }
+    if (!accepted) return false;
+    if (session && inboxSession.current === session) await session.onLoaded(accepted, explicitlyAccepted);
+    return true;
   }, [fetchFeed, publish, reportFailure]);
 
   const refresh = useCallback(async () => {
     if (signedOut.current || !shouldRefreshNotifications(document.visibilityState, navigator.onLine)) return;
-    if (!feed.current) { await acceptNew(); return; }
+    if (!feed.current || (inboxSession.current && !inboxSession.current.hasRead)) { await acceptNew(false); return; }
     if (request.current || pollRequest.current) return;
     const current = feed.current;
     const head = current.items[0] ?? { createdAt: current.asOf, id: "ffffffff-ffff-ffff-ffff-ffffffffffff" };
@@ -104,6 +124,7 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
       // Exhausted feeds also detect late commits below the old tail (including empty feeds).
       const survivingCount = [...knownIds].filter(id => allowed.has(id)).length;
       hasNew ||= current.nextCursor === null && next.total > survivingCount;
+      hasNew ||= Boolean(inboxSession.current?.hasRead && next.unreadCount > 0);
       // Preserve rows appended while polling; only reconcile the requested window.
       publish({ ...feed.current, items: feed.current.items.flatMap(item => {
         if (!knownIds.has(item.id)) return [item];
@@ -140,7 +161,7 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
   function setFilter(value: NotificationFilter) {
     abortRequests(); activeFilter.current = value; publish(null);
     setError(null); setLoadMoreError(null); setFilterState(value);
-    void acceptNew();
+    void acceptNew(false);
   }
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => { void refresh(); }, 0);
@@ -148,7 +169,7 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
     const resume = () => { void refresh(); };
     const storage = (event: StorageEvent) => {
       if (event.key !== PUSH_ACTOR_STORAGE_KEY || event.newValue === currentActor) return;
-      abortRequests(); publish(null); void acceptNew();
+      abortRequests(); publish(null); void acceptNew(false);
     };
     window.addEventListener("focus", resume); window.addEventListener("online", resume);
     window.addEventListener("webook-notifications-refresh", resume);
@@ -168,10 +189,10 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
     try { return (await optOutPushDevice(currentPushSubscription, unsubscribePush)).complete; }
     catch { return false; } finally { storePushActor(null); }
   }
-  async function markRead(input: { id: string } | { before: string }): Promise<boolean> {
+  const markRead = useCallback(async (input: { id: string } | { before: string }): Promise<boolean> => {
     const started = generation.current;
     try {
-      const result = await withTimeout(readNotifications(input));
+      const result = await withTimeout(readNotifications(input, actorId));
       if (!result.ok) throw new Error("unavailable");
       if (signedOut.current) return true;
       // Read state is fetched after the mutation; late actions use the current filter.
@@ -181,8 +202,23 @@ export function NotificationsProvider({ children, actorId }: { children: ReactNo
       pollRequest.current?.abort(); pollRequest.current = null;
       await refresh(); return true;
     } catch { toast.error("ทำเครื่องหมายอ่านไม่สำเร็จ กรุณาลองอีกครั้ง"); return false; }
-  }
-  return <NotificationsContext.Provider value={{ data: currentData, observedAt, actorId: currentActor, loading, error, open, setOpen, filter, setFilter, loadingMore, loadMoreError, loadMore, acceptNew, refresh, markRead, cleanupDevice }}>
+  }, [refresh, actorId]);
+  const beginInboxSession = useCallback((surface: "sheet" | "page" = "page") => {
+    const session: InboxSession = {
+      surface,
+      hasRead: false,
+      async onLoaded(snapshot, explicitlyAccepted) {
+        if (inboxSession.current !== session || signedOut.current || document.visibilityState !== "visible") return;
+        if (session.hasRead && !explicitlyAccepted) return;
+        session.hasRead = true;
+        if (snapshot.unreadCount > 0) await markRead({ before: snapshot.asOf });
+      },
+    };
+    inboxSession.current = session;
+    void acceptNew(false);
+    return () => { if (inboxSession.current === session) inboxSession.current = null; };
+  }, [acceptNew, markRead]);
+  return <NotificationsContext.Provider value={{ data: currentData, observedAt, actorId: currentActor, loading, error, open, setOpen, filter, setFilter, loadingMore, loadMoreError, loadMore, acceptNew, beginInboxSession, refresh, markRead, cleanupDevice }}>
     {children}<NotificationsSheet />
   </NotificationsContext.Provider>;
 }
