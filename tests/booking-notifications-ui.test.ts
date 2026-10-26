@@ -6,12 +6,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import type { NotificationsContextValue } from "../components/admin/notifications/notifications-context.tsx";
 
-async function render(entry: string, exported: string, overrides: Partial<NotificationsContextValue> = {}) {
+async function render(entry: string, exported: string, overrides: Partial<NotificationsContextValue> = {}, mobile = false) {
   const state: NotificationsContextValue = { data: null, observedAt: null, actorId: "actor", loading: false, error: null, open: true, setOpen() {}, loadingMore: false, loadMoreError: null, loadMore: async () => {}, acceptNew: async () => true, beginInboxSession: () => () => {}, filter: "all", setFilter() {}, refresh: async () => {}, markRead: async () => true, cleanupDevice: async () => true, ...overrides };
   const bundle = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", packages: "external", plugins: [{ name: "browser-boundaries", setup(builder) {
     builder.onResolve({ filter: /notifications-context$/ }, () => ({ path: "context-fixture", external: true }));
     builder.onResolve({ filter: /ui\/sidebar$/ }, () => ({ path: "sidebar-fixture", external: true }));
     builder.onResolve({ filter: /ui\/sheet$/ }, () => ({ path: "sheet-fixture", external: true }));
+    builder.onResolve({ filter: /ui\/dialog$/ }, () => ({ path: "dialog-fixture", external: true }));
+    builder.onResolve({ filter: /hooks\/use-mobile$/ }, () => ({ path: "mobile-fixture", external: true }));
     builder.onResolve({ filter: /push-settings$/ }, () => ({ path: "push-fixture", external: true }));
     builder.onResolve({ filter: /^next\/navigation$/ }, () => ({ path: "navigation-fixture", external: true }));
   } }] });
@@ -23,6 +25,8 @@ async function render(entry: string, exported: string, overrides: Partial<Notifi
     if (id === "navigation-fixture") return { useRouter: () => ({ push() {}, back() {} }), usePathname: () => "/admin/bookings" };
     if (id === "sidebar-fixture") return { SidebarMenuItem: wrapper, SidebarMenuButton: wrapper };
     if (id === "push-fixture") return { PushSettings: () => null };
+    if (id === "mobile-fixture") return { useIsMobile: () => mobile };
+    if (id === "dialog-fixture") return { Dialog: wrapper, DialogTrigger: ({ children }: { children: ReactNode }) => children, DialogContent: ({ children }: { children: ReactNode }) => createElement("div", { "data-slot": "dialog-content" }, children), DialogHeader: wrapper, DialogTitle: wrapper, DialogDescription: wrapper, DialogClose: ({ children }: { children: ReactNode }) => children };
     if (id === "sheet-fixture") return { Sheet: ({ children }: { children: ReactNode }) => createElement("div", null, children), SheetContent: ({ children, className, side }: { children: ReactNode; className?: string; side?: string }) => createElement("div", { className, "data-side": side }, children), SheetTrigger: ({ children }: { children: ReactNode }) => children, SheetHeader: wrapper, SheetTitle: wrapper, SheetDescription: wrapper, SheetClose: ({ children }: { children: ReactNode }) => children };
     return require(id);
   }, loaded, loaded.exports);
@@ -31,13 +35,16 @@ async function render(entry: string, exported: string, overrides: Partial<Notifi
 
 const inbox = { actorId: "actor", items: [], unreadCount: 123, total: 41, page: 1, pageSize: 20, asOf: "2026-10-22T12:00:00Z", pushPublicKey: null, nextCursor: { createdAt: "2026-10-22T12:00:00Z", id: "00000000-0000-4000-8000-000000000001" }, hasNew: false, retained: null, retainedCursor: null };
 
-test("both inbox headers expose settings in a bottom sheet without the former footer", async () => {
-  for (const [entry, exported] of [["components/admin/notifications/notifications-page.tsx", "NotificationsPage"], ["components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet"]]) {
-    const html = await render(entry, exported, { data: inbox });
-    assert.match(html, /aria-label="ตั้งค่าการแจ้งเตือน"/);
-    assert.match(html, /data-side="bottom"/);
-    assert.match(html, /aria-label="ปิดการตั้งค่าการแจ้งเตือน"/);
-    assert.doesNotMatch(html, /<details|<summary/);
+test("both inbox headers open mobile bottom sheets and Desktop dialogs without the former footer", async () => {
+  for (const mobile of [true, false]) {
+    for (const [entry, exported] of [["components/admin/notifications/notifications-page.tsx", "NotificationsPage"], ["components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet"]]) {
+      const html = await render(entry, exported, { data: inbox }, mobile);
+      assert.match(html, /aria-label="ตั้งค่าการแจ้งเตือน"/);
+      if (mobile) assert.match(html, /data-side="bottom"/);
+      else { assert.match(html, /data-slot="dialog-content"/); assert.doesNotMatch(html, /data-side="bottom"/); }
+      assert.match(html, /aria-label="ปิดการตั้งค่าการแจ้งเตือน"/);
+      assert.doesNotMatch(html, /<details|<summary/);
+    }
   }
 });
 
