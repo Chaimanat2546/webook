@@ -167,3 +167,14 @@ Do not drop the history table or restore broad client-write grants as an automat
   The stalled-verifier and actual SDK stalled-fetch regression tests pass. No Critical or Minor findings remain.
 - Physical-device permission behavior and complete Staging schema compatibility remain
   rollout checks. No remote database was changed and no deployment was performed.
+
+### Staging acceptance — 2026-10-26
+
+After the local verification above, the implementation was combined with the requested
+current-branch commit `6e68aab` at `552ba05`, then integrated with existing Staging work
+at `fd7b64c`. The approved GitHub Actions workflow successfully applied migrations and
+deployed Staging. Seventeen live HTTP/security checks and the browser sign-in → skip →
+own-history flow passed with fictional accounts; all task-created accounts/history and
+temporary credentials were cleaned up. Actual device permission and administrator
+workflows remain pending. See the [Staging acceptance report](superpowers/reports/2026-10-26-login-location-history-staging.md)
+for evidence and the remaining catalog-audit limitation.
