@@ -22,6 +22,8 @@ export function AdminMobileHeader() {
   if (pathname === "/admin/notifications") return null;
   if (isMobileWorkspace(pathname)) return null;
   if (pathname === "/admin/dashboard/websites" && search.get("view") !== "houses") return null;
+  if (pathname === "/admin/dashboard/houses") return <AdminMobileBrandHeader subtitle="บ้านใหม่" />;
+  if (pathname === "/admin/dashboard/agencies") return <AdminMobileBrandHeader subtitle="ยอดขายเอเจนซี่" />;
   if (pathname === "/admin/dashboard/bookings") return <AdminMobileBrandHeader subtitle="รายการจอง" />;
   if (pathname === "/admin/dashboard") return <AdminMobileBrandHeader subtitle="ภาพรวมธุรกิจ" />;
   return (

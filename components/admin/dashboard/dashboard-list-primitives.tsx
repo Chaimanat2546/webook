@@ -22,11 +22,15 @@ export function DashboardPager({ page, pages, total, href, pageSize = 10 }: { pa
   </div>;
 }
 
-export function DashboardBookingMobilePager({ page, pages, href }: { page: number; pages: number; href: (next: number) => string }) {
+export function DashboardMobilePager({ page, pages, href, label = "แบ่งหน้ารายการ" }: { page: number; pages: number; href: (next: number) => string; label?: string }) {
   const buttonClass = "h-9 rounded-full px-3 text-[11px] shadow-none";
-  return <nav aria-label="แบ่งหน้ารายการจอง" className="flex items-center justify-between gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs dark:border-border md:hidden">
+  return <nav aria-label={label} className="flex items-center justify-between gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs dark:border-border md:hidden">
     {page > 1 ? <Button asChild variant="outline" className={buttonClass}><Link aria-label="หน้าก่อนหน้า" href={href(page - 1)}><ChevronLeft aria-hidden className="size-3" />ก่อนหน้า</Link></Button> : <Button disabled variant="outline" className={buttonClass}><ChevronLeft aria-hidden className="size-3" />ก่อนหน้า</Button>}
     <span aria-current="page" className="text-muted-foreground">หน้า {page} จาก {pages}</span>
     {page < pages ? <Button asChild variant="outline" className={buttonClass}><Link aria-label="หน้าถัดไป" href={href(page + 1)}>ถัดไป<ChevronRight aria-hidden className="size-3" /></Link></Button> : <Button disabled variant="outline" className={buttonClass}>ถัดไป<ChevronRight aria-hidden className="size-3" /></Button>}
   </nav>;
+}
+
+export function DashboardBookingMobilePager(props: { page: number; pages: number; href: (next: number) => string }) {
+  return <DashboardMobilePager {...props} label="แบ่งหน้ารายการจอง" />;
 }
