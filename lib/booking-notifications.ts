@@ -61,6 +61,13 @@ export interface BookingNotification {
   readAt: string | null;
 }
 
+/** Dashboard booking details use updated_at to select the report month. */
+export function notificationDestination(item: BookingNotification, canUseBooking = false): string | null {
+  if (item.source === "ical") return canUseBooking ? `/admin/houses/${encodeURIComponent(item.propertyId)}/bookings` : null;
+  const month = new Date(new Date(item.bookingUpdatedAt).getTime() + 7 * 3_600_000).toISOString().slice(0, 7);
+  return `/admin/dashboard/bookings/${encodeURIComponent(item.bookingId)}?month=${month}&status=all`;
+}
+
 export interface NotificationInbox {
   items: BookingNotification[];
   unreadCount: number;

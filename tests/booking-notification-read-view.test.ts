@@ -11,8 +11,12 @@ test("detail reading waits for a visible client view and survives Strict Mode wi
   const bundle = await build({ entryPoints: ["components/admin/notifications/notification-read-marker.tsx"], bundle: true, write: false, platform: "node", format: "cjs", packages: "external", plugins: [{ name: "read-view-boundaries", setup(b) {
     for (const filter of [/notifications\/actions$/, /push-device$/]) b.onResolve({ filter }, args => ({ path: args.path, external: true }));
   } }] });
-  const loaded = { exports: {} as { NotificationReadMarker: (props: { id: string; read: boolean; actorId: string }) => null } };
+  const loaded = { exports: {} as { NotificationReadMarker: (props: { id: string; read: boolean; actorId: string; href?: string }) => null } };
   const calls: unknown[] = [];
+  const destinations: string[] = [];
+  const router = { replace: (href: string) => destinations.push(href) };
+  let outcome: "success" | "failure" | "throw" = "success";
+  const errors: string[] = [];
   const events: string[] = [];
   const timers = new Map<number, () => void>();
   const listeners = new Set<() => void>();
@@ -24,13 +28,18 @@ test("detail reading waits for a visible client view and survives Strict Mode wi
     window: { setTimeout: (callback: () => void) => { const timer = ++timerId; timers.set(timer, callback); return timer; }, dispatchEvent: (event: Event) => events.push(event.type) },
     require(name: string) {
       if (name === "react") return { useEffect: (effect: () => (() => void) | undefined) => { cleanup = effect(); } };
-      if (name.endsWith("notifications/actions")) return { readNotifications: async (input: unknown, expectedActor: string) => { calls.push({ input: structuredClone(input), expectedActor }); return { ok: true }; } };
+      if (name === "next/navigation") return { useRouter: () => router };
+      if (name.endsWith("notifications/actions")) return { readNotifications: async (input: unknown, expectedActor: string) => {
+        calls.push({ input: structuredClone(input), expectedActor });
+        if (outcome === "throw") throw new Error("network");
+        return { ok: outcome === "success" };
+      } };
       if (name.endsWith("push-device")) return { withTimeout: (promise: Promise<unknown>) => promise };
-      if (name === "sonner") return { toast: { error: (message: string) => assert.fail(message) } };
+      if (name === "sonner") return { toast: { error: (message: string) => errors.push(message) } };
       throw new Error("Unexpected import: " + name);
     },
   });
-  const props = { id, read: false, actorId: actor };
+  const props = { id, read: false, actorId: actor, href: "/admin/dashboard/bookings/722?month=2026-10&status=all" };
   assert.equal(loaded.exports.NotificationReadMarker(props), null);
   assert.equal(calls.length, 0);
   cleanup?.();
@@ -39,15 +48,33 @@ test("detail reading waits for a visible client view and survives Strict Mode wi
   for (const callback of timers.values()) callback();
   await new Promise(setImmediate);
   assert.equal(calls.length, 0, "hidden details must not read");
+  assert.equal(destinations.length, 0, "hidden views must not navigate");
   document.visibilityState = "visible";
   for (const callback of listeners) callback();
   await new Promise(setImmediate);
   assert.deepEqual(calls, [{ input: { id }, expectedActor: actor }]);
   assert.deepEqual(events, ["webook-notifications-refresh"]);
+  assert.deepEqual(destinations, [props.href]);
   for (const callback of listeners) callback();
   await new Promise(setImmediate);
   assert.equal(calls.length, 1);
   cleanup?.();
+  loaded.exports.NotificationReadMarker({ ...props, read: true });
+  for (const callback of timers.values()) callback();
+  await new Promise(setImmediate);
+  assert.equal(calls.length, 1, "already read links must not write again");
+  assert.deepEqual(destinations, [props.href, props.href]);
+  cleanup?.();
+  for (const failure of ["failure", "throw"] as const) {
+    outcome = failure;
+    loaded.exports.NotificationReadMarker(props);
+    for (const callback of timers.values()) callback();
+    await new Promise(setImmediate);
+    assert.equal(destinations.at(-1), props.href, "read failure must not block booking access");
+    cleanup?.();
+  }
+  assert.equal(destinations.length, 4);
+  assert.equal(errors.length, 2);
 });
 
 test("read actions reject a changed account before mutating read state", async () => {
