@@ -16,7 +16,9 @@ async function loadPromptSession() {
   if(expiresAt<=Date.now())redirect("/");
   return {historyId:record.id,userId:session.actor.userId,expiresAt};
 }
-export default async function LoginLocationPage() {
+export default async function LoginLocationPage({searchParams}:{searchParams:Promise<{history?:string | string[]}>}) {
   const prompt=await loadPromptSession();
-  return <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10"><LoginLocationPrompt {...prompt} /></main>;
+  const {history}=await searchParams;
+  if(history!==prompt.historyId)redirect(`/login/location?history=${encodeURIComponent(prompt.historyId)}`);
+  return <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10"><LoginLocationPrompt key={prompt.historyId} {...prompt} /></main>;
 }

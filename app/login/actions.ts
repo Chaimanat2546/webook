@@ -54,7 +54,7 @@ export async function signIn(formData: FormData) {
   if (data.user && data.session) {
     const { recordSignedInSession, createSignInAuditVerifier } = await import("../../server/auth/login-history");
     const history = await recordSignedInSession(createSignInAuditVerifier, data.session.access_token, data.user.id, await headers());
-    if (history) redirect("/login/location");
+    if (history) redirect(`/login/location?history=${encodeURIComponent(history.id)}`);
   }
   redirect("/");
 }
