@@ -1,5 +1,7 @@
 import "server-only";
 import { isIP } from "node:net";
+import { createClient } from "@supabase/supabase-js";
+import { getSupabaseEnv } from "../../lib/env.ts";
 import { actorFromClaims, classifyLoginDevice, LoginHistoryError, type LoginActor } from "../../lib/login-history.ts";
 import { createLoginHistoryRepository } from "../repositories/login-history.ts";
 import { recordSuccessfulLogin } from "../services/login-history.ts";
@@ -7,6 +9,23 @@ import { recordSuccessfulLogin } from "../services/login-history.ts";
 interface LoginAuthVerifier {
   getClaims(token: string): Promise<{data:{claims:unknown}|null;error:unknown}>;
   getUser(token: string): Promise<{data:{user:{id:string}|null};error:unknown}>;
+}
+/** A separate public client lets audit verification be aborted without ever
+ * cancelling or retrying the already-successful password sign-in itself. */
+export function createSignInAuditVerifier(signal:AbortSignal):LoginAuthVerifier {
+  const {url,anonKey}=getSupabaseEnv();
+  return createClient(url,anonKey,{
+    auth:{autoRefreshToken:false,persistSession:false},
+    global:{fetch:async(input,init)=>{
+      try {
+        return await fetch(input,{...init,signal:init?.signal?AbortSignal.any([signal,init.signal]):signal});
+      }catch{
+        // auth-js logs thrown fetch errors. Return a bounded, redacted transport
+        // failure instead, so diagnostics cannot contain request details.
+        return Response.json({message:"audit_verification_unavailable"},{status:503});
+      }
+    }},
+  }).auth;
 }
 export async function verifyLoginActor(auth: LoginAuthVerifier,accessToken: string): Promise<LoginActor> {
   if (!accessToken) throw new LoginHistoryError(401);
@@ -39,10 +58,14 @@ export async function requireLoginActor() { return (await loginHistorySession())
 export async function resolveHistoryScope(actor: LoginActor) { return (await historyRepository()).scope(actor); }
 
 /** Best effort audit persistence. Auth success never depends on metadata storage. */
-export async function recordSignedInSession(auth: LoginAuthVerifier,accessToken: string,expectedUserId: string,requestHeaders: Pick<Headers,"get">) {
+export async function recordSignedInSession(createVerifier:(signal:AbortSignal)=>LoginAuthVerifier,accessToken: string,expectedUserId: string,requestHeaders: Pick<Headers,"get">,budgetMs=3000) {
+  const controller=new AbortController();
+  const started=performance.now();
+  const deadline=setTimeout(()=>controller.abort(),budgetMs);
   try {
     const loggedInAt=new Date().toISOString();
-    const actor=await verifyLoginActor(auth,accessToken);
+    const actor=await verifyLoginActor(createVerifier(controller.signal),accessToken);
+    if(controller.signal.aborted)throw new LoginHistoryError(503);
     if (actor.userId!==expectedUserId) throw new LoginHistoryError(401);
     let trustedIngress=false;
     if (process.env.NODE_ENV==="production") {
@@ -51,12 +74,15 @@ export async function recordSignedInSession(auth: LoginAuthVerifier,accessToken:
         getCloudflareContext(); trustedIngress=true;
       } catch { /* Plain Next.js and local development have no trusted edge IP. */ }
     }
-    return await recordSuccessfulLogin(await historyRepository(),{
+    const repository=await historyRepository();
+    const remaining=budgetMs-(performance.now()-started);
+    if(controller.signal.aborted || remaining<=0)throw new LoginHistoryError(503);
+    return await recordSuccessfulLogin(repository,{
       ...actor,loggedInAt,ipAddress:loginRequestIp(requestHeaders,trustedIngress),
       ...classifyLoginDevice(requestHeaders.get("user-agent")),
-    });
+    },remaining);
   } catch {
     console.warn("login_history_record_failed");
     return null;
-  }
+  }finally{clearTimeout(deadline);controller.abort();}
 }

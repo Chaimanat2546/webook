@@ -52,8 +52,8 @@ export async function signIn(formData: FormData) {
   }
 
   if (data.user && data.session) {
-    const { recordSignedInSession } = await import("../../server/auth/login-history");
-    const history = await recordSignedInSession(supabase.auth, data.session.access_token, data.user.id, await headers());
+    const { recordSignedInSession, createSignInAuditVerifier } = await import("../../server/auth/login-history");
+    const history = await recordSignedInSession(createSignInAuditVerifier, data.session.access_token, data.user.id, await headers());
     if (history) redirect("/login/location");
   }
   redirect("/");

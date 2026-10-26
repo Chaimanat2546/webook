@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-26-login-location-history-design.md`
 
-สถานะ: ภูอนุมัติ implementation ใน worktree แยกเมื่อ 2026-10-26; โค้ดและ local checks เสร็จ กำลังตรวจทานก่อนส่งมอบ
+สถานะ: ภูอนุมัติ implementation ใน worktree แยกเมื่อ 2026-10-26; โค้ดผ่าน review และ local checks แล้ว ยังไม่ migrate/deploy
 
 ## Global Constraints
 
@@ -221,5 +221,5 @@ Implementation อยู่บน branch `codex/login-location-history` ใน m
 ใช้ migration timestamp `20261026160000` และ `20261026161000` เพื่อไม่ชนงานอื่น
 แทน `npx supabase test db` ด้วย `node scripts/test-login-history-db.mjs` ที่รัน SQL บน Postgres17จริง
 และใช้ minimal fixture ของ auth/users โดยไม่ reset Supabase instance อื่นหรือเขียน remote DB
-ดูผลและข้อจำกัดการทดสอบจริงที่ `docs/login-history.md`; ขั้นตอน Staging/physical devices ยังไม่ได้ดำเนินการ
+ดูผลและข้อจำกัดการทดสอบจริงที่ `docs/login-history.md` และ `docs/superpowers/reports/2026-10-26-login-location-history-verification.md`; ขั้นตอน Staging/physical devices ยังไม่ได้ดำเนินการ
 การอนุมัติแผนไม่ได้เท่ากับอนุมัติ Production deployment

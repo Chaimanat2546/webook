@@ -5,7 +5,7 @@
 - Password sign-in records one `public.login_history` row per verified Auth user/session.
   Refreshing a page/token, opening a bookmarked page, and password recovery do not create rows.
 - The sign-in Server Action awaits persistence before redirecting to `/login/location`.
-  Persistence gets a 3-second DB budget and one retry for serialization/deadlock/connection errors,
+  Audit verification and persistence share a 3-second budget, with one DB retry for serialization/deadlock/connection errors,
   using the original metadata and the same unique key. It never retries authentication.
 - If recording fails, sign-in continues to `/` and logs only `login_history_record_failed`.
   There is no durable retry queue; outages can leave gaps. No historical session backfill occurs.
@@ -151,12 +151,16 @@ Do not drop the history table or restore broad client-write grants as an automat
 ## Verification record
 
 - 2026-10-26: `npm run verify` passed: strict typecheck, ESLint (11 pre-existing warnings),
-  and 1,318 passed tests, 4 skipped, 0 failed.
+  and 1,320 passed tests, 4 skipped, 0 failed after the independent review fix.
 - `npm run build` passed with local placeholder Supabase configuration.
 - `node scripts/test-login-history-db.mjs` passed both SQL suites and concurrent record/report/purge.
 - Native Workers runtime test passed through Miniflare.
-- Browser preview with fictional local Auth/data verified sign-in → explanation → skip → landing → own history.
+- Browser preview with fictional local Auth/data verified sign-in → explanation → skip → landing → own history,
+  including a repeat after the audit-deadline fix. Desktop (1280 px) and narrow (319 px) layouts were observed.
   It revealed a Next.js loopback URL canonicalization issue; the endpoint now accepts loopback aliases
   only when scheme, port and actual Host match. Foreign production hosts remain rejected.
-- Physical-device permission behavior, mobile visual QA and complete Staging schema compatibility remain
+- Independent review found one Important issue: verification could stall before the DB timeout started.
+  An abort-aware public Auth client now uses the same deadline, and no insert starts after expired verification.
+  The stalled-verifier and actual SDK stalled-fetch regression tests pass. No Critical or Minor findings remain.
+- Physical-device permission behavior and complete Staging schema compatibility remain
   rollout checks. No remote database was changed and no deployment was performed.
