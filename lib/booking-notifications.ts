@@ -1,5 +1,20 @@
 export type BookingNotificationEvent = "booking_created" | "payment_succeeded" | "booking_cancelled" | "payment_expired";
 
+export type NotificationFilter = "all" | "booking" | "payment" | "cancelled";
+
+export function notificationFilter(value: unknown): NotificationFilter {
+  if (value === null || value === undefined || value === "all") return "all";
+  if (value === "booking" || value === "payment" || value === "cancelled") return value;
+  throw new Error("notification_invalid_input");
+}
+
+/** ISO day key in the business timezone, including events near midnight. */
+export function notificationDay(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "unknown";
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
 export function notificationEvent(value: unknown): BookingNotificationEvent {
   if (value === undefined) return "booking_created"; // Older queued payloads remain readable during rollout.
   if (value === "booking_created" || value === "payment_succeeded" || value === "booking_cancelled" || value === "payment_expired") return value;
@@ -50,6 +65,31 @@ export interface NotificationInbox {
 export interface NotificationPage extends NotificationInbox {
   actorId: string;
   pushPublicKey: string | null;
+}
+
+export interface NotificationCursor { createdAt: string; id: string }
+export interface NotificationFeed extends NotificationInbox {
+  nextCursor: NotificationCursor | null;
+  hasNew: boolean;
+  retained: BookingNotification[] | null;
+  retainedCursor: NotificationCursor | null;
+}
+export interface NotificationFeedPage extends NotificationFeed {
+  actorId: string;
+  pushPublicKey: string | null;
+}
+
+/** Keep microseconds intact: converting to Date would lose the cursor tie-break. */
+export function notificationCursor(value: unknown): NotificationCursor | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") {
+    if (value.length > 256) throw new Error("notification_invalid_input");
+    try { value = JSON.parse(value) as unknown; } catch { throw new Error("notification_invalid_input"); }
+  }
+  const row = notificationRecord(value);
+  const timestamp = parseNotificationRead({ before: row.createdAt });
+  if (!timestamp.before) throw new Error("notification_invalid_input");
+  return { createdAt: timestamp.before, id: notificationId(row.id) };
 }
 
 export interface BrowserPushSubscription {

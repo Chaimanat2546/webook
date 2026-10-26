@@ -1,6 +1,15 @@
-import { notificationId, parseNotificationRead, parsePushSubscription, pushEndpoint, type NotificationRead } from "../../lib/booking-notifications.ts";
+import { notificationCursor, notificationFilter, notificationId, parseNotificationRead, parsePushSubscription, pushEndpoint, type NotificationRead } from "../../lib/booking-notifications.ts";
 import type { NotificationRepository, PushDelivery } from "../repositories/booking-notifications.ts";
 import { sendBookingPush, type PushConfig, type PushOutcome } from "../notifications/web-push.ts";
+
+export async function getBookingNotificationFeed(repository: Pick<NotificationRepository, "feed">, actorId: string, params: URLSearchParams) {
+  const cursor = notificationCursor(params.get("cursor"));
+  const head = notificationCursor(params.get("head"));
+  const tail = notificationCursor(params.get("tail"));
+  const windowCursor = notificationCursor(params.get("windowCursor"));
+  if (Boolean(head) !== Boolean(tail) || (cursor && head) || (windowCursor && !head)) throw new Error("notification_invalid_input");
+  return repository.feed(actorId, notificationFilter(params.get("filter")), cursor, head, tail, windowCursor);
+}
 
 export async function registerNotificationDevice(repository: NotificationRepository, actorId: string, raw: unknown) {
   return repository.subscribe(actorId, parsePushSubscription(raw));

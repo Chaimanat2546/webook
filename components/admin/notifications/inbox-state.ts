@@ -8,6 +8,6 @@ export function shouldRefreshNotifications(visibility: string, online: boolean):
   return visibility === "visible" && online;
 }
 
-export function visibleNotificationPage(page: NotificationPage | null, actorId?: string): NotificationPage | null {
+export function visibleNotificationPage<T extends NotificationPage>(page: T | null, actorId?: string): T | null {
   return page && (!actorId || page.actorId === actorId) ? page : null;
 }

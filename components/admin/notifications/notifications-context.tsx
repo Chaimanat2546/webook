@@ -1,17 +1,22 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { NotificationPage } from "../../../lib/booking-notifications";
+import type { NotificationFilter, NotificationFeedPage } from "../../../lib/booking-notifications";
 
 export interface NotificationsContextValue {
-  data: NotificationPage | null;
+  data: NotificationFeedPage | null;
+  observedAt: string | null;
   actorId: string | null;
   loading: boolean;
   error: string | null;
   open: boolean;
   setOpen: (value: boolean) => void;
-  page: number;
-  setPage: (value: number) => void;
+  loadingMore: boolean;
+  loadMoreError: string | null;
+  loadMore: () => Promise<void>;
+  acceptNew: () => Promise<boolean>;
+  filter: NotificationFilter;
+  setFilter: (value: NotificationFilter) => void;
   refresh: () => Promise<void>;
   markRead: (input: { id: string } | { before: string }) => Promise<boolean>;
   cleanupDevice: () => Promise<boolean>;

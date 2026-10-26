@@ -39,10 +39,50 @@ their notification timestamp is not represented as the time of booking.
 
 ## Inbox and permissions
 
-Desktop/mobile bells and a shared sidebar entry open the existing shadcn Sheet.
+Mobile bells and the sidebar entry navigate to `/admin/notifications`; desktop
+bells open the existing shadcn Sheet. Both surfaces reuse the same inbox/cards.
+The mobile inbox keeps the existing permission-aware bottom navigation and owns
+its back/title header. Direct desktop navigation to the inbox URL is also supported.
+
+Categories are All, New booking, Payment (succeeded/expired), and Cancelled.
+`GET /api/notifications` validates `filter=all|booking|payment|cancelled` and JSON
+`cursor` parameters containing `createdAt` (UTC, preserving microseconds) and `id`.
+Migration `20261026100000_notification_cursor_feed.sql` adds service-role-only
+`booking_notification_feed`. Categories apply before a strict `(created_at,id)`
+keyset boundary, fetching 20 items plus one lookahead to return `nextCursor`.
+The existing recipient/date/id index is reused. Apply this migration before
+releasing this UI. The earlier filtered-page RPC remains available for compatibility;
+detail queries still use the original RPC. No event, read-state or Push data is migrated.
+
+Scrolling within 200px of the end automatically appends the next batch, with a
+keyboard-accessible load-more fallback. Loading and retry are separate from initial
+load failures; duplicate IDs are removed and old requests are cancelled on category
+change. Exhausted feeds stop requesting. Category changes reset to the newest batch.
+Counts in date headings describe all currently loaded items, not the total history.
+
+Polling sends the loaded `head`/`tail` cursor window to revalidate current access,
+booking details and read state. Each response contains at most 100 retained rows;
+`windowCursor`/`retainedCursor` continue larger validation windows in bounded batches.
+The client applies validation only after collecting those batches, retaining rows
+appended concurrently. This avoids an unbounded history payload in a single request.
+The number of validation requests and browser memory still grow with loaded history.
+
+Polling updates global unread counts and `observedAt` for relative times/Bangkok day
+groups without replacing loaded rows. New rows above the head, or newly visible
+inside the loaded range, show **มีแจ้งเตือนใหม่**. Pressing it fetches the newest
+batch and scrolls to the top only after success. `unreadCount` and read-all remain
+global even in a category; read-all uses the last accepted `asOf`, not the newer
+polling clock, so unnoticed newer events are not automatically marked read.
+
+Items group by Bangkok calendar day and show event badges independently of the
+current booking status. The only card action is the existing detail link; amounts,
+slip verification, pre-expiry reminders and SMS/LINE delivery are not inferred.
+Empty, filtered-empty, initial loading and retry states are distinct. Device Push
+settings remain available under an expandable section with the original opt-in flow.
+
 Inbox reads use an authenticated, private/no-store endpoint. Visible online tabs
 refresh every 30 seconds and on focus/online; hidden and offline tabs do not poll.
-The inbox supports pagination, retry, individual read state and read-all with a
+The inbox supports cursor loading, retry, individual read state and read-all with a
 server-supplied cutoff. A failed initial load leaves the unread count unknown.
 
 Every read and mutation checks recipient ownership and current role/DV. Changing
@@ -206,6 +246,30 @@ so repeated submissions replace the displayed item where the browser supports it
 Provider acceptance is not a read receipt or proof that the phone displayed it.
 
 ## Verification
+
+UI/cursor feed verification (2026-10-26): build and typecheck pass; lint has zero
+errors and 11 pre-existing warnings outside this change. The default suite has
+1,273 passing tests and four opt-in skips. The disposable PostgreSQL notification
+suite separately passes all 21 tests, including timestamp ties, cursor continuation
+under new inserts, bounded retained-history payloads, global counts, RPC grants and
+DV revocation. Provider tests cover deduplication, append failures, filter/read
+races, validation chunks and late commits in empty/exhausted feeds. UI tests pin
+Bangkok midnight grouping and a display clock separate from the read-all cutoff.
+
+Browser checks used a local synthetic-data fixture of the actual shared page,
+Sheet and card components at 360, 390, 768 and 1280px. Inspected populated, empty,
+loading and error states, category selection, read-all feedback and Escape close;
+no document horizontal overflow was observed. The fixture stubs routing and Push
+transport, so it does not verify authenticated end-to-end navigation, actual
+device Push delivery or the complete admin shell on physical phones.
+
+The cursor follow-up additionally exercised the actual NotificationsProvider with
+a local HTTP fixture at 390px and 1280px. Mobile auto-scroll appended 20 to 40 rows;
+adding a simulated notification kept all 40 rows and scrollY exactly unchanged.
+Accepting the new-item button reset to 20 newest rows and scrollY=0. A failed append
+and retry produced 40 unique rows. Desktop inner scrolling appended 40 to 60 rows;
+switching category reset to 20 matching rows and inner scrollTop=0. This HTTP fixture
+does not replace the disposable PostgreSQL tests or live authenticated-device checks.
 
 Run the normal `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 The default suite includes adapter encryption/decryption, retry classifications,
