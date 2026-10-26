@@ -381,3 +381,20 @@ claims, stale leases, bounded cleanup, exhausted/old jobs and expired subscripti
 
 Mocked HTTP and browser-runtime tests do not verify actual Android/iPhone Push
 delivery or viewport layout. Record actual device/browser checks separately.
+
+### Authenticated Staging navigation acceptance — 2026-10-26
+
+After deployment `5ff3416`, real notification cards were clicked in an authenticated
+Edge session on Staging, using the full-page inbox and the 1280px desktop Sheet.
+All four internal event types reached booking details (721 or 722) with the correct
+October report month and `status=all`. The desktop Sheet closed after navigation.
+iCal import reached the existing calendar gallery filtered to DV 990001 on both
+surfaces. Historical iCal and iCal cancellation cards also loaded that calendar.
+The previously broken `/admin/houses/990001/bookings` URL was opened while signed
+in and forwarded to `/admin/bookings?search=990001&searchMode=dv` successfully.
+
+All 13 navigation checks passed with rendered destination content; no 404 page or
+404 console error was observed. Existing records were reused and no booking was
+created or edited. Opening the inbox followed its normal read-all behavior. This
+run tested card navigation and legacy URL forwarding, not fresh OS Push delivery.
+Only this acceptance record changed; no additional build or deployment is needed.
