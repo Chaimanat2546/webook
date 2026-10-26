@@ -78,6 +78,10 @@ Pressing it fetches the newest batch and scrolls to the top only after successfu
 loading. The accepted cutoff is then read as described below; background polls and
 filter changes after the initial opening do not automatically read new arrivals.
 
+Selecting a different category immediately resets the inbox's inner scroll area
+to the top, including the desktop Sheet. Selecting the current category again,
+loading older rows and background polling preserve the reading position.
+
 Opening the inbox registers a cancellable viewing session and requests a fresh
 latest snapshot. Once it successfully loads while visible, the client invokes the
 existing authenticated read action with that server `asOf` cutoff. This marks all
@@ -112,15 +116,21 @@ created earlier. Auth UID comes from the session; email fallback and browser
 actor/role/DV values grant no access. Browser roles have no direct table or RPC
 permissions. Only server-authenticated, service-role RPCs reach these tables.
 
-`/admin/notifications/[notificationId]` checks access again and shows a safe
-summary. GET/prefetch does not mark an item read. A visible client-side detail view
-automatically reads only its own authorized notification, including direct Push
-entry, without a read button. Hidden/abandoned views and Strict Mode cleanup do
-not trigger duplicate actions. Inbox clicks retain their individual-read fallback
-if the inbox-wide read has not completed. Internal bookings
-link to Dashboard details using the current booking update month and all statuses.
-iCal items stay outside Dashboard reports and expose a calendar link only to
-booking operators; an owner can still read the authorized notification summary.
+Internal notification cards open Dashboard booking details in one click for all
+four event types, without a separate notification summary. Cards retain the stable
+notification URL so the server can resolve the latest booking update month in
+Bangkok and all statuses, avoiding a stale month from a previously loaded feed.
+Inbox clicks retain their individual-read fallback if the inbox-wide read has not
+completed. Destination pages enforce their own authorization.
+
+`/admin/notifications/[notificationId]` remains the stable entry point for existing
+Push payloads and saved links. It checks access again, then a visible client view
+marks only that item read and replaces the URL with its destination. GET/prefetch,
+hidden/abandoned views and Strict Mode cleanup do not write read state. An already
+read item forwards without another write; a read failure still allows navigation.
+A manual destination link is available if automatic forwarding cannot run.
+iCal cards use this resolver to check booking permission before opening the house
+calendar. Missing items and unavailable destinations offer a return to the inbox.
 
 ## Per-device Push
 
@@ -312,8 +322,38 @@ explicit acceptance; the prompt then disappeared after acknowledgement. Desktop
 to mobile resizing retained the page session, and infinite scrolling still
 appended 20 to 40 rows with no document horizontal overflow observed. Focused
 PostgreSQL cutoff/idempotency and permission-revocation tests also passed (2/2).
-This revision has not been deployed; physical-device and live authenticated
-acceptance remain separate from these local checks.
+These local checks preceded deployment; live Staging acceptance is recorded below.
+
+### Live Staging acceptance — 2026-10-26
+
+Created real synthetic bookings through the existing booking service/repository
+and approved RPCs on `sxvkhzhqtrpxgzumsswl`, using DEMO DV `99202627` and its existing
+synthetic customer. Marker: `TEST-NOTIFY-20261026123236`; creation began at 12:32
+Asia/Bangkok. This was not the local UI fixture or disposable PostgreSQL.
+
+| Event | Real booking ID | Verified notification ID |
+| --- | --- | --- |
+| New booking | 721 | `bd8ce5bf-955d-492c-8eaf-5e3f0fff2a9c` |
+| Payment succeeded | 721 | `e2686964-749d-4291-a0bd-d302df4956fc` |
+| Manual cancellation | 721 | `6310d574-c371-446e-950d-add414363fa0` |
+| Automatic payment expiry | 722 | `6df32bd9-69c4-4445-84ac-7e8399593674` |
+
+The actual notification-feed RPC returned all four event types. Booking 722 also
+produced its own new-booking event, giving five inbox items total. Its short payment
+deadline was allowed to expire through the deployed Worker's normal cron; no manual
+status/provenance substitution was used for the expiry event.
+
+Read-only Staging SQL verification confirmed 10 delivery jobs (five notifications
+times two registered devices), all `sent`, with zero pending or failed. The user
+explicitly confirmed receiving all four Push event types on the receiving device(s).
+Provider acceptance alone was not treated as proof of on-device display.
+
+Both test bookings finished `cancelled`: 721 with `manual`, 722 with
+`payment_expired`. Sell/full prices were zero and no active test reservation remains.
+The marked cancelled records were retained for inspection; existing business
+bookings, user unread states, subscriptions and credentials were not edited by the
+test script. Device-by-device observation and browser-form creation were not part
+of this service/RPC-based acceptance run.
 
 Run the normal `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 The default suite includes adapter encryption/decryption, retry classifications,

@@ -3,6 +3,17 @@ import { test } from "node:test";
 import { notificationCountLabel, shouldRefreshNotifications, visibleNotificationPage } from "../components/admin/notifications/inbox-state.ts";
 import type { NotificationPage } from "../lib/booking-notifications.ts";
 
+test("all internal event links share the booking destination and Bangkok updated month", async () => {
+  const { notificationDestination } = await import("../lib/booking-notifications.ts");
+  const item = { id: "notice", bookingId: "722", propertyId: "99202627", title: "House", checkIn: "2026-10-28", checkOut: "2026-10-29", status: "cancelled", source: "internal" as const, createdAt: "2026-10-26T00:00:00Z", bookingUpdatedAt: "2026-10-31T18:00:00Z", readAt: null };
+  for (const eventType of ["booking_created", "payment_succeeded", "booking_cancelled", "payment_expired"] as const) {
+    assert.equal(notificationDestination({ ...item, eventType }), "/admin/dashboard/bookings/722?month=2026-11&status=all");
+  }
+  const imported = { ...item, eventType: "booking_created" as const, source: "ical" as const };
+  assert.equal(notificationDestination(imported), null);
+  assert.equal(notificationDestination(imported, true), "/admin/houses/99202627/bookings");
+});
+
 test("compact stay ranges cover same month, cross-year and missing dates", async () => {
   const { notificationStayRange } = await import("../lib/booking-notifications.ts");
   assert.equal(notificationStayRange("2026-10-28", "2026-10-29"), "28–29 ต.ค. 2569");

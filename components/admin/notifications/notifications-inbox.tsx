@@ -59,7 +59,11 @@ export function NotificationsInbox({ active = true, surface = "page" }: { active
   return <div className="relative flex min-h-0 flex-1 flex-col bg-[#f7f9fb] [--primary:#087F80] [--primary-foreground:#fff] dark:bg-background dark:[--primary:#2BAFC0] dark:[--primary-foreground:#043D5C]">
     <div className="shrink-0 py-2">
       <div role="group" aria-label="หมวดการแจ้งเตือน" className="flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {filters.map(({ value, label, Icon }) => <Button key={value} type="button" variant={filter === value ? "default" : "secondary"} className="min-h-11 shrink-0 rounded-full px-3" aria-pressed={filter === value} onClick={() => { if (filter !== value) notifications.setFilter(value); }}>
+        {filters.map(({ value, label, Icon }) => <Button key={value} type="button" variant={filter === value ? "default" : "secondary"} className="min-h-11 shrink-0 rounded-full px-3" aria-pressed={filter === value} onClick={() => {
+          if (filter === value) return;
+          scrollArea.current?.scrollTo({ top: 0, behavior: "instant" });
+          notifications.setFilter(value);
+        }}>
           <Icon aria-hidden className="size-4" />{label}
         </Button>)}
       </div>
