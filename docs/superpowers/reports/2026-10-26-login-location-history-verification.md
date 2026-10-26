@@ -69,3 +69,9 @@ the review fix was verified by regression tests and a fresh full suite, followin
 Keep the named branch and managed worktree for review. No merge, push, remote migration or deployment
 was performed. See `docs/login-history.md` for Staging rollout and the policy decisions needed before
 opening access to real users. Mandatory location enforcement has not been implemented or enabled.
+
+Local preview processes were stopped and the placeholder `.env.local` was removed after checking its
+exact task-created contents. Automatic approval review blocked the combined bulk cleanup command
+without a further reason; the disposable PostgreSQL test container remains stopped and the plan's
+Git-ignored `.superpowers/sdd/2026-10-26-login-location-history` scratch directory is retained.
+User-facing screenshots were saved separately, outside that scratch directory.

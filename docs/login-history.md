@@ -121,6 +121,9 @@ docker run --detach --name webook-login-history-tests --network none --env POSTG
 node scripts/test-login-history-db.mjs
 ```
 
+If this named test container already exists but is stopped, use `docker start webook-login-history-tests`
+instead of creating it again. The implementation session left it stopped, with only fictional fixture data.
+
 The script resets **only this named disposable test database**, loads the minimal fixture from
 `tests/fixtures/login-history-db.sql`, then runs the two feature migrations and SQL assertions.
 It covers own/root RLS, blocked writes/RPCs, self-promotion, root-edit protection, session revocation,
