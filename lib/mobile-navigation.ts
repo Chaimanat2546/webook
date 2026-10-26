@@ -1,4 +1,5 @@
 export interface MobileNavigationPermissions {
+  canUseDashboard: boolean;
   canAccessHouses: boolean;
   canUseBooking: boolean;
   canUseQuotation: boolean;
@@ -8,7 +9,7 @@ export interface MobileNavigationPermissions {
 }
 
 export interface MobileDestination {
-  id: "houses" | "bookings" | "advertisements" | "quotations" | "users";
+  id: "overview" | "houses" | "bookings" | "advertisements" | "quotations" | "centralUsers" | "webookUsers";
   label: string;
   href: string;
 }
@@ -25,7 +26,7 @@ export function createMobileNavigationMemory() {
       return () => { listeners.delete(listener); };
     },
     remember(pathname: string, search: string) {
-      if (!["/admin/houses", "/admin/bookings", "/admin/advertisements", "/admin/quotations", "/admin/quotations/customers", "/admin/users", "/admin/user-manager"].includes(pathname)) return;
+      if (!["/admin/dashboard", "/admin/houses", "/admin/bookings", "/admin/advertisements", "/admin/quotations", "/admin/quotations/customers", "/admin/users", "/admin/user-manager"].includes(pathname)) return;
       const href = `${pathname}${search ? `?${search}` : ""}`;
       if (snapshot[pathname] === href) return;
       snapshot = { ...snapshot, [pathname]: href };
@@ -36,20 +37,29 @@ export function createMobileNavigationMemory() {
 
 export function mobileDestinations(permissions: MobileNavigationPermissions): MobileDestination[] {
   const items: MobileDestination[] = [];
+  if (permissions.canUseDashboard) items.push({ id: "overview", label: "ภาพรวม", href: "/admin/dashboard" });
   if (permissions.canUseBooking) items.push({ id: "bookings", label: "การจอง", href: "/admin/bookings" });
   if (permissions.canAccessHouses) items.push({ id: "houses", label: "บ้านพัก", href: "/admin/houses" });
   if (permissions.canUseAccommodation) items.push({ id: "advertisements", label: "โฆษณา", href: "/admin/advertisements" });
   if (permissions.canUseQuotation) items.push(
     { id: "quotations", label: "ใบเสนอราคา", href: "/admin/quotations" },
   );
-  if (permissions.canManageCentralUsers || permissions.canManageWebookUsers) items.push({ id: "users", label: "ผู้ใช้", href: permissions.canManageCentralUsers ? "/admin/user-manager" : "/admin/users" });
+  if (permissions.canManageCentralUsers) items.push({ id: "centralUsers", label: "ผู้ใช้เว็บไซต์", href: "/admin/user-manager" });
+  if (permissions.canManageWebookUsers) items.push({ id: "webookUsers", label: "ผู้ใช้ WeBooks", href: "/admin/users" });
   return items;
 }
 
+export function mobileNavigationLayout(permissions: MobileNavigationPermissions) {
+  const modules = mobileDestinations(permissions);
+  return { modules, dock: modules.length > 1 ? modules.slice(0, 3) : [], overflow: modules.slice(3) };
+}
+
 export function mobileSection(pathname: string): MobileDestination["id"] | "more" {
-  if (["/admin/bookings", "/admin/dashboard/bookings"].some(path => pathname === path || pathname.startsWith(`${path}/`))) return "bookings";
+  if (pathname === "/admin/dashboard" || pathname.startsWith("/admin/dashboard/")) return "overview";
+  if (["/admin/bookings"].some(path => pathname === path || pathname.startsWith(`${path}/`))) return "bookings";
   if (pathname === "/admin/advertisements" || pathname.startsWith("/admin/advertisements/")) return "advertisements";
-  if (["/admin/users", "/admin/user-manager"].some(path => pathname === path || pathname.startsWith(`${path}/`))) return "users";
+  if (pathname === "/admin/users" || pathname.startsWith("/admin/users/")) return "webookUsers";
+  if (pathname === "/admin/user-manager" || pathname.startsWith("/admin/user-manager/")) return "centralUsers";
   if (pathname === "/admin/houses" || pathname.startsWith("/admin/houses/")) return "houses";
   if (pathname === "/admin/quotations" || pathname.startsWith("/admin/quotations/")) return "quotations";
   return "more";

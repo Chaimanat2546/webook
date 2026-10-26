@@ -21,6 +21,7 @@ export function integrationEnvironment(status, projectId) {
     LOCAL_SUPABASE_SERVICE_ROLE_KEY: status.SERVICE_ROLE_KEY,
     SUPABASE_DB_CONTAINER: `supabase_db_${projectId}`,
     RUN_BOOKING_DB_TESTS: "1",
+    RUN_NOTIFICATION_DB_TESTS: "1",
     RUN_DASHBOARD_DB_TESTS: "1",
     RUN_LOCAL_SUPABASE_TESTS: "1",
     RUN_QUOTATION_MIGRATION_UPGRADE_TESTS: "1",

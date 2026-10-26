@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { UpdateNotice } from "./update-notice";
+import { PushSessionGuard } from "./push-session-guard";
 
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<unknown>;
@@ -93,6 +94,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
   return (
     <PwaContext.Provider value={{ installed: installed || standalone, canPrompt: prompt !== null, install }}>
       {children}
+      <PushSessionGuard />
       <UpdateNotice registration={registration} />
     </PwaContext.Provider>
   );

@@ -134,7 +134,10 @@ describe("Cloudflare deployment boundary", () => {
     assert.match(productionWorkflow, /NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key/);
     assert.match(productionWorkflow, /actions\/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd/);
     assert.match(productionWorkflow, /actions\/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38/);
-    assert.match(productionWorkflow, /npm run deploy:cf/);
+    assert.match(productionWorkflow, /npx wrangler deploy -c wrangler\.jsonc --keep-vars --secrets-file \.env\.production-worker-secrets\.json/);
+    assert.match(productionWorkflow, /prepare-production-notifications\.mjs assert/);
+    assert.doesNotMatch(productionWorkflow, /SUPABASE_DB_PASSWORD/);
+    assert.match(productionWorkflow, /prepare-production-notifications\.mjs push[\s\S]*npx opennextjs-cloudflare build[\s\S]*Verify compiled Production database target[\s\S]*prepare-production-notifications\.mjs migrate[\s\S]*npx wrangler deploy -c wrangler\.jsonc/);
   });
 
   it("deploys staging only after environment approval and migration", () => {

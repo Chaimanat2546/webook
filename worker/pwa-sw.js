@@ -4,6 +4,7 @@ import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheFirst, NetworkOnly } from "workbox-strategies";
 import { HOUSE_IMAGE_CACHE_MAX_AGE_SECONDS, shouldCacheHouseImageRequest } from "../lib/house-image-cache.ts";
+import { notificationEvent, notificationEventLabel, notificationPropertyId } from "../lib/booking-notifications.ts";
 
 const offlineUrl = "/pwa/offline.html";
 const precache = new PrecacheController({ cacheName: "webook-pwa-precache-v1" });
@@ -63,4 +64,41 @@ self.addEventListener("message", (event) => {
     event.waitUntil(self.skipWaiting());
   }
 });
-// Activation only on explicit confirmation. No automatic reload, push or replay.
+// Activation only on explicit confirmation. No automatic reload or replay.
+
+function notificationId(value) {
+  return typeof value?.notificationId === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.notificationId)
+    ? value.notificationId : null;
+}
+
+self.addEventListener("push", (event) => {
+  let id, eventType, propertyId;
+  try {
+    const payload = event.data?.json();
+    id = notificationId(payload);
+    eventType = notificationEvent(payload?.eventType);
+    propertyId = notificationPropertyId(payload?.propertyId);
+  } catch { return; }
+  if (!id) return;
+  event.waitUntil(self.registration.showNotification("WeBooks", {
+    body: `${notificationEventLabel(eventType)}${propertyId ? ` • DV ${propertyId}` : ""}`,
+    icon: "/pwa/icon-192.png",
+    badge: "/pwa/icon-192.png",
+    tag: id,
+    data: { notificationId: id },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const id = notificationId(event.notification.data);
+  if (!id) return;
+  const target = new URL(`/admin/notifications/${id}`, self.location.origin);
+  event.waitUntil((async () => {
+    // Same-origin clients can be ordinary Safari tabs. Let the platform launch
+    // the installed app associated with this registration instead of choosing a tab.
+    const opened = await self.clients.openWindow(target.href);
+    if (opened) await opened.focus();
+  })());
+});

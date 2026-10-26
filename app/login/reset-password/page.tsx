@@ -10,6 +10,8 @@ import { Input } from "../../../components/ui/input";
 import { validateNewPassword } from "../../../lib/auth/password-reset";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
 import { AuthMessage } from "../auth-message";
+import { cleanupPushDevice, currentPushSubscription, storePushActor } from "../../../components/admin/notifications/push-device";
+import { unsubscribePush } from "../../admin/notifications/actions";
 
 const invalidLinkMessage =
   "ลิงก์รีเซ็ตรหัสผ่านหมดอายุหรือไม่ถูกต้อง กรุณาขอลิงก์ใหม่อีกครั้ง";
@@ -131,6 +133,9 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    try { await cleanupPushDevice(await currentPushSubscription(), unsubscribePush); }
+    catch { /* Password reset must finish even if browser cleanup fails. */ }
+    storePushActor(null);
     await supabase.auth.signOut();
     setPassword("");
     setConfirmPassword("");
