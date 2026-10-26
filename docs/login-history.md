@@ -170,6 +170,13 @@ Do not drop the history table or restore broad client-write grants as an automat
 
 ### Staging acceptance — 2026-10-26
 
+The sign-in redirect includes the current history UUID in `/login/location?history=…`.
+The page resolves the verified session's pending record and redirects old/missing
+history query values to its canonical URL. Prompt state resets for each record.
+If a restored PWA page submits an old history UUID and receives 404, the error UI
+offers a full page navigation to resolve the current session instead of replaying
+the stale report. User/session authorization and one terminal result per record remain enforced.
+
 After the local verification above, the implementation was combined with the requested
 current-branch commit `6e68aab` at `552ba05`, then integrated with existing Staging work
 at `fd7b64c`. The approved GitHub Actions workflow successfully applied migrations and
