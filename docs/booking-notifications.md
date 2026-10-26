@@ -130,7 +130,10 @@ hidden/abandoned views and Strict Mode cleanup do not write read state. An alrea
 read item forwards without another write; a read failure still allows navigation.
 A manual destination link is available if automatic forwarding cannot run.
 iCal cards use this resolver to check booking permission before opening the house
-calendar. Missing items and unavailable destinations offer a return to the inbox.
+calendar gallery at `/admin/bookings?search=<DV>&searchMode=dv`. Previously issued
+`/admin/houses/<DV>/bookings` links redirect to that same gallery; the gallery still
+enforces booking permission before loading data. Missing items and unavailable
+destinations offer a return to the inbox.
 
 ## Per-device Push
 

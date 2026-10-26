@@ -11,7 +11,7 @@ test("all internal event links share the booking destination and Bangkok updated
   }
   const imported = { ...item, eventType: "booking_created" as const, source: "ical" as const };
   assert.equal(notificationDestination(imported), null);
-  assert.equal(notificationDestination(imported, true), "/admin/houses/99202627/bookings");
+  assert.equal(notificationDestination(imported, true), "/admin/bookings?search=99202627&searchMode=dv");
 });
 
 test("compact stay ranges cover same month, cross-year and missing dates", async () => {
