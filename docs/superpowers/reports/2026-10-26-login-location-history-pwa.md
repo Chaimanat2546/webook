@@ -24,8 +24,9 @@ values and keys the prompt by history UUID to reset prior attempt state. A stale
 checks and one terminal report per history are preserved. No migration was added.
 
 The iPhone report's exact browser-cache/session sequence was not directly observed;
-the two-tab reproduction establishes the matching failure and recovery path. After
-the update and requested sign-out/in retry, the user confirmed “บันทึกได้แล้ว”.
+the two-tab reproduction establishes the matching failure and recovery path. The
+user initially said “บันทึกได้แล้ว”, then clarified that only IP and a denied status
+were saved, despite enabling location. This does not confirm coordinate acquisition.
 
 ## Evidence
 
@@ -47,8 +48,12 @@ the update and requested sign-out/in retry, the user confirmed “บันท�
 - The two fictional Auth accounts and cascading test history were removed. Temporary
   credentials were removed, the browser signed out and test tabs were closed.
 
-## Device confirmation
+## Device follow-up — coordinate acquisition remains unresolved
 
-The user confirmed that location could be saved in the iPhone PWA after the update
-and requested sign-out/in retry. This confirms the reported device flow; it does
-not cover every iOS version or OS permission outcome. No Production changes were made.
+After updating and retrying sign-in, the iPhone PWA persisted a terminal `denied`
+result rather than coordinates. The user reported that no permission prompt appeared.
+The client maps Geolocation error code 1 to `denied`; IP is collected independently
+on the server at sign-in. The save path and coordinate-acquisition outcome must be
+reported separately. Safari-versus-standalone and device permission investigation
+are pending; coordinate success on the physical iPhone is not established.
+No Production changes were made.
