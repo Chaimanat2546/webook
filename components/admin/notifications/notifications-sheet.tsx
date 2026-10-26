@@ -7,6 +7,7 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTi
 import { Button } from "../../ui/button";
 import { useNotifications } from "./notifications-context";
 import { NotificationsInbox } from "./notifications-inbox";
+import { NotificationsSettings } from "./notifications-settings";
 
 export function NotificationsSheet() {
   const notifications = useNotifications();
@@ -30,7 +31,10 @@ export function NotificationsSheet() {
       <SheetHeader className="h-14 flex-row items-center justify-between gap-2 border-b px-4 py-1.5">
         <SheetTitle className="flex items-center gap-2 text-lg"><Bell aria-hidden className="size-5" />การแจ้งเตือน</SheetTitle>
         <SheetDescription className="sr-only">รายการการจองและการเปลี่ยนสถานะที่คุณมีสิทธิ์ดู</SheetDescription>
-        <SheetClose asChild><Button type="button" variant="ghost" size="icon" className="size-11" aria-label="ปิดการแจ้งเตือน"><X aria-hidden /></Button></SheetClose>
+        <div className="ml-auto flex items-center gap-1">
+          <NotificationsSettings />
+          <SheetClose asChild><Button type="button" variant="ghost" size="icon" className="size-11" aria-label="ปิดการแจ้งเตือน"><X aria-hidden /></Button></SheetClose>
+        </div>
       </SheetHeader>
       <NotificationsInbox active={open} surface="sheet" />
     </SheetContent>
