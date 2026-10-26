@@ -71,6 +71,7 @@ export function LoginLocationPrompt({historyId,userId,expiresAt}:{historyId:stri
       {expired?<Alert><AlertDescription>หมดเวลารับพิกัดสำหรับรายการนี้แล้ว คุณเข้าสู่ระบบต่อได้</AlertDescription></Alert>:null}
       {blocked && state==="idle"?<p className="text-sm text-muted-foreground">เคยขอพิกัดสำหรับรายการนี้แล้ว ระบบจะไม่อ่านซ้ำหลังโหลดหน้าใหม่</p>:null}
       <div className="flex flex-col gap-2">
+        {savedWithoutCoordinates[state] && process.env.NEXT_PUBLIC_SUPABASE_URL==="https://sxvkhzhqtrpxgzumsswl.supabase.co"?<Button asChild variant="outline"><a href="/login/location/check">ตรวจการขอสิทธิ์ตำแหน่ง (Staging)</a></Button>:null}
         {state==="idle" && !expired?<>
           <Button type="button" className="min-h-11" disabled={blocked} onClick={share}>แชร์ตำแหน่งครั้งนี้</Button>
           <Button type="button" variant="outline" className="min-h-11" onClick={()=>flow.current?.skip()}>ข้าม</Button>

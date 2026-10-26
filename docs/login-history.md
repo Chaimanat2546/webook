@@ -185,6 +185,16 @@ success or explicit skip automatically continues into the application. An expire
 or revoked session offers sign-in again instead of repeatedly retrying an invalid
 session; other failed saves include their public HTTP status without database details.
 
+For the unresolved installed-iPhone-PWA denial, Staging exposes a temporary
+`/login/location/check` HTML diagnostic through links on login and saved-without-
+coordinates screens. The route returns 404 unless the public Supabase URL is the
+exact Staging target. It bypasses the React/auth workflow, requests geolocation
+synchronously from a native button click and displays secure-context, standalone,
+top-frame, policy, activation and native error information locally. It neither
+posts coordinates nor prints them, and never changes login history. Use it from
+inside the installed PWA to preserve the context being investigated. Remove the
+probe after device triage; it is not a permission workaround or a completed fix.
+
 After the local verification above, the implementation was combined with the requested
 current-branch commit `6e68aab` at `552ba05`, then integrated with existing Staging work
 at `fd7b64c`. The approved GitHub Actions workflow successfully applied migrations and

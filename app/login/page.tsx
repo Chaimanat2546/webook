@@ -106,6 +106,7 @@ export default async function LoginPage({
           )}
         </CardContent>
       </Card>
+      {process.env.NEXT_PUBLIC_SUPABASE_URL==="https://sxvkhzhqtrpxgzumsswl.supabase.co" && <Button asChild variant="outline"><a href="/login/location/check">ตรวจการขอสิทธิ์ตำแหน่ง (Staging)</a></Button>}
       {!isForgotMode && <LoginInstallPrompt />}
     </main>
   );
