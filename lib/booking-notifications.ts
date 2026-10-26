@@ -15,6 +15,14 @@ export function notificationDay(value: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
+export function notificationStayRange(checkIn: string, checkOut: string): string {
+  const start = new Date(`${checkIn}T00:00:00+07:00`);
+  const end = new Date(`${checkOut}T00:00:00+07:00`);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return "–";
+  const format = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
+  return start <= end ? format.formatRange(start, end) : `${format.format(start)} – ${format.format(end)}`;
+}
+
 export function notificationEvent(value: unknown): BookingNotificationEvent {
   if (value === undefined) return "booking_created"; // Older queued payloads remain readable during rollout.
   if (value === "booking_created" || value === "payment_succeeded" || value === "booking_cancelled" || value === "payment_expired") return value;

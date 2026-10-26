@@ -7,7 +7,7 @@ import { build } from "esbuild";
 import type { NotificationsContextValue } from "../components/admin/notifications/notifications-context.tsx";
 
 async function render(entry: string, exported: string, overrides: Partial<NotificationsContextValue> = {}) {
-  const state: NotificationsContextValue = { data: null, observedAt: null, actorId: "actor", loading: false, error: null, open: true, setOpen() {}, loadingMore: false, loadMoreError: null, loadMore: async () => {}, acceptNew: async () => true, filter: "all", setFilter() {}, refresh: async () => {}, markRead: async () => true, cleanupDevice: async () => true, ...overrides };
+  const state: NotificationsContextValue = { data: null, observedAt: null, actorId: "actor", loading: false, error: null, open: true, setOpen() {}, loadingMore: false, loadMoreError: null, loadMore: async () => {}, acceptNew: async () => true, beginInboxSession: () => () => {}, filter: "all", setFilter() {}, refresh: async () => {}, markRead: async () => true, cleanupDevice: async () => true, ...overrides };
   const bundle = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", packages: "external", plugins: [{ name: "browser-boundaries", setup(builder) {
     builder.onResolve({ filter: /notifications-context$/ }, () => ({ path: "context-fixture", external: true }));
     builder.onResolve({ filter: /ui\/sidebar$/ }, () => ({ path: "sidebar-fixture", external: true }));
@@ -23,7 +23,7 @@ async function render(entry: string, exported: string, overrides: Partial<Notifi
     if (id === "navigation-fixture") return { useRouter: () => ({ push() {}, back() {} }), usePathname: () => "/admin/bookings" };
     if (id === "sidebar-fixture") return { SidebarMenuItem: wrapper, SidebarMenuButton: wrapper };
     if (id === "push-fixture") return { PushSettings: () => null };
-    if (id === "sheet-fixture") return { Sheet: ({ children }: { children: ReactNode }) => createElement("div", null, children), SheetContent: wrapper, SheetHeader: wrapper, SheetTitle: wrapper, SheetDescription: wrapper };
+    if (id === "sheet-fixture") return { Sheet: ({ children }: { children: ReactNode }) => createElement("div", null, children), SheetContent: ({ children, className }: { children: ReactNode; className?: string }) => createElement("div", { className }, children), SheetHeader: wrapper, SheetTitle: wrapper, SheetDescription: wrapper, SheetClose: ({ children }: { children: ReactNode }) => children };
     return require(id);
   }, loaded, loaded.exports);
   return renderToStaticMarkup(createElement(loaded.exports[exported] as ComponentType));
@@ -65,8 +65,8 @@ test("new-item and failed append controls preserve the existing inbox", async ()
 
 test("inbox exposes supported filters, refresh and real detail actions", async () => {
   const html = await render("components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet", { data: { ...inbox, unreadCount: 0, total: 0 } });
-  assert.match(html, /การจองใหม่/);
-  assert.match(html, /การชำระเงิน/);
+  assert.match(html, /จองใหม่/);
+  assert.match(html, /ชำระเงิน/);
   assert.match(html, /รีเฟรชข้อมูล/);
   assert.doesNotMatch(html, /SMS|LINE|ตรวจสอบสลิป|ส่งข้อความแจ้งเตือนซ้ำ/);
 });
@@ -87,14 +87,25 @@ test("date groups and relative time follow observation time across Bangkok midni
 });
 
 test("inbox identifies each lifecycle event rather than labeling all items as new bookings", async () => {
-  for (const [eventType, label] of [["payment_succeeded", "ชำระเงิน booking สำเร็จ"], ["booking_cancelled", "ยกเลิก booking"], ["payment_expired", "booking หมดเวลาชำระเงิน"]] as const) {
+  for (const [eventType, label] of [["payment_succeeded", "ชำระสำเร็จ"], ["booking_cancelled", "ยกเลิกการจอง"], ["payment_expired", "หมดเวลาชำระ"]] as const) {
     const item = { id: "00000000-0000-4000-8000-000000000001", bookingId: "1", propertyId: "100", title: "Test house", checkIn: "2026-10-23", checkOut: "2026-10-24", status: "cancelled", source: "internal" as const, eventType, createdAt: "2026-10-22T12:00:00Z", bookingUpdatedAt: "2026-10-22T12:00:00Z", readAt: null };
     const html = await render("components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet", { data: { ...inbox, items: [item], total: 1 } });
     assert.ok(html.includes(label));
     assert.doesNotMatch(html, /มี booking ใหม่/);
-    assert.match(html, /สถานะปัจจุบัน/);
+    assert.doesNotMatch(html, /สถานะปัจจุบัน|ดูรายละเอียด|aria-label="ยังไม่อ่าน"/);
     assert.match(html, /วันนี้/);
-    assert.match(html, /ดูรายละเอียด/);
-    assert.match(html, /aria-label="ยังไม่อ่าน"/);
+    assert.match(html, /href="\/admin\/notifications\//);
   }
+});
+
+test("compact inbox omits read controls, decorative filter row and loaded counts", async () => {
+  const html = await render("components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet", { data: inbox });
+  assert.doesNotMatch(html, /อ่านทั้งหมด|ตัวกรองการแจ้งเตือน|รายการที่โหลดแล้ว/);
+});
+
+test("imported notifications keep their calendar origin in a compact card", async () => {
+  const item = { id: "00000000-0000-4000-8000-000000000001", bookingId: "1", propertyId: "100", title: "House", checkIn: "2026-10-28", checkOut: "2026-10-29", status: "confirmed", source: "ical" as const, eventType: "booking_created" as const, createdAt: "2026-10-22T12:00:00Z", bookingUpdatedAt: "2026-10-22T12:00:00Z", readAt: null };
+  const html = await render("components/admin/notifications/notifications-sheet.tsx", "NotificationsSheet", { data: { ...inbox, items: [item] } });
+  assert.match(html, /นำเข้าจากปฏิทิน/);
+  assert.match(html, /28–29 ต.ค. 2569/);
 });

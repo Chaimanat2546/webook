@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Bell } from "lucide-react";
 import { Badge } from "../../../../components/ui/badge";
 import { buttonVariants } from "../../../../components/ui/button";
-import { NotificationReadButton } from "../../../../components/admin/notifications/notification-read-button";
+import { NotificationReadMarker } from "../../../../components/admin/notifications/notification-read-marker";
 import { notificationSession, NotificationAccessError } from "../../../../server/auth/notifications";
 import { getBookingNotification } from "../../../../server/services/booking-notifications";
 import { notificationEventLabel } from "../../../../lib/booking-notifications";
@@ -12,15 +12,17 @@ export default async function NotificationDetailPage({ params }: { params: Promi
   const { notificationId } = await params;
   let item;
   let canUseBooking = false;
+  let actorId: string | null = null;
   try {
     const session = await notificationSession();
     canUseBooking = session.canUseBooking;
+    actorId = session.actorId;
     item = await getBookingNotification(session.repository, session.actorId, notificationId);
   } catch (error) {
     if (error instanceof NotificationAccessError && error.status === 401) redirect("/login");
     return <div role="alert" className="space-y-4"><p>ไม่สามารถเปิดรายการแจ้งเตือนนี้ได้ กรุณาตรวจสอบสิทธิ์หรือลองใหม่อีกครั้ง</p><Link href="/admin/dashboard" className="underline">กลับหน้าภาพรวม</Link></div>;
   }
-  if (!item) notFound();
+  if (!item || !actorId) notFound();
   const dates = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
   // Dashboard details share the report's updated_at period filter.
   const month = new Date(new Date(item.bookingUpdatedAt).getTime() + 7 * 3_600_000).toISOString().slice(0, 7);
@@ -35,7 +37,7 @@ export default async function NotificationDetailPage({ params }: { params: Promi
     {item.source === "ical" && <p className="text-sm text-muted-foreground">{item.eventType === "booking_created" ? "รายการนี้นำเข้าจากปฏิทินภายนอก เวลาแจ้งเตือนคือเวลานำเข้า" : "รายการนี้มาจากปฏิทินภายนอก"}</p>}
     <div className="flex flex-wrap gap-3">
       {href && <Link href={href} className={buttonVariants({ variant: "default" })}>{item.source === "internal" ? "ดูรายละเอียด booking" : "ดูปฏิทินบ้าน"}</Link>}
-      <NotificationReadButton id={item.id} read={item.readAt !== null} />
+      <NotificationReadMarker id={item.id} read={item.readAt !== null} actorId={actorId} />
     </div>
     <Link href="/admin/dashboard" className="block text-sm underline">กลับหน้าภาพรวม</Link>
   </section>;

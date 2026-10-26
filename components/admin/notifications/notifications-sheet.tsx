@@ -1,9 +1,10 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../ui/sheet";
+import { Button } from "../../ui/button";
 import { useNotifications } from "./notifications-context";
 import { NotificationsInbox } from "./notifications-inbox";
 
@@ -25,9 +26,13 @@ export function NotificationsSheet() {
   }, [open, router, setOpen]);
   if (!notifications || pathname === "/admin/notifications") return null;
   return <Sheet open={open} onOpenChange={notifications.setOpen}>
-    <SheetContent className="w-full! max-w-lg! gap-0 pb-[env(safe-area-inset-bottom)] print:hidden">
-      <SheetHeader className="border-b pr-14"><SheetTitle className="flex items-center gap-2 text-xl"><Bell aria-hidden className="size-5" />การแจ้งเตือน</SheetTitle><SheetDescription className="sr-only">รายการการจองและการเปลี่ยนสถานะที่คุณมีสิทธิ์ดู</SheetDescription></SheetHeader>
-      <NotificationsInbox />
+    <SheetContent showCloseButton={false} className="w-full! max-w-lg! gap-0 pb-[env(safe-area-inset-bottom)] print:hidden">
+      <SheetHeader className="h-14 flex-row items-center justify-between gap-2 border-b px-4 py-1.5">
+        <SheetTitle className="flex items-center gap-2 text-lg"><Bell aria-hidden className="size-5" />การแจ้งเตือน</SheetTitle>
+        <SheetDescription className="sr-only">รายการการจองและการเปลี่ยนสถานะที่คุณมีสิทธิ์ดู</SheetDescription>
+        <SheetClose asChild><Button type="button" variant="ghost" size="icon" className="size-11" aria-label="ปิดการแจ้งเตือน"><X aria-hidden /></Button></SheetClose>
+      </SheetHeader>
+      <NotificationsInbox active={open} surface="sheet" />
     </SheetContent>
   </Sheet>;
 }

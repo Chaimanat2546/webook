@@ -15,6 +15,7 @@ export interface NotificationsContextValue {
   loadMoreError: string | null;
   loadMore: () => Promise<void>;
   acceptNew: () => Promise<boolean>;
+  beginInboxSession: (surface?: "sheet" | "page") => () => void;
   filter: NotificationFilter;
   setFilter: (value: NotificationFilter) => void;
   refresh: () => Promise<void>;

@@ -3,6 +3,14 @@ import { test } from "node:test";
 import { notificationCountLabel, shouldRefreshNotifications, visibleNotificationPage } from "../components/admin/notifications/inbox-state.ts";
 import type { NotificationPage } from "../lib/booking-notifications.ts";
 
+test("compact stay ranges cover same month, cross-year and missing dates", async () => {
+  const { notificationStayRange } = await import("../lib/booking-notifications.ts");
+  assert.equal(notificationStayRange("2026-10-28", "2026-10-29"), "28–29 ต.ค. 2569");
+  const crossing = notificationStayRange("2026-12-30", "2027-01-02");
+  assert.match(crossing, /2569/); assert.match(crossing, /2570/);
+  assert.equal(notificationStayRange("", "bad"), "–");
+});
+
 test("cursors retain database precision and reject malformed or unbounded input", async () => {
   const { notificationCursor } = await import("../lib/booking-notifications.ts");
   const cursor = { createdAt: "2026-10-26T08:00:00.123456+00:00", id: "00000000-0000-4000-8000-000000000001" };

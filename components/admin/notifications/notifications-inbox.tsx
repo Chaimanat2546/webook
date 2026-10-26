@@ -1,9 +1,8 @@
 "use client";
 
-import { Bell, CalendarPlus, Check, CheckCheck, CircleX, LoaderCircle, RefreshCw, Settings2, Wallet } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Bell, CalendarPlus, Check, CircleX, LoaderCircle, RefreshCw, Settings2, Wallet } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { notificationDay, type BookingNotification, type NotificationFilter } from "../../../lib/booking-notifications";
-import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "../../ui/empty";
 import { Skeleton } from "../../ui/skeleton";
@@ -13,8 +12,8 @@ import { PushSettings } from "./push-settings";
 
 const filters = [
   { value: "all", label: "ทั้งหมด", Icon: Bell },
-  { value: "booking", label: "การจองใหม่", Icon: CalendarPlus },
-  { value: "payment", label: "การชำระเงิน", Icon: Wallet },
+  { value: "booking", label: "จองใหม่", Icon: CalendarPlus },
+  { value: "payment", label: "ชำระเงิน", Icon: Wallet },
   { value: "cancelled", label: "ยกเลิก", Icon: CircleX },
 ] satisfies { value: NotificationFilter; label: string; Icon: typeof Bell }[];
 const dates = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
@@ -29,9 +28,13 @@ function groups(items: BookingNotification[], asOf: string) {
   }
   return [...result.entries()];
 }
-export function NotificationsInbox() {
+export function NotificationsInbox({ active = true, surface = "page" }: { active?: boolean; surface?: "sheet" | "page" }) {
   const notifications = useNotifications();
-  const [reading, setReading] = useState(false);
+  const beginInboxSession = notifications?.beginInboxSession;
+  useEffect(() => {
+    if (!active) return;
+    return beginInboxSession?.(surface);
+  }, [active, beginInboxSession, surface]);
   const scrollArea = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const hasMore = Boolean(notifications?.data?.nextCursor);
@@ -40,7 +43,7 @@ export function NotificationsInbox() {
   const loadMoreError = notifications?.loadMoreError;
   const itemCount = notifications?.data?.items.length ?? 0;
   useEffect(() => {
-    if (!hasMore || loadingMore || loadMoreError || !loadMore || !sentinel.current || typeof IntersectionObserver === "undefined") return;
+    if (!active || !hasMore || loadingMore || loadMoreError || !loadMore || !sentinel.current || typeof IntersectionObserver === "undefined") return;
     const area = scrollArea.current;
     // Mobile scrolls the document; the desktop Sheet owns an inner scroll area.
     const root = area && area.scrollHeight > area.clientHeight ? area : null;
@@ -49,28 +52,20 @@ export function NotificationsInbox() {
     }, { root, rootMargin: "200px 0px" });
     observer.observe(sentinel.current);
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, loadMoreError, loadMore, itemCount]);
+  }, [active, hasMore, loadingMore, loadMoreError, loadMore, itemCount]);
   if (!notifications) return null;
   const { data, error, loading, filter } = notifications;
   const displayTime = notifications.observedAt ?? data?.asOf;
   return <div className="relative flex min-h-0 flex-1 flex-col bg-[#f7f9fb] [--primary:#087F80] [--primary-foreground:#fff] dark:bg-background dark:[--primary:#2BAFC0] dark:[--primary-foreground:#043D5C]">
-    <div className="shrink-0 space-y-2 py-3">
-      <div className="flex items-center justify-between gap-2 px-4">
-        <p className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">ตัวกรองการแจ้งเตือน<span aria-hidden className="size-2 rounded-full bg-primary" /></p>
-        <Button type="button" variant="ghost" size="sm" className="min-h-11 text-primary" disabled={!data || data.unreadCount === 0 || reading || !!error || loading} onClick={async () => {
-          if (!data) return;
-          setReading(true);
-          try { await notifications.markRead({ before: data.asOf }); } finally { setReading(false); }
-        }}><CheckCheck aria-hidden />{reading ? "กำลังบันทึก…" : "อ่านทั้งหมด"}</Button>
-      </div>
-      <div role="group" aria-label="หมวดการแจ้งเตือน" className="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {filters.map(({ value, label, Icon }) => <Button key={value} type="button" variant={filter === value ? "default" : "secondary"} className="min-h-11 shrink-0 rounded-full px-4" aria-pressed={filter === value} onClick={() => { if (filter !== value) notifications.setFilter(value); }}>
-          <Icon aria-hidden className="size-4" />{label}{value === "all" && data && <Badge className="rounded-full bg-background/20 px-1.5 text-inherit">{data.unreadCount}</Badge>}
+    <div className="shrink-0 py-2">
+      <div role="group" aria-label="หมวดการแจ้งเตือน" className="flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {filters.map(({ value, label, Icon }) => <Button key={value} type="button" variant={filter === value ? "default" : "secondary"} className="min-h-11 shrink-0 rounded-full px-3" aria-pressed={filter === value} onClick={() => { if (filter !== value) notifications.setFilter(value); }}>
+          <Icon aria-hidden className="size-4" />{label}
         </Button>)}
       </div>
       <p className="sr-only" aria-live="polite">{data ? "ยังไม่อ่าน " + data.unreadCount + " รายการ" : "ยังไม่ทราบจำนวนที่ยังไม่อ่าน"}</p>
     </div>
-    {data?.hasNew && <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 md:absolute md:top-32 md:bottom-auto" role="status">
+    {data?.hasNew && <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 md:absolute md:top-16 md:bottom-auto" role="status">
       <Button type="button" disabled={loading} className="pointer-events-auto min-h-11 rounded-full px-5 shadow-lg" onClick={async () => {
         if (!await notifications.acceptNew()) return;
         const area = scrollArea.current;
@@ -90,8 +85,8 @@ export function NotificationsInbox() {
         <EmptyContent><Button type="button" className="mt-4 min-h-11 rounded-full px-6" onClick={() => { void notifications.acceptNew(); }}><RefreshCw aria-hidden />รีเฟรชข้อมูล</Button></EmptyContent>
       </Empty>}
       {data && displayTime && groups(data.items, displayTime).map(([key, group]) => <section key={key} className="mt-3 mb-6" aria-label={group.title + " " + group.date}>
-        <div className="mb-3 flex items-baseline justify-between gap-3 px-1"><h2 className="text-sm font-bold">{group.title} <span className="text-xs font-normal text-muted-foreground">({group.items.length} รายการที่โหลดแล้ว)</span></h2><span className="shrink-0 text-xs text-muted-foreground">{group.date}</span></div>
-        <ul aria-label="รายการแจ้งเตือน" className="space-y-3">{group.items.map(item => <NotificationItem key={item.id} item={item} asOf={displayTime} />)}</ul>
+        <h2 className="mb-2 px-1 text-xs font-semibold text-muted-foreground">{group.title === "ก่อนหน้านี้" ? group.date : group.title}</h2>
+        <ul aria-label="รายการแจ้งเตือน" className="space-y-2">{group.items.map(item => <NotificationItem key={item.id} item={item} asOf={displayTime} />)}</ul>
       </section>)}
       {hasMore && <div className="py-3 text-center">
         <div ref={sentinel} className="h-px" aria-hidden />
