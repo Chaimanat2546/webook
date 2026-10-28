@@ -1,18 +1,23 @@
-# Royal/Azure application palette
+# Application palette
 
-On 2026-10-28 the user explicitly requested extending the approved Login/History palette to the other application pages. The shared light theme now uses canvas `#F7F8FC`, surface `#FFFFFF`, subtle/selected `#EEF1F8`, border `#DDE2EC`, primary action `#2F3EE8`, focus `#5B8CFF`, main text `#20283A`, metadata `#647087` and placeholder `#8A99A3`.
+The latest user-selected palette supersedes the earlier Royal/Azure application colors. The shared light theme uses neutral grey canvas `#F3F5F7`, white cards/popovers/fields `#FFFFFF`, primary actions and focus `#07557A`, medium grey borders `#CBD2D9`, subtle/selected surfaces `#E9EEF2`, main text `#20283A`, metadata `#647087` and placeholder `#8A99A3`. The border, subtle surface and dark text tint are implementation choices to match the selected colors.
 
-Global semantic tokens propagate the palette to dashboards, houses, bookings, advertisements, users, quotations UI, notifications, dialogs, sheets and popovers. The existing Login/History light presentation, font and geometry remain scoped as before. Other page layouts, fonts, radii and House Workspace Shell structures are unchanged.
+Global semantic tokens propagate these colors to dashboards, houses, bookings, advertisements, users, quotations UI, notifications, dialogs, sheets and popovers, including Login/History. Existing layouts, fonts, radii and House Workspace Shell structures remain unchanged. App/PWA chrome uses the selected primary and canvas.
 
-Hardcoded coastal mobile navigation and notification overrides are replaced by semantic tokens. Booking selection/external-calendar information uses the same primary and neutral roles. Existing error/warning/success/booking-status meaning and original brand/provider assets are preserved. The app/PWA chrome uses the new primary and canvas.
+Standalone `text-primary-text` foregrounds use `#07557A` in light mode and a readable tint `#94C9DF` in dark mode, independently of filled buttons with white text. Existing dark surfaces remain; dark primary actions use the selected `#07557A`, with focus rings using the readable `#94C9DF` tint.
 
-Charts use the data role `#5E6FF2` and derived indigo shades/alpha; `#FFC66F` is retained for the tertiary data series. Plot fills/lines use chart tokens rather than the action token, and chart legends retain matching markers/labels. Standalone `text-primary-text` foregrounds use Royal in light mode and a readable Royal tint `#B8C0FF` in dark mode, independently of Royal filled buttons/white button text. Dark mode uses neutral navy surfaces, Royal actions, Azure focus and readable field borders; it does not retain the former teal palette.
+Error red, warning/success/booking-status colors, original brand/provider assets, and the existing chart-series colors remain unchanged. Quotation document/PDF templates, template previews and user-selected quotation theme colors remain document-specific. No schema, permissions, API, dependencies or business behavior change.
 
-Quotation document/PDF templates, template previews and user-selected quotation theme colors remain document-specific. They are not application chrome and are intentionally excluded from this application recolor. No schema, permissions, API, dependencies or business behavior change.
+This revision is proposed directly to `main` by pull request at the user's request. Creating that PR does not deploy it; deployment remains subject to the repository's environment rules. Validation covers the existing root-layout/input/PWA tests, strict TypeScript and build; previous deployed-palette validation is recorded below as historical evidence only.
 
-Validation uses existing input/root-layout/chart/theme tests, TypeScript, ESLint, production build, and browser inspections of representative light/dark shared surfaces and page shells. Staging delivery uses the existing CI/CD pipeline, including SQL and full integration gates. Rendering checks do not establish a formal accessibility audit.
+## Neutral grey / teal revision verification — 2026-10-28
 
-## Implementation verification — 2026-10-28
+- Existing root-layout, input-surface and PWA build tests: 9 passed, 0 failed. The generated service worker was refreshed by `build:pwa` to match the new source revision.
+- Before the main pull request, the full local Node suite passed: 1,346 passed, 4 existing opt-in integration skips, 0 failed (1,350 total). A fresh read-only palette reviewer reported no actionable findings.
+- Strict TypeScript and targeted ESLint passed. Source review and CSS parsing confirmed the light tokens in both global and Login/History scopes, and confirmed that destructive/error tokens match the previous revision exactly.
+- Production build passed, including TypeScript and prerendering all 11 static pages. The local build uses fictional localhost Supabase configuration and a 2 GiB Node heap cap for this machine; no real backend credentials or deployment are involved.
+
+## Previous Royal/Azure implementation verification — 2026-10-28
 
 - Full local Node suite: 1,346 passed, 4 existing opt-in integration skips, 0 failed (1,350 total). The CI integration gate runs those integrations without skips before deployment.
 - Production build and its strict TypeScript phase passed; ESLint has no errors and 11 pre-existing warnings outside this change.

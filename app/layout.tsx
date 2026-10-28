@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   icons: { apple: "/pwa/apple-touch-icon.png" },
 };
 
-export const viewport: Viewport = { themeColor: "#2F3EE8" };
+export const viewport: Viewport = { themeColor: "#07557A" };
 
 export default function RootLayout({
   children,

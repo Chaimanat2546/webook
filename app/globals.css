@@ -105,27 +105,27 @@
 }
 
 :root {
-  --background: #F7F8FC;
+  --background: #F3F5F7;
   --foreground: #20283A;
   --card: #FFFFFF;
   --card-foreground: #20283A;
   --popover: #FFFFFF;
   --popover-foreground: #20283A;
-  --primary: #2F3EE8;
-  --primary-text: #2F3EE8;
+  --primary: #07557A;
+  --primary-text: #07557A;
   --primary-foreground: #FFFFFF;
-  --secondary: #EEF1F8;
+  --secondary: #E9EEF2;
   --secondary-foreground: #20283A;
-  --muted: #EEF1F8;
+  --muted: #E9EEF2;
   --muted-foreground: #647087;
-  --accent: #EEF1F8;
+  --accent: #E9EEF2;
   --accent-foreground: #20283A;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #DDE2EC;
-  --input: #DDE2EC;
+  --border: #CBD2D9;
+  --input: #CBD2D9;
   --field-background: #FFFFFF;
-  --field-border: #DDE2EC;
-  --ring: #5B8CFF;
+  --field-border: #CBD2D9;
+  --ring: #07557A;
   /* Data-only indigo shades; amber remains the tertiary series. */
   --chart-1: #5E6FF2CC;
   --chart-2: #5E6FF2;
@@ -135,12 +135,12 @@
   --radius: 0.625rem;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #20283A;
-  --sidebar-primary: #2F3EE8;
+  --sidebar-primary: #07557A;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEF1F8;
+  --sidebar-accent: #E9EEF2;
   --sidebar-accent-foreground: #20283A;
-  --sidebar-border: #DDE2EC;
-  --sidebar-ring: #5B8CFF;
+  --sidebar-border: #CBD2D9;
+  --sidebar-ring: #07557A;
 }
 
 .dark {
@@ -150,8 +150,8 @@
   --card-foreground: #F7F8FC;
   --popover: #181E2E;
   --popover-foreground: #F7F8FC;
-  --primary: #2F3EE8;
-  --primary-text: #B8C0FF;
+  --primary: #07557A;
+  --primary-text: #94C9DF;
   --primary-foreground: #FFFFFF;
   --secondary: #242C40;
   --secondary-foreground: #F7F8FC;
@@ -160,11 +160,11 @@
   --accent: #242C40;
   --accent-foreground: #F7F8FC;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #DDE2EC26;
-  --input: #DDE2EC26;
+  --border: #CBD2D926;
+  --input: #CBD2D926;
   --field-background: #181E2E;
   --field-border: #647087;
-  --ring: #5B8CFF;
+  --ring: #94C9DF;
   --chart-1: #5E6FF2CC;
   --chart-2: #5E6FF2;
   --chart-3: #FFC66F;
@@ -172,12 +172,12 @@
   --chart-5: #A7B0F8;
   --sidebar: #181E2E;
   --sidebar-foreground: #F7F8FC;
-  --sidebar-primary: #2F3EE8;
+  --sidebar-primary: #07557A;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #242C40;
   --sidebar-accent-foreground: #F7F8FC;
-  --sidebar-border: #DDE2EC26;
-  --sidebar-ring: #5B8CFF;
+  --sidebar-border: #CBD2D926;
+  --sidebar-ring: #94C9DF;
 }
 
 @layer base {
@@ -340,40 +340,40 @@ html:has([data-slot='sidebar-wrapper']) {
   scrollbar-gutter: stable;
 }
 
-/* Flow01/Flow02 retain their approved light presentation, font and geometry. */
+/* Flow01/Flow02 use the shared light palette while retaining their font and geometry. */
 .audit-theme,
 body:has(.audit-theme) [data-slot="sheet-content"],
 body:has(.audit-theme) [data-slot="popover-content"] {
   color-scheme: light;
-  --background: #F7F8FC;
+  --background: #F3F5F7;
   --foreground: #20283A;
   --card: #FFFFFF;
   --card-foreground: #20283A;
   --popover: #FFFFFF;
   --popover-foreground: #20283A;
-  --primary: #2F3EE8;
-  --primary-text: #2F3EE8;
+  --primary: #07557A;
+  --primary-text: #07557A;
   --primary-foreground: #FFFFFF;
-  --secondary: #EEF1F8;
+  --secondary: #E9EEF2;
   --secondary-foreground: #20283A;
-  --muted: #EEF1F8;
+  --muted: #E9EEF2;
   --muted-foreground: #647087;
-  --accent: #EEF1F8;
+  --accent: #E9EEF2;
   --accent-foreground: #20283A;
-  --border: #DDE2EC;
-  --input: #DDE2EC;
+  --border: #CBD2D9;
+  --input: #CBD2D9;
   --field-background: #FFFFFF;
-  --field-border: #DDE2EC;
-  --ring: #5B8CFF;
+  --field-border: #CBD2D9;
+  --ring: #07557A;
   --radius: 0.5rem;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #20283A;
-  --sidebar-primary: #2F3EE8;
+  --sidebar-primary: #07557A;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEF1F8;
+  --sidebar-accent: #E9EEF2;
   --sidebar-accent-foreground: #20283A;
-  --sidebar-border: #DDE2EC;
-  --sidebar-ring: #5B8CFF;
+  --sidebar-border: #CBD2D9;
+  --sidebar-ring: #07557A;
   font-family: var(--font-jakarta), var(--font-webook-sans), sans-serif;
 }
 .audit-theme :is(button, a, input):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }

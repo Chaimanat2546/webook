@@ -98,7 +98,7 @@ test("dark primary text stays readable on canvas, cards and selected surfaces", 
   for (const role of ["--background","--card","--muted"]) assert.ok(contrast(foreground,tokens.get(role)!) >= 4.5, `primary text contrast on ${role}`);
 });
 
-test("light fields use the approved soft border while dark borders retain contrast", () => {
+test("light fields use the approved medium grey border while dark borders retain contrast", () => {
   const stylesheet = postcss.parse(readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"));
   for (const selector of [":root", ".dark"]) {
     const tokens = new Map<string, string>();
@@ -107,10 +107,10 @@ test("light fields use the approved soft border while dark borders retain contra
     const border = tokens.get("--field-border");
     assert.ok(field && border, selector);
     if (selector === ":root") {
-      assert.equal(border, "#DDE2EC");
+      assert.equal(border, "#CBD2D9");
       assert.equal(field, "#FFFFFF");
-      assert.equal(tokens.get("--border"), "#DDE2EC");
-      assert.equal(tokens.get("--ring"), "#5B8CFF");
+      assert.equal(tokens.get("--border"), "#CBD2D9");
+      assert.equal(tokens.get("--ring"), "#07557A");
     }
     for (const background of [field, tokens.get("--background")!, tokens.get("--card")!]) {
       if (selector === ".dark") {
