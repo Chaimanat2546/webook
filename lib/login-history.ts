@@ -1,3 +1,5 @@
+import { parseAnalyticsTimeRange, type AnalyticsTimeRange } from "./website-analytics-time.ts";
+
 export type DeviceType = "desktop" | "mobile" | "tablet" | "unknown";
 export type LoginLocationStatus = "pending" | "success" | "skipped" | "denied" | "unavailable" | "timeout" | "unsupported";
 export interface LoginActor { userId: string; sessionId: string }
@@ -16,7 +18,7 @@ export interface LoginHistoryEntry {
 }
 export type HistoryScope = { kind: "self" | "root-admin"; userId: string };
 export type HistorySort = "latest" | "oldest";
-export interface HistoryFilter { search: string; from: string | null; to: string | null; status: LoginLocationStatus | null; sort: HistorySort; page: number; pageSize: number }
+export interface HistoryFilter { search: string; from: string | null; to: string | null; timeFrom: string | null; timeTo: string | null; status: LoginLocationStatus | null; sort: HistorySort; page: number; pageSize: number }
 export interface HistoryPage { entries: LoginHistoryEntry[]; total: number; page: number; pageSize: number }
 export class LoginHistoryError extends Error {
   readonly status: 400 | 401 | 403 | 404 | 409 | 503;
@@ -68,12 +70,16 @@ export function parseHistoryFilter(query: Record<string, string | undefined>): H
   };
   const from = query.from ? dayStart(query.from) : null;
   const to = query.to ? dayStart(query.to) + 24*60*60*1000 : null;
+  let time: AnalyticsTimeRange | undefined;
+  try {
+    time = parseAnalyticsTimeRange(query.timeFrom, query.timeTo, query.from && query.to ? { from:query.from, to:query.to } : undefined);
+  } catch { throw new LoginHistoryError(400, false, "invalid_date"); }
   const search = (query.q ?? "").trim();
   if (from !== null && to !== null && from >= to) throw new LoginHistoryError(400, false, "invalid_date");
   const status = query.status || null;
   const sort = query.sort || "latest";
   if (search.length > 200 || (status !== null && !Object.hasOwn(LOCATION_STATUS_LABELS, status)) || (sort !== "latest" && sort !== "oldest")) throw new LoginHistoryError(400);
-  return { search, from: from === null ? null : new Date(from).toISOString(), to: to === null ? null : new Date(to).toISOString(), status: status as LoginLocationStatus | null, sort, page: integer(query.page,1,1000000), pageSize: integer(query.pageSize,25,100) };
+  return { search, from: from === null ? null : new Date(from).toISOString(), to: to === null ? null : new Date(to).toISOString(), timeFrom:time?.timeFrom ?? null, timeTo:time?.timeTo ?? null, status: status as LoginLocationStatus | null, sort, page: integer(query.page,1,1000000), pageSize: integer(query.pageSize,25,100) };
 }
 export function classifyLoginDevice(userAgent: string | null): Pick<RecordLoginInput,"os" | "browser" | "deviceType"> {
   const ua = (userAgent ?? "").slice(0,2048);

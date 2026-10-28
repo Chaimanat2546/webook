@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { AlertCircle, Search, SlidersHorizontal } from "lucide-react";
-import type { DateRange } from "react-day-picker";
+import { AlertCircle, CalendarDaysIcon, Search, SlidersHorizontal } from "lucide-react";
 import { useIsMobile } from "../../../hooks/use-mobile";
 import { LOCATION_STATUS_LABELS, LoginHistoryError, parseHistoryFilter } from "../../../lib/login-history";
 import { historyHref, type HistoryParams } from "../../../lib/login-history-view";
+import type { AnalyticsDateRange } from "../../../lib/website-analytics";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
-import { ThaiDateRangePicker } from "../../ui/thai-date-range-picker";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "../../ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
-import { RangeShortcuts } from "../dashboard/range-shortcuts";
+import { WebsiteDateRangePicker } from "../dashboard/website-analytics/website-date-range-picker";
 import { useHistoryNavigation } from "./history-navigation";
 
 interface HistoryFiltersProps { params: HistoryParams; dateError?: boolean; disabled?: boolean }
@@ -23,15 +22,19 @@ function calendarDate(value?: string): Date | undefined {
   const [year,month,day] = value.split("-").map(Number);
   return new Date(year,month-1,day);
 }
-function dayValue(value?: Date): string {
-  return value ? `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,"0")}-${String(value.getDate()).padStart(2,"0")}` : "";
+function initialRange(params:HistoryParams): AnalyticsDateRange | null {
+  try {
+    parseHistoryFilter({from:params.from,to:params.to,timeFrom:params.timeFrom,timeTo:params.timeTo});
+    return params.from && params.to ? {from:params.from,to:params.to,timeFrom:params.timeFrom,timeTo:params.timeTo} : null;
+  } catch { return null; }
 }
+const thaiDay = new Intl.DateTimeFormat("th-TH",{day:"numeric",month:"short",year:"numeric"});
 
 export function HistoryFilters({ params, dateError = false, disabled = false }: HistoryFiltersProps) {
   const mobile = useIsMobile();
   const navigation = useHistoryNavigation();
   const [search, setSearch] = useState(params.q ?? "");
-  const [range, setRange] = useState<DateRange | undefined>(params.from || params.to ? {from:calendarDate(params.from),to:calendarDate(params.to)} : undefined);
+  const [range, setRange] = useState<AnalyticsDateRange | null>(() => initialRange(params));
   const [today] = useState(() => new Date(Date.now() + 7 * 3600000).toISOString().slice(0,10));
   const [error, setError] = useState(dateError);
   const [filterError, setFilterError] = useState(false);
@@ -40,12 +43,13 @@ export function HistoryFilters({ params, dateError = false, disabled = false }: 
   const [sort, setSort] = useState(params.sort === "oldest" ? "oldest" : "latest");
   const dateGroup = useRef<HTMLDivElement>(null);
   const dateTouched = useRef(false);
-  const dateMessage = "ช่วงวันที่ไม่ถูกต้อง กรุณาเลือกใหม่";
+  const dateMessage = "ช่วงวันที่หรือเวลาไม่ถูกต้อง กรุณาเลือกใหม่";
+  const partialDate = !range && Boolean(params.from) !== Boolean(params.to) ? calendarDate(params.from || params.to) : undefined;
   useEffect(() => { if (dateError) dateGroup.current?.querySelector("button")?.focus(); }, [dateError,mobile]);
 
   function apply(event?: FormEvent, fromSheet = false, selectedRange = range) {
     event?.preventDefault();
-    const next = { ...params, q:search.trim(), from:dateTouched.current ? dayValue(selectedRange?.from) : params.from, to:dateTouched.current ? dayValue(selectedRange?.to) : params.to, status:fromSheet ? status : params.status, sort:fromSheet ? sort : params.sort, page:undefined };
+    const next = { ...params, q:search.trim(), from:dateTouched.current ? selectedRange?.from : params.from, to:dateTouched.current ? selectedRange?.to : params.to, timeFrom:dateTouched.current ? selectedRange?.timeFrom : params.timeFrom, timeTo:dateTouched.current ? selectedRange?.timeTo : params.timeTo, status:fromSheet ? status : params.status, sort:fromSheet ? sort : params.sort, page:undefined };
     try { parseHistoryFilter(next); }
     catch (failure) {
       const dateFailure = failure instanceof LoginHistoryError && failure.reason === "invalid_date";
@@ -77,20 +81,16 @@ export function HistoryFilters({ params, dateError = false, disabled = false }: 
     </div>
     <div className="flex items-start gap-2">
       <div ref={dateGroup} role="group" aria-label="ช่วงวันที่เข้าสู่ระบบ" className={`min-w-0 flex-1 rounded-lg ${error ? "ring-1 ring-destructive" : ""}`}>
-        <ThaiDateRangePicker
+        <WebsiteDateRangePicker
           label="ช่วงวันที่เข้าสู่ระบบ"
-          value={range}
+          month={today.slice(0,7)}
+          today={today}
+          range={range}
+          singleDayTimeDescription="กรองเวลาเข้าสู่ระบบ"
+          triggerContent={partialDate ? <><CalendarDaysIcon aria-hidden /><span className="truncate">{params.from ? "ตั้งแต่" : "ถึง"} {thaiDay.format(partialDate)}</span></> : undefined}
           invalid={error}
           describedBy={error ? "history-date-error" : undefined}
           loading={disabled || navigation.pending}
-          confirmSelection
-          renderShortcuts={(select, custom, draft) => <RangeShortcuts
-            compact
-            today={today}
-            selected={draft?.from && draft.to ? { from:dayValue(draft.from), to:dayValue(draft.to) } : undefined}
-            onSelect={select}
-            onCustom={custom}
-          />}
           onChange={next => {
             dateTouched.current=true;
             setRange(next);
@@ -107,7 +107,7 @@ export function HistoryFilters({ params, dateError = false, disabled = false }: 
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
       {params.status && Object.hasOwn(LOCATION_STATUS_LABELS,params.status) ? <span>{LOCATION_STATUS_LABELS[params.status as keyof typeof LOCATION_STATUS_LABELS]}</span> : null}
       {params.sort === "oldest" ? <span>เก่าสุดก่อน</span> : null}
-      {params.q || params.from || params.to || params.status || params.sort === "oldest" ? <Button type="button" variant="link" className="h-auto px-0 py-1 text-xs" onClick={() => navigation.navigate("/admin/login-history")}>ล้างตัวกรอง</Button> : null}
+      {params.q || params.from || params.to || params.timeFrom || params.timeTo || params.status || params.sort === "oldest" ? <Button type="button" variant="link" className="h-auto px-0 py-1 text-xs" onClick={() => navigation.navigate("/admin/login-history")}>ล้างตัวกรอง</Button> : null}
     </div>
   </form>;
 }

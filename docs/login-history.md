@@ -86,12 +86,22 @@ Pages default to 25 records (max 100). `status` accepts the existing seven statu
 `sort=latest` (default) orders login time/UUID descending; `sort=oldest` orders both ascending.
 Status/date/search predicates and ordering apply before pagination; count and rows use the same predicate.
 Mobile uses a Sheet for status/order, Bangkok-day journal groups and separate date controls.
-The date picker shares the dashboard's `ThaiDateRangePicker` and compact `RangeShortcuts`.
-Date presets and manual ranges stay as drafts until the picker’s Apply action; Cancel leaves the filter unchanged.
+The date/time picker reuses the dashboard's complete `WebsiteDateRangePicker`, including compact presets,
+the optional hour selector and Apply/Cancel actions. An explicit null selection keeps unrestricted history empty
+instead of defaulting its picker to the report's current month. Existing report defaults are unchanged.
+Date presets, manual ranges and hours stay as drafts until the picker’s Apply action; Cancel leaves the filter unchanged.
 Applying a range navigates immediately, preserving search/status/order and resetting pagination.
 Without a date filter, history remains unrestricted by date. Clear filters restores this state.
+`timeFrom`/`timeTo` require both dates and use the same whole-hour validation as the dashboard:
+starts `00:00`–`23:00`, ends `01:00`–`24:00`, with start strictly before end. Omitted hours mean full days.
+For multiple days, a selected window applies separately to **each Bangkok day**, rather than including overnight gaps.
+For example, October 28–29 with `09:00`–`18:00` includes logins at 09:00 and before 18:00 on each day.
+Time filtering uses login time (`logged_in_at`), as does the existing date filter, rather than location capture time.
+The new `20261029100000_login_history_time_filters.sql` migration adds defaulted integer hour arguments
+to the root-only list RPC. Date, time, status and search predicates all apply before both counting and pagination;
+older callers retain full-day behavior. Authenticated clients cannot invoke this service-role-only RPC.
 Loading, default empty, filtered empty, invalid date and load failure retain the shared page context.
-Date errors use ช่วงวันที่ไม่ถูกต้อง กรุณาเลือกใหม่; retry/page changes preserve criteria.
+Date/time errors use ช่วงวันที่หรือเวลาไม่ถูกต้อง กรุณาเลือกใหม่; retry/page changes preserve criteria including clocks.
 The desktop table becomes journal cards on mobile. Coordinates and accuracy are shown without contacting
 a map/reverse-geocoding provider. Private data is excluded from service-worker caches/offline replay.
 

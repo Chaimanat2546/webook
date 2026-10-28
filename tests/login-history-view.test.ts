@@ -5,6 +5,18 @@ import { historyHref, historyRangeLabel, hasHistoryCriteria } from "../lib/login
 import type { LoginHistoryRepository } from "../server/repositories/login-history.ts";
 
 const actor={userId:"actor",sessionId:"session"};
+
+test("history navigation retains clocks and invalid time ranges never query records",async()=>{
+  const params={q:"Alice",from:"2026-10-28",to:"2026-10-29",timeFrom:"09:00",timeTo:"18:00",status:"success",sort:"oldest"};
+  const url=new URL(historyHref(params,{page:"2"}),"https://test.invalid");
+  assert.equal(url.searchParams.get("timeFrom"),"09:00");
+  assert.equal(url.searchParams.get("timeTo"),"18:00");
+  const f=repository();
+  const view=await loadHistoryView(f.repo,actor,{...params,timeFrom:"19:00"});
+  assert.equal(view.state,"invalid-date");assert.equal(f.reads(),0);
+  assert.equal(view.params.timeFrom,"19:00");
+  assert.equal(hasHistoryCriteria({timeFrom:"09:00"}),true);
+});
 function repository(root=true) {
   let reads=0;
   const repo={scope:async()=>({kind:root?"root-admin":"self",userId:actor.userId}),list:async()=>{reads++;return {entries:[],total:0,page:1,pageSize:25};}} as Pick<LoginHistoryRepository,"scope"|"list">;

@@ -4,6 +4,23 @@ import { parseLocationReport, parseHistoryFilter, classifyLoginDevice, actorFrom
 const historyId = "40000000-0000-4000-8000-000000000001";
 const actorId = "10000000-0000-4000-8000-000000000001";
 
+test("history accepts dashboard hourly windows and rejects invalid or incomplete clocks", () => {
+  const dates = { from:"2026-10-28", to:"2026-10-29" };
+  const filter = parseHistoryFilter({ ...dates, timeFrom:"09:00", timeTo:"18:00" });
+  assert.equal(filter.timeFrom,"09:00");
+  assert.equal(filter.timeTo,"18:00");
+  assert.equal(filter.from,"2026-10-27T17:00:00.000Z");
+  assert.equal(filter.to,"2026-10-29T17:00:00.000Z");
+  assert.equal(parseHistoryFilter({ ...dates,timeFrom:"23:00",timeTo:"24:00" }).timeTo,"24:00");
+  for (const clocks of [
+    {timeFrom:"09:00"}, {timeTo:"18:00"}, {timeFrom:"09:30",timeTo:"18:00"},
+    {timeFrom:"24:00",timeTo:"24:00"}, {timeFrom:"18:00",timeTo:"09:00"},
+    {timeFrom:"09:00",timeTo:"09:00"}, {timeFrom:"",timeTo:""},
+  ]) assert.throws(() => parseHistoryFilter({...dates,...clocks}), error => error instanceof LoginHistoryError && error.reason === "invalid_date");
+  assert.throws(() => parseHistoryFilter({timeFrom:"09:00",timeTo:"18:00"}));
+  assert.throws(() => parseHistoryFilter({from:dates.from,timeFrom:"09:00",timeTo:"18:00"}));
+});
+
 test("history status and order are allowlisted and date failures stay distinguishable", () => {
   assert.equal(parseHistoryFilter({}).status, null);
   assert.equal(parseHistoryFilter({}).sort, "latest");
