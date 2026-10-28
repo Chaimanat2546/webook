@@ -1,5 +1,5 @@
 export type HistoryParams = Record<string, string | undefined>;
-const criteriaKeys = ["q", "from", "to", "status", "sort", "page", "pageSize"] as const;
+const criteriaKeys = ["q", "from", "to", "timeFrom", "timeTo", "status", "sort", "page", "pageSize"] as const;
 
 export function historyHref(params: HistoryParams, overrides: HistoryParams = {}): string {
   const query = new URLSearchParams();
@@ -8,7 +8,7 @@ export function historyHref(params: HistoryParams, overrides: HistoryParams = {}
   return `/admin/login-history${query.size ? `?${query}` : ""}`;
 }
 export function hasHistoryCriteria(params: HistoryParams): boolean {
-  return Boolean(params.q?.trim() || params.from || params.to || params.status);
+  return Boolean(params.q?.trim() || params.from || params.to || params.timeFrom || params.timeTo || params.status);
 }
 export function historyRangeLabel(page: number, pageSize: number, total: number, count: number): string {
   if (!total || !count) return "แสดง 0 รายการ";

@@ -11,17 +11,18 @@ import { Button } from "../../../ui/button";
 import { Switch } from "../../../ui/switch";
 
 interface WebsiteDateRangePickerProps extends Omit<ReportDateRangePickerProps, "range" | "onChange" | "confirmSelection" | "renderSelection" | "canConfirm" | "onOpenChange" | "valueSuffix"> {
-  range?: AnalyticsDateRange;
+  range?: AnalyticsDateRange | null;
+  singleDayTimeDescription?: string;
   matchPrimary?: AnalyticsDateRange;
   onChange: (range: AnalyticsDateRange) => void;
 }
 
 const singleDay = (draft: DateRange | undefined) => Boolean(draft?.from && draft.to && draft.from.getTime() === draft.to.getTime());
 const fullDay: AnalyticsTimeRange = { timeFrom: "00:00", timeTo: "24:00" };
-const hasTimeFilter = (range: AnalyticsDateRange | undefined) => Boolean(range?.timeFrom && range.timeTo && (range.timeFrom !== fullDay.timeFrom || range.timeTo !== fullDay.timeTo));
+const hasTimeFilter = (range: AnalyticsDateRange | null | undefined) => Boolean(range?.timeFrom && range.timeTo && (range.timeFrom !== fullDay.timeFrom || range.timeTo !== fullDay.timeTo));
 
 /** Date and hour edits are drafts until the popup's single Apply action. */
-export function WebsiteDateRangePicker({ range, matchPrimary, onChange, ...props }: WebsiteDateRangePickerProps) {
+export function WebsiteDateRangePicker({ range, matchPrimary, singleDayTimeDescription = "กราฟรายชั่วโมง", onChange, ...props }: WebsiteDateRangePickerProps) {
   const id = useId();
   const currentTime = (): AnalyticsTimeRange => ({ timeFrom: range?.timeFrom ?? "00:00", timeTo: range?.timeTo ?? "24:00" });
   const [time, setTime] = useState(currentTime);
@@ -56,7 +57,7 @@ export function WebsiteDateRangePicker({ range, matchPrimary, onChange, ...props
         }} />
       </div>
       {specifyTime && <WebsiteTimeRangeFilter portalContainer={portalContainer} idPrefix={id} value={time} pending={props.loading} onChange={setTime} />}
-      <p className="text-xs text-muted-foreground">เวลาไทย · {specifyTime ? singleDay(draft) ? "กราฟรายชั่วโมง" : "ใช้ช่วงเวลานี้ทุกวัน" : "เต็มวัน 24 ชั่วโมง (00:00–24:00)"}</p>
+      <p className="text-xs text-muted-foreground">เวลาไทย · {specifyTime ? singleDay(draft) ? singleDayTimeDescription : "ใช้ช่วงเวลานี้ทุกวัน" : "เต็มวัน 24 ชั่วโมง (00:00–24:00)"}</p>
     </div>}
       </>;
     }}

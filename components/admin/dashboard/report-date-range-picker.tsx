@@ -5,9 +5,10 @@ import { ThaiDateRangePicker, type ThaiDateRangePickerProps } from "../../ui/tha
 import { RangeShortcuts } from "./range-shortcuts";
 
 interface ReportDateRange { from: string; to: string }
-export interface ReportDateRangePickerProps extends Pick<ThaiDateRangePickerProps, "renderSelection" | "canConfirm" | "onOpenChange" | "valueSuffix" | "triggerContent"> {
+export interface ReportDateRangePickerProps extends Pick<ThaiDateRangePickerProps, "renderSelection" | "canConfirm" | "onOpenChange" | "valueSuffix" | "triggerContent" | "invalid" | "describedBy"> {
   month: string;
-  range?: ReportDateRange;
+  /** null keeps the picker empty; undefined retains the report's month default. */
+  range?: ReportDateRange | null;
   today?: string;
   availableFrom?: string;
   pastOnly?: boolean;
@@ -28,9 +29,9 @@ export function ReportDateRangePicker({ month, range, today, availableFrom, past
   const currentDay = today ?? clockToday;
   const [year, number] = month.split("-").map(Number);
   const monthEnd = new Date(Date.UTC(year, number, 0)).toISOString().slice(0, 10);
-  const selected = range ?? { from: `${month}-01`, to: pastOnly && monthEnd > currentDay ? currentDay : monthEnd };
+  const selected = range === null ? undefined : range ?? { from: `${month}-01`, to: pastOnly && monthEnd > currentDay ? currentDay : monthEnd };
   return <ThaiDateRangePicker {...popupProps} confirmSelection={confirmSelection} autoApply={!confirmSelection} portalContainer={portalContainer} loading={loading} className={className} label={label}
-    value={{ from: localDate(selected.from), to: localDate(selected.to) }}
+    value={selected ? { from: localDate(selected.from), to: localDate(selected.to) } : undefined}
     disabled={[{ before: localDate("1900-01-01") }, { after: localDate(pastOnly ? currentDay : "2199-12-31") }]}
     renderShortcuts={showShortcuts ? (select, custom, draft) => <RangeShortcuts compact={compactShortcuts} today={currentDay} availableFrom={availableFrom} selected={draft?.from && draft.to ? { from: dateKey(draft.from), to: dateKey(draft.to) } : undefined} onSelect={select} onCustom={custom} /> : undefined}
     onChange={draft => { if (draft?.from && draft.to) onChange({ from: dateKey(draft.from), to: dateKey(draft.to) }); }} />;
