@@ -13,6 +13,7 @@ import { ThaiDateRangePicker } from "../../ui/thai-date-range-picker";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "../../ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
+import { RangeShortcuts } from "../dashboard/range-shortcuts";
 import { useHistoryNavigation } from "./history-navigation";
 
 interface HistoryFiltersProps { params: HistoryParams; dateError?: boolean; disabled?: boolean }
@@ -31,6 +32,7 @@ export function HistoryFilters({ params, dateError = false, disabled = false }: 
   const navigation = useHistoryNavigation();
   const [search, setSearch] = useState(params.q ?? "");
   const [range, setRange] = useState<DateRange | undefined>(params.from || params.to ? {from:calendarDate(params.from),to:calendarDate(params.to)} : undefined);
+  const [today] = useState(() => new Date(Date.now() + 7 * 3600000).toISOString().slice(0,10));
   const [error, setError] = useState(dateError);
   const [filterError, setFilterError] = useState(false);
   const [open, setOpen] = useState(false);
@@ -41,9 +43,9 @@ export function HistoryFilters({ params, dateError = false, disabled = false }: 
   const dateMessage = "ช่วงวันที่ไม่ถูกต้อง กรุณาเลือกใหม่";
   useEffect(() => { if (dateError) dateGroup.current?.querySelector("button")?.focus(); }, [dateError,mobile]);
 
-  function apply(event?: FormEvent, fromSheet = false) {
+  function apply(event?: FormEvent, fromSheet = false, selectedRange = range) {
     event?.preventDefault();
-    const next = { ...params, q:search.trim(), from:dateTouched.current ? dayValue(range?.from) : params.from, to:dateTouched.current ? dayValue(range?.to) : params.to, status:fromSheet ? status : params.status, sort:fromSheet ? sort : params.sort, page:undefined };
+    const next = { ...params, q:search.trim(), from:dateTouched.current ? dayValue(selectedRange?.from) : params.from, to:dateTouched.current ? dayValue(selectedRange?.to) : params.to, status:fromSheet ? status : params.status, sort:fromSheet ? sort : params.sort, page:undefined };
     try { parseHistoryFilter(next); }
     catch (failure) {
       const dateFailure = failure instanceof LoginHistoryError && failure.reason === "invalid_date";
@@ -75,7 +77,27 @@ export function HistoryFilters({ params, dateError = false, disabled = false }: 
     </div>
     <div className="flex items-start gap-2">
       <div ref={dateGroup} role="group" aria-label="ช่วงวันที่เข้าสู่ระบบ" className={`min-w-0 flex-1 rounded-lg ${error ? "ring-1 ring-destructive" : ""}`}>
-        <ThaiDateRangePicker label="ช่วงวันที่เข้าสู่ระบบ" value={range} invalid={error} describedBy={error ? "history-date-error" : undefined} loading={disabled} onChange={next => {dateTouched.current=true;setRange(next);setError(false);}} className="h-10 rounded-lg" />
+        <ThaiDateRangePicker
+          label="ช่วงวันที่เข้าสู่ระบบ"
+          value={range}
+          invalid={error}
+          describedBy={error ? "history-date-error" : undefined}
+          loading={disabled || navigation.pending}
+          confirmSelection
+          renderShortcuts={(select, custom, draft) => <RangeShortcuts
+            compact
+            today={today}
+            selected={draft?.from && draft.to ? { from:dayValue(draft.from), to:dayValue(draft.to) } : undefined}
+            onSelect={select}
+            onCustom={custom}
+          />}
+          onChange={next => {
+            dateTouched.current=true;
+            setRange(next);
+            apply(undefined,false,next);
+          }}
+          className="h-10 rounded-lg"
+        />
       </div>
       {mobile ? <Sheet open={open} onOpenChange={changeOpen}><SheetTrigger asChild><Button type="button" variant="outline" disabled={disabled} className="h-10 rounded-lg bg-card text-primary-text">{filterLabel}</Button></SheetTrigger><SheetContent side="bottom" className="audit-theme max-h-[90dvh] overflow-y-auto rounded-t-2xl px-5"><SheetHeader className="px-0"><SheetTitle>ตัวกรองประวัติ</SheetTitle><SheetDescription>เลือกสถานะตำแหน่งและลำดับรายการ</SheetDescription></SheetHeader>{options}</SheetContent></Sheet>
         : <Popover open={open} onOpenChange={changeOpen}><PopoverTrigger render={<Button type="button" variant="outline" disabled={disabled} className="h-10 rounded-lg bg-card text-primary-text">{filterLabel}</Button>} /><PopoverContent className="audit-theme w-80 rounded-xl bg-card p-5" align="end">{options}</PopoverContent></Popover>}
@@ -86,7 +108,6 @@ export function HistoryFilters({ params, dateError = false, disabled = false }: 
       {params.status && Object.hasOwn(LOCATION_STATUS_LABELS,params.status) ? <span>{LOCATION_STATUS_LABELS[params.status as keyof typeof LOCATION_STATUS_LABELS]}</span> : null}
       {params.sort === "oldest" ? <span>เก่าสุดก่อน</span> : null}
       {params.q || params.from || params.to || params.status || params.sort === "oldest" ? <Button type="button" variant="link" className="h-auto px-0 py-1 text-xs" onClick={() => navigation.navigate("/admin/login-history")}>ล้างตัวกรอง</Button> : null}
-      {(range?.from || range?.to) ? <Button type="submit" disabled={disabled} variant="link" className="h-auto px-0 py-1 text-xs">ใช้ช่วงวันที่</Button> : null}
     </div>
   </form>;
 }

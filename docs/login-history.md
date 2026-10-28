@@ -86,6 +86,10 @@ Pages default to 25 records (max 100). `status` accepts the existing seven statu
 `sort=latest` (default) orders login time/UUID descending; `sort=oldest` orders both ascending.
 Status/date/search predicates and ordering apply before pagination; count and rows use the same predicate.
 Mobile uses a Sheet for status/order, Bangkok-day journal groups and separate date controls.
+The date picker shares the dashboard's `ThaiDateRangePicker` and compact `RangeShortcuts`.
+Date presets and manual ranges stay as drafts until the picker’s Apply action; Cancel leaves the filter unchanged.
+Applying a range navigates immediately, preserving search/status/order and resetting pagination.
+Without a date filter, history remains unrestricted by date. Clear filters restores this state.
 Loading, default empty, filtered empty, invalid date and load failure retain the shared page context.
 Date errors use ช่วงวันที่ไม่ถูกต้อง กรุณาเลือกใหม่; retry/page changes preserve criteria.
 The desktop table becomes journal cards on mobile. Coordinates and accuracy are shown without contacting
