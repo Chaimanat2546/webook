@@ -20,8 +20,9 @@ export interface HistoryPage { entries: LoginHistoryEntry[]; total: number; page
 export class LoginHistoryError extends Error {
   readonly status: 400 | 401 | 403 | 404 | 409 | 503;
   readonly transient: boolean;
-  constructor(status: LoginHistoryError["status"], transient = false) {
-    super("login_history_failed"); this.status = status; this.transient = transient;
+  readonly reason: "invalid_capture_time" | null;
+  constructor(status: LoginHistoryError["status"], transient = false, reason: LoginHistoryError["reason"] = null) {
+    super("login_history_failed"); this.status = status; this.transient = transient; this.reason = reason;
   }
 }
 export const LOGIN_LOCATION_WINDOW_MS = 10 * 60 * 1000;

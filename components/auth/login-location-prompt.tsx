@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LoaderCircle, MapPin } from "lucide-react";
 import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
+import { LOGIN_LOCATION_WINDOW_MS } from "../../lib/login-history";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -35,7 +36,7 @@ export function LoginLocationPrompt({historyId,userId,expiresAt}:{historyId:stri
   },()=>false);
   const blocked=attempted || previouslyAttempted;
   useEffect(()=>{
-    const request=createLoginLocationRequest({historyId,geolocation:navigator.geolocation ?? null,onState(next){setState(next);if(next==="saved")router.replace("/");},save:async(report,signal)=>{
+    const request=createLoginLocationRequest({historyId,minimumCapturedAt:expiresAt-LOGIN_LOCATION_WINDOW_MS,geolocation:navigator.geolocation ?? null,onState(next){setState(next);if(next==="saved")router.replace("/");},save:async(report,signal)=>{
       const response=await fetch("/api/login-history/location",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(report),credentials:"same-origin",cache:"no-store",signal});
       setFailureStatus(response.ok?null:response.status);
       return response.ok;

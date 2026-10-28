@@ -11,11 +11,12 @@ export interface LoginHistoryRepository {
   sessionActive(actor: LoginActor): Promise<boolean>;
   purgeExpired(): Promise<number>;
 }
-function dbError(error: { code?: string } | null) {
+function dbError(error: { code?: string; message?: string } | null) {
   if (!error) return;
   const code = error.code;
   const status = code === "28000" ? 401 : code === "42501" ? 403 : code === "P0002" ? 404 : code === "P0001" ? 409 : code === "23514" || code === "22023" || code === "22P02" ? 400 : 503;
-  throw new LoginHistoryError(status, status===503 && ["40001","40P01","08006"].includes(code ?? ""));
+  const reason=code==="22023" && error.message==="invalid_capture_time"?"invalid_capture_time":null;
+  throw new LoginHistoryError(status, status===503 && ["40001","40P01","08006"].includes(code ?? ""),reason);
 }
 function entry(value: unknown): LoginHistoryEntry {
   const row = asLoginRecord(value);

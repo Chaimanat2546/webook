@@ -1,5 +1,5 @@
 import "server-only";
-import { LoginHistoryError, parseLocationReport, type LoginActor } from "../../lib/login-history.ts";
+import { LoginHistoryError, parseLocationReport, type LoginActor, type LocationReport } from "../../lib/login-history.ts";
 import type { LoginHistoryRepository } from "../repositories/login-history.ts";
 import { attachLoginLocation } from "../services/login-history.ts";
 
@@ -42,16 +42,29 @@ async function limitedJson(request: Request): Promise<unknown> {
 }
 export async function handleLoginLocation(request: Request,authenticate:()=>Promise<{actor:LoginActor;repository:LoginHistoryRepository}>) {
   const headers={"Cache-Control":"private, no-store"};
+  let stage:"request" | "auth" | "storage"="request";
+  let report:LocationReport | undefined;
   try {
     // Request.url comes from the server ingress. Never trust forwarded-host or
     // an origin supplied inside the JSON body to decide this boundary.
     if (!sameOrigin(request)) throw new LoginHistoryError(403);
-    const report=parseLocationReport(await limitedJson(request));
+    report=parseLocationReport(await limitedJson(request));
+    stage="auth";
     const {actor,repository}=await authenticate();
+    stage="storage";
     await attachLoginLocation(repository,actor,report);
     return Response.json({saved:true},{headers});
   } catch (error) {
     const status=error instanceof LoginHistoryError?error.status:503;
+    if(status===400){
+      const reason=error instanceof LoginHistoryError && error.reason?error.reason:stage==="storage"?"storage_rejected":"invalid_report";
+      // Fixed labels only: never log the report, identity, database text or headers.
+      if(reason==="invalid_capture_time" && report?.status==="success"){
+        const age=Date.now()-Date.parse(report.capturedAt);
+        const captureAgeBand=age<0?"future":age<5000?"under_5s":age<60000?"under_60s":age<600000?"under_10m":"older";
+        console.warn("login_location_rejected",{stage,reason,captureAgeBand});
+      }else console.warn("login_location_rejected",{stage,reason});
+    }
     return Response.json({error:"ไม่สามารถบันทึกตำแหน่งได้"},{status,headers});
   }
 }
