@@ -80,7 +80,7 @@ export function CalendarSources({ propertyId, initialSources }: Props) {
   return <div className="@container space-y-6" aria-busy={busy}>
     <section aria-labelledby="connected-calendars" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 id="connected-calendars" className="text-sm font-semibold text-primary">แหล่งที่เชื่อมต่อแล้ว</h3>
+        <h3 id="connected-calendars" className="text-sm font-semibold text-primary-text">แหล่งที่เชื่อมต่อแล้ว</h3>
         <Button type="button" variant="outline" className="h-11" disabled={busy || sources.length === 0} onClick={() => void refresh()}><RefreshCw aria-hidden />อัปเดตทั้งหมด</Button>
       </div>
       {sources.length === 0 && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">ยังไม่มีปฏิทินที่เชื่อมต่อ เพิ่มลิงก์ Airbnb ด้านล่างเพื่อเริ่มใช้งาน</p>}

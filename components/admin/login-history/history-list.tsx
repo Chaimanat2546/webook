@@ -13,7 +13,7 @@ function DeviceIcon({ entry }: { entry: LoginHistoryEntry }) {
 function Position({ entry }: { entry: LoginHistoryEntry }) {
   const status = entry.locationStatus;
   const Icon = status === "success" ? MapPin : status === "denied" ? Ban : status === "timeout" ? Clock3 : status === "unavailable" ? TriangleAlert : MapPinOff;
-  const color = status === "success" ? "text-primary" : status === "denied" ? "text-destructive" : status === "unavailable" || status === "timeout" ? "text-amber-700" : "text-muted-foreground";
+  const color = status === "success" ? "text-primary-text" : status === "denied" ? "text-destructive" : status === "unavailable" || status === "timeout" ? "text-amber-700" : "text-muted-foreground";
   return <div className={`flex items-start gap-1.5 text-xs leading-relaxed ${color}`}><Icon aria-hidden className="mt-0.5 size-3.5 shrink-0" /><div className="min-w-0">
     <span>{LOCATION_STATUS_LABELS[status]}</span>
     {status === "success" && entry.latitude !== null && entry.longitude !== null ? <>
@@ -33,14 +33,14 @@ export function HistoryList({ entries }: { entries: LoginHistoryEntry[] }) {
       <TableBody>{entries.map(entry => <TableRow key={entry.id}>
         <TableCell><time className="text-xs tabular-nums" dateTime={entry.loggedInAt}>{thaiDay.format(new Date(entry.loggedInAt))}<br />{thaiTime.format(new Date(entry.loggedInAt))}</time></TableCell>
         <TableCell className="max-w-56 whitespace-normal"><Profile entry={entry} /></TableCell>
-        <TableCell><div className="flex items-center gap-2 text-primary"><DeviceIcon entry={entry} /><span className="text-xs text-foreground">{entry.browser} · {entry.os}</span></div><p className="mt-1 text-xs text-muted-foreground">{entry.deviceType}</p></TableCell>
+        <TableCell><div className="flex items-center gap-2 text-primary-text"><DeviceIcon entry={entry} /><span className="text-xs text-foreground">{entry.browser} · {entry.os}</span></div><p className="mt-1 text-xs text-muted-foreground">{entry.deviceType}</p></TableCell>
         <TableCell className="max-w-72 whitespace-normal"><p className="mb-1 break-all font-mono text-xs text-muted-foreground">IP {entry.ipAddress ?? "ไม่ทราบ"}</p><Position entry={entry} /></TableCell>
       </TableRow>)}</TableBody>
     </Table></div>
     <div className="space-y-6 md:hidden">{Array.from(groups,([key,group]) => <section key={key} aria-labelledby={`history-day-${key}`}>
       <div className="mb-3.5 flex items-center gap-2 text-muted-foreground"><History aria-hidden className="size-3.5" /><h2 id={`history-day-${key}`} className="text-xs font-medium">{thaiDay.format(new Date(group[0].loggedInAt))}</h2><span className="h-px flex-1 bg-border" /></div>
       <div className="space-y-3">{group.map(entry => <article key={entry.id} className="flex gap-3.5 rounded-3xl border bg-card p-4 shadow-[0_2px_7px_#20283A0a]">
-        <div className="w-10 shrink-0 text-center"><time dateTime={entry.loggedInAt} className="text-sm font-bold tabular-nums">{thaiTime.format(new Date(entry.loggedInAt))}</time><div className="mx-auto mt-2 flex size-8 items-center justify-center rounded-full border border-border/40 bg-muted text-primary"><DeviceIcon entry={entry} /></div></div>
+        <div className="w-10 shrink-0 text-center"><time dateTime={entry.loggedInAt} className="text-sm font-bold tabular-nums">{thaiTime.format(new Date(entry.loggedInAt))}</time><div className="mx-auto mt-2 flex size-8 items-center justify-center rounded-full border border-border/40 bg-muted text-primary-text"><DeviceIcon entry={entry} /></div></div>
         <div className="min-w-0 flex-1 space-y-2"><div className="flex items-start justify-between gap-2"><Profile entry={entry} /><Badge className="shrink-0 rounded-lg border-primary/5 bg-muted px-1.5 text-[10px] text-muted-foreground" variant="outline">สำเร็จ</Badge></div>
           <p className="break-words text-xs leading-relaxed">{entry.browser} <span className="text-muted-foreground">·</span> {entry.os} <span className="text-muted-foreground">·</span> {entry.deviceType}</p>
           <div className="space-y-1.5 border-t border-background pt-2.5"><p className="break-all text-xs text-muted-foreground">IP <span className="ml-1 font-mono">{entry.ipAddress ?? "ไม่ทราบ"}</span></p><Position entry={entry} /></div>

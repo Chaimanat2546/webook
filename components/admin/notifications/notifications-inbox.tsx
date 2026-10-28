@@ -55,7 +55,7 @@ export function NotificationsInbox({ active = true, surface = "page" }: { active
   if (!notifications) return null;
   const { data, error, loading, filter } = notifications;
   const displayTime = notifications.observedAt ?? data?.asOf;
-  return <div className="relative flex min-h-0 flex-1 flex-col bg-[#f7f9fb] [--primary:#087F80] [--primary-foreground:#fff] dark:bg-background dark:[--primary:#2BAFC0] dark:[--primary-foreground:#043D5C]">
+  return <div className="relative flex min-h-0 flex-1 flex-col bg-background">
     <div className="shrink-0 py-2">
       <div role="group" aria-label="หมวดการแจ้งเตือน" className="flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filters.map(({ value, label, Icon }) => <Button key={value} type="button" variant={filter === value ? "default" : "secondary"} className="min-h-11 shrink-0 rounded-full px-3" aria-pressed={filter === value} onClick={() => {
@@ -81,7 +81,7 @@ export function NotificationsInbox({ active = true, surface = "page" }: { active
       {loading && !data && <div className="space-y-3 pt-3" role="status" aria-label="กำลังโหลดการแจ้งเตือน">{[1, 2, 3].map(key => <Skeleton key={key} className="h-40 w-full rounded-2xl" />)}</div>}
       {!loading && !error && data && !data.hasNew && data.items.length === 0 && <Empty className="min-h-[55dvh] border-0 px-2">
         <EmptyHeader>
-          <EmptyMedia className="relative mb-5 flex size-28 items-center justify-center rounded-full bg-primary/10 text-primary"><Bell aria-hidden className="size-12" /><span className="absolute -right-1 bottom-0 flex size-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><Check aria-hidden className="size-5" /></span></EmptyMedia>
+          <EmptyMedia className="relative mb-5 flex size-28 items-center justify-center rounded-full bg-primary/10 text-primary-text"><Bell aria-hidden className="size-12" /><span className="absolute -right-1 bottom-0 flex size-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><Check aria-hidden className="size-5" /></span></EmptyMedia>
           <EmptyTitle className="text-xl font-bold">{filter === "all" ? "ยังไม่มีการแจ้งเตือน" : "ไม่พบรายการในหมวดนี้"}</EmptyTitle>
           <EmptyDescription className="leading-relaxed">{filter === "all" ? "เมื่อมีความเคลื่อนไหวการจองหรือสถานะการชำระเงิน ระบบจะแจ้งให้คุณทราบที่นี่" : "ลองเลือกหมวดอื่น หรือรีเฟรชเพื่อตรวจสอบข้อมูลล่าสุด"}</EmptyDescription>
         </EmptyHeader>

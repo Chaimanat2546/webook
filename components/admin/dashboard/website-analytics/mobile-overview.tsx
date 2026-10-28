@@ -35,10 +35,10 @@ export function WebsiteAnalyticsMobileOverview({ report, query, sites, scope, co
     {isFutureAnalyticsRange(range, report.period.as_of) && <p role="status" className="text-sm text-muted-foreground">ยังไม่ถึงช่วงเวลาที่เลือก</p>}
     <section aria-label="ภาพรวมการติดต่อ"><SectionTitle title="ภาพรวมการติดต่อ" />
       <Card className="rounded-3xl py-5 shadow-none"><CardContent className="px-5">
-        <div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">กดติดต่อรวม</p><Phone aria-hidden className="size-5 text-primary" /></div>
-        <p className="mt-3 text-4xl leading-tight font-bold tabular-nums text-primary">{count("contact_clicks")} <span className="text-lg font-normal text-muted-foreground">ครั้ง</span></p>
+        <div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">กดติดต่อรวม</p><Phone aria-hidden className="size-5 text-primary-text" /></div>
+        <p className="mt-3 text-4xl leading-tight font-bold tabular-nums text-primary-text">{count("contact_clicks")} <span className="text-lg font-normal text-muted-foreground">ครั้ง</span></p>
         <p className="mt-1 text-xs text-muted-foreground">โทร · LINE · แชท</p>
-        <dl className="mt-5 grid grid-cols-3 divide-x border-t pt-4 text-center">{([["phone_clicks", "โทร"], ["line_clicks", "LINE"], ["chat_clicks", "แชท"]] as const).map(([key, label]) => <div key={key} className="min-w-0 px-1"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-lg font-bold tabular-nums text-primary">{count(key)}</dd></div>)}</dl>
+        <dl className="mt-5 grid grid-cols-3 divide-x border-t pt-4 text-center">{([["phone_clicks", "โทร"], ["line_clicks", "LINE"], ["chat_clicks", "แชท"]] as const).map(([key, label]) => <div key={key} className="min-w-0 px-1"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-lg font-bold tabular-nums text-primary-text">{count(key)}</dd></div>)}</dl>
       </CardContent></Card>
       <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground"><p className="inline-flex items-center gap-1.5"><Eye aria-hidden className="size-4" />ยอดเข้าชม <strong className="tabular-nums text-foreground">{count("page_views")}</strong> ครั้ง</p><p className="inline-flex items-center gap-1.5"><Images aria-hidden className="size-4" />เปิดรูป <strong className="tabular-nums text-foreground">{count("gallery_opens")}</strong> ครั้ง</p></div>
     </section>
@@ -47,7 +47,7 @@ export function WebsiteAnalyticsMobileOverview({ report, query, sites, scope, co
       {report.websites.map(site => <div key={site.key}>
         {report.websites.length > 1 && <h3 className="mt-4 text-sm font-semibold">{site.displayName}</h3>}
         {site.villas ? <MobileRanking site={site} presentation="overview" /> : <p role="status" className="py-4 text-sm text-muted-foreground">ยังแสดงข้อมูลบ้านไม่ได้ · {labels[site.status]}</p>}
-        {site.villas && site.villas.total > 0 && <Link href={websitePeriodHref(query, { site: site.key, view: "houses", granularity: "day", page: 1, pages: {} }, false, scope)} className="flex min-h-12 items-center justify-center gap-2 text-sm font-semibold text-primary">ดูบ้านทั้งหมด<ChevronRight aria-hidden className="size-4" /></Link>}
+        {site.villas && site.villas.total > 0 && <Link href={websitePeriodHref(query, { site: site.key, view: "houses", granularity: "day", page: 1, pages: {} }, false, scope)} className="flex min-h-12 items-center justify-center gap-2 text-sm font-semibold text-primary-text">ดูบ้านทั้งหมด<ChevronRight aria-hidden className="size-4" /></Link>}
       </div>)}
     </section>
     </div>

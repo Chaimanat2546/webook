@@ -27,7 +27,7 @@ export function WebsiteMobileOverviewControls({ report, query, sites, scope, com
     <AdminMobileBrandHeader subtitle={subtitle} asOf={report.period.as_of} className="-mx-4 -mt-5" />
     {backHref && <Link href={backHref} className="flex min-h-11 items-center gap-2 pt-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft aria-hidden className="size-4" />กลับไปภาพรวม</Link>}
     {showPeriod && <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 py-3">
-      <CalendarDays aria-hidden className="col-start-1 row-span-2 row-start-1 size-5 text-primary" />
+      <CalendarDays aria-hidden className="col-start-1 row-span-2 row-start-1 size-5 text-primary-text" />
       <h1 className="col-start-2 row-start-1 min-w-0 text-xs leading-relaxed font-semibold">{date.formatRange(new Date(`${range.from}T00:00:00+07:00`), new Date(`${range.to}T00:00:00+07:00`))}</h1>
       <WebsiteDateRangePicker month={range.to.slice(0, 7)} range={range} today={today} pastOnly loading={pending} label="เปลี่ยนช่วงสถิติเว็บไซต์" triggerContent={<>เปลี่ยนช่วง<ChevronDown aria-hidden className="size-3" /></>} className="col-start-3 row-span-2 row-start-1 h-9 w-auto rounded-full px-3 text-xs" onChange={next => navigate({ ...next, month: next.to.slice(0, 7), granularity: "day", page: 1, pages: {} })} />
       <p className="col-start-2 row-start-2 text-[11px] leading-relaxed text-muted-foreground">เวลาไทย · <span className="whitespace-nowrap">{range.timeFrom ?? "00:00"}–{range.timeTo ?? "24:00"}</span></p>

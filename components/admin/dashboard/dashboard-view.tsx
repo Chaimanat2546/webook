@@ -17,7 +17,7 @@ export function DashboardView({ report, query, websiteSummary }: { report: Dashb
   return <div className="dashboard-overview mx-auto min-w-0 max-w-7xl space-y-5">
     <div className="hidden md:block"><DashboardHeader {...dashboardDateFilter(query)} month={report.month} scope={report.scope.kind === "owner" ? `บ้าน DV-${report.scope.propertyId}` : undefined} /></div>
     <div className="-mx-4 -mt-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 border-b bg-background px-4 py-3 md:hidden">
-      <CalendarDays aria-hidden className="size-5 shrink-0 text-teal-600" />
+      <CalendarDays aria-hidden className="size-5 shrink-0 text-primary-text" />
       <h1 className="min-w-0 text-xs leading-relaxed font-semibold">{dateFormatter.formatRange(new Date(from), new Date(to))}</h1>
       <DashboardDateRangePicker compact {...dashboardDateFilter(query)} month={report.month} action="/admin/dashboard" />
       <p className="col-start-2 col-end-4 flex flex-wrap gap-x-1 text-[10px] leading-relaxed text-muted-foreground">

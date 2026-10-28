@@ -32,7 +32,7 @@ export function WebsiteSiteTrendChart({ compact = false, granularity, sites, mon
   const hourly = granularity === "hour";
   const data = websiteChartData(sites, month, metric, hourly ? "hour" : "day", range, asOf);
   const future = isFutureAnalyticsRange(range, asOf);
-  const config: ChartConfig = Object.fromEntries(sites.map(site => [site.key, { label: site.displayName, color: compact && sites.length === 1 ? "var(--primary)" : `var(--chart-${Math.max(0, colorKeys.indexOf(site.key)) % 5 + 1})` }]));
+  const config: ChartConfig = Object.fromEntries(sites.map(site => [site.key, { label: site.displayName, color: compact && sites.length === 1 ? "var(--chart-2)" : `var(--chart-${Math.max(0, colorKeys.indexOf(site.key)) % 5 + 1})` }]));
   const available = sites.filter(site => data.some(point => point.values[site.key] !== null));
   const missing = sites.filter(site => !available.includes(site));
   const periodLabel = range ? `${range.from} ถึง ${range.to}` : new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "Asia/Bangkok" }).format(new Date(`${month}-01T00:00:00+07:00`));

@@ -44,7 +44,7 @@ export function LoginLocationPrompt({ historyId, userId, sessionId, expiresAt }:
   }
 
   return <section aria-labelledby="location-title" className="w-full rounded-2xl border bg-card px-6 py-7 text-center shadow-sm">
-    <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/[0.02] text-primary"><MapPin aria-hidden className="size-7" /></div>
+    <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/[0.02] text-primary-text"><MapPin aria-hidden className="size-7" /></div>
     <h1 id="location-title" className="text-xl font-semibold">ก่อนเริ่มใช้งาน</h1>
     <p className="mx-auto mt-2 max-w-[280px] text-[15px] leading-relaxed font-medium">อนุญาตให้บันทึกตำแหน่งของการเข้าสู่ระบบครั้งนี้หรือไม่</p>
     <p className="mx-auto mt-3 max-w-[270px] text-sm leading-relaxed text-muted-foreground">ใช้เป็นหลักฐานในประวัติความปลอดภัยของบัญชี</p>

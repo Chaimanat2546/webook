@@ -6,7 +6,7 @@ import { columns, labels, MetricCells } from "./table-metrics";
 import { type AnalyticsMetrics, type WebsiteAnalyticsQuery, type WebsiteAnalyticsReport } from "../../../../lib/website-analytics";
 
 function MobileMetrics({ metrics }: { metrics: AnalyticsMetrics | null | undefined }) {
-  return <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-4 text-sm">{columns.map(column => <div key={column.key}><dt className="text-xs text-muted-foreground">{column.label}</dt><dd className={`mt-1 font-medium tabular-nums ${column.key === "contact_clicks" ? "text-primary" : ""}`}>{metrics ? metrics[column.key].toLocaleString("th-TH") : "—"}</dd></div>)}</dl>;
+  return <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-4 text-sm">{columns.map(column => <div key={column.key}><dt className="text-xs text-muted-foreground">{column.label}</dt><dd className={`mt-1 font-medium tabular-nums ${column.key === "contact_clicks" ? "text-primary-text" : ""}`}>{metrics ? metrics[column.key].toLocaleString("th-TH") : "—"}</dd></div>)}</dl>;
 }
 export function WebsiteAnalyticsHouseList({ report, query, compare = false, scope }: { report: WebsiteAnalyticsReport; query: WebsiteAnalyticsQuery; compare?: boolean; scope?: WebsiteScopeSelection }) {
   return <div className="space-y-4">

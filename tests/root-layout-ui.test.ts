@@ -5,14 +5,14 @@ import { describe, it } from "node:test";
 const source = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 
 describe("root layout font loading", () => {
-  it("defines the WeBooks Coastal color tokens", () => {
+  it("defines the WeBooks Royal/Azure color tokens", () => {
     const globalStyles = readFileSync("app/globals.css", "utf8");
 
     for (const token of [
-      "--background: #F6FBFC;",
-      "--primary: #07557A;",
-      "--ring: #2BAFC0;",
-      "--sidebar-primary: #07557A;",
+      "--background: #F7F8FC;",
+      "--primary: #2F3EE8;",
+      "--ring: #5B8CFF;",
+      "--sidebar-primary: #2F3EE8;",
     ]) {
       assert.match(globalStyles, new RegExp(token));
     }

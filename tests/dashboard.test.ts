@@ -1401,7 +1401,7 @@ test("dashboard renders date range controls and only administrator views include
     assert.match(html, /จำนวนการจองในช่วงที่เลือก/);
     assert.match(html, /aria-label="กราฟจำนวนการจองติดจองรายวัน"/);
     assert.match(html, /aria-label="กราฟจำนวนการจองติดจองรายวัน" class="w-full"/);
-    assert.match(html, /--color-count: var\(--primary\)/);
+    assert.match(html, /--color-count: var\(--chart-2\)/);
     assert.doesNotMatch(html, /แสดงจำนวนรายการตามวันที่สร้าง/);
     assert.match(html, /status=confirmed/);
     assert.match(html, /\/admin\/dashboard\/bookings\?month=2026-09/);
@@ -1417,7 +1417,7 @@ test("dashboard renders date range controls and only administrator views include
     if (scope.kind === "admin") {
       assert.match(html, /flex w-full flex-1 flex-col divide-y/);
       assert.doesNotMatch(html, /flex w-full flex-1 flex-col divide-y \[&amp;&gt;a\]:flex-1/);
-      assert.match(html, /--color-amountCents: var\(--primary\)/);
+      assert.match(html, /--color-amountCents: var\(--chart-2\)/);
     }
   }
   const empty = await loadDashboard(repository({ kind: "admin" }, []), "signed-in-user", { month: "2026-09" });

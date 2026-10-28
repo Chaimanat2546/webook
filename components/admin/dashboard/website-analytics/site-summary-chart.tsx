@@ -56,7 +56,7 @@ export function WebsiteSiteSummaryChart({ sites, month, range, legend }: { sites
         {metrics.map(metric => <li key={metric} className="flex items-center gap-2"><span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: config[metric].color }} />{config[metric].label}</li>)}
       </ul>
       <div className="relative">
-        <div ref={setViewport} role="region" aria-label="เลื่อนดูกราฟแท่งเว็บไซต์" tabIndex={0} className="overflow-x-auto rounded-sm focus-visible:outline-2 focus-visible:outline-primary">
+        <div ref={setViewport} role="region" aria-label="เลื่อนดูกราฟแท่งเว็บไซต์" tabIndex={0} className="overflow-x-auto rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
           <ChartContainer config={config} className="h-60 w-full aspect-auto sm:h-72" style={{ minWidth: data.length * 144 + 54 }}>
             <BarChart accessibilityLayer data={data} barSize={28} barGap={4} margin={{ left: 0, right: 12, top: 12, bottom: 8 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />

@@ -53,7 +53,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
             <h2>จำนวนการจองในช่วงที่เลือก</h2>
             <Link
               href={`/admin/dashboard/bookings?${dashboardPeriodParams(query)}&status=confirmed`}
-              className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"
+              className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary-text hover:underline focus-visible:outline-2"
             >
               ดูทั้งหมด
             </Link>
@@ -86,7 +86,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
                 <h2>ยอดขายเอเจนซี่สูงสุด 5 อันดับ</h2>
                 <Link
                   href={`/admin/dashboard/agencies?${dashboardPeriodParams(query)}`}
-                  className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"
+                  className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary-text hover:underline focus-visible:outline-2"
                 >
                   ดูทั้งหมด
                 </Link>
@@ -111,7 +111,7 @@ export function DashboardOverviewView({ report, query }: { report: DashboardRepo
                 <h2>บ้านใหม่ในช่วงที่เลือก</h2>
                 <Link
                   href={`/admin/dashboard/houses?${dashboardPeriodParams(query)}`}
-                  className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary hover:underline focus-visible:outline-2"
+                  className="inline-flex min-h-11 shrink-0 items-center text-sm font-normal text-primary-text hover:underline focus-visible:outline-2"
                 >
                   ดูทั้งหมด
                 </Link>
