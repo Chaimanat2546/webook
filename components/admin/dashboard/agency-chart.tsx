@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "../../ui/chart";
 import { dashboardAgencyChartLabel, dashboardMoney, type DashboardAgency } from "../../../lib/dashboard";
 
-const config = { amountCents: { label: "มูลค่าการจอง", color: "var(--primary)" } } satisfies ChartConfig;
+const config = { amountCents: { label: "มูลค่าการจอง", color: "var(--chart-2)" } } satisfies ChartConfig;
 
 export function AgencyChart({ agencies }: { agencies: DashboardAgency[] }) {
   const data = agencies.slice(0, 5).map((row, index) => ({ ...row, rank: String(index + 1) }));

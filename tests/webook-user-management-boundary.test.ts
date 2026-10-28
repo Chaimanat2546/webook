@@ -55,7 +55,7 @@ describe("WeBooks user management server boundary", () => {
     assert.match(repository, /\.from\("roles"\)/);
     assert.match(repository, /\.from\("users"\)/);
     assert.match(repository, /if \(fields\.dvId !== undefined\) updateFields\.dv_id = fields\.dvId/);
-    assert.match(repository, /\.update\(updateFields\)/);
+    assert.match(repository, /\.rpc\("webook_update_user_guarded"/);
     assert.match(service, /createSupabaseAdminClient/);
     assert.doesNotMatch(service, /auth\.admin|ban|unban/i);
   });

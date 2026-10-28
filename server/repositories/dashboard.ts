@@ -10,7 +10,7 @@ export interface DashboardRepository {
   report(actorId: string, query: DashboardReportingQuery): Promise<DashboardReportingResult>;
   access(actorId: string): Promise<DashboardScope | null>;
   bookingCustomer(scope: DashboardScope, bookingId: string): Promise<{ propertyId: string; customerId: string | null } | null>;
-  coverImageUrl(scope: DashboardScope, propertyId: string): Promise<string | null>;
+  coverImageUrl(scope: DashboardScope, propertyId: string, options?: { zoneOnly?: boolean }): Promise<string | null>;
   creatorName(creatorId: string): Promise<string | null>;
   customerDetail(scope: DashboardScope, propertyId: string, customerId: string): Promise<DashboardCustomer | null>;
   newHouses(month: DashboardMonth): Promise<DashboardHouse[]>;
@@ -70,7 +70,7 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
       if (scope.kind === "owner" && propertyId !== scope.propertyId) return null;
       return { propertyId, customerId: dashboardPropertyId(row.customer_id) };
     },
-    async coverImageUrl(scope, propertyId) {
+    async coverImageUrl(scope, propertyId, options = {}) {
       if (scope.kind === "owner" && scope.propertyId !== propertyId) return null;
       const { data: zoneCover, error: zoneCoverError } = await client.from("images")
         .select("image_name,image_url")
@@ -82,7 +82,7 @@ export function createDashboardRepository(client: SupabaseClient): DashboardRepo
         .maybeSingle();
       if (zoneCoverError) throw new Error("dashboard_unavailable");
       const zoneCoverImageUrl = buildHouseImageDisplayUrl({ imageName: nullableText(zoneCover?.image_name), imageUrl: nullableText(zoneCover?.image_url) });
-      if (zoneCoverImageUrl) return zoneCoverImageUrl;
+      if (zoneCoverImageUrl || options.zoneOnly) return zoneCoverImageUrl;
 
       const { data, error } = await client.from("images")
         .select("image_name,image_url")

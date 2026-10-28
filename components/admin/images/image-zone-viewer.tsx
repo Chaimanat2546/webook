@@ -997,7 +997,7 @@ export function ImageZoneViewer({
                 const statusClassName = cn(
                   item.status === "deleted" && "text-emerald-600",
                   item.status === "failed" && "text-destructive",
-                  item.status === "deleting" && "text-primary",
+                  item.status === "deleting" && "text-primary-text",
                 );
 
                 return (

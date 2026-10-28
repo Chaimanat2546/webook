@@ -7,7 +7,7 @@ import { hourLabel, hourlyRangeLabel } from "../../../lib/website-analytics-time
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "../../ui/chart";
 
 const config = {
-  count: { label: "จำนวนการจองติดจอง", color: "var(--primary)" },
+  count: { label: "จำนวนการจองติดจอง", color: "var(--chart-2)" },
 } satisfies ChartConfig;
 
 export function ConfirmedBookingsChart({ points, granularity = "day", presentation = "bar" }: { points: DashboardDailyBookingCount[]; granularity?: "hour" | "day"; presentation?: "bar" | "area" }) {

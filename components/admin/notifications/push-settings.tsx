@@ -134,7 +134,7 @@ export function PushSettings() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold">แจ้งเตือนบนอุปกรณ์นี้</p>
         <span className={state === "enabled"
-          ? "rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+          ? "rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary-text"
           : "rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"}>{status}</span>
       </div>
       <p className="text-sm leading-relaxed text-muted-foreground" role="status">{message[state]}</p>

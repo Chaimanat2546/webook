@@ -87,7 +87,9 @@ export const requireAdmin = cache(async () => {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect("/login");
+    const { cookies } = await import("next/headers");
+    const hadSession = (await cookies()).getAll().some(cookie => /^sb-.+-auth-token(?:\.\d+)?$/.test(cookie.name));
+    redirect(hadSession ? "/login?expired=1" : "/login");
     throw new Error("Unauthenticated");
   }
 

@@ -30,6 +30,20 @@ jobs:
       - run: npm run audit:security
       - run: npm run typecheck
       - run: npm run lint
+      - name: Verify Login History database policies and filters
+        shell: bash
+        run: |
+          docker run --detach --name webook-login-history-tests --network none --env POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine
+          trap 'docker rm --force webook-login-history-tests > /dev/null 2>&1' EXIT
+          for attempt in $(seq 1 60); do
+            if docker exec webook-login-history-tests pg_isready -U postgres > /dev/null 2>&1; then
+              node scripts/test-login-history-db.mjs
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Isolated Login History database did not become ready" >&2
+          exit 1
       - name: Prepare isolated integration database
         run: node scripts/run-ci-integration.mjs prepare
       - name: Run every test with no skips

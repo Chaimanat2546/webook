@@ -46,6 +46,12 @@ describe("WeBooks users repository", () => {
   it("updates exactly the selected user's name and role ID", async () => {
     let updatePayload: unknown;
     const client = {
+      async rpc(name: string, input: { p_actor: string; p_target: string; p_fields: unknown }) {
+        assert.equal(name, "webook_update_user_guarded");
+        assert.equal(input.p_actor, "10000000-0000-4000-8000-000000000001");
+        updatePayload = input.p_fields;
+        return { data: input.p_target, error: null };
+      },
       from(table: string) {
         if (table === "webook_user_management_list") {
           return {
@@ -124,6 +130,7 @@ describe("WeBooks users repository", () => {
         name: "สมชาย",
         roleId: 2,
       },
+      "10000000-0000-4000-8000-000000000001",
     );
 
     assert.deepEqual(updatePayload, {

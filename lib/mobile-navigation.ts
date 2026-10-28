@@ -1,4 +1,5 @@
 export interface MobileNavigationPermissions {
+  canViewLoginHistory?: boolean;
   canUseDashboard: boolean;
   canAccessHouses: boolean;
   canUseBooking: boolean;
@@ -72,6 +73,7 @@ export function isMobileWorkspace(pathname: string): boolean {
 
 export function mobileTitle(pathname: string): string {
   const titles: Record<string, string> = {
+    "/admin/login-history": "ประวัติการเข้าสู่ระบบ",
     "/admin/dashboard": "แดชบอร์ด",
     "/admin/houses": "บ้านพัก",
     "/admin/bookings": "การจอง",

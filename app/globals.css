@@ -90,6 +90,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-text: var(--primary-text);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -104,76 +105,79 @@
 }
 
 :root {
-  --background: #F6FBFC;
-  --foreground: #163542;
+  --background: #F3F5F7;
+  --foreground: #20283A;
   --card: #FFFFFF;
-  --card-foreground: #163542;
+  --card-foreground: #20283A;
   --popover: #FFFFFF;
-  --popover-foreground: #163542;
+  --popover-foreground: #20283A;
   --primary: #07557A;
+  --primary-text: #07557A;
   --primary-foreground: #FFFFFF;
-  --secondary: #E3F3F4;
-  --secondary-foreground: #043D5C;
-  --muted: #EDF6F7;
-  --muted-foreground: #637780;
-  --accent: #D5F0F2;
-  --accent-foreground: #043D5C;
+  --secondary: #E9EEF2;
+  --secondary-foreground: #20283A;
+  --muted: #E9EEF2;
+  --muted-foreground: #647087;
+  --accent: #E9EEF2;
+  --accent-foreground: #20283A;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #CFE4E8;
-  --input: #CFE4E8;
+  --border: #CBD2D9;
+  --input: #CBD2D9;
   --field-background: #FFFFFF;
-  --field-border: #B8CDD3;
-  --ring: #2BAFC0;
-  --chart-1: #07557A;
-  --chart-2: #119A9A;
-  --chart-3: #2BAFC0;
-  --chart-4: #FFC66F;
-  --chart-5: #043D5C;
+  --field-border: #CBD2D9;
+  --ring: #07557A;
+  /* Data-only indigo shades; amber remains the tertiary series. */
+  --chart-1: #5E6FF2CC;
+  --chart-2: #5E6FF2;
+  --chart-3: #FFC66F;
+  --chart-4: #4B59C2;
+  --chart-5: #3D489D;
   --radius: 0.625rem;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #163542;
+  --sidebar-foreground: #20283A;
   --sidebar-primary: #07557A;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #E3F3F4;
-  --sidebar-accent-foreground: #043D5C;
-  --sidebar-border: #CFE4E8;
-  --sidebar-ring: #2BAFC0;
+  --sidebar-accent: #E9EEF2;
+  --sidebar-accent-foreground: #20283A;
+  --sidebar-border: #CBD2D9;
+  --sidebar-ring: #07557A;
 }
 
 .dark {
-  --background: #082631;
-  --foreground: #EFFBFC;
-  --card: #0D3442;
-  --card-foreground: #EFFBFC;
-  --popover: #0D3442;
-  --popover-foreground: #EFFBFC;
-  --primary: #2BAFC0;
-  --primary-foreground: #043D5C;
-  --secondary: #174654;
-  --secondary-foreground: #EFFBFC;
-  --muted: #174654;
-  --muted-foreground: #A8C5CB;
-  --accent: #174654;
-  --accent-foreground: #EFFBFC;
+  --background: #111522;
+  --foreground: #F7F8FC;
+  --card: #181E2E;
+  --card-foreground: #F7F8FC;
+  --popover: #181E2E;
+  --popover-foreground: #F7F8FC;
+  --primary: #07557A;
+  --primary-text: #94C9DF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #242C40;
+  --secondary-foreground: #F7F8FC;
+  --muted: #242C40;
+  --muted-foreground: #B5BED0;
+  --accent: #242C40;
+  --accent-foreground: #F7F8FC;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #EFFBFC1A;
-  --input: #EFFBFC26;
-  --field-background: #123D4B;
-  --field-border: #658B98;
-  --ring: #2BAFC0;
-  --chart-1: #2BAFC0;
-  --chart-2: #119A9A;
+  --border: #CBD2D926;
+  --input: #CBD2D926;
+  --field-background: #181E2E;
+  --field-border: #647087;
+  --ring: #94C9DF;
+  --chart-1: #5E6FF2CC;
+  --chart-2: #5E6FF2;
   --chart-3: #FFC66F;
-  --chart-4: #07557A;
-  --chart-5: #A8C5CB;
-  --sidebar: #0D3442;
-  --sidebar-foreground: #EFFBFC;
-  --sidebar-primary: #2BAFC0;
-  --sidebar-primary-foreground: #043D5C;
-  --sidebar-accent: #174654;
-  --sidebar-accent-foreground: #EFFBFC;
-  --sidebar-border: #EFFBFC1A;
-  --sidebar-ring: #2BAFC0;
+  --chart-4: #8895F6;
+  --chart-5: #A7B0F8;
+  --sidebar: #181E2E;
+  --sidebar-foreground: #F7F8FC;
+  --sidebar-primary: #07557A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #242C40;
+  --sidebar-accent-foreground: #F7F8FC;
+  --sidebar-border: #CBD2D926;
+  --sidebar-ring: #94C9DF;
 }
 
 @layer base {
@@ -335,3 +339,45 @@
 html:has([data-slot='sidebar-wrapper']) {
   scrollbar-gutter: stable;
 }
+
+/* Flow01/Flow02 use the shared light palette while retaining their font and geometry. */
+.audit-theme,
+body:has(.audit-theme) [data-slot="sheet-content"],
+body:has(.audit-theme) [data-slot="popover-content"] {
+  color-scheme: light;
+  --background: #F3F5F7;
+  --foreground: #20283A;
+  --card: #FFFFFF;
+  --card-foreground: #20283A;
+  --popover: #FFFFFF;
+  --popover-foreground: #20283A;
+  --primary: #07557A;
+  --primary-text: #07557A;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E9EEF2;
+  --secondary-foreground: #20283A;
+  --muted: #E9EEF2;
+  --muted-foreground: #647087;
+  --accent: #E9EEF2;
+  --accent-foreground: #20283A;
+  --border: #CBD2D9;
+  --input: #CBD2D9;
+  --field-background: #FFFFFF;
+  --field-border: #CBD2D9;
+  --ring: #07557A;
+  --radius: 0.5rem;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #20283A;
+  --sidebar-primary: #07557A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E9EEF2;
+  --sidebar-accent-foreground: #20283A;
+  --sidebar-border: #CBD2D9;
+  --sidebar-ring: #07557A;
+  font-family: var(--font-jakarta), var(--font-webook-sans), sans-serif;
+}
+.audit-theme :is(button, a, input):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.audit-theme input::placeholder { color: #8A99A3; }
+
+/* Placeholder and focus roles apply consistently across every module. */
+input::placeholder, textarea::placeholder { color: #8A99A3; }

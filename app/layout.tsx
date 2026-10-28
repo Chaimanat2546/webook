@@ -19,6 +19,7 @@ const notoSansThai = localFont({
   display: "swap",
   variable: "--font-webook-sans",
 });
+const jakarta = localFont({ src: "../public/fonts/PlusJakartaSans-Variable.ttf", display: "swap", variable: "--font-jakarta" });
 
 export const metadata: Metadata = {
   title: "WeBooks",
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
   icons: { apple: "/pwa/apple-touch-icon.png" },
 };
 
-export const viewport: Viewport = { themeColor: "#2563eb" };
+export const viewport: Viewport = { themeColor: "#07557A" };
 
 export default function RootLayout({
   children,
@@ -36,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${notoSansThai.variable} h-full antialiased`}>
+    <html lang="th" className={`${notoSansThai.variable} ${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground">
         <PwaProvider>{children}</PwaProvider>
       </body>

@@ -163,6 +163,7 @@ describe("WeBooks user management service", () => {
 
     const result = await service.updateWebookUser(
       {
+        actorId: "10000000-0000-4000-8000-000000000001",
         dvId: "",
         id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
         name: "  สมชาย  ",
@@ -187,6 +188,7 @@ describe("WeBooks user management service", () => {
 
     const assigned = await service.updateWebookUser(
       {
+        actorId: "10000000-0000-4000-8000-000000000001",
         dvId: "00042",
         id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
         name: "สมชาย",
@@ -196,6 +198,7 @@ describe("WeBooks user management service", () => {
     );
     const cleared = await service.updateWebookUser(
       {
+        actorId: "10000000-0000-4000-8000-000000000001",
         dvId: "   ",
         id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
         name: "สมชาย",
@@ -220,6 +223,7 @@ describe("WeBooks user management service", () => {
     for (const dvId of ["4.2", "-1", "abc", "9223372036854775808"]) {
       const result = await service.updateWebookUser(
         {
+        actorId: "10000000-0000-4000-8000-000000000001",
           dvId,
           id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
           name: "สมชาย",
@@ -252,6 +256,7 @@ describe("WeBooks user management service", () => {
 
     const result = await service.updateWebookUser(
       {
+        actorId: "10000000-0000-4000-8000-000000000001",
         dvId: "42",
         id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
         name: "สมชาย",
@@ -271,6 +276,7 @@ describe("WeBooks user management service", () => {
 
     const result = await service.updateWebookUser(
       {
+        actorId: "10000000-0000-4000-8000-000000000001",
         dvId: "42",
         id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
         name: "สมชาย",
@@ -304,6 +310,7 @@ describe("WeBooks user management service", () => {
 
     const result = await service.updateWebookUser(
       {
+        actorId: "10000000-0000-4000-8000-000000000001",
         allowTools,
         dvId: "",
         id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
@@ -328,6 +335,7 @@ describe("WeBooks user management service", () => {
 
     const result = await service.updateWebookUser(
       {
+        actorId: "10000000-0000-4000-8000-000000000001",
         dvId: "42",
         id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
         name: "สมชาย",
@@ -353,7 +361,7 @@ describe("WeBooks user management service", () => {
     ];
 
     for (const input of cases) {
-      const result = await service.updateWebookUser(input, { repository });
+      const result = await service.updateWebookUser({ ...input, actorId: "10000000-0000-4000-8000-000000000001" }, { repository });
       assert.equal(result.ok, false);
     }
     assert.deepEqual(updates, []);
@@ -366,6 +374,7 @@ describe("WeBooks user management service", () => {
 
     const result = await service.updateWebookUser(
       {
+        actorId: "10000000-0000-4000-8000-000000000001",
         dvId: "",
         id: "7a67c89b-3dd8-466c-86a1-e95fc39729b3",
         name: "สมชาย",

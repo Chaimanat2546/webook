@@ -13,6 +13,8 @@ import { Calendar } from "./calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 
 export interface ThaiDateRangePickerProps {
+  invalid?: boolean;
+  describedBy?: string;
   className?: string;
   portalContainer?: HTMLElement | null;
   onChange: (range: DateRange | undefined) => void;
@@ -38,7 +40,7 @@ function formatRange(value: DateRange | undefined): string {
   return `${thaiDate.format(value.from)} – ${thaiDate.format(value.to)}`;
 }
 
-export function ThaiDateRangePicker({ onChange, className = "", portalContainer, value, label = "ช่วงวันที่เข้าพัก", disabled, autoApply = false, confirmSelection = false, loading = false, renderShortcuts, renderSelection, canConfirm, onOpenChange, valueSuffix, triggerContent }: ThaiDateRangePickerProps) {
+export function ThaiDateRangePicker({ onChange, className = "", portalContainer, value, label = "ช่วงวันที่เข้าพัก", disabled, autoApply = false, confirmSelection = false, loading = false, renderShortcuts, renderSelection, canConfirm, onOpenChange, valueSuffix, triggerContent, invalid, describedBy }: ThaiDateRangePickerProps) {
   const isMobile = useIsMobile();
   const [sheetContainer, setSheetContainer] = useState<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -77,14 +79,14 @@ export function ThaiDateRangePicker({ onChange, className = "", portalContainer,
   </>;
   const changeOpen = (next: boolean) => { setOpen(next); onOpenChange?.(next); setDraft(value); setMonth(value?.from); setChoosingEnd(false); };
   if (isMobile) return <Sheet open={open} onOpenChange={changeOpen}>
-    <SheetTrigger asChild><Button aria-label={label} disabled={loading} className={`h-8 w-full min-w-0 justify-start border-field-border bg-field-background text-left font-normal disabled:bg-muted data-[empty=true]:text-muted-foreground dark:border-field-border dark:bg-field-background dark:disabled:bg-muted ${className}`} data-thai-date-range-picker="" data-empty={!value?.from} type="button" variant="outline">{triggerContent ?? <><CalendarDaysIcon aria-hidden /><span className="truncate" title={`${formatRange(value)}${valueSuffix ? ` · ${valueSuffix}` : ""}`}>{formatRange(value)}{valueSuffix && ` · ${valueSuffix}`}</span></>}</Button></SheetTrigger>
+    <SheetTrigger asChild><Button aria-label={label} aria-invalid={invalid} aria-describedby={describedBy} disabled={loading} className={`h-8 w-full min-w-0 justify-start border-field-border bg-field-background text-left font-normal disabled:bg-muted data-[empty=true]:text-muted-foreground dark:border-field-border dark:bg-field-background dark:disabled:bg-muted ${className}`} data-thai-date-range-picker="" data-empty={!value?.from} type="button" variant="outline">{triggerContent ?? <><CalendarDaysIcon aria-hidden /><span className="truncate" title={`${formatRange(value)}${valueSuffix ? ` · ${valueSuffix}` : ""}`}>{formatRange(value)}{valueSuffix && ` · ${valueSuffix}`}</span></>}</Button></SheetTrigger>
     <SheetContent ref={setSheetContainer} side="bottom" showCloseButton={false} className="max-h-[90dvh] gap-0 overflow-hidden rounded-t-3xl bg-background p-0 pb-[env(safe-area-inset-bottom)]">
       <div className="shrink-0 border-b px-4 pt-2 pb-3"><div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-muted-foreground/25" /><div className="flex items-start justify-between gap-3"><div><SheetTitle>{label}</SheetTitle><SheetDescription className="mt-1 text-xs">{confirmSelection ? "เลือกช่วงวันที่ แล้วกดใช้เพื่อยืนยัน" : "เลือกวันเริ่มต้นและวันสิ้นสุด"}</SheetDescription></div><SheetClose asChild><Button type="button" variant="ghost" size="icon" aria-label="ปิดตัวเลือกวันที่"><XIcon aria-hidden className="size-4" /></Button></SheetClose></div></div>
       <div className="min-h-0 overflow-y-auto overscroll-contain">{pickerContent}</div>
     </SheetContent>
   </Sheet>;
   return <Popover modal open={open} onOpenChange={next => { setOpen(next); onOpenChange?.(next); setDraft(value); setMonth(value?.from); setChoosingEnd(false); }}>
-    <PopoverTrigger aria-label={label} disabled={loading} render={<Button className={`h-8 w-full min-w-0 justify-start border-field-border bg-field-background text-left font-normal disabled:bg-muted data-[empty=true]:text-muted-foreground dark:border-field-border dark:bg-field-background dark:disabled:bg-muted ${className}`} data-thai-date-range-picker="" data-empty={!value?.from} type="button" variant="outline" />}>
+    <PopoverTrigger aria-label={label} aria-invalid={invalid} aria-describedby={describedBy} disabled={loading} render={<Button className={`h-8 w-full min-w-0 justify-start border-field-border bg-field-background text-left font-normal disabled:bg-muted data-[empty=true]:text-muted-foreground dark:border-field-border dark:bg-field-background dark:disabled:bg-muted ${className}`} data-thai-date-range-picker="" data-empty={!value?.from} type="button" variant="outline" />}>
       {triggerContent ?? <><CalendarDaysIcon aria-hidden /><span className="truncate" title={`${formatRange(value)}${valueSuffix ? ` · ${valueSuffix}` : ""}`}>{formatRange(value)}{valueSuffix && ` · ${valueSuffix}`}</span></>}
     </PopoverTrigger>
     <PopoverContent className="w-auto max-w-[calc(100vw-1rem)] min-w-0 max-h-[min(90dvh,var(--available-height))] overflow-y-auto bg-background p-0" container={portalContainer} align="start">

@@ -78,11 +78,11 @@ export function BookingDateRange({ propertyId, excludeId, start, end, revision, 
   const pickingEnd = !!start && !end;
   return <div className="booking-range space-y-3">
     <div className="grid grid-cols-2 gap-2">
-      <button type="button" disabled={readOnly} className={`rounded-xl border p-3 text-left ${!pickingEnd ? "border-blue-600 bg-blue-50 text-blue-950" : ""}`} onClick={() => { if (!readOnly) onChange("", ""); }}><span className="block text-xs">1 · เช็กอิน</span><strong>{displayDate(start)}</strong></button>
-      <button type="button" disabled={readOnly || !start} className={`rounded-xl border p-3 text-left ${pickingEnd ? "border-blue-600 bg-blue-50 text-blue-950" : ""}`} onClick={() => { if (!readOnly) onChange(start, ""); }}><span className="block text-xs">2 · เช็กเอาต์</span><strong>{displayDate(end)}</strong></button>
+      <button type="button" disabled={readOnly} className={`rounded-xl border p-3 text-left ${!pickingEnd ? "border-primary bg-muted text-foreground" : ""}`} onClick={() => { if (!readOnly) onChange("", ""); }}><span className="block text-xs">1 · เช็กอิน</span><strong>{displayDate(start)}</strong></button>
+      <button type="button" disabled={readOnly || !start} className={`rounded-xl border p-3 text-left ${pickingEnd ? "border-primary bg-muted text-foreground" : ""}`} onClick={() => { if (!readOnly) onChange(start, ""); }}><span className="block text-xs">2 · เช็กเอาต์</span><strong>{displayDate(end)}</strong></button>
     </div>
     <p className="text-sm font-medium" role="status">{loading ? "กำลังโหลดวันว่าง…" : error ? "ยังตรวจสอบวันว่างไม่ได้" : pickingEnd ? "เลือกวันเช็กเอาต์" : start && end ? `${displayDate(start)} – ${displayDate(end)} · ${nightsBetween(start, end)} คืน` : "เลือกวันเช็กอิน"}</p>
-    <div className="flex flex-wrap gap-3 text-xs"><span className="text-red-700">● ติดจอง</span><span className="text-green-700">● รอโอน</span><span className="text-gray-600">● ปิดซ่อม</span><span className="text-blue-700">● iCal / ช่วงที่เลือก</span></div>
+    <div className="flex flex-wrap gap-3 text-xs"><span className="text-red-700">● ติดจอง</span><span className="text-green-700">● รอโอน</span><span className="text-gray-600">● ปิดซ่อม</span><span className="text-primary-text">● iCal / ช่วงที่เลือก</span></div>
     {error && <div role="alert" className="text-sm text-destructive">{error}<Button type="button" variant="outline" size="sm" onClick={() => setRetry(value => value + 1)}>ลองอีกครั้ง</Button></div>}
     {past && <p role="alert" className="text-sm text-destructive">เลือกวันเข้าพักตั้งแต่วันนี้เป็นต้นไป</p>}
     {!readOnly && ready && conflict && <p role="alert" className="text-sm text-destructive">ช่วงนี้ติดจอง {conflict.check_in} ถึง {conflict.check_out} กรุณาเลือกช่วงใหม่</p>}

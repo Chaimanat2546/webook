@@ -7,16 +7,19 @@ import { canAccessHouses, canManageCentralUsers, canManageWebookUsers, canUseAcc
 import { requireBookingAdmin } from "./bookings";
 import { canOpenDashboard } from "./dashboard";
 import { bookingResult } from "../services/house-bookings";
+import { canViewLoginHistory } from "./login-history-navigation";
 
 /** Use the same server checks for landing, navigation and module entry. */
 export const getAdminNavigationPermissions = cache(async (): Promise<MobileNavigationPermissions> => {
   const { adminUser } = await requireAdmin();
-  const [canUseDashboard, bookingAccess] = await Promise.all([
+  const [canUseDashboard, bookingAccess, historyAccess] = await Promise.all([
     canOpenDashboard(),
     bookingResult(async () => { await requireBookingAdmin(); return true; }),
+    canViewLoginHistory(),
   ]);
   return {
     canUseDashboard,
+    canViewLoginHistory: historyAccess,
     canUseBooking: bookingAccess.ok,
     canAccessHouses: canAccessHouses(adminUser),
     canUseAccommodation: canUseAccommodation(adminUser),

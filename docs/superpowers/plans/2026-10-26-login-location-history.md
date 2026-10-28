@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-26-login-location-history-design.md`
 
-สถานะ: ร่างแผน ไม่ใช่คำสั่งเริ่ม implementation; ยังไม่มี migration หรือการเปลี่ยน runtime
+สถานะ: ภูอนุมัติ implementation ใน worktree แยกเมื่อ 2026-10-26; โค้ดผ่าน review และ local checks แล้ว ยังไม่ migrate/deploy
 
 ## Global Constraints
 
@@ -216,6 +216,10 @@ scope derive จาก server ทุก request; user filter ทำงานไ�
 
 ## การตรวจแผนรอบนี้
 
-งานรอบนี้เป็นเอกสารเท่านั้น ไม่เปลี่ยน code/schema/runtime จึงไม่ต้องรัน build/typecheck/test
-ต้องตรวจ diff, path ที่อ้างถึง และความครบถ้วนของข้อกำหนดก่อนส่งมอบ
+Implementation อยู่บน branch `codex/login-location-history` ใน managed worktree แยก
+ผ่าน `npm run verify`, `npm run build`, behavioral SQL และ concurrent DB tests ใน PostgreSQL แยก
+ใช้ migration timestamp `20261026160000` และ `20261026161000` เพื่อไม่ชนงานอื่น
+แทน `npx supabase test db` ด้วย `node scripts/test-login-history-db.mjs` ที่รัน SQL บน Postgres17จริง
+และใช้ minimal fixture ของ auth/users โดยไม่ reset Supabase instance อื่นหรือเขียน remote DB
+ดูผลและข้อจำกัดการทดสอบจริงที่ `docs/login-history.md` และ `docs/superpowers/reports/2026-10-26-login-location-history-verification.md`; ขั้นตอน Staging/physical devices ยังไม่ได้ดำเนินการ
 การอนุมัติแผนไม่ได้เท่ากับอนุมัติ Production deployment

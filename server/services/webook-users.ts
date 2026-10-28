@@ -39,6 +39,7 @@ export interface WebookUserManagementData {
 }
 
 export interface UpdateWebookUserInput {
+  actorId: string;
   allowTools?: Record<string, unknown>;
   dvId: string;
   id: string;
@@ -204,6 +205,7 @@ export async function updateWebookUser(
 ): Promise<UpdateWebookUserResult> {
   const parsed = parseUpdateInput(input);
   if (!parsed.ok) return parsed;
+  if (!UUID_PATTERN.test(input.actorId ?? "")) return { ok: false, message: "ไม่สามารถยืนยันผู้แก้ไขข้อมูลได้" };
 
   const repository = await resolveRepository(dependencies);
   if (!(await repository.roleExists(parsed.value.roleId))) {
@@ -221,7 +223,7 @@ export async function updateWebookUser(
       ...(updatesDvId ? { dvId: parsed.value.dvId } : {}),
       name: parsed.value.name,
       roleId: parsed.value.roleId,
-    });
+    }, input.actorId);
   } catch (error) {
     if (error instanceof DuplicateWebookUserDvIdError) {
       return { field: "dvId", ok: false, message: "DV ID นี้ถูกใช้งานแล้ว" };

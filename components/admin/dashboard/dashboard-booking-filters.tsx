@@ -43,9 +43,9 @@ function DashboardBookingMobileFilters({ query, href }: DashboardBookingFiltersP
   const navigate = (changes: Partial<DashboardBookingsQuery>) => router.push(href ? href(changes) : dashboardBookingsHref(query, changes));
   return <div className="mb-4 space-y-3 md:hidden">
     <div className="flex min-w-0 items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2.5"><CalendarDays aria-hidden className="size-5 shrink-0 text-primary" /><div className="min-w-0"><h1 className="text-sm font-semibold text-primary">{bookingPeriodLabel(query)}</h1><p className="text-xs text-muted-foreground">เวลาไทย · {query.timeFrom && (query.timeFrom !== "00:00" || query.timeTo !== "24:00") ? `${query.timeFrom}–${query.timeTo}` : "ทั้งวัน"}</p></div></div>
+      <div className="flex min-w-0 items-center gap-2.5"><CalendarDays aria-hidden className="size-5 shrink-0 text-primary-text" /><div className="min-w-0"><h1 className="text-sm font-semibold text-primary-text">{bookingPeriodLabel(query)}</h1><p className="text-xs text-muted-foreground">เวลาไทย · {query.timeFrom && (query.timeFrom !== "00:00" || query.timeTo !== "24:00") ? `${query.timeFrom}–${query.timeTo}` : "ทั้งวัน"}</p></div></div>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild><Button type="button" variant="outline" aria-label={`ตัวกรองรายการจอง · ${count} ตัวกรองที่ใช้`} className="h-10 shrink-0 gap-2 rounded-full bg-card px-3 text-sm text-primary shadow-none"><SlidersHorizontalIcon aria-hidden className="size-4" />ตัวกรอง{count > 0 && <span className="sr-only">{count} ตัวกรองที่ใช้</span>}</Button></SheetTrigger>
+        <SheetTrigger asChild><Button type="button" variant="outline" aria-label={`ตัวกรองรายการจอง · ${count} ตัวกรองที่ใช้`} className="h-10 shrink-0 gap-2 rounded-full bg-card px-3 text-sm text-primary-text shadow-none"><SlidersHorizontalIcon aria-hidden className="size-4" />ตัวกรอง{count > 0 && <span className="sr-only">{count} ตัวกรองที่ใช้</span>}</Button></SheetTrigger>
         <SheetContent ref={setContainer} side="bottom" showCloseButton={false} className="max-h-[85dvh] overflow-y-auto rounded-t-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
           <SheetTitle className="sr-only">ค้นหาและตัวกรองรายการจอง</SheetTitle><SheetDescription className="sr-only">เลือกช่วงวัน สถานะ การเรียงลำดับ และยอดจอง แล้วกดใช้ตัวกรอง</SheetDescription>
           <DashboardBookingAdvancedFiltersPanel key={JSON.stringify(query)} datePickerPortalContainer={container} query={query} showBookingControls showPeriod onFiltersApply={navigate} onClose={() => setOpen(false)} />
@@ -62,7 +62,7 @@ function DashboardBookingMobileFilters({ query, href }: DashboardBookingFiltersP
 
 export function DashboardBookingMobileResults({ query, href, total }: DashboardBookingFiltersProps & { total: number; page: number }) {
   const router = useRouter();
-  return <div className="mb-2 flex min-h-10 flex-wrap items-center justify-between gap-2 text-xs md:hidden"><p className="font-semibold text-primary">{total.toLocaleString("th-TH")} รายการ</p><Select items={DASHBOARD_BOOKING_SORTS} value={query.sort} onValueChange={sort => { if (sort) router.push(href ? href({ sort }) : dashboardBookingsHref(query, { sort })); }}><SelectTrigger aria-label="เรียงผลการค้นหา" className="h-8 w-auto gap-1 border-0 bg-transparent px-0 text-[11px] text-muted-foreground shadow-none [&>svg:last-child]:hidden"><ArrowDownUp aria-hidden className="size-3" /><SelectValue>{query.sort === "updated-desc" ? "อัปเดตล่าสุด" : DASHBOARD_BOOKING_SORTS.find(item => item.value === query.sort)?.label}</SelectValue></SelectTrigger><SelectContent align="end"><SelectGroup>{DASHBOARD_BOOKING_SORTS.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectGroup></SelectContent></Select></div>;
+  return <div className="mb-2 flex min-h-10 flex-wrap items-center justify-between gap-2 text-xs md:hidden"><p className="font-semibold text-primary-text">{total.toLocaleString("th-TH")} รายการ</p><Select items={DASHBOARD_BOOKING_SORTS} value={query.sort} onValueChange={sort => { if (sort) router.push(href ? href({ sort }) : dashboardBookingsHref(query, { sort })); }}><SelectTrigger aria-label="เรียงผลการค้นหา" className="h-8 w-auto gap-1 border-0 bg-transparent px-0 text-[11px] text-muted-foreground shadow-none [&>svg:last-child]:hidden"><ArrowDownUp aria-hidden className="size-3" /><SelectValue>{query.sort === "updated-desc" ? "อัปเดตล่าสุด" : DASHBOARD_BOOKING_SORTS.find(item => item.value === query.sort)?.label}</SelectValue></SelectTrigger><SelectContent align="end"><SelectGroup>{DASHBOARD_BOOKING_SORTS.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectGroup></SelectContent></Select></div>;
 }
 
 interface DashboardBookingAdvancedFiltersPanelProps {
@@ -113,7 +113,7 @@ export function DashboardBookingAdvancedFiltersPanel({ datePickerPortalContainer
     <div className="flex items-center justify-between gap-3">
       <h2 className="font-semibold">ตัวกรองเพิ่มเติม</h2>
       <div className="flex items-center gap-1">
-        <button className="px-2 py-1 text-xs font-medium text-primary hover:underline" onClick={clear} type="button">ล้างค่า</button>
+        <button className="px-2 py-1 text-xs font-medium text-primary-text hover:underline" onClick={clear} type="button">ล้างค่า</button>
         <button aria-label="ปิดตัวกรองเพิ่มเติม" className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" onClick={onClose} type="button"><XIcon aria-hidden className="size-4" /></button>
       </div>
     </div>

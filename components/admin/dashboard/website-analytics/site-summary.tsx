@@ -28,7 +28,7 @@ function SiteStatus({ site, showCoverage = false }: { site: WebsiteSummary; show
 
 function CompactMobileSiteSummary({ sites, month, range, compare, scope }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; compare: boolean; scope?: WebsiteScopeSelection }) {
   return <div className="md:hidden"><h3 className="text-sm font-semibold">สถิติแยกเว็บไซต์</h3><p className="mb-2 text-xs text-muted-foreground">แสดงข้อมูล {sites.length} โดเมนในระบบ พร้อมรายละเอียดตัวชี้วัด</p><ul className="divide-y border-y" aria-label="สถิติแยกเว็บไซต์บนมือถือ">{sites.map((site, index) => <li key={site.key}>
-    <Link href={websitePeriodHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {}, compare, scope)} className="flex min-h-16 items-center gap-3 py-3 focus-visible:outline-2 focus-visible:outline-primary">
+    <Link href={websitePeriodHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {}, compare, scope)} className="flex min-h-16 items-center gap-3 py-3 focus-visible:outline-2 focus-visible:outline-ring">
       <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: `var(--chart-${index % 5 + 1})` }} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{site.displayName}</span><span className="block truncate font-mono text-[10px] text-muted-foreground">{displayDomain(site.origin)}</span></span><span className="shrink-0 font-mono text-sm font-semibold tabular-nums" aria-label="จำนวนเข้าชม">{site.totals?.page_views.toLocaleString("th-TH") ?? "—"}</span><ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
     </Link>
     {site.status !== "complete" && site.status !== "partial" && <div className="pb-2 pl-5"><SiteStatus site={site} showCoverage /></div>}
@@ -38,14 +38,14 @@ function CompactMobileSiteSummary({ sites, month, range, compare, scope }: { sit
 function MobileSiteSummary({ sites, month, range, showCoverage = false, scope }: { sites: WebsiteSummary[]; month: string; range?: AnalyticsDateRange; showCoverage?: boolean; scope?: WebsiteScopeSelection }) {
   return <ul className="divide-y md:hidden" aria-label="สถิติแยกเว็บไซต์บนมือถือ">{sites.map(site => <li key={site.key} className="min-w-0 py-3 first:pt-0 last:pb-0">
     <div className="flex flex-wrap items-start justify-between gap-2">
-      <Link href={websitePeriodHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {}, showCoverage, scope)} className="flex min-w-0 flex-1 items-center gap-1 rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-primary">
+      <Link href={websitePeriodHref({ month: range?.to.slice(0, 7) ?? month, ...range, site: site.key, page: 1 }, {}, showCoverage, scope)} className="flex min-w-0 flex-1 items-center gap-1 rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-ring">
         <span className="min-w-0"><span className="block break-words text-sm font-medium">{site.displayName}</span><span className="mt-0.5 block break-all text-[11px] text-muted-foreground">{displayDomain(site.origin)}</span></span><ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </Link>
       <SiteStatus site={site} showCoverage={showCoverage} />
     </div>
-    <dl className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-muted/40 p-2">{columns.filter(column => ["page_views", "contact_clicks", "gallery_opens"].includes(column.key)).map(column => <div key={column.key} className="min-w-0"><dt className="text-[11px] text-muted-foreground">{column.label}</dt><dd className={`break-all text-base font-semibold tabular-nums ${column.key === "contact_clicks" ? "text-primary" : ""}`}>{site.totals?.[column.key].toLocaleString("th-TH") ?? "—"}</dd></div>)}</dl>
+    <dl className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-muted/40 p-2">{columns.filter(column => ["page_views", "contact_clicks", "gallery_opens"].includes(column.key)).map(column => <div key={column.key} className="min-w-0"><dt className="text-[11px] text-muted-foreground">{column.label}</dt><dd className={`break-all text-base font-semibold tabular-nums ${column.key === "contact_clicks" ? "text-primary-text" : ""}`}>{site.totals?.[column.key].toLocaleString("th-TH") ?? "—"}</dd></div>)}</dl>
     <details className="group mt-1">
-      <summary className="flex h-8 cursor-pointer list-none items-center justify-between rounded-sm text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">ช่องทางติดต่อ<span className="sr-only"> {site.displayName}</span><ChevronDown aria-hidden className="size-3.5 transition-transform group-open:rotate-180" /></summary>
+      <summary className="flex h-8 cursor-pointer list-none items-center justify-between rounded-sm text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">ช่องทางติดต่อ<span className="sr-only"> {site.displayName}</span><ChevronDown aria-hidden className="size-3.5 transition-transform group-open:rotate-180" /></summary>
       <dl className="grid grid-cols-3 gap-2 pb-2">{columns.filter(column => ["phone_clicks", "line_clicks", "chat_clicks"].includes(column.key)).map(column => <div key={column.key} className="min-w-0"><dt className="text-[11px] text-muted-foreground">{column.key === "chat_clicks" ? "แชท" : column.label}</dt><dd className="break-all text-sm font-medium tabular-nums">{site.totals?.[column.key].toLocaleString("th-TH") ?? "—"}</dd></div>)}</dl>
     </details>
   </li>)}</ul>;
@@ -63,7 +63,7 @@ export function WebsiteSiteSummary({ granularity, sites, month, range, today, as
   return <WebsiteAnalyticsLoadingProvider><Card data-dashboard-website-card={mobileOverview || undefined}>
     <CardHeader className="flex flex-col items-start gap-3 lg:flex-row">
       <div className="flex min-w-0 flex-1 items-start gap-3">
-        <span className="shrink-0 rounded-lg bg-muted p-2 text-primary"><ChartNoAxesColumnIncreasing aria-hidden className="size-5" /></span>
+        <span className="shrink-0 rounded-lg bg-muted p-2 text-primary-text"><ChartNoAxesColumnIncreasing aria-hidden className="size-5" /></span>
         <div className="min-w-0"><CardTitle><h2>แนวโน้มประสิทธิภาพเว็บไซต์</h2></CardTitle><p className="mt-1 text-xs text-muted-foreground">เปรียบเทียบจำนวนเข้าชม การกดติดต่อ และการเปิดรูป ของแต่ละเว็บไซต์</p><p className="mt-1 text-xs text-muted-foreground">{sites.length} โดเมนที่ผูกในระบบ</p></div>
       </div>
       {periodControls && <div className="ml-auto flex w-fit min-w-0 max-w-full flex-wrap items-start justify-end gap-x-3 gap-y-2">{periodControls}</div>}

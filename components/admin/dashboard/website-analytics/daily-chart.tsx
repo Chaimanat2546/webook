@@ -34,7 +34,7 @@ interface WebsiteDailyChartProps {
 }
 const config = {
   page_views: { label: "เข้าชม", color: "var(--chart-2)" },
-  contact_clicks: { label: "กดติดต่อ", color: "var(--primary)" },
+  contact_clicks: { label: "กดติดต่อ", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 const monthLabel = (value: string) => new Date(`${value}-01T00:00:00+07:00`).toLocaleDateString("th-TH", { month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
 export function WebsiteDailyChart({ points, monthly, query, available, hidden = false, onShow, comparisonControl, scope, range, asOf }: WebsiteDailyChartProps) {
@@ -51,7 +51,7 @@ export function WebsiteDailyChart({ points, monthly, query, available, hidden = 
   </CardHeader><CardContent><WebsiteChartLoading>
     {isMonthly && failed.length > 0 && <p className="mb-4 text-xs text-amber-700">โหลดกราฟไม่ได้ในเดือน {failed.map(point => monthLabel(point.date)).join(" · ")} กรุณาลองใหม่</p>}
     {hasData ? <figure aria-label={`กราฟเข้าชมและกดติดต่อ${isMonthly ? "รายเดือน" : "รายวัน"}`} className="min-w-0">
-      <div className="mb-2 flex flex-wrap justify-end gap-2"><Button variant="outline" aria-pressed={views} onClick={() => setSelected(value => value === "views" ? null : "views")}><span className="size-2 rounded-full bg-chart-2" />เข้าชม</Button><Button variant="outline" aria-pressed={contacts} onClick={() => setSelected(value => value === "contacts" ? null : "contacts")}><span className="size-2 rounded-full bg-primary" />กดติดต่อ</Button></div>
+      <div className="mb-2 flex flex-wrap justify-end gap-2"><Button variant="outline" aria-pressed={views} onClick={() => setSelected(value => value === "views" ? null : "views")}><span className="size-2 rounded-full bg-chart-2" />เข้าชม</Button><Button variant="outline" aria-pressed={contacts} onClick={() => setSelected(value => value === "contacts" ? null : "contacts")}><span className="size-2 rounded-full bg-chart-1" />กดติดต่อ</Button></div>
       <ChartContainer config={config} className="h-40 w-full md:h-64"><AreaChart data={data} accessibilityLayer margin={{ left: -15, right: 8 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" /><XAxis dataKey="date" tickFormatter={(date: string) => isMonthly ? monthLabel(date) : query.from ? `${date.slice(8)}/${date.slice(5, 7)}` : date.slice(8)} interval="preserveStartEnd" minTickGap={25} axisLine={false} tickLine={false} />
         <YAxis includeHidden allowDecimals={false} width={50} axisLine={false} tickLine={false} />
