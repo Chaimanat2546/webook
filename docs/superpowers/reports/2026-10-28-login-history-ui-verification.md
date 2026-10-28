@@ -2,7 +2,7 @@
 
 Date: 2026-10-28 (Asia/Bangkok)
 
-Branch: `codex/login-history-ui`, based on Staging commit `a50a2ea1da448407c2aa180a75bb11596e1fa746`.
+Branch: `feature/login-history-ui` (renamed at the user's request), based on Staging commit `a50a2ea1da448407c2aa180a75bb11596e1fa746`.
 
 ## Delivered behavior
 
@@ -62,3 +62,11 @@ The review fix pass was verified by tests and browser checks, without a second i
 Before any deployment, run `node scripts/test-login-history-db.mjs` against the documented isolated local test database and validate the complete Staging schema. Apply the new migration `20261028100000_login_history_root_filters.sql` after the existing role-guard/history migrations; the updated app passes the new listing arguments. Physical Android/iOS/PWA permission behavior and formal accessibility/screen-reader verification remain device/rollout checks.
 
 No merge, push, remote migration or deployment was performed. Keep the attached branch/worktree available for review.
+
+## Subsequent Staging delivery request
+
+After the implementation checkpoint above, the user explicitly requested merging into Staging and deploying through CI/CD.
+The Staging validation workflow now includes the isolated Login History SQL suites and concurrency checks before its full
+integration/build/Worker smoke gates. Validation must pass before the Staging migration/deploy job. The workflow continues
+to use `npm run deploy:cf:staging` and checks the compiled Staging project reference with no Production reference.
+Deployment success is to be established by the GitHub Actions run for the pushed Staging commit, not by the earlier local checks.

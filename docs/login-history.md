@@ -127,6 +127,8 @@ Build requires the normal Supabase public environment configuration. This worktr
 local placeholder values only; no Production environment or credentials were copied into it.
 
 Behavioral SQL tests use a dedicated isolated PostgreSQL container with no published ports.
+The Staging validation workflow now runs these Login History SQL suites and concurrent checks in
+that isolated container before the existing full integration gate; a failure blocks migrations/deployment.
 They do not use or reset any existing Supabase instance. Start the test container once:
 
 ```powershell
