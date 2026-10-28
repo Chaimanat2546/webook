@@ -31,7 +31,7 @@ reset role;
 set local role authenticated;
 set local request.jwt.claim.sub='10000000-0000-4000-8000-000000000001';
 set local request.jwt.claim.role='authenticated';
-select test.ok((select count(*)=1 from public.login_history), 'own rows only despite allow_members');
+select test.ok((select count(*)=0 from public.login_history), 'non-root cannot read even own rows');
 select test.denied('update public.login_history set latitude=1');
 select test.denied('delete from public.login_history');
 select test.denied('truncate public.login_history');
@@ -64,7 +64,7 @@ select test.denied($q$select public.login_history_attach(
  'skipped',null,null,null,null)$q$, 'P0001');
 select test.denied($q$select public.login_history_list('10000000-0000-4000-8000-000000000001','B',null,null,1,25)$q$);
 select test.ok((public.login_history_list('10000000-0000-4000-8000-000000000003','',null,null,1,25)->>'total')::int=2, 'root list total');
-select test.ok(not ((public.login_history_list('10000000-0000-4000-8000-000000000001','',null,null,1,25)->'entries'->0) ? 'session_id'), 'list DTO omits session id');
+select test.ok(not ((public.login_history_list('10000000-0000-4000-8000-000000000003','',null,null,1,25)->'entries'->0) ? 'session_id'), 'list DTO omits session id');
 reset role;
 insert into public.login_history(user_id,session_id,logged_in_at) select
  '10000000-0000-4000-8000-000000000001',gen_random_uuid(),now()-interval '91 days' from generate_series(1,1001);

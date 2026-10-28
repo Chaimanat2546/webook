@@ -52,8 +52,8 @@ export function createLoginHistoryRepository(client: SupabaseClient): LoginHisto
       dbError(error); return entry(data);
     },
     async list(scope,filter) {
-      if (scope.kind==="self" && filter.search) throw new LoginHistoryError(403);
-      const { data,error } = await client.rpc("login_history_list",{p_actor:scope.userId,p_search:filter.search,p_from:filter.from,p_to:filter.to,p_page:filter.page,p_size:filter.pageSize});
+      if (scope.kind!=="root-admin") throw new LoginHistoryError(403);
+      const { data,error } = await client.rpc("login_history_list",{p_actor:scope.userId,p_search:filter.search,p_from:filter.from,p_to:filter.to,p_page:filter.page,p_size:filter.pageSize,p_status:filter.status,p_sort:filter.sort});
       dbError(error);
       const result=asLoginRecord(data);
       if (!Array.isArray(result.entries) || typeof result.total!=="number") throw new LoginHistoryError(503);

@@ -1,39 +1,29 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { History } from "lucide-react";
-import { HistoryList } from "../../../components/admin/login-history/history-list";
+import { ShieldX } from "lucide-react";
 import { HistoryFilters } from "../../../components/admin/login-history/history-filters";
-import { Pagination } from "../../../components/admin/houses/pagination";
-import { Alert, AlertDescription } from "../../../components/ui/alert";
-import { parseHistoryFilter, LoginHistoryError } from "../../../lib/login-history";
+import { HistoryNavigationProvider } from "../../../components/admin/login-history/history-navigation";
+import { HistoryContent } from "../../../components/admin/login-history/history-content";
+import { Button } from "../../../components/ui/button";
+import { LoginHistoryError } from "../../../lib/login-history";
 import { loginHistorySession } from "../../../server/auth/login-history";
-import { listLoginHistory } from "../../../server/services/login-history";
+import { loadHistoryView, type HistoryView } from "../../../server/services/login-history-view";
 
-export const dynamic="force-dynamic";
-async function loadHistory(query:Record<string,string|string[]|undefined>) {
+export const dynamic = "force-dynamic";
+export default async function LoginHistoryPage({ searchParams }: { searchParams: Promise<Record<string,string|string[]|undefined>> }) {
+  const query = await searchParams;
+  let view: HistoryView;
   try {
-    const session=await loginHistorySession();
-    if(Object.values(query).some(Array.isArray))throw new LoginHistoryError(400);
-    const params=query as Record<string,string|undefined>;
-    const filter=parseHistoryFilter(params);
-    const scope=await session.repository.scope(session.actor);
-    const result=await listLoginHistory(session.repository,scope,filter);
-    return {params,filter,scope,result};
-  } catch(error) {
-    if(error instanceof LoginHistoryError && error.status===401)redirect("/login");
-    const message=error instanceof LoginHistoryError && error.status===400?"ตัวกรองไม่ถูกต้อง กรุณาตรวจช่วงวันที่และเลขหน้า":error instanceof LoginHistoryError && error.status===403?"คุณดูได้เฉพาะประวัติของตนเอง":"ยังโหลดประวัติไม่ได้ กรุณาลองใหม่ภายหลัง";
-    return {error:message};
+    const { actor, repository } = await loginHistorySession();
+    view = await loadHistoryView(repository,actor,query);
+  } catch (error) {
+    if (error instanceof LoginHistoryError && error.status === 401) redirect("/login?expired=1");
+    view = { state:"load-error",params:Object.fromEntries(Object.entries(query).map(([key,value]) => [key,Array.isArray(value) ? value[0] : value])) };
   }
-}
-export default async function LoginHistoryPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
-  const data=await loadHistory(await searchParams);
-  if("error" in data)return <div className="space-y-4"><h1 className="text-xl font-semibold">ประวัติการเข้าสู่ระบบ</h1><Alert variant="destructive"><AlertDescription>{data.error}</AlertDescription></Alert><Link className="text-sm underline" href="/admin/login-history">กลับหน้าประวัติ</Link></div>;
-  const {params,filter,scope,result}=data;
-  return <div className="space-y-5">
-      <header className="flex items-start gap-3"><History aria-hidden className="mt-1 size-6 shrink-0 text-primary"/><div><h1 className="text-xl font-semibold">ประวัติการเข้าสู่ระบบ</h1><p className="mt-1 text-sm text-muted-foreground">{scope.kind==="root-admin"?"ประวัติผู้ใช้ใน WeBooks":"ประวัติของคุณ"} · แสดงเวลาไทย · เก็บข้อมูล 90 วัน</p></div></header>
-      <HistoryFilters key={`${params.q ?? ""}|${params.from ?? ""}|${params.to ?? ""}`} canSearchUsers={scope.kind==="root-admin"} search={filter.search} from={params.from} to={params.to}/>
-      <p className="text-sm text-muted-foreground" aria-live="polite">พบ {result.total.toLocaleString("th-TH")} รายการ</p>
-      <HistoryList entries={result.entries}/>
-      <Pagination basePath="/admin/login-history" currentPage={result.page} totalPages={Math.max(1,Math.ceil(result.total/result.pageSize))} search={filter.search} query={{...(params.from?{from:params.from}:{}),...(params.to?{to:params.to}:{}),...(filter.pageSize!==25?{pageSize:String(filter.pageSize)}:{})}}/>
-    </div>;
+  if (view.state === "forbidden") return <section className="mx-auto max-w-xl space-y-4 rounded-2xl border bg-card px-5 py-10 text-center"><ShieldX aria-hidden className="mx-auto size-9 text-muted-foreground" /><h1 className="text-lg font-semibold">คุณไม่มีสิทธิ์ดูประวัติการเข้าสู่ระบบ</h1><Button asChild variant="outline"><Link href="/">กลับหน้าหลัก</Link></Button></section>;
+  return <HistoryNavigationProvider><div className="mx-auto max-w-5xl">
+    <header className="mb-4"><h1 className="text-xl font-semibold leading-snug">ประวัติการเข้าสู่ระบบ</h1><p className="mt-1 text-xs leading-relaxed text-muted-foreground">ตรวจสอบการเข้าสู่ระบบและข้อมูลตำแหน่ง · แสดงเวลาไทย</p></header>
+    <HistoryFilters key={JSON.stringify(view.params)} params={view.params} dateError={view.state === "invalid-date"} />
+    <HistoryContent view={view} />
+  </div></HistoryNavigationProvider>;
 }

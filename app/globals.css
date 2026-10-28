@@ -335,3 +335,41 @@
 html:has([data-slot='sidebar-wrapper']) {
   scrollbar-gutter: stable;
 }
+
+/* Flow01/Flow02 only; unrelated modules retain their established theme. */
+.audit-theme,
+body:has(.audit-theme) [data-slot="sheet-content"],
+body:has(.audit-theme) [data-slot="popover-content"] {
+  color-scheme: light;
+  --background: #F7F8FC;
+  --foreground: #20283A;
+  --card: #FFFFFF;
+  --card-foreground: #20283A;
+  --popover: #FFFFFF;
+  --popover-foreground: #20283A;
+  --primary: #2F3EE8;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEF1F8;
+  --secondary-foreground: #20283A;
+  --muted: #EEF1F8;
+  --muted-foreground: #647087;
+  --accent: #EEF1F8;
+  --accent-foreground: #20283A;
+  --border: #DDE2EC;
+  --input: #DDE2EC;
+  --field-background: #FFFFFF;
+  --field-border: #DDE2EC;
+  --ring: #5B8CFF;
+  --radius: 0.5rem;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #20283A;
+  --sidebar-primary: #2F3EE8;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EEF1F8;
+  --sidebar-accent-foreground: #20283A;
+  --sidebar-border: #DDE2EC;
+  --sidebar-ring: #5B8CFF;
+  font-family: var(--font-jakarta), var(--font-webook-sans), sans-serif;
+}
+.audit-theme :is(button, a, input):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.audit-theme input::placeholder { color: #8A99A3; }

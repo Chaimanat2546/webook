@@ -1,4 +1,10 @@
-import { Skeleton } from "../../../components/ui/skeleton";
+"use client";
+import { useSearchParams } from "next/navigation";
+import { HistoryFilters } from "../../../components/admin/login-history/history-filters";
+import { HistoryNavigationProvider } from "../../../components/admin/login-history/history-navigation";
+import { HistorySkeleton } from "../../../components/admin/login-history/history-skeleton";
+
 export default function LoadingHistory() {
-  return <div className="space-y-5" aria-label="กำลังโหลดประวัติ"><Skeleton className="h-8 w-56"/><Skeleton className="h-24 w-full"/>{[1,2,3,4].map(row=><Skeleton key={row} className="h-20 w-full"/>)}</div>;
+  const params = useSearchParams();
+  return <HistoryNavigationProvider><div className="mx-auto max-w-5xl"><header className="mb-4"><h1 className="text-xl font-semibold">ประวัติการเข้าสู่ระบบ</h1><p className="mt-1 text-xs text-muted-foreground">ตรวจสอบการเข้าสู่ระบบและข้อมูลตำแหน่ง · แสดงเวลาไทย</p></header><HistoryFilters params={Object.fromEntries(params.entries())} disabled /><HistorySkeleton /></div></HistoryNavigationProvider>;
 }

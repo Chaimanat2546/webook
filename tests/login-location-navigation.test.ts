@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { build } from "esbuild";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { isValidElement, type ReactElement } from "react";
+import { isValidElement, type ReactNode, type ReactElement } from "react";
 
 const currentId="40000000-0000-4000-8000-000000000002";
 const oldId="40000000-0000-4000-8000-000000000001";
@@ -51,5 +51,11 @@ test("current prompt is keyed by history so attempts from an earlier sign-in can
   const entry=await load("../app/login/location/page.tsx");
   const page=entry.default as (props:{searchParams:Promise<{history?:string}>})=>Promise<ReactElement<{children:ReactElement<PromptProps>}>>;
   const result=await page({searchParams:Promise.resolve({history:currentId})});
-  assert.ok(isValidElement(result));assert.equal(result.props.children.key,currentId);assert.equal(result.props.children.props.historyId,currentId);
+  function find(node:ReactNode):ReactElement<PromptProps>|undefined {
+    if(!isValidElement(node))return undefined;
+    const props=node.props as {historyId?:string;children?:ReactNode};
+    if(props.historyId)return node as ReactElement<PromptProps>;
+    for(const child of (Array.isArray(props.children) ? props.children : [props.children])){const found=find(child);if(found)return found;}
+  }
+  const prompt=find(result);assert.ok(prompt);assert.equal(prompt.key,currentId);assert.equal(prompt.props.historyId,currentId);
 });

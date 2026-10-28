@@ -15,9 +15,11 @@ import { mobileNavigationLayout } from "../../lib/mobile-navigation";
 import { AdminMobileContent, AdminMobileHeader, AdminMobileNavigation } from "./admin-mobile-navigation";
 import { NotificationsProvider } from "../admin/notifications/notifications-provider";
 import { NotificationBell } from "../admin/notifications/notification-bell";
+import { AdminRouteAppearance } from "./admin-route-appearance";
 
 export function AdminShell({
   canUseDashboard = false,
+  canViewLoginHistory = false,
   canAccessHouses,
   canManageCentralUsers,
   canManageWebookUsers,
@@ -29,6 +31,7 @@ export function AdminShell({
   notificationActorId,
 }: {
   canUseDashboard?: boolean;
+  canViewLoginHistory?: boolean;
   canAccessHouses: boolean;
   canManageCentralUsers: boolean;
   canManageWebookUsers: boolean;
@@ -42,10 +45,11 @@ export function AdminShell({
   const permissions = { canUseDashboard, canAccessHouses, canManageCentralUsers, canManageWebookUsers, canUseAccommodation, canUseBooking, canUseQuotation };
   const hasDock = mobileNavigationLayout(permissions).dock.length > 1;
   return (
-    <NotificationsProvider key={notificationActorId ?? "notifications"} actorId={notificationActorId}>
+    <AdminRouteAppearance><NotificationsProvider key={notificationActorId ?? "notifications"} actorId={notificationActorId}>
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <AdminMobileNavigationMemory>
       <AdminDesktopSidebar
+        canViewLoginHistory={canViewLoginHistory}
         canUseDashboard={canUseDashboard}
         canAccessHouses={canAccessHouses}
         canManageCentralUsers={canManageCentralUsers}
@@ -76,6 +80,6 @@ export function AdminShell({
       <Toaster />
       </AdminMobileNavigationMemory>
     </SidebarProvider>
-    </NotificationsProvider>
+    </NotificationsProvider></AdminRouteAppearance>
   );
 }

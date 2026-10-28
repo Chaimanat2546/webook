@@ -26,6 +26,7 @@ export function AdminMobileHeader() {
   if (pathname === "/admin/dashboard/agencies") return <AdminMobileBrandHeader subtitle="ยอดขายเอเจนซี่" />;
   if (pathname === "/admin/dashboard/bookings") return <AdminMobileBrandHeader subtitle="รายการจอง" />;
   if (pathname === "/admin/dashboard") return <AdminMobileBrandHeader subtitle="ภาพรวมธุรกิจ" />;
+  if (pathname === "/admin/login-history") return <AdminMobileBrandHeader subtitle="ภาพรวมธุรกิจ" audit />;
   return (
     <header className="flex min-h-14 items-center justify-between gap-3 border-b bg-background px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
       <button type="button" aria-label="เปิดเมนูหลัก" onClick={() => setOpenMobile(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full focus-visible:outline-2"><Menu aria-hidden className="size-5" /></button>

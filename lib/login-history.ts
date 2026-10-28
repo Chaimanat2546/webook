@@ -15,12 +15,13 @@ export interface LoginHistoryEntry {
   displayName: string | null; username: string | null; email: string | null;
 }
 export type HistoryScope = { kind: "self" | "root-admin"; userId: string };
-export interface HistoryFilter { search: string; from: string | null; to: string | null; page: number; pageSize: number }
+export type HistorySort = "latest" | "oldest";
+export interface HistoryFilter { search: string; from: string | null; to: string | null; status: LoginLocationStatus | null; sort: HistorySort; page: number; pageSize: number }
 export interface HistoryPage { entries: LoginHistoryEntry[]; total: number; page: number; pageSize: number }
 export class LoginHistoryError extends Error {
   readonly status: 400 | 401 | 403 | 404 | 409 | 503;
   readonly transient: boolean;
-  readonly reason: "invalid_capture_time" | null;
+  readonly reason: "invalid_capture_time" | "invalid_date" | null;
   constructor(status: LoginHistoryError["status"], transient = false, reason: LoginHistoryError["reason"] = null) {
     super("login_history_failed"); this.status = status; this.transient = transient; this.reason = reason;
   }
@@ -54,9 +55,9 @@ export function parseLocationReport(value: unknown): LocationReport {
   return { historyId: row.historyId, status: row.status };
 }
 function dayStart(value: string): number {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new LoginHistoryError(400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new LoginHistoryError(400, false, "invalid_date");
   const utc = Date.parse(`${value}T00:00:00Z`);
-  if (!Number.isFinite(utc) || new Date(utc).toISOString().slice(0,10) !== value) throw new LoginHistoryError(400);
+  if (!Number.isFinite(utc) || new Date(utc).toISOString().slice(0,10) !== value) throw new LoginHistoryError(400, false, "invalid_date");
   return utc - 7*60*60*1000;
 }
 export function parseHistoryFilter(query: Record<string, string | undefined>): HistoryFilter {
@@ -68,8 +69,11 @@ export function parseHistoryFilter(query: Record<string, string | undefined>): H
   const from = query.from ? dayStart(query.from) : null;
   const to = query.to ? dayStart(query.to) + 24*60*60*1000 : null;
   const search = (query.q ?? "").trim();
-  if ((from !== null && to !== null && from >= to) || search.length > 200) throw new LoginHistoryError(400);
-  return { search, from: from === null ? null : new Date(from).toISOString(), to: to === null ? null : new Date(to).toISOString(), page: integer(query.page,1,1000000), pageSize: integer(query.pageSize,25,100) };
+  if (from !== null && to !== null && from >= to) throw new LoginHistoryError(400, false, "invalid_date");
+  const status = query.status || null;
+  const sort = query.sort || "latest";
+  if (search.length > 200 || (status !== null && !Object.hasOwn(LOCATION_STATUS_LABELS, status)) || (sort !== "latest" && sort !== "oldest")) throw new LoginHistoryError(400);
+  return { search, from: from === null ? null : new Date(from).toISOString(), to: to === null ? null : new Date(to).toISOString(), status: status as LoginLocationStatus | null, sort, page: integer(query.page,1,1000000), pageSize: integer(query.pageSize,25,100) };
 }
 export function classifyLoginDevice(userAgent: string | null): Pick<RecordLoginInput,"os" | "browser" | "deviceType"> {
   const ua = (userAgent ?? "").slice(0,2048);
@@ -79,6 +83,6 @@ export function classifyLoginDevice(userAgent: string | null): Pick<RecordLoginI
   return { os, browser, deviceType };
 }
 export const LOCATION_STATUS_LABELS: Record<LoginLocationStatus,string> = {
-  pending: "ไม่ได้รับข้อมูลพิกัด", success: "ได้รับพิกัด", skipped: "ผู้ใช้ข้าม", denied: "ไม่อนุญาตพิกัด",
-  unavailable: "อ่านพิกัดไม่ได้", timeout: "หมดเวลารอพิกัด", unsupported: "อุปกรณ์ไม่รองรับ",
+  pending: "ไม่ได้รับข้อมูลพิกัด", success: "ได้รับพิกัด", skipped: "ผู้ใช้ข้าม", denied: "ไม่อนุญาต",
+  unavailable: "อ่านพิกัดไม่ได้", timeout: "หมดเวลา", unsupported: "อุปกรณ์ไม่รองรับ",
 };

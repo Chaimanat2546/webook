@@ -11,7 +11,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 async function loadEntry(file: string, fixtures: Record<string, unknown>) {
   const bundle = await build({ entryPoints: [fileURLToPath(new URL(file, import.meta.url))], bundle: true, write: false, platform: "node", format: "cjs", packages: "external", plugins: [{ name: "auth-io", setup(builder) {
-    builder.onResolve({ filter: /^\.\/admin$/ }, args => ["/server/auth/bookings.ts", "/server/auth/dashboard.ts", "/server/auth/admin-navigation.ts"].some(path => args.importer.replaceAll("\\", "/").endsWith(path)) ? { path: "fixture-session", external: true } : undefined);
+    builder.onResolve({ filter: /^\.\/admin$/ }, args => ["/server/auth/bookings.ts", "/server/auth/dashboard.ts", "/server/auth/admin-navigation.ts", "/server/auth/login-history-navigation.ts"].some(path => args.importer.replaceAll("\\", "/").endsWith(path)) ? { path: "fixture-session", external: true } : undefined);
     builder.onResolve({ filter: /(?:server\/auth\/admin|lib\/supabase\/(?:admin|server))$/ }, args => ({ path: args.path.endsWith("auth/admin") ? "fixture-session" : args.path.endsWith("supabase/admin") ? "fixture-admin-client" : "fixture-server-client", external: true }));
   } }] });
   const loaded = { exports: {} as Record<string, unknown> };
@@ -48,7 +48,7 @@ test("home selects the first authorized module and never assumes house access", 
       "fixture-admin-client": { createSupabaseAdminClient: () => client },
     });
     await expectRedirect(entry.default as () => Promise<unknown>, destination);
-    assert.equal(reads, 2);
+    assert.equal(reads, 3);
   }
 });
 
@@ -82,7 +82,7 @@ test("home shows an authenticated no-access state instead of redirecting into a 
   const html = renderToStaticMarkup(result);
   assert.match(html, /บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งาน/);
   assert.match(html, /ออกจากระบบ/);
-  assert.deepEqual([...html.matchAll(/href="(\/admin[^"]*)"/g)].map(match=>match[1]), ["/admin/login-history"]);
+  assert.deepEqual([...html.matchAll(/href="(\/admin[^"]*)"/g)].map(match=>match[1]), []);
 });
 
 test("module entry redirects forbidden links to the permission-aware home", async () => {
@@ -123,13 +123,17 @@ test("successful login enters the permission-aware home and invalid login does n
       "fixture-admin-client": { createSupabaseAdminClient: () => null },
       "fixture-server-client": { createSupabaseServerClient: async () => ({ auth: { signInWithPassword: async (credentials: unknown) => {
         assert.deepEqual(credentials, { email: "test@example.com", password: "test-password" });
-        return { data: { user: invalid ? null : { id: "signed-in-user" } }, error: invalid ? { message: "invalid" } : null };
+        return { data: { user: invalid ? null : { id: "signed-in-user" } }, error: invalid ? { code: "invalid_credentials", message: "invalid" } : null };
       } } }) },
     });
     const form = new FormData();
     form.set("identifier", "TEST@example.com");
     form.set("adminCredential", "test-password");
-    await expectRedirect(() => (entry.signIn as (form: FormData) => Promise<unknown>)(form), invalid ? "/login?error=invalid" : "/");
+    if (invalid) {
+      const state = await (entry.signIn as (form: FormData) => Promise<{status:string;identifier:string}>)(form);
+      assert.equal(state.status,"invalid"); assert.equal(state.identifier,"TEST@example.com");
+      assert.equal(JSON.stringify(state).includes("test-password"),false);
+    } else await expectRedirect(() => (entry.signIn as (form: FormData) => Promise<unknown>)(form), "/");
   }
 });
 
@@ -148,13 +152,30 @@ test("login retires only the previous browser binding on a successful account sw
       "fixture-admin-client": { createSupabaseAdminClient: () => client },
       "fixture-server-client": { createSupabaseServerClient: async () => ({ auth: {
         getUser: async () => ({ data: { user: { id: "previous-auth-user" } } }),
-        signInWithPassword: async () => ({ data: { user: invalid ? null : { id: "new-user-without-module-access" } }, error: invalid ? { message: "invalid" } : null }),
+        signInWithPassword: async () => ({ data: { user: invalid ? null : { id: "new-user-without-module-access" } }, error: invalid ? { code: "invalid_credentials", message: "invalid" } : null }),
       } }) },
     });
     const form = new FormData();
     form.set("identifier", "test@example.com"); form.set("adminCredential", "password");
-    await expectRedirect(() => (entry.signIn as (input: FormData) => Promise<unknown>)(form), invalid ? "/login?error=invalid" : "/");
+    if (invalid) assert.equal((await (entry.signIn as (input:FormData)=>Promise<{status:string}>)(form)).status,"invalid");
+    else await expectRedirect(() => (entry.signIn as (input: FormData) => Promise<unknown>)(form), "/");
     assert.equal(retired, invalid ? 0 : 1);
     assert.equal(cleared, invalid ? 0 : 1);
+  }
+});
+
+ test("login transport errors stay inline and do not masquerade as invalid credentials",async()=>{
+  for (const mode of ["throw","returned"]) {
+    const entry=await loadEntry("../app/login/actions.ts",{
+      "next/headers":{cookies:async()=>({get:()=>undefined})},
+      "fixture-admin-client":{createSupabaseAdminClient:()=>null},
+      "fixture-server-client":{createSupabaseServerClient:async()=>({auth:{signInWithPassword:async()=>{
+        if(mode==="throw")throw Error("private transport details");
+        return {data:{user:null,session:null},error:{code:"unexpected_failure",status:503,message:"private details"}};
+      }}})},
+    });
+    const form=new FormData();form.set("identifier","test@example.com");form.set("adminCredential","private-password");
+    const result=await (entry.signIn as (input:FormData)=>Promise<{status:string}>)(form);
+    assert.equal(result.status,"request_error");assert.doesNotMatch(JSON.stringify(result),/private/);
   }
 });

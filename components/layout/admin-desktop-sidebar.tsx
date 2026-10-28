@@ -28,6 +28,7 @@ import { NotificationSignOut } from "../admin/notifications/notification-sign-ou
 
 export function AdminDesktopSidebar({
   canUseDashboard = false,
+  canViewLoginHistory = false,
   canAccessHouses,
   canManageCentralUsers,
   canManageWebookUsers,
@@ -37,6 +38,7 @@ export function AdminDesktopSidebar({
   signOutAction,
 }: {
   canUseDashboard?: boolean;
+  canViewLoginHistory?: boolean;
   canAccessHouses: boolean;
   canManageCentralUsers: boolean;
   canManageWebookUsers: boolean;
@@ -195,14 +197,14 @@ export function AdminDesktopSidebar({
                 ) : null}
                 </>}
             <InstallAppMenuItem />
-            <SidebarMenuItem>
+            {canViewLoginHistory && <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === "/admin/login-history"} tooltip="ประวัติการเข้าสู่ระบบ">
                 <Link href="/admin/login-history" onClick={closeMobileSidebar}>
                   <ShieldUser data-icon="inline-start" />
                   <span>ประวัติการเข้าสู่ระบบ</span>
                 </Link>
               </SidebarMenuButton>
-            </SidebarMenuItem>
+            </SidebarMenuItem>}
             <NotificationBell sidebar onOpen={closeMobileSidebar} />
             <SidebarMenuItem>
               <NotificationSignOut signOutAction={signOutAction} />

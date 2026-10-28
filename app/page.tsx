@@ -7,5 +7,5 @@ export default async function Home() {
   const permissions = await getAdminNavigationPermissions();
   const destination = mobileDestinations(permissions)[0];
   if (destination) redirect(destination.href);
-  return <AdminNoAccess />;
+  return <AdminNoAccess canViewLoginHistory={permissions.canViewLoginHistory} />;
 }

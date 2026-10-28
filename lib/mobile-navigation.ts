@@ -1,4 +1,5 @@
 export interface MobileNavigationPermissions {
+  canViewLoginHistory?: boolean;
   canUseDashboard: boolean;
   canAccessHouses: boolean;
   canUseBooking: boolean;

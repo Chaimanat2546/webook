@@ -16,13 +16,19 @@
 - Reading happens once per mounted attempt. A sessionStorage marker containing only the history UUID
   prevents another read after reload in the same tab; no coordinates enter browser persistence.
   Separate tabs may make separate explicit attempts, but only one terminal result can be stored.
-- Coordinates stay in memory while sending/retrying. A failed send can resend the same payload;
-  it never automatically reads the device again. Leaving the page clears the payload and aborts sending.
+- Skip dispatches `skipped` and immediately continues to `/` without awaiting persistence.
+  Sharing waits only for permission/location classification, then dispatches and continues.
+  The existing same-origin JSON API uses bounded `fetch` with `keepalive: true`, surviving route unmount.
+  There is no durable queue, automatic retry, visible save progress/result/error, or location toast.
+  Browser shutdown or network loss can leave the existing row pending; coordinates never enter browser storage.
 - An auth account change or sign-out cancels pending callbacks. The API also checks the old history ID
   against the *current* user/session, including when the same account signs in under a new session.
 - The location window closes 10 minutes after login. Late/unanswered reports stay `pending` and appear
   as “ไม่ได้รับข้อมูลพิกัด”; that does not claim a user denied permission or that their device timed out.
-- Location save failures do not become false location outcomes. The UI reports the failure and permits continuing.
+- Location save failures leave unfinalized rows `pending` (ไม่ได้รับข้อมูลพิกัด), never a false denied/success outcome.
+- Reloading a previously attempted event continues without another permission/location read.
+- Login supports password visibility, username/current-password autocomplete, disabled pending controls,
+  and inline credential/transport errors preserving the identifier. Session expiry has its own Thai message.
 
 ## Data and authority
 
@@ -42,10 +48,10 @@ including IPv6 and any upstream Worker/proxy configuration, before treating it a
 
 ## Access control
 
-- Authenticated users can read their own history; signed-out users have no table access.
-- A unique `public.users.uid` mapping with `role_id = 1` grants reads of other local WeBooks users.
-  Sellers/property owners and `allow_members` alone cannot read others' locations.
+- Only a unique `public.users.uid` mapping with `role_id = 1` may view History, including their own records.
+  Non-root users cannot directly read even their own table rows. Sellers/property owners and `allow_members` alone grant no viewing access.
   No external tenant is queried, and no seller-level membership is inferred from `dv_id`.
+- Signed-in session owners still record and attach their own current-session evidence through existing server-only RPCs.
 - RLS protects direct reads; authenticated users have no direct history writes, deletes, or truncate.
 - Server routes verify the *same* JWT using `getClaims(token)` and `getUser(token)`, and verify its
   session is still present. The attach RPC additionally locks that session and the history row and
@@ -70,18 +76,25 @@ unseen external systems enforce the same authorization contract.
 
 `/admin/login-history` is available from the shared desktop/mobile sidebar and the authenticated
 no-module-access screen. It does not change the default module landing order or mobile dock.
-Users see their own records; root admins additionally search current profile name/username/email.
+Navigation/shortcuts are root-only. Direct non-root navigation displays forbidden content with กลับหน้าหลัก,
+without loading rows/counts. Root admins search current profile name/username/email.
 Unmapped profiles get a fallback label, never an email-based identity match.
 
 The date filter is a calendar-day filter in Asia/Bangkok. For example, 2026-10-26 means
 `[2026-10-25T17:00:00Z, 2026-10-26T17:00:00Z)`. Invalid filters show an error, never an unrestricted query.
-Pages default to 25 records (max 100), ordered by login time descending then UUID descending.
-The desktop table becomes cards on mobile. Coordinates and accuracy are shown without contacting
+Pages default to 25 records (max 100). `status` accepts the existing seven statuses; omitted means all.
+`sort=latest` (default) orders login time/UUID descending; `sort=oldest` orders both ascending.
+Status/date/search predicates and ordering apply before pagination; count and rows use the same predicate.
+Mobile uses a Sheet for status/order, Bangkok-day journal groups and separate date controls.
+Loading, default empty, filtered empty, invalid date and load failure retain the shared page context.
+Date errors use ช่วงวันที่ไม่ถูกต้อง กรุณาเลือกใหม่; retry/page changes preserve criteria.
+The desktop table becomes journal cards on mobile. Coordinates and accuracy are shown without contacting
 a map/reverse-geocoding provider. Private data is excluded from service-worker caches/offline replay.
 
 ## Retention and operations
 
-The implementation defaults to **90 days**, pending organizational confirmation before rollout.
+The existing database cleanup remains **90 days**, an operational setting. The updated in-scope product UI
+does not disclose a retention duration. This UI change does not modify the cleanup function/policy.
 The existing minute cron in both Wrangler environments calls `login_history_purge`, which uses the DB
 clock, deletes at most 1,000 expired rows per run, and uses `FOR UPDATE SKIP LOCKED` for overlapping runs.
 Rows exactly at the 90-day cutoff are retained until a later run. Primary DB deletion does not remove
@@ -125,8 +138,8 @@ If this named test container already exists but is stopped, use `docker start we
 instead of creating it again. The implementation session left it stopped, with only fictional fixture data.
 
 The script resets **only this named disposable test database**, loads the minimal fixture from
-`tests/fixtures/login-history-db.sql`, then runs the two feature migrations and SQL assertions.
-It covers own/root RLS, blocked writes/RPCs, self-promotion, root-edit protection, session revocation,
+`tests/fixtures/login-history-db.sql`, then runs the role-guard/history/root-filter migrations and SQL assertions.
+It covers root-only RLS, status predicates, ascending/descending order and ties, blocked writes/RPCs, self-promotion, root-edit protection, session revocation,
 account deletion, finite constraints, Bangkok date boundaries, retention limits, and actual concurrent
 insert/report/purge calls. The fixture mirrors relevant public.users types from the baseline schema;
 it is not a substitute for validating migration compatibility with the complete Staging schema.
@@ -138,7 +151,7 @@ The Node suite also exercises scheduled cleanup inside the native Workers runtim
    No location-dependent booking/payment rule is enabled by this release.
 2. Review the complete Staging schema for extra user-writing functions/grants; verify Auth user creation,
    profile maintenance and user edits still work with the new direct-write restriction.
-3. Apply `20261026160000_webook_user_role_guard.sql` then `20261026161000_login_history.sql`
+3. Apply `20261026160000_webook_user_role_guard.sql`, `20261026161000_login_history.sql`, then `20261028100000_login_history_root_filters.sql`
    using the repository's approved Staging migration workflow (GitHub Actions).
 4. Verify Staging Supabase is `https://sxvkhzhqtrpxgzumsswl.supabase.co` and Cloudflare account is
    `0df55f166fa309dcc904e992c43f86db`; use only `npm run deploy:cf:staging` for the web Worker.
@@ -152,6 +165,9 @@ and guarded user-update path; redeploying an old unguarded user-management path 
 Do not drop the history table or restore broad client-write grants as an automatic rollback step.
 
 ## Verification record
+
+The 2026-10-28 UI update is recorded separately in `docs/superpowers/reports/2026-10-28-login-history-ui-verification.md`.
+Results below are historical evidence for the previous implementation, not verification of the updated UI/access policy.
 
 - 2026-10-26: `npm run verify` passed: strict typecheck, ESLint (11 pre-existing warnings),
   and 1,320 passed tests, 4 skipped, 0 failed after the independent review fix.
@@ -169,6 +185,9 @@ Do not drop the history table or restore broad client-write grants as an automat
   rollout checks. No remote database was changed and no deployment was performed.
 
 ### Staging acceptance — 2026-10-26
+
+Historical behavior below is superseded on 2026-10-28: self-history access, visible location results/retry,
+and the temporary diagnostic route/links have been removed from the updated implementation.
 
 The sign-in redirect includes the current history UUID in `/login/location?history=…`.
 The login submit button disables while its Server Action is pending and displays

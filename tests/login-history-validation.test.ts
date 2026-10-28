@@ -1,8 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseLocationReport, parseHistoryFilter, classifyLoginDevice, actorFromClaims } from "../lib/login-history.ts";
+import { parseLocationReport, parseHistoryFilter, classifyLoginDevice, actorFromClaims, LoginHistoryError } from "../lib/login-history.ts";
 const historyId = "40000000-0000-4000-8000-000000000001";
 const actorId = "10000000-0000-4000-8000-000000000001";
+
+test("history status and order are allowlisted and date failures stay distinguishable", () => {
+  assert.equal(parseHistoryFilter({}).status, null);
+  assert.equal(parseHistoryFilter({}).sort, "latest");
+  for (const status of ["pending", "success", "skipped", "denied", "unavailable", "timeout", "unsupported"]) {
+    assert.equal(parseHistoryFilter({status, sort:"oldest"}).status, status);
+    assert.equal(parseHistoryFilter({status, sort:"oldest"}).sort, "oldest");
+  }
+  for (const query of [{status:"invented"}, {sort:"asc"}, {sort:"logged_in_at;drop table"}]) assert.throws(() => parseHistoryFilter(query));
+  for (const query of [{from:"2026-02-30"}, {from:"2026-10-28",to:"2026-10-27"}]) {
+    assert.throws(() => parseHistoryFilter(query), error => error instanceof LoginHistoryError && error.reason === "invalid_date");
+  }
+});
 test("location accepts zero coordinates and rejects malformed numeric payloads", () => {
   const valid = { historyId, status: "success", latitude: 0, longitude: 0, accuracy: 0, capturedAt: "2026-10-26T10:00:00Z" };
   assert.equal(parseLocationReport(valid).status, "success");

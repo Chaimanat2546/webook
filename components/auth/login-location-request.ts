@@ -1,4 +1,14 @@
-import type { LocationReport } from "../../lib/login-history.ts";
+import { actorFromClaims, type LocationReport } from "../../lib/login-history.ts";
+
+/** Local cancellation hint only; authorization still verifies the JWT server-side. */
+export function matchesLoginLocationSession(session: {user:{id:string};access_token:string} | null, userId: string, sessionId: string): boolean {
+  if (!session || session.user.id !== userId) return false;
+  try {
+    const encoded = session.access_token.split(".")[1].replaceAll("-","+").replaceAll("_","/");
+    const actor = actorFromClaims(JSON.parse(atob(encoded)) as unknown,userId);
+    return actor.sessionId === sessionId;
+  } catch { return false; }
+}
 
 export type LocationRequestState="idle" | "reading" | "saving" | "saved" | "failed" | "denied" | "unavailable" | "timeout" | "unsupported";
 interface LocationRequestOptions {
@@ -7,6 +17,7 @@ interface LocationRequestOptions {
   minimumCapturedAt?:number;
   save:(report:LocationReport,signal:AbortSignal)=>Promise<boolean>;
   onState:(state:LocationRequestState)=>void;
+  onContinue?:()=>void;
   deadline?:(expire:()=>void)=>()=>void;
 }
 /** Owns one explicit location attempt. Coordinates stay in memory until save. */
@@ -45,6 +56,7 @@ export function createLoginLocationRequest(options:LocationRequestOptions) {
     if(disposed || finished)return;
     finished=true;stopDeadline();stopWatch();report=value;
     void persist();
+    options.onContinue?.();
   }
   function locationError(error:GeolocationPositionError) {
     finish({historyId:options.historyId,status:error.code===1?"denied":error.code===3?"timeout":"unavailable"});
@@ -79,6 +91,6 @@ export function createLoginLocationRequest(options:LocationRequestOptions) {
     },
     skip() {if(started || disposed)return;started=true;finish({historyId:options.historyId,status:"skipped"});},
     retry() {void persist();},
-    cancel() {disposed=true;report=null;stopDeadline();stopWatch();controller?.abort();},
+    cancel() {disposed=true;report=null;stopDeadline();stopWatch();if(!finished)controller?.abort();},
   };
 }

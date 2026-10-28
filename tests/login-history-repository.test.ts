@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createClient } from "@supabase/supabase-js";
 import { createLoginHistoryRepository } from "../server/repositories/login-history.ts";
-import { LoginHistoryError } from "../lib/login-history.ts";
+import { LoginHistoryError, parseHistoryFilter } from "../lib/login-history.ts";
 const actor = { userId: "10000000-0000-4000-8000-000000000001", sessionId: "30000000-0000-4000-8000-000000000001" };
 const row = { id: "40000000-0000-4000-8000-000000000001", user_id: actor.userId, session_id: actor.sessionId, logged_in_at: "2026-10-26T10:00:00Z", os: "Linux", browser: "Chrome", device_type: "desktop", location_status: "pending", ip_address: null };
 test("record and attach send trusted actor and return a DTO without session or credentials", async () => {
@@ -28,7 +28,7 @@ test("repository maps private SQL errors to bounded HTTP errors", async () => {
     await assert.rejects(() => createLoginHistoryRepository(client).attach(actor, { historyId: row.id, status: "skipped" }), error => error instanceof LoginHistoryError && error.status === status && !error.message.includes("sensitive"));
   }
 });
-test("list rejects attempts to pass search through a self-only scope before database access", async () => {
+test("list rejects all non-root reads, even without search, before database access", async () => {
   const client = createClient("https://example.supabase.co", "test", { global: { fetch: async () => { throw new Error("must not access network"); } } });
-  await assert.rejects(() => createLoginHistoryRepository(client).list({kind:"self",userId:actor.userId}, {search:"B",from:null,to:null,page:1,pageSize:25}), error => error instanceof LoginHistoryError && error.status===403);
+  for (const q of ["", "B"]) await assert.rejects(() => createLoginHistoryRepository(client).list({kind:"self",userId:actor.userId}, parseHistoryFilter({q})), error => error instanceof LoginHistoryError && error.status===403);
 });

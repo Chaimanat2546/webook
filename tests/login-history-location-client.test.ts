@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createLoginLocationRequest } from "../components/auth/login-location-request.ts";
+import { createLoginLocationRequest, matchesLoginLocationSession } from "../components/auth/login-location-request.ts";
 import type { LocationReport } from "../lib/login-history.ts";
 const historyId="40000000-0000-4000-8000-000000000001";
 const tick=()=>new Promise<void>(resolve=>setImmediate(resolve));
+test("a replacement session for the same account cancels the old location context",()=>{
+  const userId="10000000-0000-4000-8000-000000000001";
+  const token=(id:string)=>`e30.${Buffer.from(JSON.stringify({sub:userId,session_id:id})).toString("base64url")}.fake`;
+  assert.equal(matchesLoginLocationSession({user:{id:userId},access_token:token(historyId)},userId,historyId),true);
+  assert.equal(matchesLoginLocationSession({user:{id:userId},access_token:token("30000000-0000-4000-8000-000000000002")},userId,historyId),false);
+  assert.equal(matchesLoginLocationSession(null,userId,historyId),false);
+  assert.equal(matchesLoginLocationSession({user:{id:"another"},access_token:token(historyId)},userId,historyId),false);
+  assert.equal(matchesLoginLocationSession({user:{id:userId},access_token:"malformed"},userId,historyId),false);
+});
 function fixture() {
   let reads=0;
   let success:PositionCallback=()=>{},error:PositionErrorCallback=()=>{},expire=()=>{};
@@ -13,6 +22,25 @@ function fixture() {
   }};
   return {geo,reports,states,reads:()=>reads,succeed:()=>success({timestamp:1793008800000,coords:{latitude:0,longitude:0,accuracy:0}} as GeolocationPosition),fail:(code:number)=>error({code} as GeolocationPositionError),expire:()=>expire(),deadline:(callback:()=>void)=>{expire=callback;return()=>{};}};
 }
+
+test("skip continues before a pending save and unmount cannot abort that dispatched save",async()=>{
+  const f=fixture(); let continued=0; let signal:AbortSignal|undefined;
+  let finish:(value:boolean)=>void=()=>{};
+  const flow=createLoginLocationRequest({historyId,geolocation:f.geo,onState:()=>{},onContinue:()=>{continued++;},save:async(report,requestSignal)=>{
+    f.reports.push(report);signal=requestSignal;return new Promise<boolean>(resolve=>{finish=resolve;});
+  },deadline:f.deadline});
+  flow.skip(); assert.equal(continued,1);assert.equal(f.reads(),0);assert.equal(f.reports[0].status,"skipped");
+  flow.cancel(); assert.equal(signal?.aborted,false); finish(false); await tick(); assert.equal(continued,1);
+});
+
+test("all classified permission outcomes continue even when persistence fails",async()=>{
+  for(const code of [0,1,2,3,4]){
+    const f=fixture();let continued=0;
+    const flow=createLoginLocationRequest({historyId,geolocation:code===4?null:f.geo,onContinue:()=>{continued++;},onState:()=>{},save:async()=>false,deadline:f.deadline});
+    flow.share();if(code===0)f.succeed();else if(code!==4)f.fail(code);
+    assert.equal(continued,1);await tick();assert.equal(continued,1);
+  }
+});
 test("location reads only after explicit share and only once despite repeated calls",async()=>{
   const f=fixture();const flow=createLoginLocationRequest({historyId,geolocation:f.geo,onState:s=>f.states.push(s),save:async report=>{f.reports.push(report);return true;},deadline:f.deadline});
   assert.equal(f.reads(),0);flow.share();flow.share();assert.equal(f.reads(),1);f.succeed();await tick();

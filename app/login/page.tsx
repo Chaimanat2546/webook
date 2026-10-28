@@ -1,14 +1,8 @@
-import Link from "next/link";
-import { LoginInstallPrompt } from "../../components/pwa/login-install-prompt";
-import { LoginSubmitButton } from "../../components/auth/login-submit-button";
+import { LoginForm } from "../../components/auth/login-form";
 import Image from "next/image";
 
-import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "../../components/ui/field";
-import { Input } from "../../components/ui/input";
-import { requestPasswordReset, signIn } from "./actions";
-import { AuthMessage } from "./auth-message";
+import { requestPasswordReset } from "./actions";
 import { PasswordResetRequestForm } from "./password-reset-request-form";
 
 function getForgotErrorMessage(error?: string) {
@@ -32,30 +26,31 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{
     error?: string;
+    expired?: string;
     forgot?: string;
     forgotError?: string;
     sent?: string;
   }>;
 }) {
-  const { error, forgot, forgotError, sent } = await searchParams;
+  const { error, expired, forgot, forgotError, sent } = await searchParams;
   const isForgotMode = forgot === "1" || sent === "1" || Boolean(forgotError);
   const forgotErrorMessage = getForgotErrorMessage(forgotError);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 py-10">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
+      <Card className="w-full max-w-[320px] gap-3.5 rounded-xl p-[18px] shadow-sm ring-border ring-inset">
+        <CardHeader className="gap-3.5 p-0">
           <Image
             src="/brand/webooks-logo-transparent.png"
             alt="WeBooks ระบบจัดการบ้านพัก"
             width={500}
             height={500}
-            className="mx-auto size-48 object-contain"
+            className="mx-auto h-[140px] w-full object-contain"
             priority
           />
-          <CardTitle>{isForgotMode ? "รีเซ็ตรหัสผ่านผู้ดูแล" : "เข้าสู่ระบบผู้ดูแล"}</CardTitle>
+          <CardTitle className="text-base leading-snug font-medium">{isForgotMode ? "รีเซ็ตรหัสผ่านผู้ดูแล" : "เข้าสู่ระบบผู้ดูแล"}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isForgotMode ? (
             <PasswordResetRequestForm
               action={requestPasswordReset}
@@ -64,50 +59,10 @@ export default async function LoginPage({
               sent={sent === "1"}
             />
           ) : (
-            <form action={signIn} autoComplete="off" className="flex flex-col gap-4">
-              {error ? (
-                <AuthMessage tone="error">อีเมล/ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</AuthMessage>
-              ) : null}
-
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="identifier">Email หรือ Username</FieldLabel>
-                  <Input
-                    id="identifier"
-                    name="identifier"
-                    type="text"
-                    autoCapitalize="none"
-                    autoComplete="off"
-                    spellCheck={false}
-                    required
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="admin-credential">Password</FieldLabel>
-                  <Input
-                    id="admin-credential"
-                    name="adminCredential"
-                    type="password"
-                    autoComplete="new-password"
-                    data-1p-ignore="true"
-                    data-bwignore="true"
-                    data-form-type="other"
-                    data-lpignore="true"
-                    required
-                  />
-                </Field>
-              </FieldGroup>
-
-              <LoginSubmitButton />
-              <Button asChild variant="ghost">
-                <Link href="/login?forgot=1">ลืมรหัสผ่าน</Link>
-              </Button>
-            </form>
+            <LoginForm initialError={Boolean(error)} expired={expired === "1"} />
           )}
         </CardContent>
       </Card>
-      {process.env.NEXT_PUBLIC_SUPABASE_URL==="https://sxvkhzhqtrpxgzumsswl.supabase.co" && <Button asChild variant="outline"><a href="/login/location/check">ตรวจการขอสิทธิ์ตำแหน่ง (Staging)</a></Button>}
-      {!isForgotMode && <LoginInstallPrompt />}
     </main>
   );
 }

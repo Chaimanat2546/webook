@@ -16,6 +16,7 @@ export async function attachLoginLocation(repository: LoginHistoryRepository,act
   return repository.attach(actor,report);
 }
 export async function listLoginHistory(repository: LoginHistoryRepository,scope: HistoryScope,filter: HistoryFilter) {
+  if (scope.kind !== "root-admin") throw new LoginHistoryError(403);
   return repository.list(scope,filter);
 }
 export async function purgeExpiredLoginHistory(repository: Pick<LoginHistoryRepository,"purgeExpired">) {
