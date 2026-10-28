@@ -46,3 +46,4 @@
 - Independent whole-change review completed: no actionable findings in UI state/navigation, shared defaults, SQL boundaries, compatibility or authorization.
 - Staging CI exposed a PostgreSQL startup race twice: socket readiness accepted the image's temporary init server, which stopped before the first psql call. The image entrypoint confirms that this server disables TCP. The readiness gate now checks loopback TCP, which becomes available only on the final server. The isolated fixture and test gate remain required.
 - A separate CI attempt failed while starting the unchanged local Supabase integration fixture; sensitive CLI output remains suppressed.
+- The same isolated Supabase fixture started successfully on the workstation and was cleaned up by its generated project ID. Added fixed-label startup diagnostics to distinguish CI network, image, health, disk, port and migration failures without emitting CLI output or credentials.

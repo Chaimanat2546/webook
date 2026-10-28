@@ -97,12 +97,27 @@ values (3, '{"en":"Integration fixture member","th":"สมาชิกทดส
   return projectId;
 }
 
+// Emit only fixed labels: CLI output may contain local Auth keys and passwords.
+export function integrationFailureSummary(output, status) {
+  const categories = [
+    ["disk-space", /no space left|insufficient disk space/i],
+    ["network", /i\/o timeout|TLS handshake|connection reset|network is unreachable|no such host|context deadline exceeded/i],
+    ["image-pull", /failed to pull|pull access denied|toomanyrequests|rate limit|manifest unknown/i],
+    ["healthcheck", /unhealthy|health check|healthcheck|not ready/i],
+    ["port-conflict", /address already in use|port is already allocated/i],
+    ["database-connection", /connection refused|could not connect|database system is starting up/i],
+    ["migration", /failed to execute|syntax error|SQLSTATE/i],
+  ].filter(([, pattern]) => pattern.test(output)).map(([label]) => label);
+  return `exit=${Number.isInteger(status) ? status : "unknown"}; ${categories.join(",") || "unclassified"}`;
+}
+
 function supabaseCommand(directory, args) {
   const result = spawnSync(process.execPath, [join(repository, "node_modules/supabase/dist/supabase.js"), ...args, "--workdir", directory], {
     cwd: repository, encoding: "utf8", maxBuffer: 16 * 1024 * 1024, timeout: 480_000,
   });
   if (result.error || result.status !== 0) {
-    throw new Error(`Local Supabase ${args[0]} failed; CLI output suppressed to protect credentials`);
+    const summary = integrationFailureSummary(`${result.stdout ?? ""}\n${result.stderr ?? ""}`, result.status);
+    throw new Error(`Local Supabase ${args[0]} failed (${summary}); CLI output suppressed to protect credentials`);
   }
   return result.stdout;
 }
