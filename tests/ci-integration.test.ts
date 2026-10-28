@@ -8,6 +8,7 @@ import {
   assertCompleteTestRun,
   integrationEnvironment,
   prepareIntegrationWorkspace,
+  integrationFailureSummary,
 } from "../scripts/run-ci-integration.mjs";
 
 const localStatus = {
@@ -17,6 +18,24 @@ const localStatus = {
 };
 const projectId = "webook-ci-integration-1234abcd";
 const passingTap = "TAP version 13\n# tests 2\n# pass 2\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n";
+
+test("CI startup diagnostics classify failures without disclosing CLI credentials or raw output", () => {
+  const privateValue="synthetic-sensitive-cli-value";
+  for (const [output,expected] of [
+    [`ANON_KEY=${privateValue}\nfailed to pull image: i/o timeout`,"network"],
+    [`SERVICE_ROLE_KEY=${privateValue}\ncontainer supabase_auth_fixture is not ready: unhealthy`,"healthcheck"],
+    [`password=${privateValue}\nno space left on device`,"disk-space"],
+    [`token=${privateValue}\nport is already allocated`,"port-conflict"],
+    [`${privateValue}: an unrecognized failure`,"unclassified"],
+  ]) {
+    const summary=integrationFailureSummary(output,1);
+    assert.ok(summary.includes(expected));
+    assert.equal(summary.includes(privateValue),false);
+    assert.equal(summary.includes("ANON_KEY"),false);
+    assert.equal(summary.includes("SERVICE_ROLE_KEY"),false);
+    assert.equal(summary.includes("password="),false);
+  }
+});
 
 test("CI integration enables every opt-in against only its isolated local target", () => {
   const environment = integrationEnvironment(localStatus, projectId);
