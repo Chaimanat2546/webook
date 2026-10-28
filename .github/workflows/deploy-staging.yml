@@ -36,7 +36,9 @@ jobs:
           docker run --detach --name webook-login-history-tests --network none --env POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine
           trap 'docker rm --force webook-login-history-tests > /dev/null 2>&1' EXIT
           for attempt in $(seq 1 60); do
-            if docker exec webook-login-history-tests pg_isready -U postgres > /dev/null 2>&1; then
+            # The image's temporary init server accepts sockets but no TCP.
+            # Wait for the final server so its init-time restart cannot race psql.
+            if docker exec webook-login-history-tests pg_isready -h 127.0.0.1 -U postgres > /dev/null 2>&1; then
               node scripts/test-login-history-db.mjs
               exit 0
             fi
